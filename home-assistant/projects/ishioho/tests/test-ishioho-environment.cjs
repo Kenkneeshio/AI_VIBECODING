@@ -109,6 +109,20 @@ test('today and daily periods use the HA time zone instead of UTC or the browser
   const zone='America/Los_Angeles',items=normalizeForecast([{datetime:'2026-10-24T19:00:00Z',condition:'sunny',temperature:80},{datetime:'2026-10-25T19:00:00Z',condition:'sunny',temperature:82},{datetime:'2026-10-26T19:00:00Z',condition:'rainy',temperature:70}],{attributes:{temperature_unit:'°F'}},'daily',forecastEpoch,zone);
   assert.equal(items.length,2);const view=forecastReading({items,fetchedAt:forecastEpoch,expiresAt:forecastEpoch+900000,nextRefreshAt:forecastEpoch+900000},{kind:'daily',now:forecastEpoch,zone,condition:'sunny'});assert.equal(view.today.length,1);assert.equal(view.today[0].temperature,82);assert.equal(view.next.temperature,70);assert.equal(view.nextChange,null);
 });
+test('local-day forecast filtering works when Intl format falls back to month-first text',()=>{
+  class MonthFirstFormatter {
+    constructor(locale,options){this.options=options;this.real=new Intl.DateTimeFormat(locale,options);}
+    format(date){return this.options.year&&this.options.month&&this.options.day?'10/25/2026':this.real.format(date);}
+    formatToParts(date){return this.real.formatToParts(date);}
+  }
+  const scoped=vm.runInNewContext('(function(){'+source.replace(/\bexport /g,'')+';return {normalizeForecast,forecastReading};})()',{
+    Date:TestDate,Intl:{DateTimeFormat:MonthFirstFormatter,NumberFormat:Intl.NumberFormat},console,setTimeout,clearTimeout
+  });
+  const zone='America/Los_Angeles',rows=[{datetime:'2026-10-26T03:00:00Z',condition:'sunny',temperature:78},{datetime:'2026-10-26T19:00:00Z',condition:'rainy',temperature:70}];
+  const items=scoped.normalizeForecast(rows,{attributes:{temperature_unit:'°F'}},'hourly',forecastEpoch,zone);
+  const view=scoped.forecastReading({items,fetchedAt:forecastEpoch,expiresAt:forecastEpoch+900000,nextRefreshAt:forecastEpoch+900000},{kind:'hourly',now:forecastEpoch,zone,condition:'sunny'});
+  assert.equal(items[0].localDate,'2026-10-25');assert.equal(items[1].localDate,'2026-10-26');assert.equal(view.today.length,1);assert.equal(view.today[0].temperature,78);
+});
 test('solar timing uses supplied future events only and validates elevation, rising and disconnection',()=>{
   const sun=entity('above_horizon',{next_rising:'2026-10-26T14:00:00Z',next_setting:'2026-10-26T03:00:00Z',next_dawn:'bad',next_dusk:'2026-10-26T03:25:00Z',elevation:4.2,rising:false});
   const solar=solarReading(sun,true,forecastEpoch);assert.equal(solar.mode,'day');assert.equal(solar.elevation,4.2);assert.equal(solar.rising,false);assert.equal(solar.nextDawn,null);assert.equal(solar.nextTransition.kind,'sunset');assert.equal(solar.nextTransition.minutesUntil,45);

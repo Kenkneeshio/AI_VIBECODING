@@ -17,6 +17,8 @@ const sourceFiles={
 };
 let failed=false;
 try {
+ const packageResult=spawnSync(process.execPath,[path.join(root,'tests','test-package.cjs')],{cwd:root,stdio:'inherit'});
+ if(packageResult.error||packageResult.status!==0)failed=true;
  for(const [name,relative] of Object.entries(sourceFiles))fs.copyFileSync(path.join(root,relative),path.join(stage,name));
  fs.writeFileSync(path.join(stage,'ishioho-catalog.json'),JSON.stringify(require('./fixtures/catalog.cjs')));
  fs.mkdirSync(path.join(stage,'ishioho-assets'));

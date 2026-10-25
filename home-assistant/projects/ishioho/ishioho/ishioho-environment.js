@@ -12,6 +12,7 @@ const phases=['new_moon','waxing_crescent','first_quarter','waxing_gibbous','ful
 const moonIcons=['🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘'];
 const conditions={ 'clear-night':['Clear night','☾','clear'],cloudy:['Cloudy','☁','cloud'],fog:['Fog','≋','cloud'],hail:['Hail','◇','rain'],lightning:['Lightning','ϟ','storm'],'lightning-rainy':['Thunderstorms','ϟ','storm'],partlycloudy:['Partly cloudy','⛅','cloud'],pouring:['Heavy rain','☂','rain'],rainy:['Rain','☂','rain'],snowy:['Snow','❄','snow'],'snowy-rainy':['Sleet','❄','snow'],sunny:['Sunny','☀','clear'],windy:['Windy','≋','wind'],'windy-variant':['Windy & cloudy','≋','wind'],exceptional:['Exceptional weather','!','alert'] };
 const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const hasOwn=(object,key)=>Object.prototype.hasOwnProperty.call(object,key);
 const title=s=>String(s||'').replaceAll('_',' ').replace(/^./,c=>c.toUpperCase());
 const valid=e=>Boolean(e&&!['unknown','unavailable','none','null',''].includes(String(e.state).trim().toLowerCase()));
 export function finiteReading(value){
@@ -51,7 +52,16 @@ function timestamp(value){
   if(typeof value!=='string'||!/^\d{4}-\d\d-\d\dT.*(?:Z|[+-]\d\d:\d\d)$/.test(value))return null;
   const ms=Date.parse(value);return Number.isFinite(ms)?ms:null;
 }
-function dateKey(time,zone){try{return new Intl.DateTimeFormat('en-CA',{timeZone:zone||'UTC',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(time));}catch{return null;}}
+function dateKey(time,zone){
+  // Never compare localized date strings. A WebView may fall back from en-CA
+  // to a month-first locale, which would place forecast rows on the wrong day.
+  try{
+    const parts=new Intl.DateTimeFormat('en-US',{timeZone:zone||'UTC',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date(time));
+    const field=type=>parts.find(part=>part.type===type)?.value;
+    const year=field('year'),month=field('month'),day=field('day');
+    return /^\d{4}$/.test(year)&&/^\d{2}$/.test(month)&&/^\d{2}$/.test(day)?`${year}-${month}-${day}`:null;
+  }catch{return null;}
+}
 function bounded(value,min,max){const n=finiteReading(value);return n!==null&&n>=min&&n<=max?n:null;}
 function supportedForecast(weather){const flags=finiteReading(weather?.attributes?.supported_features)||0;return flags&2?'hourly':flags&1?'daily':flags&4?'twice_daily':null;}
 function relevantForecast(item,kind,now,zone){return kind==='daily'?Boolean(item.localDate&&item.localDate>=(dateKey(now,zone)||'9999')):item.time>=now-(kind==='twice_daily'?12:1)*3600000;}
@@ -63,7 +73,7 @@ export function normalizeForecast(rows,weather={},kind='hourly',now=Date.now(),z
   const unique=new Map();
   for(const row of rows.slice(0,250)){
     if(!row||typeof row!=='object')continue;const time=timestamp(row.datetime);if(time===null)continue;
-    const condition=Object.hasOwn(conditions,row.condition)?row.condition:null,definition=conditions[condition];
+    const condition=hasOwn(conditions,row.condition)?row.condition:null,definition=conditions[condition];
     const item={datetime:new Date(time).toISOString(),time,localTime:localTime(row.datetime,zone),localDate:dateKey(time,zone),condition,label:definition?.[0]||'Condition unavailable',icon:definition?.[1]||'—',effect:definition?.[2]||'none',
       temperature:tempUnit?finiteReading(row.temperature):null,temperatureLow:tempUnit?finiteReading(row.templow):null,temperatureUnit:tempUnit,
       temperatureLabel:temperature(row.temperature,temperatureUnit),precipitationProbability:bounded(row.precipitation_probability,0,100),
@@ -108,7 +118,7 @@ export function environmentReading(hass={},config={},now=Date.now(),appearance='
   const mode=preview?appearance:sunMode;
   const weatherId=discover(states,config.weather_entity,'weather.forecast_ishioho_city',id=>id.startsWith('weather.'));
   const weather=states[weatherId],weatherValid=connected&&valid(weather);
-  const condition=weatherValid&&Object.hasOwn(conditions,weather.state)?conditions[weather.state]:null;
+  const condition=weatherValid&&hasOwn(conditions,weather.state)?conditions[weather.state]:null;
   const weatherLabel=!connected?'Weather · connection lost':!weatherId?'Weather not connected':!weatherValid?'Weather unavailable':condition?.[0]||'Condition unavailable';
   const outsideId=config.outside||'sensor.hub_temperature',outside=states[outsideId];
   const outsideValue=connected&&valid(outside)?temperature(outside.state,outside.attributes?.unit_of_measurement):'Unavailable';
@@ -186,7 +196,7 @@ export const environmentMethods={
   },
   _mapAsset(type='map',night=false){
     const profiles={pokemon:{version:8,extension:'png'},pokedex:{version:6,extension:'svg'},crossing:{version:6,extension:'svg'},stardew:{version:1,extension:'png'}};
-    const theme=Object.hasOwn(profiles,this._theme)?this._theme:'pokemon',profile=profiles[theme];
+    const theme=hasOwn(profiles,this._theme)?this._theme:'pokemon',profile=profiles[theme];
     return `/local/ishioho/${theme}${night?'-night':''}-${type==='still'?'still':'map'}${profile.extension==='png'?'-v'+profile.version:''}.${profile.extension}?v=${profile.version}`;
   },
   _environmentMarkup(){

@@ -1,6 +1,7 @@
 /* Read-only weather art. CSS shapes stay outside the rooms; real forecasts are
  * labelled separately from the observed current condition. No SVG compositor. */
 const escapeWeather=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const hasOwn=(object,key)=>Object.prototype.hasOwnProperty.call(object,key);
 const weatherKinds={sunny:'clear','clear-night':'clear',partlycloudy:'partly',cloudy:'cloud',fog:'fog',rainy:'rain',pouring:'rain',hail:'hail',snowy:'snow','snowy-rainy':'sleet',lightning:'storm','lightning-rainy':'storm-rain',windy:'wind','windy-variant':'wind-cloud',exceptional:'alert'};
 const weatherSymbols={clear:'☀',partly:'⛅',cloud:'☁',fog:'≋',rain:'☂',hail:'◇',snow:'❄',sleet:'❄',storm:'ϟ','storm-rain':'ϟ',wind:'≋','wind-cloud':'≋',alert:'!'};
 const number=value=>typeof value==='number'&&Number.isFinite(value)?value:null;
@@ -8,7 +9,7 @@ const dateMs=value=>typeof value==='string'&&/^\d{4}-\d\d-\d\dT/.test(value)&&Nu
 const compactTime=(time,zone,days=false)=>{try{return new Intl.DateTimeFormat('en-US',{...(days?{weekday:'short'}:{hour:'numeric'}),timeZone:zone||'UTC'}).format(new Date(time));}catch{return '—';}};
 
 export function weatherVisualState(reading={},now=Date.now()){
-  const condition=reading.connected!==false&&Object.hasOwn(weatherKinds,reading.condition)?reading.condition:null;
+  const condition=reading.connected!==false&&hasOwn(weatherKinds,reading.condition)?reading.condition:null;
   const effect=condition?weatherKinds[condition]:'none';
   const solar=reading.solar||{},mode=reading.mode||null,elevation=number(solar.elevation);
   // The actual solar elevation and direction keep twilight continuous on both
@@ -39,7 +40,7 @@ function forecastTiles(state,reading){
     return `${current}<span class="wx-forecast-empty"><small>OUTLOOK</small><b>${message}</b><em>${escapeWeather(state.transition||'Open weather details')}</em></span>`;
   }
   const cards=state.items.map((item,index)=>{
-    const kind=Object.hasOwn(weatherKinds,item.condition)?weatherKinds[item.condition]:'none',isNight=item.condition==='clear-night'||item.daylight===false,icon=kind==='clear'&&isNight?'☾':weatherSymbols[kind]||'—';
+    const kind=hasOwn(weatherKinds,item.condition)?weatherKinds[item.condition]:'none',isNight=item.condition==='clear-night'||item.daylight===false,icon=kind==='clear'&&isNight?'☾':weatherSymbols[kind]||'—';
     const temperature=item.temperatureLabel&&item.temperatureLabel!=='Unavailable'?item.temperatureLabel:number(item.temperature)!==null&&item.temperatureUnit?`${Math.round(item.temperature)}${item.temperatureUnit}`:'—';
     const pop=number(item.precipitationProbability),precip=pop!==null&&pop>=0&&pop<=100?` · ${Math.round(pop)}% precipitation chance`:'';
     return `<span class="wx-hour" data-forecast-effect="${kind}" data-daylight="${isNight?'night':item.daylight===true?'day':'unknown'}" title="${escapeWeather(`${item.label||'Condition unavailable'}${precip}`)}"><small>${escapeWeather(compactTime(item.time,source.timeZone,days))}</small><span><i aria-hidden="true">${icon}</i><b>${escapeWeather(temperature)}</b></span><em>${escapeWeather(item.label||'Unavailable')}</em>${pop!==null&&pop>=0&&pop<=100?`<span class="wx-pop">${Math.round(pop)}%</span>`:''}</span>`;

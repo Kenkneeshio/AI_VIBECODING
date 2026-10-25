@@ -16,7 +16,7 @@ Use lowercase names with hyphens.
 
 | Project | Purpose | Status |
 | --- | --- | --- |
-| [ishioho](ishioho/README.md) | Landscape Home Assistant control panel in four illustrated themes, with contextual popups and a searchable entity directory | Tested prototype; source, synthetic examples, and 107 isolated checks |
+| [ishioho](ishioho/README.md) | Landscape Home Assistant control panel in four illustrated themes, with contextual popups and a searchable entity directory | Tested prototype; source, synthetic examples, and isolated checks |
 
 The repository contains reusable source and examples, not live home configuration. Publishing changes does not deploy a dashboard.
 

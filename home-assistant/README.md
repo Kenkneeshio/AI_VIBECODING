@@ -8,9 +8,9 @@ Custom software and reusable resources for Home Assistant, including projects in
 
 A cleaner presentation of the uploaded plan, with a neutral background, clearer architectural outlines, and a closer view of the home.
 
-[View full-size image](assets/floor-plan-presentation.png) · [Original floor plan](../181824550_serafina_ln_first_floor_first_design_20261025_874646.jpg)
+[View full-size image](assets/floor-plan-presentation.png)
 
-This AI-assisted illustration is a visual reference for dashboard planning. Fine details may differ from the original; use the source plan for dimensions and exact placement.
+This AI-assisted illustration is a visual reference for dashboard planning. Fine details may differ from the original; use your own private source plan for dimensions and exact placement.
 
 ## What belongs here
 
@@ -37,7 +37,7 @@ Choose the simplest project type that solves the actual problem. An automation o
 
 | Project | Description | Status |
 | --- | --- | --- |
-| [ishioho](projects/ishioho/README.md) | Four illustrated dashboard themes with room controls, searchable entities, camera popups, weather/moon display, and a room-level robot tracker | Tested prototype; 107 isolated checks; synthetic public examples |
+| [ishioho](projects/ishioho/README.md) | Four illustrated dashboard themes with room controls, searchable entities, camera popups, weather/moon display, and a room-level robot tracker | Tested prototype; isolated checks; synthetic public examples |
 
 ## Management approach
 

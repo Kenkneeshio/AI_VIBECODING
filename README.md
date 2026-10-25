@@ -40,7 +40,7 @@ AI_VIBECODING/
 
 ## Current status
 
-The [ishioho dashboard](home-assistant/projects/ishioho/README.md) includes four illustrated Home Assistant views, contextual controls, a searchable entity directory, camera popups, weather and moon display, and a robot tracker. Its public package contains source, artwork, synthetic examples, and 107 isolated checks. It is a tested prototype with documented installation-specific assumptions. Committing here does not deploy anything to Home Assistant.
+The [ishioho dashboard](home-assistant/projects/ishioho/README.md) includes four illustrated Home Assistant views, contextual controls, a searchable entity directory, camera popups, weather and moon display, and a robot tracker. Its public package contains standard-format source and artwork, synthetic examples, and isolated checks. It is a tested prototype with documented installation-specific assumptions. Committing here does not deploy anything to Home Assistant.
 
 ## Public repository
 

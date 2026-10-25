@@ -10,8 +10,8 @@ class Node {
   focus(){this.focusCount++;}getClientRects(){return this.hidden?[]:[{}];}matches(){return this.tabIndex>=0;}contains(){return false;}
 }
 class Element extends Node{attachShadow(){return this.shadowRoot=new Node();}dispatchEvent(e){this.events ||= [];this.events.push(e);return true;}}
-const defined=new Map(),nativeCards=[],fetches=[];
-const context=vm.createContext({HTMLElement:Element,FontFace:class{async load(){return this;}},document:{fonts:{add(){}},createElement:tag=>new Node(tag)},CustomEvent:class{constructor(type,opts){this.type=type;Object.assign(this,opts);}},customElements:{get:n=>defined.get(n),define:(n,c)=>defined.set(n,c)},window:{loadCardHelpers:async()=>({createCardElement:config=>{const n=new Node('native-card');n.config=config;nativeCards.push(n);return n;}})},fetch:async url=>{fetches.push(url);return{ok:true,json:async()=>url.includes('catalog')?{entities:[],areas:[]}:{room_segments:[]}};},setTimeout:()=>1,clearTimeout(){},setInterval:()=>1,clearInterval(){},console});
+const defined=new Map(),nativeCards=[],fetches=[],fetchOptions=[];
+const context=vm.createContext({HTMLElement:Element,FontFace:class{async load(){return this;}},document:{fonts:{add(){}},createElement:tag=>new Node(tag)},CustomEvent:class{constructor(type,opts){this.type=type;Object.assign(this,opts);}},customElements:{get:n=>defined.get(n),define:(n,c)=>defined.set(n,c)},window:{loadCardHelpers:async()=>({createCardElement:config=>{const n=new Node('native-card');n.config=config;nativeCards.push(n);return n;}})},fetch:async(url,options)=>{fetches.push(url);fetchOptions.push(options);return{ok:true,json:async()=>url.includes('catalog')?{entities:[],areas:[]}:{room_segments:[]}};},setTimeout:()=>1,clearTimeout(){},setInterval:()=>1,clearInterval(){},console});
 const read=name=>fs.readFileSync(path.join(__dirname,name),'utf8');
 vm.runInContext(read('pallet-panel.js'),context,{filename:'pallet-panel.js'});
 Object.assign(context,vm.runInContext('(function(){'+read('ishioho-directory.js').replace(/\bexport /g,'')+';return {directoryMethods,directoryCss};})()',context));
@@ -77,6 +77,42 @@ test('decorative animation toggle makes no device calls and records accessible s
 });
 test('all themes retain the inherited lifecycle and unsupported theme defaults safely',async()=>{
   const{p}=fixture();for(const theme of ['pokemon','pokedex','crossing','stardew','invalid']){p.setConfig({...config(),theme});assert.equal(p._theme,theme==='invalid'?'pokemon':theme);}await new Promise(setImmediate);assert.ok(fetches.every(url=>url.startsWith('/local/ishioho/')));assert.equal(typeof p._connectCamera,'function');assert.equal(typeof p._close,'function');
+});
+test('user-specific catalog and robot metadata are fetched without browser caching',()=>{
+  assert.ok(fetches.includes('/local/ishioho/catalog.json'));
+  assert.ok(fetches.includes('/local/ishioho/robot.json'));
+  assert.ok(fetchOptions.every(options=>options?.cache==='no-store'));
+});
+test('theme links honor an alternate dashboard path and can infer the current Home Assistant path',()=>{
+  const{p}=fixture();p.setConfig({...config(),theme:'stardew',dashboard_path:'house-console'});
+  assert.match(p.shadowRoot.innerHTML,/href="\/house-console\/stardew"/);
+  assert.equal(p._themeHref('pokemon'),'/house-console/home');
+  delete p._config.dashboard_path;context.window.location={pathname:'/another-dashboard/stardew'};
+  try{assert.equal(p._themeHref('crossing'),'/another-dashboard/crossing');}finally{delete context.window.location;}
+});
+test('alternate robot IDs and explicit aliases drive tracker and directory without the original vacuum prefix',()=>{
+  const states={'vacuum.second_bot':state('docked',{located:true}),'sensor.second_bot_current_room':state('Office Zone'),'sensor.second_bot_cleaning_time':state('14'),'sensor.second_bot_battery':state('90'),'sensor.extra_robot':state('ready'),'sensor.l10s_ultra_old':state('stale')};
+  const{p}=fixture(states);Object.assign(p._config,{vacuum:'vacuum.second_bot',vacuum_battery:'sensor.second_bot_battery',vacuum_map:null,robot_entities:['sensor.extra_robot'],robot_room_aliases:{'Office Zone':'kitchen'}});
+  assert.equal(p._robotStem(),'second_bot');assert.equal(p._robotRoomEntity(),'sensor.second_bot_current_room');assert.equal(p._robotReading().point.id,'kitchen');
+  const ids=p._robotEntityIds();assert.ok(ids.includes('sensor.second_bot_cleaning_time'));assert.ok(ids.includes('sensor.extra_robot'));assert.ok(!ids.includes('sensor.l10s_ultra_old'));
+  p._config.robot_entity_prefix='override_bot';assert.equal(p._robotStem(),'override_bot');
+  p._config.robot_room='sensor.custom_room';assert.equal(p._robotRoomEntity(),'sensor.custom_room');
+});
+test('garage camera selection uses configuration or room assignment and tolerates no camera',()=>{
+  const{p}=fixture({'cover.garage':state('closed')});const garage=p._config.rooms.find(r=>r.id==='garage');
+  p._config.cameras=[{entity:'camera.named',name:'Garage'},{entity:'camera.assigned',name:'Porch'},{entity:'camera.preferred',name:'Side'}];
+  p._config.garage_camera='camera.preferred';assert.equal(p._garageCamera(garage).entity,'camera.preferred');
+  delete p._config.garage_camera;garage.entities.push('camera.assigned');assert.equal(p._garageCamera(garage).entity,'camera.assigned');
+  garage.entities=[];assert.equal(p._garageCamera(garage).entity,'camera.named');
+  p._config.cameras=[];assert.equal(p._garageCamera(garage),null);
+  p._connectCamera=()=>{throw Error('Unexpected camera attempt');};p._mountCard=()=>{};p._open('garage');assert.equal(p._q('#garage-live').textContent,'No garage camera is configured.');
+});
+test('unconfigured garage and vacuum omit dedicated controls and leave the garage room inspectable',()=>{
+  const{p}=fixture();const c=config();delete c.garage;delete c.vacuum;p.setConfig(c);
+  assert.ok(!p.shadowRoot.innerHTML.includes('data-action="vacuum"'));
+  assert.ok(!p.shadowRoot.innerHTML.includes('data-action="garage"'));
+  assert.ok(!p._overviewMarkup().includes('data-action="vacuum"'));
+  p._open('garage');assert.equal(p._modal,'room');const prior=p._modal;p._open('vacuum');assert.equal(p._modal,prior);
 });
 
 test('excluded camera stays absent from dashboard counts and full room membership',()=>{

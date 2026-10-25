@@ -4,6 +4,8 @@ A landscape Home Assistant dashboard with four illustrated themes: Pokémon, Pok
 
 **Status: tested prototype.** This is reusable frontend source with synthetic examples. It is not a copy of a live home's configuration, and a GitHub update does not deploy it.
 
+The package uses standard browser JavaScript modules and CSS, JSON configuration, PNG runtime artwork, editable SVG artwork, and a licensed TTF font. There is no proprietary project file, build service, npm dependency, or Home Assistant add-on. It is a portable *file package*, but the illustrated layout and several device IDs still need adaptation for a different home.
+
 ![Stardew-inspired day floor-plan artwork](ishioho/stardew-still-v1.png)
 
 The image is the bundled static artwork. Device readings and camera images are not part of this preview.
@@ -35,16 +37,34 @@ This prototype was checked in one Home Assistant installation and in desktop and
 
 ## Install
 
-1. Back up the dashboard configuration and any existing files with the same names. Keep that backup private.
-2. Copy the complete `ishioho/` and `pallet-house/` folders to `/config/www/` on your Home Assistant host. Preserve the font license in `pallet-house/font-OFL.txt`.
-3. Copy `examples/catalog.json` to `/config/www/ishioho/catalog.json` and `examples/robot.json` to `/config/www/ishioho/robot.json`. These contain synthetic metadata; edit them locally using your actual assignments, or use empty `entities`, `areas`, and `room_segments` arrays. State values always come from the connected Home Assistant frontend.
-4. Add `/local/ishioho/ishioho-panel.js` as a **JavaScript module** dashboard resource. The main module imports the other modules and base card automatically. Preserve the versioned artwork filenames: Pokémon uses `-v8.png` and Stardew uses `-v1.png`.
-5. Create a separate dashboard with URL path `prototype-copy`. The current theme navigation expects this path. Copy the JSON object in `examples/dashboard.json` into the dashboard raw configuration editor, replacing entity IDs as described below. The raw editor accepts JSON's YAML-compatible object syntax.
-6. Reload the browser. When updating an existing installation, bump both the top-level resource query and any changed imported module queries. The panel and environment module share the asset-selection method; loading a new panel with an old cached environment module can prevent rendering.
+From this project directory, you can make a reviewable install folder using Node.js 18 or newer. Choose a **new path whose parent already exists, outside this Git checkout**:
 
-Use supported Home Assistant dashboard editing or APIs for configuration and SSH/SCP or another supported file method for assets. These files do not require a Home Assistant restart by themselves.
+```sh
+node scripts/stage-install.cjs --output "/absolute/path/to/new/ishioho-package"
+node scripts/stage-install.cjs --verify "/absolute/path/to/new/ishioho-package"
+```
+
+The staged folder contains a `START-HERE.txt` quick start, `www/ishioho/`, `www/pallet-house/`, the three synthetic `examples/*.json` files, `release.json`, and `SHA256SUMS`. Staging validates imports, artwork format and size, and example structure; verification checks every staged file's SHA-256 and rejects missing, extra, or symlinked files. It neither contacts Home Assistant nor edits an existing destination. The staged **copy** of `ishioho-panel.js` uses each imported module's content hash as its browser cache key; the GitHub source remains unchanged. `release.json` records those imports and the exact `recommended_resource_url` for Home Assistant. Example `catalog.json` and `robot.json` stay **outside** staged `www/` so updating assets cannot silently overwrite installed metadata. You can ZIP this folder with any standard archive utility and verify it after extraction. You can also copy the same folders directly from the repository if Node is unavailable; substitute the corresponding repository paths in the steps below and manage browser cache keys manually.
+
+1. Back up the target dashboard's raw configuration, its registered resource URL, and any existing `www/ishioho/` or `www/pallet-house/` files. Keep those backups outside this public repository.
+2. Copy the package's complete `www/ishioho/` and `www/pallet-house/` folders into Home Assistant's configuration directory as `/config/www/ishioho/` and `/config/www/pallet-house/`. For a direct source copy, use this project's `ishioho/` and `pallet-house/` folders instead. Preserve `pallet-house/font-OFL.txt`. If `www` did not exist before, restart Home Assistant once so it starts serving that directory. Existing `www` installations normally need only a browser reload after file changes; see Home Assistant's [resource documentation](https://contributors.home-assistant.io/frontend/custom-ui/resources/).
+3. Copy the package's `examples/catalog.json` and `examples/robot.json` to `www/ishioho/catalog.json` and `www/ishioho/robot.json`. Their synthetic content is safe as a starting point. To omit area/robot metadata, use `{"entities":[],"areas":[]}` and `{"room_segments":[]}` respectively. The directory still lists current `hass.states`, although area labels and room grouping then rely on explicitly configured room entities. Read the [installed metadata privacy note](#privacy-of-installed-metadata) before adding real names. On an update, keep your existing installed metadata unless you intentionally change it.
+4. Edit a **local copy** of the package's `examples/dashboard.json`: replace example entity IDs with your own, remove unavailable camera entries and optional device IDs, and verify each room's location. Keep `rooms`, `cameras`, `lights`, `monitored`, `temperatures`, `air`, `energy`, and `calendars` as arrays even when unused; the inherited card expects those collections. The example dashboard URL path is `prototype-copy`; if you choose another slug, set `dashboard_path` on each view's card. Do not commit your private configuration to this repository.
+5. In Home Assistant, create a separate dashboard with URL path `prototype-copy` (or the slug you configured as `dashboard_path`), open its raw configuration editor, and paste the complete edited JSON object. JSON is valid YAML input for this editor. Leave your existing default dashboard untouched while verifying the new one.
+6. Under **Settings → Dashboards → Resources**, register the package's `release.json` **`recommended_resource_url`** as a **JavaScript module** resource. For a direct source copy, use `/local/ishioho/ishioho-panel.js` and add a new `?v=` cache key after updates. The main module imports the other modules and base card. Open `/prototype-copy/stardew` (or `/<your-dashboard-path>/stardew`) and reload the browser. The `www` path maps to `/local/` in the browser, so `/config/www/ishioho/ishioho-panel.js` must load at `/local/ishioho/ishioho-panel.js`.
+7. Follow the [first-run checks](#first-run-checks) below before putting the dashboard on a tablet. Preserve the versioned artwork names: Pokémon uses `-v8.png` and Stardew uses `-v1.png`.
+
+Use supported Home Assistant dashboard editing or APIs for configuration and SSH/SCP or another supported file method for assets. Once `www` already exists, replacing these frontend files does not normally require a Home Assistant restart.
 
 The **Controls** popup includes a browser fullscreen button. A kiosk browser may need its own fullscreen setting. The Home Assistant navigation link supports an existing kiosk-mode installation; this project does not install or configure kiosk mode or change the default dashboard.
+
+### First-run checks
+
+1. Confirm that `/local/ishioho/ishioho-panel.js`, `/local/ishioho/stardew-map-v1.png`, and `/local/pallet-house/pallet-panel.js` load, then open all four theme tabs. A blank card usually means a missing module, a stale import URL, or an unregistered resource; inspect the browser console and the resource entry.
+2. Open **All devices**. It should list current entities even with an empty catalog. Check room popups against the actual floor plan, especially the inside Entry, outside Porch and balcony, and stairs leading to the single-car garage.
+3. Open weather details. Current weather should come from the configured entity; the forecast can say unavailable if its provider does not support `weather.get_forecasts`. Try the day/night preview and return it to **Auto**.
+4. Open only cameras that have working streams. Check the garage feed in its popup if configured. For a tablet, test in landscape at its actual resolution and check that tabs, room pins, popups, and the forecast strip remain usable.
+5. Confirm any device control through Home Assistant's own entity details before relying on this dashboard. The automated checks mock physical devices and do not establish hardware compatibility.
 
 ## Configure
 
@@ -53,12 +73,16 @@ The **Controls** popup includes a browser fullscreen button. A kiosk browser may
 | Field | Purpose |
 | --- | --- |
 | `theme` | `pokemon`, `pokedex`, `crossing`, or `stardew` |
+| `dashboard_path` | Optional dashboard URL slug for the four theme links. If absent, the card uses the current page's dashboard path, with `prototype-copy` as a fallback. Set the same slug on all four cards when using a custom path. |
 | `rooms` | Room IDs, names, pin percentages, curated entities, optional temperature/humidity/status, exact `area_names`, and explanatory notes |
 | `cameras` | Ordered `{entity, name}` entries; optional paired `start_service`/`stop_service` names for Eufy on-demand streams |
+| `garage_camera` | Optional camera entity ID from `cameras` for the garage popup. Otherwise the card looks for a camera in the Garage room, then a configured camera whose name contains “garage”. |
 | `lights`, `climate` | Quick control entities and thermostat |
 | `outside`, `outside_humidity`, `living_temp`, `power` | Summary sensor IDs; `living_temp` supplies the current Dining summary tile |
 | `weather_entity`, `moon_entity`, `sun_entity`, `night_assets` | Environment sources and day/night artwork selection |
 | `vacuum`, `vacuum_battery`, `vacuum_map`, `robot_room` | Robot controls, telemetry, native map camera, and reported room |
+| `robot_entity_prefix`, `robot_entities` | Optional robot object-ID stem (defaults to the configured `vacuum` object ID) and extra entity IDs for its directory. |
+| `robot_metrics`, `robot_room_aliases` | Optional `{entity,label}` metric entries and a map from the robot's reported room names to configured room IDs. |
 | `garage` | Garage cover entity |
 | `events`, `maintenance`, `air` | Lists of `{entity, name}` for alerts and air sensor readings |
 | `monitored`, `energy`, `calendars` | Availability alerts, power detail entities, and native calendar view |
@@ -70,22 +94,42 @@ Remove an unusable camera from `cameras` and room lists, then add its ID to `exc
 
 Only place a control in a room after confirming its physical location. A device's friendly name is not a location source. Unknown assignments belong in the directory's **No area assigned** group. The illustrated balcony plants are decorative; they do not imply plant sensors or irrigation controls.
 
-`examples/catalog.json` documents the metadata schema: `entities` is an array of `{entity_id, name, domain, area_id, area_name, device_id, device_name}`, and `areas` is an array of `{area_id, name}`. The card lists current `hass.states`, enriched by this metadata. Registry entries with no runtime state are not shown. New runtime IDs remain searchable even if absent from the catalog. Keep any real catalog private.
+`examples/catalog.json` documents the metadata schema: `entities` is an array of `{entity_id, name, domain, area_id, area_name, device_id, device_name}`, and `areas` is an array of `{area_id, name}`. The card lists current `hass.states`, enriched by this metadata. Registry entries with no runtime state are not shown. New runtime IDs remain searchable even if absent from the catalog.
+
+### Privacy of installed metadata
+
+Home Assistant serves files under `www/` at `/local/` [without authentication](https://contributors.home-assistant.io/frontend/custom-ui/resources/). Anyone who can reach your Home Assistant URL can download `catalog.json` and `robot.json` from there. Do not put a private inventory, serials, addresses, camera URLs, access tokens, or sensitive room names in either file. Use the empty metadata files described in [Install](#install), or include only labels you are comfortable exposing at that URL. The dashboard's live states come from the authenticated Home Assistant frontend and are not written to those files.
 
 `examples/robot.json` supplies `room_segments` with display names for duplicate-room detection. The marker uses the live room sensor and the vacuum's `located` attribute; it does not project raw map coordinates onto the decorative art. Robot map content comes directly from the configured map camera.
 
 ## Current integration assumptions
 
-This is a prototype with several installation-specific constants still in the source. Remap them before using a different dashboard path or robot integration:
+This is a prototype with a fixed illustrated layout and some device-specific presentation behavior. Adapt the following to your installation:
 
-- Theme links in `ishioho/ishioho-panel.js` use `/prototype-copy/{home,pokedex,crossing,stardew}`.
-- The garage popup selects `camera.garage_camera` from `cameras` by exact ID.
-- The robot directory matches `l10s_ultra` in entity IDs; the robot popup's room, cleaned-area, and cleaning-time metrics also use that prefix. These remain explicit source edits even when the top-level vacuum IDs are changed.
-- Room mapping recognizes a fixed set of names such as Dining, Living Room, Kitchen, Master Bedroom, and Hallway. Ambiguous Bathroom reports and duplicate segment names hide the decorative marker.
+- The example dashboard still uses the `prototype-copy` URL path. The `dashboard_path` option or current browser path supplies theme navigation; each of the four view paths (`home`, `pokedex`, `crossing`, `stardew`) must still match the example or be changed together with the source.
+- If no `garage_camera` is set, the popup selects a configured camera explicitly listed in the Garage room, then a configured camera with “garage” in its name. A configured garage cover without a camera still offers the cover controls and labels the live view unavailable. Without a `garage` cover entity, the dedicated dock control is hidden and the Garage pin opens a normal room directory.
+- Robot telemetry defaults to entity IDs based on the configured `vacuum` object ID. Use `robot_entity_prefix`, `robot_entities`, `robot_metrics`, and `robot_room_aliases` to adapt another integration. Without a `vacuum`, the dedicated tracker is hidden. The marker requires a reliable reported room and the robot's `located` attribute.
+- Common room names such as Dining, Living Room, Kitchen, Master Bedroom, and Hallway have built-in mapping. Add `robot_room_aliases` for other reported names. A generic Bathroom report without an explicit alias hides the decorative marker. Duplicate segment names in `robot.json` also hide it, even with an alias, because the reported room string cannot distinguish those segments.
 - Outdoor fallback IDs are `sensor.hub_temperature` and `sensor.hub_humidity`. Set `outside` and `outside_humidity` explicitly to avoid relying on them.
 - The artwork and pin coordinates describe the included floor plan. Replace the artwork and coordinate data to represent another physical layout; it is not a floor-plan editor.
 - Pokémon and Stardew use Entry at `(25.5%, 55%)`, Porch at `(15.089%, 73.291%)`, Garage at `(16.246%, 49.84%)`, and Balcony at `(19.023%, 28.24%)`. Pokédex and Animal Crossing keep their previous room coordinates and have no separate Porch pin. `room-positions.json` records the Pokémon overrides reused by Stardew.
 - Camera labels describe configured feeds. Confirm that each one actually works before including it. Camera connectivity depends on the integration, network, and device state.
+
+## Maintain and update
+
+The files in GitHub are the public source of the card; the Home Assistant dashboard's raw configuration is a separate installed copy. Editing either one does not update the other. Keep your real entity assignments and any sensitive backups outside GitHub.
+
+| Change | Source to edit | Installed copy to update |
+| --- | --- | --- |
+| Card logic, weather, styles | `ishioho/*.js`, `pallet-house/pallet-panel.js` | Corresponding files in `www/`; staging rewrites direct import cache keys and recommends the registered resource URL |
+| Entity IDs, room pins, cameras | A private copy of `examples/dashboard.json`; keep the public file synthetic | Dashboard raw configuration through Home Assistant's editor or supported API |
+| Area and robot labels | Minimal, non-sensitive `catalog.json` and `robot.json` | Corresponding `www/ishioho/` files; reload the dashboard after editing them (metadata fetches bypass the browser cache) |
+| Pokémon or Stardew visible art | Versioned runtime PNG and the appropriate editable source if available | New PNG files in `www/ishioho/`; update `_mapAsset` in `ishioho-environment.js` and any changed room coordinates |
+| Pokédex or Animal Crossing art | Runtime SVG | SVG in `www/ishioho/`; update its asset URL query when replacing content |
+
+For the PNG themes, changing an SVG alone does **not** change the displayed map. Pokémon's v8 SVGs are editable sources for its PNG exports; Stardew's SVGs are separate geometric reconstructions and do not reproduce its generated PNG illustrations exactly. Keep day, night, animated, and still variants aligned to the same room geometry. If an image's framing changes, update pin percentages in the dashboard configuration and check them on the target screen. The [room-position metadata](ishioho/room-positions.json) records the current Pokémon/Stardew overrides but is not loaded as the live pin configuration.
+
+Before an update, save the currently working dashboard raw configuration, resource URL, and affected `www/` files privately. Run `node scripts/verify-source.cjs` and `node tests/run.cjs`, stage a new package, and verify its manifest. Copy new versioned assets first, then changed modules, and change the registered resource URL to the new package's `release.json.recommended_resource_url` last. The stager computes direct-import and top-level cache keys from file content; no manual query-number tracking is needed when installing its output. If copying straight from the source instead, update changed imports' `?v=` values in `ishioho-panel.js` and the registered resource query yourself. These keys do not version artwork: for changed PNG/SVG maps, add new versioned filenames and update the `_mapAsset` profile in `ishioho-environment.js`. Reload the browser and repeat the [first-run checks](#first-run-checks). If the new view fails, restore the previous files, raw configuration and resource URL together, then reload and verify the prior view.
 
 ## Verification
 
@@ -95,7 +139,7 @@ From this project directory, run:
 node tests/run.cjs
 ```
 
-The runner stages sources, synthetic fixtures, and artwork in a temporary directory, then runs **123 checks**: 28 component, 18 directory, 39 environment, and 38 base-card checks. It removes only its own temporary directory after checking its resolved location. Home Assistant, network access, camera playback, and device actions are mocked.
+The runner stages sources, synthetic fixtures, and artwork in a temporary directory, then runs the component, directory, environment, and base-card suites. Check its output for the current number of passing checks. It removes only its own temporary directory after checking its resolved location. Home Assistant, network access, camera playback, and device actions are mocked.
 
 Checks cover pagination across a generated inventory, configuration exclusions, unassigned areas, robot location honesty, day/night selection, forecast caching and time-zone boundaries, escaping, unavailable entities, camera session ownership/races, and native-card configuration. The tests do not prove physical device actuation or camera compatibility on another installation.
 
@@ -116,8 +160,9 @@ Restore your private prior dashboard configuration through Home Assistant's supp
 - `ishioho/`: five JavaScript modules, four Pokémon v8 PNGs and their four SVG sources, four Stardew PNGs and four independent SVG reconstructions, twelve prior theme SVGs, and room-coordinate metadata. The active Pokémon and Stardew URLs load PNG files; their still variants keep the same artwork.
 - `pallet-house/`: inherited base card, base floor-plan SVG, Press Start 2P font, and its SIL Open Font License notice.
 - `examples/`: synthetic dashboard, catalog, and robot metadata; no live inventory or camera images.
+- `scripts/`: dependency-free source checks and install-folder staging/manifest verification; no Home Assistant network or device access.
 - `tests/`: isolated tests and a generated synthetic inventory fixture.
 
 The original SVG scenes were authored as code from a floor-plan reference, and the Pokémon v8 PNGs are raster exports of those editable SVGs. The active Stardew day/night PNGs were created with the built-in ImageGen tool as edits of the project's v8 floor-plan art, guided by user-provided style references. Its four SVG companions are independent editable geometry reconstructions, not the exact source or exports of the generated PNG illustrations.
 
-These are newly created themed illustrations. The public project contains no reference screenshots, extracted game sprites, aerial reference photographs, camera captures, personal addresses, or live inventory. The font's upstream license is preserved in [font-OFL.txt](pallet-house/font-OFL.txt). The game names identify visual inspirations; this is an independent project.
+These are newly created themed illustrations. This Ishioho project folder and its staged package contain no reference screenshots, extracted game sprites, aerial reference photographs, camera captures, personal addresses, or live inventory. The font's upstream license is preserved in [font-OFL.txt](pallet-house/font-OFL.txt). The game names identify visual inspirations; this is an independent project.
