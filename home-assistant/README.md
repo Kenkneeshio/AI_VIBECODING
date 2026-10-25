@@ -35,7 +35,9 @@ Choose the simplest project type that solves the actual problem. An automation o
 
 ## Project index
 
-There are no custom projects yet. Add a link, short description, and status here when the first project is created.
+| Project | Description | Status |
+| --- | --- | --- |
+| [ishioho](projects/ishioho/README.md) | Three illustrated dashboard themes with room controls, searchable entities, camera popups, weather/moon display, and a room-level robot tracker | Tested prototype; 99 isolated checks; synthetic public examples |
 
 ## Management approach
 
