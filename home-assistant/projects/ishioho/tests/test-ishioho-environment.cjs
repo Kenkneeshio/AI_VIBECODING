@@ -1,8 +1,9 @@
 /* Pure state + inert DOM tests. No network, HA services, native cards or real waits. */
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const source=fs.readFileSync(path.join(__dirname,'ishioho-environment.js'),'utf8');
-const api=vm.runInNewContext('(function(){'+source.replace(/\bexport /g,'')+';return {finiteReading,approximateMoonPhase,environmentReading,environmentMethods,environmentCss};})()',{Date,Intl,console});
-const{finiteReading,approximateMoonPhase,environmentReading,environmentMethods,environmentCss}=api;
+let fakeNow=null,timerId=0;const timers=new Map();class TestDate extends Date{static now(){return fakeNow??Date.now();}}
+const api=vm.runInNewContext('(function(){'+source.replace(/\bexport /g,'')+';return {finiteReading,approximateMoonPhase,environmentReading,environmentMethods,environmentCss,normalizeForecast,forecastReading,solarReading};})()',{Date:TestDate,Intl,console,setTimeout:(fn,ms)=>{const id=++timerId;timers.set(id,{fn,ms});return id;},clearTimeout:id=>timers.delete(id)});
+const{finiteReading,approximateMoonPhase,environmentReading,environmentMethods,environmentCss,normalizeForecast,forecastReading,solarReading}=api;
 const entity=(state,attributes={})=>({state,attributes});
 const states=()=>({'sun.sun':entity('above_horizon',{next_rising:'2026-10-26T14:30:00Z',next_setting:'2026-10-26T01:15:00Z'}),'sensor.hub_temperature':entity('80.96',{unit_of_measurement:'°F'}),'sensor.hub_humidity':entity('51',{unit_of_measurement:'%'}),'weather.forecast_ishioho_city':entity('sunny',{temperature:82,temperature_unit:'°F',humidity:49,wind_speed:4,wind_speed_unit:'mph',cloud_coverage:8,pressure:1011,pressure_unit:'hPa'}),'sensor.moon_phase':entity('waxing_gibbous')});
 const hass=()=>({states:states(),config:{time_zone:'America/Los_Angeles'},connected:true});
@@ -87,4 +88,76 @@ test('appearance/weather updates need no service or native-card methods and resp
   const{p}=fixture();for(let i=0;i<10;i++)p._cycleAppearance();p._openEnvironment();assert.match(environmentCss,/@media\(prefers-reduced-motion:reduce\)/);assert.match(environmentCss,/--primary-text-color:#e3ecd9/);assert.match(environmentCss,/--ha-card-background/);
 });
 
-(async()=>{let failed=0;for(const[name,fn]of tests){try{await fn();console.log('PASS '+name);}catch(e){failed++;console.error('FAIL '+name+'\n  '+e.stack);}}console.log(`${tests.length-failed}/${tests.length} ishioho environment tests passed. Device and network calls were mocked.`);process.exitCode=failed?1:0;})();
+const forecastEpoch=Date.parse('2026-10-26T02:15:00Z');
+function forecastFixture(flags=3){fakeNow=forecastEpoch;const{p}=fixture();p.isConnected=true;p._hass.states['weather.forecast_ishioho_city'].attributes.supported_features=flags;return p;}
+function forecastRows(){return[{datetime:'2026-10-26T02:00:00Z',condition:'sunny',temperature:80,precipitation:0},{datetime:'2026-10-26T03:00:00Z',condition:'rainy',temperature:70,precipitation:0.1},{datetime:'2026-10-26T04:00:00Z',condition:'cloudy',temperature:68}];}
+const response=(rows=forecastRows(),entityId='weather.forecast_ishioho_city')=>({response:{[entityId]:{forecast:rows}}});
+async function settle(p){if(p._forecastPending)await p._forecastPending;await Promise.resolve();}
+
+test('forecast normalization sorts, deduplicates and rejects malformed or expired times without inventing conditions',()=>{
+  const weather={attributes:{temperature_unit:'°F',wind_speed_unit:'mph',precipitation_unit:'in'}};
+  const rows=[forecastRows()[2],{datetime:'not-a-date',condition:'sunny',temperature:20},{datetime:'2026-10-26T03:00:00',condition:'sunny'},{datetime:'2026-10-25T00:00:00Z',condition:'sunny'},forecastRows()[0],forecastRows()[2],{datetime:'2026-10-26T03:00:00Z',condition:'<img onerror=x>',temperature:'0'}];
+  const normalized=normalizeForecast(rows,weather,'hourly',forecastEpoch,'America/Los_Angeles');assert.equal(normalized.length,3);assert.equal(normalized[0].temperature,80);assert.equal(normalized[1].condition,null);assert.equal(normalized[1].label,'Condition unavailable');assert.equal(normalized[1].temperature,0);assert.equal(normalized[1].effect,'none');assert.ok(!JSON.stringify(normalized).includes('<img'));
+});
+test('forecast missing probabilities remain null while real zero values and provider daylight survive',()=>{
+  const rows=forecastRows();Object.assign(rows[0],{precipitation_probability:0,is_daytime:false,wind_speed:0,templow:0});Object.assign(rows[1],{precipitation_probability:101,is_daytime:'false'});
+  const items=normalizeForecast(rows,{attributes:{temperature_unit:'°F',precipitation_unit:'in',wind_speed_unit:'mph'}},'hourly',forecastEpoch);
+  assert.equal(items[0].precipitation,0);assert.equal(items[0].precipitationProbability,0);assert.equal(items[0].windSpeed,0);assert.equal(items[0].temperatureLow,0);assert.equal(items[0].daylight,false);assert.equal(items[1].precipitationProbability,null);assert.equal(items[1].daylight,null);assert.equal(items[2].precipitationProbability,null);
+  const unknown=normalizeForecast(rows,{attributes:{temperature_unit:'<bad>',wind_speed_unit:'<bad>'}},'hourly',forecastEpoch)[0];assert.equal(unknown.temperature,null);assert.equal(unknown.windSpeed,null);assert.equal(unknown.temperatureLabel,'Unit unavailable');
+});
+test('today and daily periods use the HA time zone instead of UTC or the browser date',()=>{
+  const zone='America/Los_Angeles',items=normalizeForecast([{datetime:'2026-10-24T19:00:00Z',condition:'sunny',temperature:80},{datetime:'2026-10-25T19:00:00Z',condition:'sunny',temperature:82},{datetime:'2026-10-26T19:00:00Z',condition:'rainy',temperature:70}],{attributes:{temperature_unit:'°F'}},'daily',forecastEpoch,zone);
+  assert.equal(items.length,2);const view=forecastReading({items,fetchedAt:forecastEpoch,expiresAt:forecastEpoch+900000,nextRefreshAt:forecastEpoch+900000},{kind:'daily',now:forecastEpoch,zone,condition:'sunny'});assert.equal(view.today.length,1);assert.equal(view.today[0].temperature,82);assert.equal(view.next.temperature,70);assert.equal(view.nextChange,null);
+});
+test('solar timing uses supplied future events only and validates elevation, rising and disconnection',()=>{
+  const sun=entity('above_horizon',{next_rising:'2026-10-26T14:00:00Z',next_setting:'2026-10-26T03:00:00Z',next_dawn:'bad',next_dusk:'2026-10-26T03:25:00Z',elevation:4.2,rising:false});
+  const solar=solarReading(sun,true,forecastEpoch);assert.equal(solar.mode,'day');assert.equal(solar.elevation,4.2);assert.equal(solar.rising,false);assert.equal(solar.nextDawn,null);assert.equal(solar.nextTransition.kind,'sunset');assert.equal(solar.nextTransition.minutesUntil,45);
+  assert.equal(solarReading(sun,false,forecastEpoch).nextTransition,null);assert.equal(solarReading(sun,true,Date.parse('2026-10-27T00:00:00Z')).nextSetting,null);sun.attributes.elevation=120;assert.equal(solarReading(sun,true,forecastEpoch).elevation,null);
+});
+test('hourly retrieval uses the supported read-only response envelope and keeps current readings distinct',async()=>{
+  const p=forecastFixture(),calls=[];p._hass.callWS=async request=>{calls.push(request);return response();};p._hass.callService=()=>{throw Error('No control service');};p._hass.states['weather.forecast_ishioho_city'].last_updated='2026-10-26T01:10:00Z';p._updateEnvironment();assert.equal(p._environment.forecast.status,'loading');await settle(p);
+  assert.equal(calls.length,1);assert.equal(JSON.stringify(calls[0]),JSON.stringify({type:'call_service',domain:'weather',service:'get_forecasts',service_data:{type:'hourly'},target:{entity_id:'weather.forecast_ishioho_city'},return_response:true}));assert.equal(p._environment.forecast.status,'ready');assert.equal(p._environment.providerTemp,'82°F');assert.equal(p._environment.condition,'sunny');assert.equal(p._environment.forecast.items[0].temperature,80);assert.equal(p._environment.forecast.nextChange.condition,'rainy');assert.notEqual(p._environment.weatherUpdatedAt,new Date(p._environment.forecast.fetchedAt).toISOString());assert.equal(timers.size,0);
+});
+test('repeated state updates and another theme share a fifteen minute forecast cache',async()=>{
+  const p=forecastFixture();let calls=0;const callWS=async()=>{calls++;return response();};p._hass.callWS=callWS;p._updateEnvironment();await settle(p);for(let i=0;i<30;i++)p._updateEnvironment();const other=forecastFixture();other._hass.callWS=callWS;other._theme='stardew';other._updateEnvironment();await settle(other);assert.equal(calls,1);
+  fakeNow+=900001;p._updateEnvironment();await settle(p);assert.equal(calls,2);
+});
+test('expired cache starts only one refresh while its response remains pending',async()=>{
+  const p=forecastFixture();let calls=0,resolveRefresh;p._hass.callWS=()=>{calls++;return calls===1?Promise.resolve(response()):new Promise(done=>{resolveRefresh=done;});};
+  p._updateEnvironment();await settle(p);fakeNow+=900001;p._updateEnvironment();await Promise.resolve();const pending=p._forecastPending;
+  for(let i=0;i<50;i++){fakeNow+=1000;p._updateEnvironment();}assert.equal(calls,2);assert.equal(p._forecastPending,pending);assert.equal(p._environment.forecast.status,'stale');
+  resolveRefresh(response());await settle(p);assert.equal(calls,2);assert.equal(p._environment.forecast.status,'ready');assert.equal(timers.size,0);
+});
+test('daily and twice-daily providers are selected from declared capabilities only',async()=>{
+  for(const[flags,kind]of [[1,'daily'],[4,'twice_daily']]){const p=forecastFixture(flags);let requested;p._hass.callWS=async request=>{requested=request.service_data.type;return response();};p._updateEnvironment();await settle(p);assert.equal(requested,kind);assert.equal(p._environment.forecast.kind,kind);}
+});
+test('failed refresh retains clearly stale forecast and retries no more than once in five minutes',async()=>{
+  const p=forecastFixture();let calls=0,fail=false;p._hass.callWS=async()=>{calls++;if(fail)throw Error('private backend details');return response();};p._updateEnvironment();await settle(p);fakeNow+=900001;fail=true;p._updateEnvironment();await settle(p);assert.equal(p._environment.forecast.status,'stale');assert.ok(p._environment.forecast.items.length);assert.ok(!p._environment.forecast.reason.includes('private'));for(let i=0;i<50;i++)p._updateEnvironment();assert.equal(calls,2);fakeNow+=300001;p._updateEnvironment();await settle(p);assert.equal(calls,3);fakeNow=forecastEpoch+3600001;p._updateEnvironment();await settle(p);assert.equal(p._environment.forecast.status,'unavailable');assert.equal(p._environment.forecast.items.length,0);
+});
+test('forecast timeout settles and backs off without leaving timers or a loading state forever',async()=>{
+  const p=forecastFixture();let calls=0;p._hass.callWS=()=>{calls++;return new Promise(()=>{});};p._updateEnvironment();await Promise.resolve();assert.equal(timers.size,1);for(const timer of [...timers.values()]){assert.equal(timer.ms,20000);timer.fn();}await settle(p);assert.equal(p._environment.forecast.status,'unavailable');assert.equal(timers.size,0);p._updateEnvironment();assert.equal(calls,1);
+});
+test('late forecast after detach does not repaint a removed card and can populate shared cache safely',async()=>{
+  const p=forecastFixture();let resolve;p._hass.callWS=()=>new Promise(done=>{resolve=done;});p._updateEnvironment();await Promise.resolve();const pending=p._forecastPending;p.isConnected=false;p._stopForecast();let visualUpdates=0;p._updateWeatherVisuals=()=>visualUpdates++;resolve(response());await pending;await Promise.resolve();assert.equal(visualUpdates,0);p.isConnected=true;p._updateEnvironment();assert.equal(p._environment.forecast.status,'ready');assert.equal(visualUpdates,1);
+});
+test('closing the weather popup during retrieval never reopens it or mounts cameras',async()=>{
+  const p=forecastFixture();let resolve;p._hass.callWS=()=>new Promise(done=>{resolve=done;});p._openEnvironment();await Promise.resolve();p._modal=null;const original=p.dialog;resolve(response());await settle(p);assert.equal(p._modal,null);assert.equal(p.dialog,original);assert.equal(p._environment.forecast.status,'ready');
+});
+test('provider changes reject late old-provider responses and disconnected data is never presented current',async()=>{
+  const p=forecastFixture();let resolveOld;p._hass.callWS=request=>request.target.entity_id==='weather.forecast_ishioho_city'?new Promise(done=>{resolveOld=done;}):Promise.resolve(response(forecastRows(),'weather.other'));
+  p._updateEnvironment();await Promise.resolve();const old=p._forecastPending;p._config.weather_entity='weather.other';p._hass.states['weather.other']=entity('rainy',{supported_features:2,temperature_unit:'°F'});p._updateEnvironment();await settle(p);resolveOld(response());await old;assert.equal(p._environment.forecast.entityId,'weather.other');p._hass.connected=false;p._updateEnvironment();assert.equal(p._environment.forecast.status,'unavailable');assert.equal(p._environment.forecast.items.length,0);
+});
+test('unsupported forecasts and malformed responses remain explicit and do not become sunny predictions',async()=>{
+  const p=forecastFixture(0);let calls=0;p._hass.callWS=async()=>{calls++;return {response:{}};};p._updateEnvironment();assert.equal(calls,0);assert.equal(p._environment.forecast.status,'unavailable');p._hass.states['weather.forecast_ishioho_city'].attributes.supported_features=2;p._updateEnvironment();await settle(p);assert.equal(calls,1);assert.equal(p._environment.forecast.items.length,0);assert.equal(p._environment.forecast.next,null);
+});
+test('forecast rendering escapes unavailable text and never fabricates a missing precipitation chance',()=>{
+  const p=forecastFixture();assert.ok(!p._forecastMarkup({items:[],reason:'<img onerror=x>'}).includes('<img'));const items=normalizeForecast(forecastRows(),{attributes:{temperature_unit:'°F'}},'hourly',forecastEpoch);const html=p._forecastMarkup({items,kind:'hourly',status:'ready',fetchedAt:forecastEpoch,timeZone:'UTC'});assert.ok(html.includes('Provider forecast'));assert.ok(!html.includes('precipitation chance'));assert.ok(html.includes('predictions, not current observations'));
+});
+test('hourly popup includes every remaining today period and labels next-date data explicitly',()=>{
+  const p=forecastFixture();fakeNow=Date.parse('2026-10-25T15:15:00Z');const zone='America/Los_Angeles',rows=Array.from({length:24},(_,i)=>({datetime:new Date(Date.parse('2026-10-25T15:00:00Z')+i*3600000).toISOString(),condition:'sunny',temperature:70+i}));
+  const items=normalizeForecast(rows,{attributes:{temperature_unit:'°F'}},'hourly',fakeNow,zone),html=p._forecastMarkup({items,kind:'hourly',status:'ready',fetchedAt:fakeNow,timeZone:zone});
+  const [today,upcoming]=html.split('Upcoming · 2026-10-26');assert.equal((today.match(/<li>/g)||[]).length,16);assert.equal((upcoming.match(/<li>/g)||[]).length,6);assert.match(today,/Today · 2026-10-25/);assert.match(today,/11:00 PM/);assert.ok(!today.includes('12:00 AM'));
+  const onlyTomorrow=p._forecastMarkup({items:items.filter(item=>item.localDate==='2026-10-26'),kind:'hourly',status:'ready',fetchedAt:fakeNow,timeZone:zone});assert.match(onlyTomorrow,/No remaining hourly periods for today were returned/);assert.match(onlyTomorrow,/Upcoming · 2026-10-26/);
+});
+
+(async()=>{let failed=0;for(const[name,fn]of tests){try{await fn();console.log('PASS '+name);}catch(e){failed++;console.error('FAIL '+name+'\n  '+e.stack);}finally{fakeNow=null;timers.clear();}}console.log(`${tests.length-failed}/${tests.length} ishioho environment tests passed. Device and network calls were mocked.`);process.exitCode=failed?1:0;})();

@@ -17,6 +17,7 @@ vm.runInContext(read('pallet-panel.js'),context,{filename:'pallet-panel.js'});
 Object.assign(context,vm.runInContext('(function(){'+read('ishioho-directory.js').replace(/\bexport /g,'')+';return {directoryMethods,directoryCss};})()',context));
 Object.assign(context,vm.runInContext('(function(){'+read('ishioho-style.js').replace(/\bexport /g,'')+';return {ishiohoCss};})()',context));
 Object.assign(context,vm.runInContext('(function(){'+read('ishioho-environment.js').replace(/\bexport /g,'')+';return {environmentMethods,environmentCss};})()',context));
+Object.assign(context,vm.runInContext('(function(){'+read('ishioho-weather-visuals.js').replace(/\bexport /g,'')+';return {weatherVisualMethods};})()',context));
 vm.runInContext(read('ishioho-panel.js').replace(/^import .*;\r?\n/gm,''),context,{filename:'ishioho-panel.js'});
 const Panel=defined.get('ishioho-panel');
 const state=(value,attributes={})=>({state:value,attributes,last_updated:'2026-10-25T18:00:00Z'});

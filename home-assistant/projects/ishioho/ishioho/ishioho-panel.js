@@ -1,6 +1,7 @@
-import {environmentMethods,environmentCss} from './ishioho-environment.js?v=13';
+import {environmentMethods,environmentCss} from './ishioho-environment.js?v=14';
 import {directoryMethods,directoryCss} from './ishioho-directory.js?v=13';
-import {ishiohoCss} from './ishioho-style.js?v=13';
+import {ishiohoCss} from './ishioho-style.js?v=14';
+import {weatherVisualMethods} from './ishioho-weather-visuals.js?v=1';
 import '/local/pallet-house/pallet-panel.js?v=5';
 const BasePanel=customElements.get('pallet-house-panel');
 const ASSETS='/local/ishioho';
@@ -10,6 +11,8 @@ let metadataPromise;
 function metadata(){return metadataPromise ||= Promise.all([fetch(`${ASSETS}/catalog.json?v=1`).then(r=>{if(!r.ok)throw Error('catalog');return r.json();}),fetch(`${ASSETS}/robot.json?v=1`).then(r=>r.ok?r.json():{}).catch(()=>({}))]).catch(error=>{metadataPromise=null;throw error;});}
 class IshiohoPanel extends BasePanel {
   constructor(){super();this._motion=true;this.shadowRoot.addEventListener('input',e=>this._directoryInput?.(e));this.shadowRoot.addEventListener('change',e=>this._directoryInput?.(e));}
+  connectedCallback(){super.connectedCallback();if(this._built&&this._hass)this._updateEnvironment();}
+  disconnectedCallback(){this._stopForecast?.();super.disconnectedCallback();}
   setConfig(config){this._theme=THEMES[config.theme]?config.theme:'pokemon';super.setConfig(config);metadata().then(([catalog,robot])=>{this._catalog=catalog;this._robotMetadata=robot;if(this._built){this._update();if(this._modal==='directory')this._renderDirectory();}}).catch(()=>{this._catalog={entities:[],areas:[]};this._catalogFailure=true;if(this._built)this._update();});}
   _build(){
     this._stopStreams();this._alertKey=null;this._modal=null;this._cards=[];
@@ -21,6 +24,7 @@ class IshiohoPanel extends BasePanel {
     <section class="dashboard-grid">
     <div class="world-panel panel">
     <div class="landscape-scroll"><div class="map-wrap"><img class="house-map animated-map" src="${this._mapAsset('map')}" alt="Landscape floor plan of ishioho, with planted balcony on the left and garage access at the stairs"><img class="house-map still-map" src="${this._mapAsset('still')}" alt="Landscape floor plan of ishioho">
+    ${this._weatherVisualMarkup()}
     <div class="map-pins">${c.rooms.map(r=>`<button class="room-pin ${r.id==='garage'?'garage-pin':''}" style="left:${r.x}%;top:${r.y}%" data-action="${r.id==='garage'?'garage':'room'}" data-room="${escapeHtml(r.id)}" aria-label="Open ${escapeHtml(r.name)} controls"><span class="pin-light"></span><strong>${escapeHtml(r.short||r.name)}</strong><small data-room-state="${escapeHtml(r.id)}">Explore</small></button>`).join('')}
     <button class="robot-pin" data-action="vacuum" aria-label="Open robot tracker" style="left:60%;top:65%"><span class="robot-ring"></span><span class="robot-sprite"><i></i></span><span class="robot-pin-label">ROTO</span></button></div>
     </div></div>
@@ -107,6 +111,6 @@ class IshiohoPanel extends BasePanel {
   }
   _css(){return super._css()+directoryCss+ishiohoCss+environmentCss;}
 }
-Object.assign(IshiohoPanel.prototype,directoryMethods,environmentMethods);
+Object.assign(IshiohoPanel.prototype,directoryMethods,environmentMethods,weatherVisualMethods);
 if(!customElements.get('ishioho-panel'))customElements.define('ishioho-panel',IshiohoPanel);
 window.customCards.push({type:'ishioho-panel',name:'ishioho',description:'Three living worlds. Every home sensor and control.'});

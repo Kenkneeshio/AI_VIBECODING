@@ -18,6 +18,8 @@ The image is the bundled static artwork. Device readings and camera images are n
 - Camera popups use `custom:webrtc-camera`. Optional Eufy start/stop services support on-demand viewing; sessions started by the card are released when the popup closes.
 - The robot marker shows its reported room only when location is available and unambiguous. The robot's own map camera provides its precise position and route.
 - Weather, moon phase, sunrise/sunset, and automatic day/night appearance come from Home Assistant entities. A manual day/night preview changes appearance only. A calculated moon fallback is labeled as calculated.
+- The Stardew map animates the **current** provider condition in exterior sky and garden bands: sunlight, moonlight, clouds, wind, rain, snow, fog, and storms. Near-horizon sun telemetry adds a dawn or dusk tint. The separate **Next hours** strip animates predicted conditions without making the map appear to show future weather. Pause and reduced-motion settings stop decorative animation.
+- The weather popup shows the remaining hourly outlook for today and dated upcoming periods when the provider supplies them. Forecasts use the Home Assistant time zone and a shared 15-minute cache; unavailable or stale data is labeled. Missing precipitation probability is never inferred from precipitation amount.
 - Alerts cover configured binary events, garage-open state, maintenance events, unavailable monitored entities, and PM2.5 readings over the current fixed threshold of 35.
 
 ## Prerequisites
@@ -26,7 +28,7 @@ The image is the bundled static artwork. Device readings and camera images are n
 - The [WebRTC Camera integration/card](https://github.com/AlexxIT/WebRTC) for camera views. Camera entities must already provide usable streams. The dashboard does not install or configure cameras.
 - Optional [Eufy Security](https://github.com/fuatakgun/eufy_security) integration for the example on-demand garage camera. Its configured start/stop services must exist.
 - Entities for your lights, climate, power, garage cover, robot, and map camera. Configure the underlying integrations separately.
-- A weather entity, `sun.sun`, and optionally the official [Moon integration](https://www.home-assistant.io/integrations/moon/). The example uses a [Met.no](https://www.home-assistant.io/integrations/met/) weather entity, but the card accepts another weather entity ID.
+- A weather entity, `sun.sun`, and optionally the official [Moon integration](https://www.home-assistant.io/integrations/moon/). The example uses a [Met.no](https://www.home-assistant.io/integrations/met/) weather entity, but the card accepts another weather entity ID. The outlook requires that entity to support Home Assistant's [weather forecast action](https://www.home-assistant.io/actions/weather.get_forecasts/); current conditions still work without forecasts.
 - Node.js 18 or newer to run the isolated checks. There is no npm installation or build step.
 
 This prototype was checked in one Home Assistant installation and in desktop and phone-landscape browser layouts. A Home Assistant release compatibility range has not been established.
@@ -93,9 +95,9 @@ From this project directory, run:
 node tests/run.cjs
 ```
 
-The runner stages sources, synthetic fixtures, and artwork in a temporary directory, then runs **107 checks**: 28 component, 18 directory, 23 environment, and 38 base-card checks. It removes only its own temporary directory after checking its resolved location. Home Assistant, network access, camera playback, and device actions are mocked.
+The runner stages sources, synthetic fixtures, and artwork in a temporary directory, then runs **123 checks**: 28 component, 18 directory, 39 environment, and 38 base-card checks. It removes only its own temporary directory after checking its resolved location. Home Assistant, network access, camera playback, and device actions are mocked.
 
-Checks cover pagination across a generated inventory, configuration exclusions, unassigned areas, robot location honesty, day/night selection, escaping, unavailable entities, camera session ownership/races, and native-card configuration. The tests do not prove physical device actuation or camera compatibility on another installation.
+Checks cover pagination across a generated inventory, configuration exclusions, unassigned areas, robot location honesty, day/night selection, forecast caching and time-zone boundaries, escaping, unavailable entities, camera session ownership/races, and native-card configuration. The tests do not prove physical device actuation or camera compatibility on another installation.
 
 During prototype development, browser checks covered the original three themes, searching and native entity details, room popups, a working garage feed, the robot's native map, and a phone-landscape viewport. Real lights, covers, climate equipment, and vacuum commands were not actuated as part of those checks. Recheck your own configured feeds, room placement, unavailable states, and mobile layout after installation.
 
@@ -103,13 +105,15 @@ The v8 Pokémon update was also checked on the target tablet in day and night mo
 
 The Stardew view was checked on the same 1920×1080 tablet in day and night modes. All four theme tabs fit, the garage popup played a live feed, and the tablet was returned to automatic appearance. A synthetic browser check also covered 844×390 and 1280×800 layouts without tab overlap. No garage door or other device controls were operated during this verification.
 
+The weather update was rechecked on that tablet with the live Met.no and sun entities. The main map showed current sunny conditions and a separate hourly outlook; the scrollable weather popup displayed the remaining local-day periods, upcoming periods, and exact sunrise/sunset readings. A night appearance preview was captured and returned to Auto. Isolated browser checks covered rainy, snowy, foggy, windy, stormy, disconnected, dawn, dusk, reduced-motion, keyboard, and phone-landscape states without changing live weather or operating devices.
+
 ## Roll back or remove
 
 Restore your private prior dashboard configuration through Home Assistant's supported editor or API, and restore its asset/resource versions. To remove this dashboard, remove its resource only after no dashboard references `custom:ishioho-panel`, then remove the installed `www/ishioho/` files. Keep `www/pallet-house/` if any other dashboard uses the base card. No integrations or device configuration are changed by removing these frontend files.
 
 ## Files and provenance
 
-- `ishioho/`: four JavaScript modules, four Pokémon v8 PNGs and their four SVG sources, four Stardew PNGs and four independent SVG reconstructions, twelve prior theme SVGs, and room-coordinate metadata. The active Pokémon and Stardew URLs load PNG files; their still variants keep the same artwork.
+- `ishioho/`: five JavaScript modules, four Pokémon v8 PNGs and their four SVG sources, four Stardew PNGs and four independent SVG reconstructions, twelve prior theme SVGs, and room-coordinate metadata. The active Pokémon and Stardew URLs load PNG files; their still variants keep the same artwork.
 - `pallet-house/`: inherited base card, base floor-plan SVG, Press Start 2P font, and its SIL Open Font License notice.
 - `examples/`: synthetic dashboard, catalog, and robot metadata; no live inventory or camera images.
 - `tests/`: isolated tests and a generated synthetic inventory fixture.

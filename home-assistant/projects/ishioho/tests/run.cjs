@@ -8,6 +8,7 @@ const sourceFiles={
  'ishioho-directory.js':'ishioho/ishioho-directory.js',
  'ishioho-style.js':'ishioho/ishioho-style.js',
  'ishioho-environment.js':'ishioho/ishioho-environment.js',
+ 'ishioho-weather-visuals.js':'ishioho/ishioho-weather-visuals.js',
  'ishioho-dashboard.json':'examples/dashboard.json',
  'test-ishioho-panel.cjs':'tests/test-ishioho-panel.cjs',
  'test-ishioho-directory.cjs':'tests/test-ishioho-directory.cjs',
