@@ -2,6 +2,16 @@
 
 Custom software and reusable resources for Home Assistant, including projects intended for a Home Assistant Green installation.
 
+## Home floor plan
+
+![Presentation view of the home floor plan and detached garage](assets/floor-plan-presentation.png)
+
+A cleaner presentation of the uploaded plan, with a neutral background, clearer architectural outlines, and a closer view of the home.
+
+[View full-size image](assets/floor-plan-presentation.png) · [Original floor plan](../181824550_serafina_ln_first_floor_first_design_20261025_874646.jpg)
+
+This AI-assisted illustration is a visual reference for dashboard planning. Fine details may differ from the original; use the source plan for dimensions and exact placement.
+
 ## What belongs here
 
 | Project type | Typical use |

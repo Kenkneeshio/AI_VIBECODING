@@ -5,3 +5,13 @@ Store reusable public dashboard images, icons, backgrounds, and illustrations he
 For each asset or asset collection, record its purpose, source or generation method, and applicable license or usage restrictions. Keep editable sources when practical.
 
 Use descriptive filenames and optimize image dimensions and file sizes for their intended display. Do not publish private camera snapshots, floor plans, personal photos, or screenshots containing home details without explicit authorization.
+
+## Floor plan
+
+- **Asset:** [floor-plan-presentation.png](floor-plan-presentation.png)
+- **Purpose:** Home Assistant section illustration and dashboard planning reference.
+- **Source:** [User-uploaded Floorplanner export](../../181824550_serafina_ln_first_floor_first_design_20261025_874646.jpg), preserved unchanged.
+- **Method:** Edited using the built-in image generation tool on October 25, 2026; neutral architectural styling, reduced surrounding whitespace, and a follow-up kitchen correction.
+- **Accuracy:** Presentation illustration, not a measured drawing. AI edits can alter fine details. Refer to the original for measurements and exact features.
+- **Attribution and usage:** Source attribution is retained on the image. No additional license or ownership claim is granted by this repository.
+- **Prompts:** [Generation and correction prompts](floor-plan-prompts.md).
