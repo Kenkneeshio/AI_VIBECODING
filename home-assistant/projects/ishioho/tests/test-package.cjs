@@ -27,7 +27,11 @@ test('staging produces relative /www files, separate examples, and a complete SH
   const result = stageInstall(bundle);
   assert.equal(result.target, bundle);
   assert.ok(fs.existsSync(path.join(bundle, 'www', 'ishioho', 'ishioho-panel.js')));
-  assert.ok(fs.existsSync(path.join(bundle, 'www', 'ishioho', 'stardew-map-v1.png')));
+  for (const kind of ['map', 'still', 'night-map', 'night-still']) {
+    assert.ok(fs.existsSync(path.join(bundle, 'www', 'ishioho', `stardew-${kind}-v2.png`)), `Active Stardew ${kind} v2 PNG`);
+    assert.ok(fs.existsSync(path.join(bundle, 'www', 'ishioho', `stardew-${kind}-v1.png`)), `Historical Stardew ${kind} v1 PNG`);
+    assert.ok(fs.existsSync(path.join(bundle, 'www', 'ishioho', `stardew-${kind}-v1.svg`)), `Historical Stardew ${kind} v1 SVG`);
+  }
   assert.ok(fs.existsSync(path.join(bundle, 'www', 'pallet-house', 'font-OFL.txt')));
   assert.ok(fs.existsSync(path.join(bundle, 'examples', 'dashboard.json')));
   assert.ok(fs.existsSync(path.join(bundle, 'examples', 'catalog.json')));

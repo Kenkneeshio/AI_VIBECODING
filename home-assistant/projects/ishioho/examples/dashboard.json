@@ -770,17 +770,18 @@
               "id": "porch",
               "name": "Porch",
               "short": "Porch",
-              "x": 15.089,
-              "y": 73.291,
+              "x": 10.8,
+              "y": 37.5,
               "entities": [],
               "area_names": [
                 "Porch"
               ],
-              "note": "Outdoor porch leading to the stairs and garage below. Example porch devices appear here."
+              "note": "Covered upstairs porch outside the blue front door. Exterior stairs descend beside the single-car garage below. Example porch devices appear here."
             },
             {
               "id": "garage",
               "name": "Garage",
+              "short": "Garage ↓",
               "x": 16.246,
               "y": 49.84,
               "area_names": [

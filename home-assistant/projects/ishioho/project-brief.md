@@ -14,8 +14,8 @@ Local JavaScript custom dashboard card. It extends a shared base card and uses n
 
 ## Scope
 
-- Pokémon v8 and Stardew-inspired static PNG day/night backgrounds; the Stardew SVG companions are independent editable reconstructions. Pokédex and Animal Crossing retain their existing SVG artwork.
-- The same base floor-plan geometry, with Pokémon and Stardew sharing the corrected Entry and Porch pins and a contained image/pin layer that preserves proportions.
+- Pokémon v8 and Stardew v2 static PNG day/night backgrounds. Stardew v2 depicts the covered upstairs porch, blue entry door, descending railed stairs, and one-car garage below; its historical v1 PNGs and independent v1 SVG reconstructions remain available, but no SVG matches v2. Pokédex and Animal Crossing retain their existing SVG artwork.
+- The same base indoor floor-plan geometry, with Pokémon and Stardew sharing the interior Entry and stair popup anchors. Stardew v2 places its Porch pin on its upper landing; contained image/pin layers preserve proportions.
 - Contextual room, camera, garage, robot, environment, energy, and calendar popups.
 - Read-only current weather and forecast display with distinct on-map and upcoming effects, local-day grouping, real sun transitions, and reduced-motion support.
 - Runtime entity search with area/domain/availability filters and bounded pagination.
@@ -31,7 +31,7 @@ Home Assistant frontend native cards, WebRTC Camera, and the user's separately c
 
 ## Acceptance checks
 
-- [x] Four views include day/night assets; Pokémon v8 and Stardew use PNG rendering with the corrected Entry/Porch geometry, while Pokédex and Animal Crossing retain SVG animation/still variants.
+- [x] Four views include day/night assets; Pokémon v8 and Stardew v2 use PNG rendering with the corrected Entry/Porch geometry, while Pokédex and Animal Crossing retain SVG animation/still variants.
 - [x] Runtime entities remain reachable through the searchable directory.
 - [x] Missing locations and unavailable data are not presented as measured values.
 - [x] Current weather and upcoming forecast are visually separate; unavailable forecasts and sun readings are labeled, and decorative motion can be paused.
@@ -40,7 +40,7 @@ Home Assistant frontend native cards, WebRTC Camera, and the user's separately c
 - [x] Source and bundled asset formats are checked; a staged `www/` tree and SHA-256 manifest can be generated and verified without Home Assistant access.
 - [x] Isolated automated checks pass with device and network calls mocked; run `node tests/run.cjs` for the current suite result.
 - [x] Pokémon v8 day/night rendering and garage popup verified on the target tablet; no SVG flecks in the displayed PNG backgrounds.
-- [x] Stardew day/night rendering, four theme tabs, pin placement, and live garage viewing verified on the target tablet; appearance returned to Auto.
+- [x] Stardew v2 day/night rendering, four theme tabs, revised porch and stair pin placement, and live garage viewing verified on the target tablet; appearance returned to Auto.
 - [x] Prototype browser checks cover themes, popups, native robot map, camera viewing, and phone-landscape layout.
 - [x] Installation, configuration limits, removal, and rollback are documented.
 
@@ -50,4 +50,4 @@ Run `node scripts/verify-source.cjs`, `node tests/run.cjs`, then `node scripts/s
 
 ## Status
 
-Tested prototype. Public source uses sanitized examples. Stardew reuses Pokémon's control configuration and room pins; its generated PNG art and independent editable SVG reconstructions have separate provenance documented in the README. Physical device commands and compatibility with other hardware/installations remain to be verified by each installer.
+Tested prototype. Public source uses sanitized examples. Stardew reuses Pokémon's control configuration, with theme-specific Porch coordinates for its v2 art; its active v2 PNG art and historical v1 SVG reconstructions have separate provenance documented in the README. Private layout reference photos are not included. Physical device commands and compatibility with other hardware/installations remain to be verified by each installer.

@@ -10,7 +10,9 @@ Home Assistant serves `www/` at `/local/` **without authentication**. Keep priva
 
 The camera and vacuum names follow conventional integration ID formats so the example matches the current prototype's source assumptions. Their presence is not a verified claim that an equivalent camera or robot works on any installation.
 
-The Pokémon and Stardew views share their control configuration and corrected room pins: Porch outside, Entry inside, Balcony on the left, and garage access through the porch stairs. Their Porch finds the synthetic example camera through the catalog's Porch area. Pokédex and Animal Crossing keep their earlier room geometry and do not add that pin. The catalog assignments are illustrative and must be replaced with confirmed local assignments.
+The Pokémon and Stardew views share their control configuration. Both place Entry inside, Balcony on the left, and garage popup access on the stairs. Stardew v2 places its Porch pin on the upstairs landing; Pokémon retains the pin for its earlier artwork. Their Porch finds the synthetic example camera through the catalog's Porch area. Pokédex and Animal Crossing keep their earlier room geometry and do not add that pin. The catalog assignments are illustrative and must be replaced with confirmed local assignments.
+
+The active Stardew artwork is v2 PNG: the upstairs Porch is covered, the blue door opens to the inside Entry, and railed exterior stairs descend toward the single-car garage below. The v1 PNG/SVG assets are historical; the v1 SVGs do not reproduce v2. The JSON example's room pin percentages are the live configuration, so verify alignment if you replace the art.
 
 The dashboard example shows an Eufy garage camera with `start_p2p_livestream` and `stop_p2p_livestream`. Opening that example camera may request those services; the integration must support them. The card releases streams it started when viewing ends. Delete the service fields for a camera that already provides a continuous supported stream, or remove the camera entry if it cannot provide one.
 

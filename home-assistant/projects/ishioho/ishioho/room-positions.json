@@ -1,5 +1,5 @@
 {
-  "revision": 8,
+  "revision": 9,
   "viewBox": [
     0,
     0,
@@ -212,7 +212,8 @@
   "notes": [
     "Source house is rotated clockwise, with actual plant balcony on LEFT; no mirrored room geometry.",
     "Balcony and entry purposes correct the prior inference; balcony is the plant-and-bench room from original bottom left.",
-    "Garage artwork removed; its popup anchor is on actual stair landing between balcony and entry.",
+    "Pokemon garage artwork remains popup-only; Stardew v2 shows the single-car garage on the lower level with its popup anchor at the exterior stairs.",
+    "Stardew v2 has a covered second-floor porch outside the blue front door; the porch pin moved to that landing while Entry remains indoors.",
     "Stairwell shape restored from original export; precise measurements are not claimed from low-resolution illustration.",
     "Plantings now appear inside balcony; thin ornamental margins preserve useful space.",
     "Camera belongs in external utility rail; no large empty area is reserved in art.",
@@ -244,6 +245,13 @@
       "night": "crossing-night-map.svg",
       "dayStill": "crossing-still.svg",
       "nightStill": "crossing-night-still.svg"
+    },
+    "stardew": {
+      "day": "stardew-map-v2.png",
+      "night": "stardew-night-map-v2.png",
+      "dayStill": "stardew-still-v2.png",
+      "nightStill": "stardew-night-still-v2.png",
+      "historicalEditableSVG": "stardew-map-v1.svg; approximate reconstruction only, not a source for v2 PNG"
     }
   },
   "theme_pin_overrides": {
@@ -255,6 +263,21 @@
       "porch": {
         "x": 15.089,
         "y": 73.291
+      }
+    },
+    "stardew": {
+      "entryway": {
+        "x": 25.5,
+        "y": 55
+      },
+      "porch": {
+        "x": 10.8,
+        "y": 37.5
+      },
+      "garage": {
+        "x": 16.246,
+        "y": 49.84,
+        "role": "popup anchor on exterior stairs for garage below"
       }
     }
   }

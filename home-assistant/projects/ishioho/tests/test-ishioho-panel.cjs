@@ -128,7 +128,7 @@ test('live sun changes flow through inherited updates without camera remounting'
   const{p,h,calls}=fixture({'sun.sun':state('above_horizon'),'weather.forecast_ishioho_city':state('sunny')});p._config.night_assets=true;let remounts=0;p._mountCameras=()=>remounts++;p._update();assert.equal(p._q('.shell').classList.contains('is-night'),false);h.states['sun.sun'].state='below_horizon';p.hass=h;assert.equal(p._q('.shell').classList.contains('is-night'),true);assert.equal(p._q('.animated-map').attrs.src,'/local/ishioho/pokemon-night-map-v8.png?v=8');assert.equal(remounts,0);assert.equal(calls.length,0);
 });
 test('synthetic example retains configured feeds and bundles the correct assets for every theme',()=>{
-  const doc=JSON.parse(read('ishioho-dashboard.json'));for(const view of doc.views){const c=view.cards[0];assert.deepEqual(c.cameras.map(x=>x.entity),['camera.porch_camera_profile_000','camera.garage_camera']);assert.ok(c.excluded_entities.includes('camera.front_door'));assert.ok(!c.rooms.some(r=>(r.entities||[]).includes('camera.front_door')));assert.equal(c.night_assets,true);assert.equal(c.weather_entity,'weather.forecast_ishioho_city');assert.equal(c.moon_entity,'sensor.moon_phase');const version={pokemon:8,stardew:1}[c.theme];for(const suffix of ['-map','-still','-night-map','-night-still']){const stem=c.theme+suffix+(version?'-v'+version:'');for(const ext of version?['png','svg']:['svg'])assert.ok(fs.existsSync(path.join(__dirname,'ishioho-assets',stem+'.'+ext)),stem+'.'+ext);}}
+  const doc=JSON.parse(read('ishioho-dashboard.json'));for(const view of doc.views){const c=view.cards[0];assert.deepEqual(c.cameras.map(x=>x.entity),['camera.porch_camera_profile_000','camera.garage_camera']);assert.ok(c.excluded_entities.includes('camera.front_door'));assert.ok(!c.rooms.some(r=>(r.entities||[]).includes('camera.front_door')));assert.equal(c.night_assets,true);assert.equal(c.weather_entity,'weather.forecast_ishioho_city');assert.equal(c.moon_entity,'sensor.moon_phase');const profile={pokemon:{version:8,extensions:['png','svg']},stardew:{version:2,extensions:['png']}}[c.theme];for(const suffix of ['-map','-still','-night-map','-night-still']){const stem=c.theme+suffix+(profile?'-v'+profile.version:'');for(const ext of profile?.extensions||['svg'])assert.ok(fs.existsSync(path.join(__dirname,'ishioho-assets',stem+'.'+ext)),stem+'.'+ext);}}
 });
 
 test('live updates work when optional robot battery widget is not mounted',()=>{
@@ -138,17 +138,23 @@ test('overview opens status and camera widgets on demand without device actuatio
   const {p,calls}=fixture();let mounts=0;p._mountCameras=()=>mounts++;p._open('overview');assert.equal(p._modal,'overview');assert.equal(mounts,1);assert.equal(calls.length,0);p._close();assert.equal(p._modal,null);
 });
 
-test('Stardew example preserves every Pokemon control, exclusion and physical room position',()=>{
+test('Stardew example preserves Pokemon controls while placing its upper porch pin on the revised art',()=>{
   const doc=JSON.parse(read('ishioho-dashboard.json'));
   assert.deepEqual(doc.views.map(v=>v.path),['home','pokedex','crossing','stardew']);
   const pokemon=doc.views.find(v=>v.path==='home').cards[0],stardew=doc.views.find(v=>v.path==='stardew').cards[0];
-  assert.equal(stardew.theme,'stardew');assert.deepEqual({...stardew,theme:'pokemon'},pokemon);
+  assert.equal(stardew.theme,'stardew');
+  const {rooms:stardewRooms,theme:stardewTheme,...stardewControls}=stardew;
+  const {rooms:pokemonRooms,theme:pokemonTheme,...pokemonControls}=pokemon;
+  assert.deepEqual(stardewControls,pokemonControls);
+  assert.deepEqual(stardewRooms.map(r=>r.id),pokemonRooms.map(r=>r.id));
+  for(const room of stardewRooms.filter(r=>!['porch','garage'].includes(r.id)))assert.deepEqual(room,pokemonRooms.find(r=>r.id===room.id));
   const entry=stardew.rooms.find(r=>r.id==='entryway'),porch=stardew.rooms.find(r=>r.id==='porch'),garage=stardew.rooms.find(r=>r.id==='garage');
-  assert.deepEqual([entry.x,entry.y],[25.5,55]);assert.deepEqual([porch.x,porch.y],[15.089,73.291]);assert.deepEqual([garage.x,garage.y],[16.246,49.84]);
+  assert.deepEqual([entry.x,entry.y],[25.5,55]);assert.deepEqual([porch.x,porch.y],[10.8,37.5]);assert.deepEqual([garage.x,garage.y],[16.246,49.84]);
+  assert.equal(garage.short,'Garage ↓');
 });
 test('Stardew builds its own images and accessible fourth navigation link without device calls',()=>{
   const{p,calls}=fixture();p.setConfig({...config(),theme:'stardew'});const html=p.shadowRoot.innerHTML;
-  assert.match(html,/theme-stardew/);assert.match(html,/stardew-map-v1\.png\?v=1/);assert.match(html,/stardew-still-v1\.png\?v=1/);
+  assert.match(html,/theme-stardew/);assert.match(html,/stardew-map-v2\.png\?v=2/);assert.match(html,/stardew-still-v2\.png\?v=2/);
   assert.match(html,/href="\/prototype-copy\/stardew" aria-label="Stardew theme" aria-current="page"/);
   for(const path of ['home','pokedex','crossing'])assert.ok(html.includes('href="/prototype-copy/'+path+'"'));
   assert.equal(calls.length,0);

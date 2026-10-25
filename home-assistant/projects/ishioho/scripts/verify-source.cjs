@@ -29,7 +29,7 @@ const activeArt = {
   pokemon: {extension: 'png', suffix: '-v8'},
   pokedex: {extension: 'svg', suffix: ''},
   crossing: {extension: 'svg', suffix: ''},
-  stardew: {extension: 'png', suffix: '-v1'}
+  stardew: {extension: 'png', suffix: '-v2'}
 };
 
 function sourceFiles() {
