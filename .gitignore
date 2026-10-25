@@ -1,0 +1,52 @@
+# Credentials and local environment
+.env
+.env.*
+!.env.example
+secrets.yaml
+secrets.yml
+*.dpapi
+*.key
+*.pem
+*.p12
+*.pfx
+.ssh/
+credentials/
+private/
+
+# Home Assistant runtime and private backups
+.storage/
+.cloud/
+deps/
+home-assistant.log*
+home-assistant_v2.db*
+*.db-shm
+*.db-wal
+backups/
+*.tar
+*.tar.gz
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# JavaScript and generated output
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Local tooling and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
