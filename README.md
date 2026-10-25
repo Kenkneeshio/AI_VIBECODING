@@ -8,7 +8,7 @@ Maintained by [Kenkneeshio](https://github.com/Kenkneeshio).
 
 | Section | Purpose | Status |
 | --- | --- | --- |
-| [Home Assistant](home-assistant/README.md) | Custom integrations, apps/add-ons, dashboard cards, automations, scripts, and assets | Project workspace initialized |
+| [Home Assistant](home-assistant/README.md) | Custom integrations, apps/add-ons, dashboard cards, automations, scripts, and assets | [ishioho dashboard](home-assistant/projects/ishioho/README.md) — tested prototype |
 
 Additional project areas can be added as new ideas take shape.
 
@@ -30,7 +30,9 @@ AI_VIBECODING/
 ├── CONTRIBUTING.md
 └── home-assistant/
     ├── README.md
-    ├── projects/README.md
+    ├── projects/
+    │   ├── README.md
+    │   └── ishioho/
     ├── assets/README.md
     ├── docs/deployment.md
     └── templates/project-brief.md
@@ -38,7 +40,7 @@ AI_VIBECODING/
 
 ## Current status
 
-This repository contains starter documentation and project organization. No custom integration, app, or other deployable project has been released yet. Committing here does not deploy anything to Home Assistant.
+The [ishioho dashboard](home-assistant/projects/ishioho/README.md) includes three illustrated Home Assistant views, contextual controls, a searchable entity directory, camera popups, weather and moon display, and a robot tracker. Its public package contains source, artwork, synthetic examples, and 101 isolated checks. It is a tested prototype with documented installation-specific assumptions. Committing here does not deploy anything to Home Assistant.
 
 ## Public repository
 

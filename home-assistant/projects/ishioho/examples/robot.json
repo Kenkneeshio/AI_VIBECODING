@@ -1,0 +1,26 @@
+{
+  "synthetic": true,
+  "room_segments": [
+    {
+      "id": 1,
+      "name": "Dining"
+    },
+    {
+      "id": 2,
+      "name": "Living Room"
+    },
+    {
+      "id": 3,
+      "name": "Kitchen"
+    },
+    {
+      "id": 4,
+      "name": "Master Bedroom"
+    },
+    {
+      "id": 5,
+      "name": "Hallway"
+    }
+  ],
+  "note": "Example segment names only. Live room state and the native map camera supply location; this file contains no coordinates or live telemetry."
+}

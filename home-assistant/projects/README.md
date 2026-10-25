@@ -10,7 +10,15 @@ projects/
     └── ...project-specific source, tests, and examples
 ```
 
-Use lowercase names with hyphens. This folder currently contains no deployed projects.
+Use lowercase names with hyphens.
+
+## Project index
+
+| Project | Purpose | Status |
+| --- | --- | --- |
+| [ishioho](ishioho/README.md) | Landscape Home Assistant control panel in three illustrated themes, with contextual popups and a searchable entity directory | Tested prototype; source, synthetic examples, and 101 isolated checks |
+
+The repository contains reusable source and examples, not live home configuration. Publishing changes does not deploy a dashboard.
 
 Each project's README should explain:
 

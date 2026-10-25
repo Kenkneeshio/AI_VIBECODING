@@ -1,0 +1,298 @@
+{
+  "synthetic": true,
+  "entities": [
+    {
+      "entity_id": "light.bedroom",
+      "name": "Bedroom",
+      "domain": "light",
+      "area_id": "master",
+      "area_name": "Master Bedroom",
+      "device_id": "example_light_bedroom",
+      "device_name": "Example Bedroom"
+    },
+    {
+      "entity_id": "light.office",
+      "name": "Office",
+      "domain": "light",
+      "area_id": "office",
+      "area_name": "Office",
+      "device_id": "example_light_office",
+      "device_name": "Example Office"
+    },
+    {
+      "entity_id": "light.kitchen",
+      "name": "Kitchen",
+      "domain": "light",
+      "area_id": "kitchen",
+      "area_name": "Kitchen",
+      "device_id": "example_light_kitchen",
+      "device_name": "Example Kitchen"
+    },
+    {
+      "entity_id": "sensor.kitchen_temperature",
+      "name": "Kitchen Temperature",
+      "domain": "sensor",
+      "area_id": "kitchen",
+      "area_name": "Kitchen",
+      "device_id": "example_sensor_kitchen_temperature",
+      "device_name": "Example Kitchen Temperature"
+    },
+    {
+      "entity_id": "light.living_room",
+      "name": "Living Room",
+      "domain": "light",
+      "area_id": "living",
+      "area_name": "Living Room",
+      "device_id": "example_light_living_room",
+      "device_name": "Example Living Room"
+    },
+    {
+      "entity_id": "cover.living_room_blinds",
+      "name": "Living Room Blinds",
+      "domain": "cover",
+      "area_id": "living",
+      "area_name": "Living Room",
+      "device_id": "example_cover_living_room_blinds",
+      "device_name": "Example Living Room Blinds"
+    },
+    {
+      "entity_id": "fan.dining_purifier",
+      "name": "Dining Purifier",
+      "domain": "fan",
+      "area_id": "dining",
+      "area_name": "Dining Room",
+      "device_id": "example_fan_dining_purifier",
+      "device_name": "Example Dining Purifier"
+    },
+    {
+      "entity_id": "sensor.dining_temperature",
+      "name": "Dining Temperature",
+      "domain": "sensor",
+      "area_id": "dining",
+      "area_name": "Dining Room",
+      "device_id": "example_sensor_dining_temperature",
+      "device_name": "Example Dining Temperature"
+    },
+    {
+      "entity_id": "sensor.dining_pm25",
+      "name": "Dining Pm25",
+      "domain": "sensor",
+      "area_id": "dining",
+      "area_name": "Dining Room",
+      "device_id": "example_sensor_dining_pm25",
+      "device_name": "Example Dining Pm25"
+    },
+    {
+      "entity_id": "cover.garage_door",
+      "name": "Garage Door",
+      "domain": "cover",
+      "area_id": "garage",
+      "area_name": "Garage",
+      "device_id": "example_cover_garage_door",
+      "device_name": "Example Garage Door"
+    },
+    {
+      "entity_id": "camera.garage_camera",
+      "name": "Garage Camera",
+      "domain": "camera",
+      "area_id": "garage",
+      "area_name": "Garage",
+      "device_id": "example_camera_garage_camera",
+      "device_name": "Example Garage Camera"
+    },
+    {
+      "entity_id": "sensor.dining_humidity",
+      "name": "Dining humidity",
+      "domain": "sensor",
+      "area_id": "dining",
+      "area_name": "Dining Room",
+      "device_id": "example_sensor_dining_humidity",
+      "device_name": "Example Dining humidity"
+    },
+    {
+      "entity_id": "camera.porch_camera_profile_000",
+      "name": "Porch camera",
+      "domain": "camera",
+      "area_id": "porch",
+      "area_name": "Porch",
+      "device_id": "example_camera_porch_camera_profile_000",
+      "device_name": "Example Porch camera"
+    },
+    {
+      "entity_id": "camera.front_door",
+      "name": "Excluded camera example",
+      "domain": "camera",
+      "area_id": "",
+      "area_name": "",
+      "device_id": "example_camera_front_door",
+      "device_name": "Example Excluded camera example"
+    },
+    {
+      "entity_id": "sensor.outdoor_temperature",
+      "name": "Outdoor temperature",
+      "domain": "sensor",
+      "area_id": "",
+      "area_name": "",
+      "device_id": "example_sensor_outdoor_temperature",
+      "device_name": "Example Outdoor temperature"
+    },
+    {
+      "entity_id": "sensor.outdoor_humidity",
+      "name": "Outdoor humidity",
+      "domain": "sensor",
+      "area_id": "",
+      "area_name": "",
+      "device_id": "example_sensor_outdoor_humidity",
+      "device_name": "Example Outdoor humidity"
+    },
+    {
+      "entity_id": "sensor.home_power",
+      "name": "Home power",
+      "domain": "sensor",
+      "area_id": "",
+      "area_name": "",
+      "device_id": "example_sensor_home_power",
+      "device_name": "Example Home power"
+    },
+    {
+      "entity_id": "climate.home",
+      "name": "Thermostat",
+      "domain": "climate",
+      "area_id": "",
+      "area_name": "",
+      "device_id": "example_climate_home",
+      "device_name": "Example Thermostat"
+    },
+    {
+      "entity_id": "vacuum.l10s_ultra",
+      "name": "Robot",
+      "domain": "vacuum",
+      "area_id": "",
+      "area_name": "",
+      "device_id": "example_vacuum_l10s_ultra",
+      "device_name": "Example Robot"
+    },
+    {
+      "entity_id": "sensor.l10s_ultra_battery_level",
+      "name": "Robot battery",
+      "domain": "sensor",
+      "area_id": "",
+      "area_name": "",
+      "device_id": "example_sensor_l10s_ultra_battery_level",
+      "device_name": "Example Robot battery"
+    },
+    {
+      "entity_id": "camera.l10s_ultra_map",
+      "name": "Robot map",
+      "domain": "camera",
+      "area_id": "",
+      "area_name": "",
+      "device_id": "example_camera_l10s_ultra_map",
+      "device_name": "Example Robot map"
+    },
+    {
+      "entity_id": "sensor.l10s_ultra_current_room",
+      "name": "Robot current room",
+      "domain": "sensor",
+      "area_id": "",
+      "area_name": "",
+      "device_id": "example_sensor_l10s_ultra_current_room",
+      "device_name": "Example Robot current room"
+    },
+    {
+      "entity_id": "sensor.l10s_ultra_cleaned_area",
+      "name": "Robot cleaned area",
+      "domain": "sensor",
+      "area_id": "",
+      "area_name": "",
+      "device_id": "example_sensor_l10s_ultra_cleaned_area",
+      "device_name": "Example Robot cleaned area"
+    },
+    {
+      "entity_id": "sensor.l10s_ultra_cleaning_time",
+      "name": "Robot cleaning time",
+      "domain": "sensor",
+      "area_id": "",
+      "area_name": "",
+      "device_id": "example_sensor_l10s_ultra_cleaning_time",
+      "device_name": "Example Robot cleaning time"
+    },
+    {
+      "entity_id": "weather.forecast_ishioho_city",
+      "name": "Example weather",
+      "domain": "weather",
+      "area_id": "",
+      "area_name": "",
+      "device_id": "example_weather_forecast_ishioho_city",
+      "device_name": "Example Example weather"
+    },
+    {
+      "entity_id": "sensor.moon_phase",
+      "name": "Moon phase",
+      "domain": "sensor",
+      "area_id": "",
+      "area_name": "",
+      "device_id": "example_sensor_moon_phase",
+      "device_name": "Example Moon phase"
+    },
+    {
+      "entity_id": "sun.sun",
+      "name": "Sun",
+      "domain": "sun",
+      "area_id": "",
+      "area_name": "",
+      "device_id": "example_sun_sun",
+      "device_name": "Example Sun"
+    }
+  ],
+  "areas": [
+    {
+      "area_id": "master",
+      "name": "Master Bedroom"
+    },
+    {
+      "area_id": "bathroom",
+      "name": "Master Bathroom"
+    },
+    {
+      "area_id": "guest_bathroom",
+      "name": "Guest Bathroom"
+    },
+    {
+      "area_id": "hall",
+      "name": "Hallway"
+    },
+    {
+      "area_id": "office",
+      "name": "Office"
+    },
+    {
+      "area_id": "kitchen",
+      "name": "Kitchen"
+    },
+    {
+      "area_id": "living",
+      "name": "Living Room"
+    },
+    {
+      "area_id": "dining",
+      "name": "Dining Room"
+    },
+    {
+      "area_id": "balcony",
+      "name": "Balcony"
+    },
+    {
+      "area_id": "entryway",
+      "name": "Entryway"
+    },
+    {
+      "area_id": "garage",
+      "name": "Garage"
+    },
+    {
+      "area_id": "porch",
+      "name": "Porch"
+    }
+  ]
+}

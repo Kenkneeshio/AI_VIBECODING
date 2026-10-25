@@ -1,0 +1,642 @@
+{
+  "title": "ishioho",
+  "views": [
+    {
+      "title": "Pokemon",
+      "path": "home",
+      "icon": "mdi:pokeball",
+      "type": "panel",
+      "cards": [
+        {
+          "type": "custom:ishioho-panel",
+          "rooms": [
+            {
+              "id": "master",
+              "name": "Master Bedroom",
+              "x": 76.417,
+              "y": 30.4,
+              "area_names": [
+                "Master Bedroom"
+              ],
+              "entities": [
+                "light.bedroom"
+              ]
+            },
+            {
+              "id": "bathroom",
+              "name": "Master Bathroom",
+              "x": 76.417,
+              "y": 69.897,
+              "area_names": [
+                "Master Bathroom"
+              ],
+              "entities": []
+            },
+            {
+              "id": "guest_bathroom",
+              "name": "Guest Bathroom",
+              "x": 63.611,
+              "y": 75.451,
+              "area_names": [
+                "Guest Bathroom"
+              ],
+              "entities": []
+            },
+            {
+              "id": "hall",
+              "name": "Hallway",
+              "x": 64.383,
+              "y": 47.989,
+              "area_names": [
+                "Hallway"
+              ],
+              "entities": []
+            },
+            {
+              "id": "office",
+              "name": "Office",
+              "x": 56.669,
+              "y": 25.771,
+              "area_names": [
+                "Office"
+              ],
+              "entities": [
+                "light.office"
+              ]
+            },
+            {
+              "id": "kitchen",
+              "name": "Kitchen",
+              "x": 48.8,
+              "y": 65.269,
+              "area_names": [
+                "Kitchen"
+              ],
+              "entities": [
+                "light.kitchen",
+                "sensor.kitchen_temperature"
+              ],
+              "temperature": "sensor.kitchen_temperature"
+            },
+            {
+              "id": "living",
+              "name": "Living Room",
+              "x": 39.543,
+              "y": 29.474,
+              "area_names": [
+                "Living Room"
+              ],
+              "entities": [
+                "light.living_room",
+                "cover.living_room_blinds"
+              ]
+            },
+            {
+              "id": "dining",
+              "name": "Dining Room",
+              "x": 28.974,
+              "y": 68.354,
+              "area_names": [
+                "Dining Room"
+              ],
+              "entities": [
+                "fan.dining_purifier",
+                "sensor.dining_temperature",
+                "sensor.dining_pm25"
+              ],
+              "temperature": "sensor.dining_temperature",
+              "humidity": "sensor.dining_humidity"
+            },
+            {
+              "id": "balcony",
+              "name": "Balcony",
+              "x": 19.023,
+              "y": 28.24,
+              "area_names": [
+                "Balcony"
+              ],
+              "entities": [],
+              "note": "Decorative plantings. No example sensors or irrigation controls are assigned here."
+            },
+            {
+              "id": "entryway",
+              "name": "Entryway",
+              "x": 25.5,
+              "y": 55,
+              "area_names": [
+                "Entryway"
+              ],
+              "entities": [],
+              "short": "Entry"
+            },
+            {
+              "id": "porch",
+              "name": "Porch",
+              "short": "Porch",
+              "x": 15.089,
+              "y": 73.291,
+              "entities": [],
+              "area_names": [
+                "Porch"
+              ],
+              "note": "Outdoor porch leading to the stairs and garage below. Example porch devices appear here."
+            },
+            {
+              "id": "garage",
+              "name": "Garage",
+              "x": 16.246,
+              "y": 49.84,
+              "area_names": [
+                "Garage"
+              ],
+              "entities": [
+                "cover.garage_door",
+                "camera.garage_camera"
+              ]
+            }
+          ],
+          "cameras": [
+            {
+              "entity": "camera.porch_camera_profile_000",
+              "name": "Example porch"
+            },
+            {
+              "entity": "camera.garage_camera",
+              "name": "Example garage",
+              "start_service": "start_p2p_livestream",
+              "stop_service": "stop_p2p_livestream"
+            }
+          ],
+          "lights": [
+            "light.bedroom",
+            "light.office",
+            "light.kitchen",
+            "light.living_room"
+          ],
+          "outside": "sensor.outdoor_temperature",
+          "outside_humidity": "sensor.outdoor_humidity",
+          "living_temp": "sensor.dining_temperature",
+          "power": "sensor.home_power",
+          "climate": "climate.home",
+          "vacuum": "vacuum.l10s_ultra",
+          "vacuum_battery": "sensor.l10s_ultra_battery_level",
+          "vacuum_map": "camera.l10s_ultra_map",
+          "robot_room": "sensor.l10s_ultra_current_room",
+          "garage": "cover.garage_door",
+          "events": [],
+          "air": [
+            {
+              "entity": "sensor.dining_pm25",
+              "name": "Dining"
+            }
+          ],
+          "maintenance": [],
+          "monitored": [
+            "climate.home",
+            "vacuum.l10s_ultra"
+          ],
+          "temperatures": [
+            {
+              "entity": "sensor.dining_temperature",
+              "name": "Dining",
+              "humidity": "sensor.dining_humidity"
+            },
+            {
+              "entity": "sensor.kitchen_temperature",
+              "name": "Kitchen"
+            }
+          ],
+          "calendars": [],
+          "energy": [
+            "sensor.home_power"
+          ],
+          "aliases": {},
+          "excluded_entities": [
+            "camera.front_door"
+          ],
+          "weather_entity": "weather.forecast_ishioho_city",
+          "moon_entity": "sensor.moon_phase",
+          "sun_entity": "sun.sun",
+          "night_assets": true,
+          "theme": "pokemon"
+        }
+      ]
+    },
+    {
+      "title": "Pokedex",
+      "path": "pokedex",
+      "icon": "mdi:book-open-page-variant",
+      "type": "panel",
+      "cards": [
+        {
+          "type": "custom:ishioho-panel",
+          "rooms": [
+            {
+              "id": "master",
+              "name": "Master Bedroom",
+              "x": 76.417,
+              "y": 30.4,
+              "area_names": [
+                "Master Bedroom"
+              ],
+              "entities": [
+                "light.bedroom"
+              ]
+            },
+            {
+              "id": "bathroom",
+              "name": "Master Bathroom",
+              "x": 76.417,
+              "y": 69.897,
+              "area_names": [
+                "Master Bathroom"
+              ],
+              "entities": []
+            },
+            {
+              "id": "guest_bathroom",
+              "name": "Guest Bathroom",
+              "x": 63.611,
+              "y": 75.451,
+              "area_names": [
+                "Guest Bathroom"
+              ],
+              "entities": []
+            },
+            {
+              "id": "hall",
+              "name": "Hallway",
+              "x": 64.383,
+              "y": 47.989,
+              "area_names": [
+                "Hallway"
+              ],
+              "entities": []
+            },
+            {
+              "id": "office",
+              "name": "Office",
+              "x": 56.669,
+              "y": 25.771,
+              "area_names": [
+                "Office"
+              ],
+              "entities": [
+                "light.office"
+              ]
+            },
+            {
+              "id": "kitchen",
+              "name": "Kitchen",
+              "x": 48.8,
+              "y": 65.269,
+              "area_names": [
+                "Kitchen"
+              ],
+              "entities": [
+                "light.kitchen",
+                "sensor.kitchen_temperature"
+              ],
+              "temperature": "sensor.kitchen_temperature"
+            },
+            {
+              "id": "living",
+              "name": "Living Room",
+              "x": 39.543,
+              "y": 29.474,
+              "area_names": [
+                "Living Room"
+              ],
+              "entities": [
+                "light.living_room",
+                "cover.living_room_blinds"
+              ]
+            },
+            {
+              "id": "dining",
+              "name": "Dining Room",
+              "x": 28.974,
+              "y": 68.354,
+              "area_names": [
+                "Dining Room"
+              ],
+              "entities": [
+                "fan.dining_purifier",
+                "sensor.dining_temperature",
+                "sensor.dining_pm25"
+              ],
+              "temperature": "sensor.dining_temperature",
+              "humidity": "sensor.dining_humidity"
+            },
+            {
+              "id": "balcony",
+              "name": "Balcony",
+              "x": 19.023,
+              "y": 28.24,
+              "area_names": [
+                "Balcony"
+              ],
+              "entities": [],
+              "note": "Decorative plantings. No example sensors or irrigation controls are assigned here."
+            },
+            {
+              "id": "entryway",
+              "name": "Entryway",
+              "x": 15.089,
+              "y": 73.291,
+              "area_names": [
+                "Entryway"
+              ],
+              "entities": []
+            },
+            {
+              "id": "garage",
+              "name": "Garage",
+              "x": 16.246,
+              "y": 49.84,
+              "area_names": [
+                "Garage"
+              ],
+              "entities": [
+                "cover.garage_door",
+                "camera.garage_camera"
+              ]
+            }
+          ],
+          "cameras": [
+            {
+              "entity": "camera.porch_camera_profile_000",
+              "name": "Example porch"
+            },
+            {
+              "entity": "camera.garage_camera",
+              "name": "Example garage",
+              "start_service": "start_p2p_livestream",
+              "stop_service": "stop_p2p_livestream"
+            }
+          ],
+          "lights": [
+            "light.bedroom",
+            "light.office",
+            "light.kitchen",
+            "light.living_room"
+          ],
+          "outside": "sensor.outdoor_temperature",
+          "outside_humidity": "sensor.outdoor_humidity",
+          "living_temp": "sensor.dining_temperature",
+          "power": "sensor.home_power",
+          "climate": "climate.home",
+          "vacuum": "vacuum.l10s_ultra",
+          "vacuum_battery": "sensor.l10s_ultra_battery_level",
+          "vacuum_map": "camera.l10s_ultra_map",
+          "robot_room": "sensor.l10s_ultra_current_room",
+          "garage": "cover.garage_door",
+          "events": [],
+          "air": [
+            {
+              "entity": "sensor.dining_pm25",
+              "name": "Dining"
+            }
+          ],
+          "maintenance": [],
+          "monitored": [
+            "climate.home",
+            "vacuum.l10s_ultra"
+          ],
+          "temperatures": [
+            {
+              "entity": "sensor.dining_temperature",
+              "name": "Dining",
+              "humidity": "sensor.dining_humidity"
+            },
+            {
+              "entity": "sensor.kitchen_temperature",
+              "name": "Kitchen"
+            }
+          ],
+          "calendars": [],
+          "energy": [
+            "sensor.home_power"
+          ],
+          "aliases": {},
+          "excluded_entities": [
+            "camera.front_door"
+          ],
+          "weather_entity": "weather.forecast_ishioho_city",
+          "moon_entity": "sensor.moon_phase",
+          "sun_entity": "sun.sun",
+          "night_assets": true,
+          "theme": "pokedex"
+        }
+      ]
+    },
+    {
+      "title": "Animal Crossing",
+      "path": "crossing",
+      "icon": "mdi:leaf",
+      "type": "panel",
+      "cards": [
+        {
+          "type": "custom:ishioho-panel",
+          "rooms": [
+            {
+              "id": "master",
+              "name": "Master Bedroom",
+              "x": 76.417,
+              "y": 30.4,
+              "area_names": [
+                "Master Bedroom"
+              ],
+              "entities": [
+                "light.bedroom"
+              ]
+            },
+            {
+              "id": "bathroom",
+              "name": "Master Bathroom",
+              "x": 76.417,
+              "y": 69.897,
+              "area_names": [
+                "Master Bathroom"
+              ],
+              "entities": []
+            },
+            {
+              "id": "guest_bathroom",
+              "name": "Guest Bathroom",
+              "x": 63.611,
+              "y": 75.451,
+              "area_names": [
+                "Guest Bathroom"
+              ],
+              "entities": []
+            },
+            {
+              "id": "hall",
+              "name": "Hallway",
+              "x": 64.383,
+              "y": 47.989,
+              "area_names": [
+                "Hallway"
+              ],
+              "entities": []
+            },
+            {
+              "id": "office",
+              "name": "Office",
+              "x": 56.669,
+              "y": 25.771,
+              "area_names": [
+                "Office"
+              ],
+              "entities": [
+                "light.office"
+              ]
+            },
+            {
+              "id": "kitchen",
+              "name": "Kitchen",
+              "x": 48.8,
+              "y": 65.269,
+              "area_names": [
+                "Kitchen"
+              ],
+              "entities": [
+                "light.kitchen",
+                "sensor.kitchen_temperature"
+              ],
+              "temperature": "sensor.kitchen_temperature"
+            },
+            {
+              "id": "living",
+              "name": "Living Room",
+              "x": 39.543,
+              "y": 29.474,
+              "area_names": [
+                "Living Room"
+              ],
+              "entities": [
+                "light.living_room",
+                "cover.living_room_blinds"
+              ]
+            },
+            {
+              "id": "dining",
+              "name": "Dining Room",
+              "x": 28.974,
+              "y": 68.354,
+              "area_names": [
+                "Dining Room"
+              ],
+              "entities": [
+                "fan.dining_purifier",
+                "sensor.dining_temperature",
+                "sensor.dining_pm25"
+              ],
+              "temperature": "sensor.dining_temperature",
+              "humidity": "sensor.dining_humidity"
+            },
+            {
+              "id": "balcony",
+              "name": "Balcony",
+              "x": 19.023,
+              "y": 28.24,
+              "area_names": [
+                "Balcony"
+              ],
+              "entities": [],
+              "note": "Decorative plantings. No example sensors or irrigation controls are assigned here."
+            },
+            {
+              "id": "entryway",
+              "name": "Entryway",
+              "x": 15.089,
+              "y": 73.291,
+              "area_names": [
+                "Entryway"
+              ],
+              "entities": []
+            },
+            {
+              "id": "garage",
+              "name": "Garage",
+              "x": 16.246,
+              "y": 49.84,
+              "area_names": [
+                "Garage"
+              ],
+              "entities": [
+                "cover.garage_door",
+                "camera.garage_camera"
+              ]
+            }
+          ],
+          "cameras": [
+            {
+              "entity": "camera.porch_camera_profile_000",
+              "name": "Example porch"
+            },
+            {
+              "entity": "camera.garage_camera",
+              "name": "Example garage",
+              "start_service": "start_p2p_livestream",
+              "stop_service": "stop_p2p_livestream"
+            }
+          ],
+          "lights": [
+            "light.bedroom",
+            "light.office",
+            "light.kitchen",
+            "light.living_room"
+          ],
+          "outside": "sensor.outdoor_temperature",
+          "outside_humidity": "sensor.outdoor_humidity",
+          "living_temp": "sensor.dining_temperature",
+          "power": "sensor.home_power",
+          "climate": "climate.home",
+          "vacuum": "vacuum.l10s_ultra",
+          "vacuum_battery": "sensor.l10s_ultra_battery_level",
+          "vacuum_map": "camera.l10s_ultra_map",
+          "robot_room": "sensor.l10s_ultra_current_room",
+          "garage": "cover.garage_door",
+          "events": [],
+          "air": [
+            {
+              "entity": "sensor.dining_pm25",
+              "name": "Dining"
+            }
+          ],
+          "maintenance": [],
+          "monitored": [
+            "climate.home",
+            "vacuum.l10s_ultra"
+          ],
+          "temperatures": [
+            {
+              "entity": "sensor.dining_temperature",
+              "name": "Dining",
+              "humidity": "sensor.dining_humidity"
+            },
+            {
+              "entity": "sensor.kitchen_temperature",
+              "name": "Kitchen"
+            }
+          ],
+          "calendars": [],
+          "energy": [
+            "sensor.home_power"
+          ],
+          "aliases": {},
+          "excluded_entities": [
+            "camera.front_door"
+          ],
+          "weather_entity": "weather.forecast_ishioho_city",
+          "moon_entity": "sensor.moon_phase",
+          "sun_entity": "sun.sun",
+          "night_assets": true,
+          "theme": "crossing"
+        }
+      ]
+    }
+  ]
+}
