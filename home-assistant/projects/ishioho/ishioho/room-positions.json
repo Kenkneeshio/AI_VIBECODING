@@ -1,0 +1,242 @@
+{
+  "revision": 4,
+  "viewBox": [
+    0,
+    0,
+    1400,
+    700
+  ],
+  "allThemesShareCoordinates": true,
+  "room_pin_percent": {
+    "master": {
+      "x": 76.417,
+      "y": 30.4
+    },
+    "bathroom": {
+      "x": 76.417,
+      "y": 69.897
+    },
+    "guest_bathroom": {
+      "x": 63.611,
+      "y": 75.451
+    },
+    "hall": {
+      "x": 64.383,
+      "y": 47.989
+    },
+    "office": {
+      "x": 56.669,
+      "y": 25.771
+    },
+    "kitchen": {
+      "x": 48.8,
+      "y": 65.269
+    },
+    "living": {
+      "x": 39.543,
+      "y": 29.474
+    },
+    "dining": {
+      "x": 28.974,
+      "y": 68.354
+    },
+    "balcony": {
+      "x": 19.023,
+      "y": 28.24
+    },
+    "entryway": {
+      "x": 15.089,
+      "y": 73.291
+    },
+    "garage": {
+      "x": 16.246,
+      "y": 49.84
+    }
+  },
+  "transform": {
+    "translate": [
+      1361.44,
+      -564.8
+    ],
+    "rotateDegrees": 90,
+    "scale": 1.08
+  },
+  "rooms": {
+    "master": {
+      "label": "Master bedroom",
+      "sourceCenter": [
+        720,
+        270
+      ],
+      "confidence": "high",
+      "x": 1069.84,
+      "y": 212.8,
+      "xPercent": 76.417,
+      "yPercent": 30.4
+    },
+    "bathroom": {
+      "label": "Master bathroom",
+      "sourceCenter": [
+        976,
+        270
+      ],
+      "confidence": "high",
+      "x": 1069.84,
+      "y": 489.28,
+      "xPercent": 76.417,
+      "yPercent": 69.897
+    },
+    "guest_bathroom": {
+      "label": "Guest bathroom",
+      "sourceCenter": [
+        1012,
+        436
+      ],
+      "confidence": "high; sink and toilet visible in original",
+      "x": 890.56,
+      "y": 528.16,
+      "xPercent": 63.611,
+      "yPercent": 75.451
+    },
+    "hall": {
+      "label": "Hall",
+      "sourceCenter": [
+        834,
+        426
+      ],
+      "confidence": "high",
+      "x": 901.36,
+      "y": 335.92,
+      "xPercent": 64.383,
+      "yPercent": 47.989
+    },
+    "office": {
+      "label": "Office",
+      "sourceCenter": [
+        690,
+        526
+      ],
+      "confidence": "high; desk shown in original",
+      "x": 793.36,
+      "y": 180.4,
+      "xPercent": 56.669,
+      "yPercent": 25.771
+    },
+    "kitchen": {
+      "label": "Kitchen",
+      "sourceCenter": [
+        946,
+        628
+      ],
+      "confidence": "high",
+      "x": 683.2,
+      "y": 456.88,
+      "xPercent": 48.8,
+      "yPercent": 65.269
+    },
+    "living": {
+      "label": "Living room",
+      "sourceCenter": [
+        714,
+        748
+      ],
+      "confidence": "high",
+      "x": 553.6,
+      "y": 206.32,
+      "xPercent": 39.543,
+      "yPercent": 29.474
+    },
+    "dining": {
+      "label": "Dining",
+      "sourceCenter": [
+        966,
+        885
+      ],
+      "confidence": "high",
+      "x": 405.64,
+      "y": 478.48,
+      "xPercent": 28.974,
+      "yPercent": 68.354
+    },
+    "balcony": {
+      "label": "Balcony",
+      "sourceCenter": [
+        706,
+        1014
+      ],
+      "confidence": "user correction; original room contains visible plant and bench",
+      "x": 266.32,
+      "y": 197.68,
+      "xPercent": 19.023,
+      "yPercent": 28.24
+    },
+    "entryway": {
+      "label": "Entryway",
+      "sourceCenter": [
+        998,
+        1065
+      ],
+      "confidence": "supported by connection to original angled stair landing; original room label unreadable",
+      "x": 211.24,
+      "y": 513.04,
+      "xPercent": 15.089,
+      "yPercent": 73.291
+    },
+    "garage": {
+      "label": "Garage stairs",
+      "sourceCenter": [
+        846,
+        1050
+      ],
+      "confidence": "actual angled stair/landing location; popup trigger only, not a detached garage footprint",
+      "x": 227.44,
+      "y": 348.88,
+      "xPercent": 16.246,
+      "yPercent": 49.84
+    }
+  },
+  "robotDock": {
+    "x": 616.24,
+    "y": 100.48,
+    "xPercent": 44.017,
+    "yPercent": 14.354,
+    "role": "decorative reference only; actual robot marker must use reported room until a real map coordinate is available"
+  },
+  "cameraOverlay": null,
+  "celestialOverlay": {
+    "x": 50,
+    "y": 42,
+    "radius": 20,
+    "role": "parent can render actual sun/moon phase and weather; no fixed moon phase embedded"
+  },
+  "notes": [
+    "Source house is rotated clockwise, with actual plant balcony on LEFT; no mirrored room geometry.",
+    "Balcony and entry purposes correct the prior inference; balcony is the plant-and-bench room from original bottom left.",
+    "Garage artwork removed; its popup anchor is on actual stair landing between balcony and entry.",
+    "Stairwell shape restored from original export; precise measurements are not claimed from low-resolution illustration.",
+    "Plantings now appear inside balcony; thin ornamental margins preserve useful space.",
+    "Camera belongs in external utility rail; no large empty area is reserved in art.",
+    "Both day and night assets plus frozen -still variants are provided; parent selects from actual sun/weather state.",
+    "Animations respect prefers-reduced-motion. No external images, fonts or dependencies."
+  ],
+  "themes": {
+    "pokemon": {
+      "day": "pokemon-map.svg",
+      "night": "pokemon-night-map.svg",
+      "dayStill": "pokemon-still.svg",
+      "nightStill": "pokemon-night-still.svg"
+    },
+    "pokedex": {
+      "day": "pokedex-map.svg",
+      "night": "pokedex-night-map.svg",
+      "dayStill": "pokedex-still.svg",
+      "nightStill": "pokedex-night-still.svg"
+    },
+    "crossing": {
+      "day": "crossing-map.svg",
+      "night": "crossing-night-map.svg",
+      "dayStill": "crossing-still.svg",
+      "nightStill": "crossing-night-still.svg"
+    }
+  }
+}
