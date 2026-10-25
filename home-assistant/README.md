@@ -37,7 +37,7 @@ Choose the simplest project type that solves the actual problem. An automation o
 
 | Project | Description | Status |
 | --- | --- | --- |
-| [ishioho](projects/ishioho/README.md) | Three illustrated dashboard themes with room controls, searchable entities, camera popups, weather/moon display, and a room-level robot tracker | Tested prototype; 101 isolated checks; synthetic public examples |
+| [ishioho](projects/ishioho/README.md) | Four illustrated dashboard themes with room controls, searchable entities, camera popups, weather/moon display, and a room-level robot tracker | Tested prototype; 107 isolated checks; synthetic public examples |
 
 ## Management approach
 

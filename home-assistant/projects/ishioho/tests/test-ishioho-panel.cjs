@@ -75,7 +75,7 @@ test('decorative animation toggle makes no device calls and records accessible s
   const{p,calls}=fixture();const b=new Node('button');b.dataset.action='motion';await p._click({target:{closest:()=>b}});assert.equal(p._motion,false);assert.equal(p._q('.shell').classList.contains('motion-paused'),true);assert.equal(b.attrs['aria-pressed'],'true');assert.equal(calls.length,0);
 });
 test('all themes retain the inherited lifecycle and unsupported theme defaults safely',async()=>{
-  const{p}=fixture();for(const theme of ['pokemon','pokedex','crossing','invalid']){p.setConfig({...config(),theme});assert.equal(p._theme,theme==='invalid'?'pokemon':theme);}await new Promise(setImmediate);assert.ok(fetches.every(url=>url.startsWith('/local/ishioho/')));assert.equal(typeof p._connectCamera,'function');assert.equal(typeof p._close,'function');
+  const{p}=fixture();for(const theme of ['pokemon','pokedex','crossing','stardew','invalid']){p.setConfig({...config(),theme});assert.equal(p._theme,theme==='invalid'?'pokemon':theme);}await new Promise(setImmediate);assert.ok(fetches.every(url=>url.startsWith('/local/ishioho/')));assert.equal(typeof p._connectCamera,'function');assert.equal(typeof p._close,'function');
 });
 
 test('excluded camera stays absent from dashboard counts and full room membership',()=>{
@@ -91,7 +91,7 @@ test('live sun changes flow through inherited updates without camera remounting'
   const{p,h,calls}=fixture({'sun.sun':state('above_horizon'),'weather.forecast_ishioho_city':state('sunny')});p._config.night_assets=true;let remounts=0;p._mountCameras=()=>remounts++;p._update();assert.equal(p._q('.shell').classList.contains('is-night'),false);h.states['sun.sun'].state='below_horizon';p.hass=h;assert.equal(p._q('.shell').classList.contains('is-night'),true);assert.equal(p._q('.animated-map').attrs.src,'/local/ishioho/pokemon-night-map-v8.png?v=8');assert.equal(remounts,0);assert.equal(calls.length,0);
 });
 test('synthetic example retains configured feeds and bundles the correct assets for every theme',()=>{
-  const doc=JSON.parse(read('ishioho-dashboard.json'));for(const view of doc.views){const c=view.cards[0];assert.deepEqual(c.cameras.map(x=>x.entity),['camera.porch_camera_profile_000','camera.garage_camera']);assert.ok(c.excluded_entities.includes('camera.front_door'));assert.ok(!c.rooms.some(r=>(r.entities||[]).includes('camera.front_door')));assert.equal(c.night_assets,true);assert.equal(c.weather_entity,'weather.forecast_ishioho_city');assert.equal(c.moon_entity,'sensor.moon_phase');for(const suffix of ['-map','-still','-night-map','-night-still']){const stem=c.theme+suffix+(c.theme==='pokemon'?'-v8':'');for(const ext of c.theme==='pokemon'?['png','svg']:['svg'])assert.ok(fs.existsSync(path.join(__dirname,'ishioho-assets',stem+'.'+ext)),stem+'.'+ext);}}
+  const doc=JSON.parse(read('ishioho-dashboard.json'));for(const view of doc.views){const c=view.cards[0];assert.deepEqual(c.cameras.map(x=>x.entity),['camera.porch_camera_profile_000','camera.garage_camera']);assert.ok(c.excluded_entities.includes('camera.front_door'));assert.ok(!c.rooms.some(r=>(r.entities||[]).includes('camera.front_door')));assert.equal(c.night_assets,true);assert.equal(c.weather_entity,'weather.forecast_ishioho_city');assert.equal(c.moon_entity,'sensor.moon_phase');const version={pokemon:8,stardew:1}[c.theme];for(const suffix of ['-map','-still','-night-map','-night-still']){const stem=c.theme+suffix+(version?'-v'+version:'');for(const ext of version?['png','svg']:['svg'])assert.ok(fs.existsSync(path.join(__dirname,'ishioho-assets',stem+'.'+ext)),stem+'.'+ext);}}
 });
 
 test('live updates work when optional robot battery widget is not mounted',()=>{
@@ -99,6 +99,34 @@ test('live updates work when optional robot battery widget is not mounted',()=>{
 });
 test('overview opens status and camera widgets on demand without device actuation',()=>{
   const {p,calls}=fixture();let mounts=0;p._mountCameras=()=>mounts++;p._open('overview');assert.equal(p._modal,'overview');assert.equal(mounts,1);assert.equal(calls.length,0);p._close();assert.equal(p._modal,null);
+});
+
+test('Stardew example preserves every Pokemon control, exclusion and physical room position',()=>{
+  const doc=JSON.parse(read('ishioho-dashboard.json'));
+  assert.deepEqual(doc.views.map(v=>v.path),['home','pokedex','crossing','stardew']);
+  const pokemon=doc.views.find(v=>v.path==='home').cards[0],stardew=doc.views.find(v=>v.path==='stardew').cards[0];
+  assert.equal(stardew.theme,'stardew');assert.deepEqual({...stardew,theme:'pokemon'},pokemon);
+  const entry=stardew.rooms.find(r=>r.id==='entryway'),porch=stardew.rooms.find(r=>r.id==='porch'),garage=stardew.rooms.find(r=>r.id==='garage');
+  assert.deepEqual([entry.x,entry.y],[25.5,55]);assert.deepEqual([porch.x,porch.y],[15.089,73.291]);assert.deepEqual([garage.x,garage.y],[16.246,49.84]);
+});
+test('Stardew builds its own images and accessible fourth navigation link without device calls',()=>{
+  const{p,calls}=fixture();p.setConfig({...config(),theme:'stardew'});const html=p.shadowRoot.innerHTML;
+  assert.match(html,/theme-stardew/);assert.match(html,/stardew-map-v1\.png\?v=1/);assert.match(html,/stardew-still-v1\.png\?v=1/);
+  assert.match(html,/href="\/prototype-copy\/stardew" aria-label="Stardew theme" aria-current="page"/);
+  for(const path of ['home','pokedex','crossing'])assert.ok(html.includes('href="/prototype-copy/'+path+'"'));
+  assert.equal(calls.length,0);
+});
+test('Stardew garage uses the inherited viewing popup and native door controls without actuation',()=>{
+  const{p,calls}=fixture({'cover.garage':state('closed')});p.setConfig({...config(),theme:'stardew'});let camera;
+  p._connectCamera=cam=>{camera=cam.entity;};const mounted=[];p._mountCard=(host,config)=>mounted.push(config);
+  p._open('garage');assert.equal(p._modal,'garage');assert.equal(camera,'camera.garage_camera');
+  assert.equal(mounted[0].type,'entities');assert.equal(mounted[0].entities[0].entity,'cover.garage');assert.equal(mounted[0].show_header_toggle,false);assert.equal(calls.length,0);
+});
+test('Stardew room directory and robot source keep the same live entity behavior',()=>{
+  const{p,calls}=fixture({'light.curated':state('on'),'sensor.kitchen_extra':state('24'),'vacuum.l10s_ultra':state('cleaning',{located:true}),'sensor.l10s_ultra_current_room':state('Kitchen')});
+  p.setConfig({...config(),theme:'stardew'});p._catalog={entities:[{entity_id:'sensor.kitchen_extra',area_name:'Kitchen'}]};
+  const room=p._config.rooms.find(r=>r.id==='kitchen');assert.deepEqual(new Set(p._roomEntities(room)),new Set(['light.curated','sensor.kitchen_extra']));
+  assert.equal(p._robotReading().point.id,'kitchen');assert.equal(p._robotReading().roomName,'Kitchen');assert.equal(calls.length,0);
 });
 
 (async()=>{let failed=0;for(const[name,fn]of tests){try{await fn();console.log('PASS '+name);}catch(error){failed++;console.error('FAIL '+name+'\n  '+error.message);}}console.log(`${tests.length-failed}/${tests.length} ishioho component tests passed. Device and network calls were mocked.`);process.exitCode=failed?1:0;})();

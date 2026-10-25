@@ -83,6 +83,11 @@ export function environmentReading(hass={},config={},now=Date.now(),appearance='
 }
 
 export const environmentMethods={
+  _mapAsset(type='map',night=false){
+    const profiles={pokemon:{version:8,extension:'png'},pokedex:{version:6,extension:'svg'},crossing:{version:6,extension:'svg'},stardew:{version:1,extension:'png'}};
+    const theme=Object.hasOwn(profiles,this._theme)?this._theme:'pokemon',profile=profiles[theme];
+    return `/local/ishioho/${theme}${night?'-night':''}-${type==='still'?'still':'map'}${profile.extension==='png'?'-v'+profile.version:''}.${profile.extension}?v=${profile.version}`;
+  },
   _environmentMarkup(){
     return `<section class="environment-panel" aria-label="Sky and outdoor weather"><button class="environment-weather" data-action="weather" aria-label="Open sky and weather details"><span class="environment-icon" id="env-icon" aria-hidden="true">☀</span><span><span class="eyebrow">OUTSIDE / SKY</span><strong id="env-weather">Checking weather…</strong><small><span id="env-temp">—</span><span class="env-source" id="env-temp-source"></span></small></span><span class="environment-arrow">↗</span></button><button class="environment-moon" data-action="weather" aria-label="Open moon and sun details"><span id="env-moon-icon" aria-hidden="true">☾</span><span id="env-moon">Checking moon…</span></button><button class="environment-mode" data-action="appearance" aria-label="Appearance: automatic. Select to preview day."><span id="env-mode">Auto</span><span class="mode-next" aria-hidden="true">◐</span></button></section>`;
   },
@@ -99,9 +104,8 @@ export const environmentMethods={
     const next=(this._appearance||'auto')==='auto'?'day':this._appearance==='day'?'night':'automatic';
     this._q('.environment-mode')?.setAttribute('aria-label',`${r.modeLabel}. Select for ${next==='automatic'?'automatic appearance':next+' preview'}.`);
     if(this._config?.night_assets){
-      const theme=['pokemon','pokedex','crossing'].includes(this._theme)?this._theme:'pokemon';
       for(const[selector,type]of [['.animated-map','map'],['.still-map','still']]){
-        const img=this._q(selector),src=`/local/ishioho/${theme}${night?'-night':''}-${type}${theme==='pokemon'?'-v8':''}.${theme==='pokemon'?'png':'svg'}?v=${theme==='pokemon'?8:6}`;
+        const img=this._q(selector),src=this._mapAsset(type,night);
         if(img&&img.getAttribute('src')!==src)img.setAttribute('src',src);
       }
       shell.classList.toggle('has-night-art',true);

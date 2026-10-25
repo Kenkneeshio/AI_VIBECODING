@@ -1,0 +1,903 @@
+<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" viewBox="0 0 1400 700" width="1400" height="700" role="img" aria-label="Original cozy timber and brick pixel-art corner-unit floorplan with planted balcony, covered porch, interior entrance and stairs to one garage below" shape-rendering="crispEdges" data-revision="1" data-preferred-live-format="lossless-png" data-theme="stardew-inspired-original">
+ <defs>
+  <pattern id="grass" width="48" height="48" patternUnits="userSpaceOnUse">
+   <rect width="48" height="48" fill="#899677" />
+   <path d="M8 12h4v4h-4zM32 34h4v4h-4z" fill="#7c8d6b" />
+   <path d="M12 8h4v8h-4zM36 30h4v8h-4z" fill="#939e7f" />
+  </pattern>
+  <pattern id="garage" width="24" height="24" patternUnits="userSpaceOnUse">
+   <rect width="24" height="24" fill="#919689" />
+   <rect x="4" y="8" width="4" height="4" fill="#868e85" />
+   <rect x="16" y="20" width="4" height="4" fill="#9fa293" />
+  </pattern>
+  <g id="tree">
+   <path d="M28 84h32v16H28z" fill="#647055" />
+   <path d="M36 66h16v26H36z" fill="#5f4d40" />
+   <path d="M20 12h48v12h12v16h8v28H72v12H16V68H4V40h8V24h8z" fill="#2f5044" />
+   <path d="M20 20h44v12h12v28H64v12H20V60H12V40h8z" fill="#456f56" />
+   <path d="M28 20h28v12H28zM20 32h12v12H20zM16 44h12v12H16z" fill="#628761" />
+   <path d="M56 48h12v12H56zM44 60h12v8H44z" fill="#38604c" />
+  </g>
+  <g id="shrub">
+   <path d="M8 12h32v8h8v24H0V24h8z" fill="#38604c" />
+   <path d="M12 8h20v8h8v16H8V16h4z" fill="#64845f" />
+   <path d="M12 12h12v8H12z" fill="#7e9a6e" />
+   <rect x="32" y="24" width="4" height="4" fill="#bb9065" />
+  </g>
+  <g id="flower">
+   <path d="M8 12h4v16H8zM4 20h4v4H4zM12 16h4v4h-4z" fill="#546d50" />
+   <path d="M4 4h12v4h4v8H0V8h4z" fill="#bb9e5d" />
+   <rect x="8" y="8" width="4" height="4" fill="#c8bb96" />
+  </g>
+  <g id="pot">
+   <path d="M10 48H42V56H10Z" fill="#4a4232" opacity=".2" />
+   <path d="M12 34H40V50H36V56H16V50H12Z" fill="#82523b" />
+   <rect x="16" y="38" width="8" height="14" fill="#9d704b" />
+   <rect x="28" y="40" width="8" height="10" fill="#92613f" />
+   <rect x="8" y="30" width="36" height="9" fill="#623f2f" />
+   <rect x="10" y="31" width="32" height="5" fill="#ab835c" />
+   <path d="M24 2H32V8H40V16H48V24H40V30H30V36H20V30H10V24H2V14H10V8H20V2Z" fill="#2d4c38" />
+   <path d="M20 6H28V12H36V18H42V22H34V28H26V32H20V26H12V20H6V16H14V10H20Z" fill="#4c6c44" />
+   <path d="M22 6H28V14H22ZM10 13H16V19H10ZM30 18H36V24H30ZM18 24H24V30H18Z" fill="#819660" />
+   <path d="M24 12H28V32H24Z" fill="#3c5b39" />
+   <rect x="8" y="18" width="6" height="4" fill="#678652" />
+  </g>
+  <g id="sink">
+   <rect width="52" height="44" fill="#c1baa8" stroke="#57686b" stroke-width="4" />
+   <rect x="8" y="8" width="36" height="26" fill="#94a49d" />
+   <path d="M24 0v12h8" fill="none" stroke="#54686b" stroke-width="4" />
+   <rect x="24" y="22" width="4" height="4" fill="#5c7373" />
+  </g>
+  <g id="toilet">
+   <path d="M0 0h32v16h-4v24h-4v4H8v-4H4V16H0z" fill="#cdc5b6" stroke="#586d6f" stroke-width="4" />
+   <rect x="8" y="20" width="16" height="16" fill="#8ba19a" />
+   <rect x="8" y="4" width="16" height="4" fill="#b4bdb6" />
+  </g>
+  <g id="reedling">
+   <path d="M8 4h8v8h8V0h8v20h8v20h-8v8H8v-8H0V20h8z" fill="#314c48" />
+   <path d="M8 16h24v24H8z" fill="#709465" />
+   <path d="M12 8h4v12h-4zM24 4h4v16h-4z" fill="#9aab7d" />
+   <rect x="8" y="28" width="8" height="8" fill="#c3a277" />
+   <rect x="28" y="28" width="8" height="8" fill="#c3a277" />
+   <path d="M12 24h4v4h-4zM24 24h4v4h-4zM16 36h8v4h-8z" fill="#23363d" />
+  </g>
+  <g id="emberbird">
+   <path d="M8 8h24v8h8v20H28v8H12v-8H4V20h4z" fill="#6d4743" />
+   <path d="M12 12h16v8h8v12H8V20h4z" fill="#b3885d" />
+   <path d="M16 4h8v12h-8zM4 20h8v8H4z" fill="#bb9b68" />
+   <rect x="24" y="20" width="4" height="4" fill="#2b3d41" />
+   <path d="M32 24h8v4h-8z" fill="#c6ad7a" />
+   <path d="M12 40h4v4h-4zM24 40h4v4h-4z" fill="#58413b" />
+  </g>
+  <g id="spark">
+   <path d="M8 0h4v8h8v4h-8v8H8v-8H0V8h8z" fill="#c9ba91" />
+  </g>
+  <pattern id="terrain" width="40" height="40" patternUnits="userSpaceOnUse">
+   <rect width="40" height="40" fill="#899b6c" />
+   <path d="M8 8h4v4H8zM28 28h4v4h-4z" fill="#7a8d5e" />
+   <path d="M12 4h4v8h-4zM32 24h4v8h-4z" fill="#97a976" />
+  </pattern>
+  <pattern id="river" width="72" height="40" patternUnits="userSpaceOnUse">
+   <rect width="72" height="40" fill="#538e98" />
+   <path d="M4 12h24M36 32h28" stroke="#6aa1a2" stroke-width="4" />
+  </pattern>
+  <g id="decorTree">
+   <path d="M22 70h44v12H22z" fill="#5b734f" />
+   <path d="M36 56h16v24H36z" fill="#6f5943" />
+   <g>
+    <path d="M20 4h48v12h12v16h8v28H72v12H16V60H4V32h8V16h8z" fill="#2d4f41" />
+    <path d="M24 12h36v12h12v28H60v12H24V52H12V32h12z" fill="#417855" />
+    <path d="M28 16h24v8H28zM20 28h12v12H20z" fill="#749864" />
+    <path d="M56 44h12v12H56z" fill="#37664c" />
+   </g>
+  </g>
+  <g id="decorFlower">
+   <path d="M8 12h4v16H8zM4 20h4v4H4zM12 16h4v4h-4z" fill="#4c6d4a" />
+   <g>
+    <path d="M4 4h12v4h4v8H0V8h4z" fill="#c2a05b" />
+    <rect x="8" y="8" width="4" height="4" fill="#cdc29e" />
+   </g>
+  </g>
+  <g id="decorCloud">
+   <path d="M12 16h12V4h40v8h24v12h16v24H0V28h12z" fill="#c1c2ab" />
+   <path d="M0 40h104v8H0z" fill="#a5af98" />
+  </g>
+  <g id="bluebird">
+   <path d="M12 4h16v8h8v12h-8v8H8v-8H0V12h12z" fill="#304e5a" />
+   <path d="M12 8h12v8h8v8H8V12h4z" fill="#6394a1" />
+   <rect x="24" y="12" width="4" height="4" fill="#223548" />
+   <path d="M32 16h8v4h-8z" fill="#c0a978" />
+   <path d="M8 24h16v4H8z" fill="#abbaa8" />
+  </g>
+  <g id="butterfly">
+   <path d="M12 0h8v8h4V0h8v16h-8v8h-4v-8h-8z" fill="#ab7b96" />
+   <path d="M20 8h4v16h-4z" fill="#655168" />
+  </g>
+  <clipPath id="sceneClip">
+   <rect x="8" y="8" width="1384" height="684" />
+  </clipPath>
+  <clipPath id="scanClip">
+   <rect x="98" y="36" width="1200" height="640" />
+  </clipPath>
+  <linearGradient id="scanGlow">
+   <stop stop-color="#69b8b2" stop-opacity="0" />
+   <stop offset="1" stop-color="#69b8b2" stop-opacity=".4" />
+  </linearGradient>
+  <linearGradient id="stair-depth" x1="0" y1="0" x2="0" y2="1">
+   <stop offset="0" stop-color="#b7b09b" />
+   <stop offset="1" stop-color="#75827c" />
+  </linearGradient>
+  <pattern id="planks" width="28" height="112" patternUnits="userSpaceOnUse">
+   <rect x="0" y="0" width="28" height="112" fill="#5f453a" />
+   <path d="M0 0V112M14 0V112M28 0V112" fill="none" stroke="#44322f" stroke-width="2" />
+   <path d="M0 56H14M14 0H28M14 112H28" fill="none" stroke="#44322f" stroke-width="2" />
+   <path d="M3 6V48M17 62V104" fill="none" stroke="#795b49" stroke-width="2" />
+   <path d="M7 17V35M21 75V94" fill="none" stroke="#694f40" stroke-width="2" />
+  </pattern>
+  <pattern id="carpet" width="16" height="16" patternUnits="userSpaceOnUse">
+   <rect x="0" y="0" width="16" height="16" fill="#a59676" />
+   <rect x="0" y="0" width="8" height="8" fill="#b0a486" />
+   <rect x="8" y="8" width="8" height="8" fill="#b0a486" />
+   <path d="M0 0H16V16" fill="none" stroke="#938364" stroke-width="1" />
+  </pattern>
+  <pattern id="tile" width="28" height="28" patternUnits="userSpaceOnUse">
+   <rect x="0" y="0" width="28" height="28" fill="#728883" />
+   <rect x="2" y="2" width="24" height="24" fill="#889c92" />
+   <rect x="5" y="5" width="18" height="18" fill="#91a298" />
+   <path d="M3 25H25V3" fill="none" stroke="#5f7771" stroke-width="2" />
+  </pattern>
+  <pattern id="slate" width="40" height="40" patternUnits="userSpaceOnUse">
+   <rect x="0" y="0" width="40" height="40" fill="#84816a" />
+   <rect x="2" y="2" width="20" height="16" fill="#9f997f" />
+   <rect x="24" y="2" width="14" height="22" fill="#95907a" />
+   <rect x="2" y="20" width="20" height="18" fill="#908c75" />
+   <rect x="24" y="26" width="14" height="12" fill="#a69e84" />
+   <path d="M5 5H16M5 23H16M27 5H34" fill="none" stroke="#b2a98e" stroke-width="2" />
+  </pattern>
+  <pattern id="master-mint" width="28" height="112" patternUnits="userSpaceOnUse">
+   <rect x="0" y="0" width="28" height="112" fill="#6d5342" />
+   <path d="M0 0V112M14 0V112M28 0V112" fill="none" stroke="#533f33" stroke-width="2" />
+   <path d="M0 56H14M14 0H28" fill="none" stroke="#533f33" stroke-width="2" />
+   <path d="M3 8V49M17 62V104" fill="none" stroke="#866c53" stroke-width="2" />
+  </pattern>
+  <pattern id="warm-brick" width="36" height="20" patternUnits="userSpaceOnUse" patternTransform="rotate(-90)">
+   <rect x="0" y="0" width="36" height="20" fill="#af9777" />
+   <rect x="1" y="1" width="16" height="8" fill="#7f5341" />
+   <rect x="19" y="1" width="16" height="8" fill="#8d624a" />
+   <rect x="-8" y="11" width="16" height="8" fill="#8a5d48" />
+   <rect x="10" y="11" width="16" height="8" fill="#7b4f3f" />
+   <rect x="28" y="11" width="16" height="8" fill="#976d50" />
+   <path d="M2 2H16M20 2H34M11 12H24" fill="none" stroke="#a47e5d" stroke-width="1" />
+  </pattern>
+  <pattern id="oak-cap" width="20" height="40" patternUnits="userSpaceOnUse">
+   <rect x="0" y="0" width="20" height="40" fill="#906d46" />
+   <rect x="1" y="0" width="3" height="40" fill="#ad8d62" />
+   <rect x="17" y="0" width="3" height="40" fill="#6a5138" />
+   <path d="M8 4V17M11 21V35" fill="none" stroke="#7c5b3d" stroke-width="2" />
+  </pattern>
+  <pattern id="kitchen-stone" width="32" height="32" patternUnits="userSpaceOnUse">
+   <rect x="0" y="0" width="32" height="32" fill="#a69a7f" />
+   <rect x="2" y="2" width="28" height="28" fill="#b5a991" />
+   <rect x="5" y="5" width="22" height="22" fill="#bdb19a" />
+   <path d="M2 29H29V2" fill="none" stroke="#94866c" stroke-width="2" />
+  </pattern>
+  <pattern id="quilt" width="16" height="16" patternUnits="userSpaceOnUse">
+   <rect x="0" y="0" width="16" height="16" fill="#697f5b" />
+   <rect x="1" y="1" width="6" height="6" fill="#94a077" />
+   <rect x="9" y="9" width="6" height="6" fill="#94a077" />
+   <rect x="9" y="1" width="6" height="6" fill="#abab88" />
+   <rect x="1" y="9" width="6" height="6" fill="#5d7455" />
+  </pattern>
+  <pattern id="rug-diamonds" width="24" height="24" patternUnits="userSpaceOnUse">
+   <rect x="0" y="0" width="24" height="24" fill="#a28761" />
+   <path d="M12 2L22 12L12 22L2 12Z" fill="#b3a07d" />
+   <path d="M12 8L16 12L12 16L8 12Z" fill="#80654a" />
+  </pattern>
+  <g id="pink-bloom">
+   <path d="M10 12H14V30H10ZM4 20H10V26H4ZM14 16H20V22H14Z" fill="#46683d" />
+   <path d="M6 2H18V6H22V16H16V20H8V16H2V6H6Z" fill="#564d3e" />
+   <path d="M6 4H16V8H20V14H14V18H8V14H4V8H6Z" fill="#a87488" />
+   <rect x="9" y="9" width="6" height="6" fill="#c0b58a" />
+  </g>
+  <g id="gold-bloom">
+   <path d="M10 12H14V30H10ZM4 20H10V26H4ZM14 16H20V22H14Z" fill="#50703c" />
+   <path d="M6 2H18V6H22V16H16V20H8V16H2V6H6Z" fill="#564d3e" />
+   <path d="M6 4H16V8H20V14H14V18H8V14H4V8H6Z" fill="#b49754" />
+   <rect x="9" y="9" width="6" height="6" fill="#c0b58a" />
+  </g>
+  <g id="violet-bloom">
+   <path d="M10 12H14V30H10ZM4 20H10V26H4ZM14 16H20V22H14Z" fill="#446643" />
+   <path d="M6 2H18V6H22V16H16V20H8V16H2V6H6Z" fill="#564d3e" />
+   <path d="M6 4H16V8H20V14H14V18H8V14H4V8H6Z" fill="#867ba6" />
+   <rect x="9" y="9" width="6" height="6" fill="#c0b58a" />
+  </g>
+  <g id="little-books">
+   <rect x="0" y="4" width="26" height="6" fill="#48382f" />
+   <rect x="2" y="0" width="7" height="24" fill="#8d5b4a" />
+   <rect x="11" y="2" width="6" height="22" fill="#547573" />
+   <rect x="19" y="0" width="7" height="24" fill="#a28661" />
+   <rect x="4" y="3" width="3" height="2" fill="#bbad92" />
+   <rect x="12" y="5" width="4" height="2" fill="#9aab9d" />
+   <rect x="21" y="4" width="3" height="2" fill="#c2b491" />
+  </g>
+ </defs>
+ <style>*{animation:none!important;transition:none!important}</style>
+ <g clip-path="url(#sceneClip)">
+  <g id="corner-unit-context">
+   <rect x="0" y="0" width="1400" height="700" fill="#5a6862" />
+   <rect x="0" y="0" width="82" height="700" fill="#45505c" />
+   <path d="M78 0H1302V28H956V46H376V72H78Z" fill="#424d58" />
+   <rect x="72" y="74" width="11" height="626" fill="#37454e" />
+   <rect x="75" y="76" width="8" height="624" fill="#7a7b7a" />
+   <rect x="83" y="76" width="13" height="624" fill="#858580" />
+   <path d="M86 72H376V44H956V26H1302" fill="none" stroke="#787976" stroke-width="5" stroke-linejoin="round" />
+   <path d="M28 88V306M28 356V610" fill="none" stroke="#535e66" stroke-width="2" opacity=".35" />
+   <path d="M96 74H376V46H956V28H1298V680H96L86 668V86Z" fill="#2d3d42" opacity=".24" transform="translate(5 8)" />
+   <path d="M96 74H376V46H956V28H1298V680H96L86 668V86Z" fill="#787a76" stroke="#53504d" stroke-width="2" />
+   <path d="M96 680H1298V690H100L86 676V668Z" fill="#5a5e5b" />
+   <path d="M86 86V668L96 680V92Z" fill="#656862" />
+   <path d="M98 86H178V350H100V668H98Z" fill="#6c7476" />
+   <path d="M103 340H168V350H103Z" fill="#81817c" />
+   <path d="M204 39H292L284 69H212Z" fill="#697074" stroke="#505c60" stroke-width="1.5" />
+   <path d="M214 66H282" fill="none" stroke="#7a7d7e" stroke-width="3" />
+   <path d="M218 58H278" fill="none" stroke="#5a6468" stroke-width="1" opacity=".6" />
+   <rect x="324" y="610" width="972" height="68" fill="#5c6c5f" />
+   <rect x="326" y="614" width="970" height="16" fill="#7d7d77" />
+   <rect x="326" y="630" width="970" height="4" fill="#6e756c" />
+   <rect x="320" y="680" width="980" height="20" fill="#526658" />
+   <g id="attached-neighbor-roof">
+    <rect x="1300" y="0" width="100" height="700" fill="#443431" />
+    <rect x="1307" y="0" width="93" height="700" fill="#60423b" />
+    <path d="M1306 0V700" fill="none" stroke="#3f3e3e" stroke-width="5" />
+    <path d="M1328 0V700M1360 0V700M1392 0V700" fill="none" stroke="#785c49" stroke-width="2" />
+    <path d="M1310 -16L1400 40" fill="none" stroke="#4b3732" stroke-width="3" />
+    <path d="M1310 32L1400 88" fill="none" stroke="#4b3732" stroke-width="3" />
+    <path d="M1310 80L1400 136" fill="none" stroke="#4b3732" stroke-width="3" />
+    <path d="M1310 128L1400 184" fill="none" stroke="#4b3732" stroke-width="3" />
+    <path d="M1310 176L1400 232" fill="none" stroke="#4b3732" stroke-width="3" />
+    <path d="M1310 224L1400 280" fill="none" stroke="#4b3732" stroke-width="3" />
+    <path d="M1310 272L1400 328" fill="none" stroke="#4b3732" stroke-width="3" />
+    <path d="M1310 320L1400 376" fill="none" stroke="#4b3732" stroke-width="3" />
+    <path d="M1310 368L1400 424" fill="none" stroke="#4b3732" stroke-width="3" />
+    <path d="M1310 416L1400 472" fill="none" stroke="#4b3732" stroke-width="3" />
+    <path d="M1310 464L1400 520" fill="none" stroke="#4b3732" stroke-width="3" />
+    <path d="M1310 512L1400 568" fill="none" stroke="#4b3732" stroke-width="3" />
+    <path d="M1310 560L1400 616" fill="none" stroke="#4b3732" stroke-width="3" />
+    <path d="M1310 608L1400 664" fill="none" stroke="#4b3732" stroke-width="3" />
+    <path d="M1310 656L1400 712" fill="none" stroke="#4b3732" stroke-width="3" />
+    <path d="M1310 704L1400 760" fill="none" stroke="#4b3732" stroke-width="3" />
+    <path d="M1310 0V700" fill="none" stroke="#7f6a55" stroke-width="2" opacity=".6" />
+   </g>
+   <g id="pixel-garden-border">
+    <rect x="328" y="638" width="964" height="39" fill="#3e5940" />
+    <path d="M328 675H1292" fill="none" stroke="#2c4636" stroke-width="4" />
+    <path d="M340 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="346" y="651" width="8" height="8" fill="#536846" />
+    <rect x="354" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#pink-bloom" transform="translate(346 640) scale(0.65)" />
+    <path d="M370 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="376" y="651" width="8" height="8" fill="#536846" />
+    <rect x="384" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#gold-bloom" transform="translate(376 640) scale(0.65)" />
+    <path d="M400 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="406" y="651" width="8" height="8" fill="#536846" />
+    <rect x="414" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#violet-bloom" transform="translate(406 640) scale(0.65)" />
+    <path d="M430 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="436" y="651" width="8" height="8" fill="#536846" />
+    <rect x="444" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#pink-bloom" transform="translate(436 640) scale(0.65)" />
+    <path d="M460 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="466" y="651" width="8" height="8" fill="#536846" />
+    <rect x="474" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#gold-bloom" transform="translate(466 640) scale(0.65)" />
+    <path d="M490 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="496" y="651" width="8" height="8" fill="#536846" />
+    <rect x="504" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#violet-bloom" transform="translate(496 640) scale(0.65)" />
+    <path d="M520 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="526" y="651" width="8" height="8" fill="#536846" />
+    <rect x="534" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#pink-bloom" transform="translate(526 640) scale(0.65)" />
+    <path d="M550 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="556" y="651" width="8" height="8" fill="#536846" />
+    <rect x="564" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#gold-bloom" transform="translate(556 640) scale(0.65)" />
+    <path d="M580 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="586" y="651" width="8" height="8" fill="#536846" />
+    <rect x="594" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#violet-bloom" transform="translate(586 640) scale(0.65)" />
+    <path d="M610 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="616" y="651" width="8" height="8" fill="#536846" />
+    <rect x="624" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#pink-bloom" transform="translate(616 640) scale(0.65)" />
+    <path d="M640 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="646" y="651" width="8" height="8" fill="#536846" />
+    <rect x="654" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#gold-bloom" transform="translate(646 640) scale(0.65)" />
+    <path d="M670 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="676" y="651" width="8" height="8" fill="#536846" />
+    <rect x="684" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#violet-bloom" transform="translate(676 640) scale(0.65)" />
+    <path d="M700 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="706" y="651" width="8" height="8" fill="#536846" />
+    <rect x="714" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#pink-bloom" transform="translate(706 640) scale(0.65)" />
+    <path d="M730 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="736" y="651" width="8" height="8" fill="#536846" />
+    <rect x="744" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#gold-bloom" transform="translate(736 640) scale(0.65)" />
+    <path d="M760 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="766" y="651" width="8" height="8" fill="#536846" />
+    <rect x="774" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#violet-bloom" transform="translate(766 640) scale(0.65)" />
+    <path d="M790 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="796" y="651" width="8" height="8" fill="#536846" />
+    <rect x="804" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#pink-bloom" transform="translate(796 640) scale(0.65)" />
+    <path d="M820 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="826" y="651" width="8" height="8" fill="#536846" />
+    <rect x="834" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#gold-bloom" transform="translate(826 640) scale(0.65)" />
+    <path d="M850 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="856" y="651" width="8" height="8" fill="#536846" />
+    <rect x="864" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#violet-bloom" transform="translate(856 640) scale(0.65)" />
+    <path d="M880 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="886" y="651" width="8" height="8" fill="#536846" />
+    <rect x="894" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#pink-bloom" transform="translate(886 640) scale(0.65)" />
+    <path d="M910 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="916" y="651" width="8" height="8" fill="#536846" />
+    <rect x="924" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#gold-bloom" transform="translate(916 640) scale(0.65)" />
+    <path d="M940 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="946" y="651" width="8" height="8" fill="#536846" />
+    <rect x="954" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#violet-bloom" transform="translate(946 640) scale(0.65)" />
+    <path d="M970 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="976" y="651" width="8" height="8" fill="#536846" />
+    <rect x="984" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#pink-bloom" transform="translate(976 640) scale(0.65)" />
+    <path d="M1000 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="1006" y="651" width="8" height="8" fill="#536846" />
+    <rect x="1014" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#gold-bloom" transform="translate(1006 640) scale(0.65)" />
+    <path d="M1030 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="1036" y="651" width="8" height="8" fill="#536846" />
+    <rect x="1044" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#violet-bloom" transform="translate(1036 640) scale(0.65)" />
+    <path d="M1060 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="1066" y="651" width="8" height="8" fill="#536846" />
+    <rect x="1074" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#pink-bloom" transform="translate(1066 640) scale(0.65)" />
+    <path d="M1090 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="1096" y="651" width="8" height="8" fill="#536846" />
+    <rect x="1104" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#gold-bloom" transform="translate(1096 640) scale(0.65)" />
+    <path d="M1120 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="1126" y="651" width="8" height="8" fill="#536846" />
+    <rect x="1134" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#violet-bloom" transform="translate(1126 640) scale(0.65)" />
+    <path d="M1150 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="1156" y="651" width="8" height="8" fill="#536846" />
+    <rect x="1164" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#pink-bloom" transform="translate(1156 640) scale(0.65)" />
+    <path d="M1180 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="1186" y="651" width="8" height="8" fill="#536846" />
+    <rect x="1194" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#gold-bloom" transform="translate(1186 640) scale(0.65)" />
+    <path d="M1210 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="1216" y="651" width="8" height="8" fill="#536846" />
+    <rect x="1224" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#violet-bloom" transform="translate(1216 640) scale(0.65)" />
+    <path d="M1240 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="1246" y="651" width="8" height="8" fill="#536846" />
+    <rect x="1254" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#pink-bloom" transform="translate(1246 640) scale(0.65)" />
+    <path d="M1270 651h8v-5h12v5h7v14h-7v7h-16v-7h-6z" fill="#2b4b37" />
+    <rect x="1276" y="651" width="8" height="8" fill="#536846" />
+    <rect x="1284" y="658" width="8" height="7" fill="#3d583b" />
+    <use href="#gold-bloom" transform="translate(1276 640) scale(0.65)" />
+   </g>
+   <g transform="translate(1310 111)">
+    <path d="M2 0V66" fill="none" stroke="#2f4336" stroke-width="3" />
+    <rect x="-2" y="5" width="10" height="8" fill="#41573b" />
+    <rect x="4" y="20" width="11" height="8" fill="#465b3e" />
+    <rect x="-3" y="34" width="10" height="8" fill="#314936" />
+    <rect x="5" y="49" width="10" height="8" fill="#516444" />
+   </g>
+   <g transform="translate(1310 254)">
+    <path d="M2 0V66" fill="none" stroke="#2f4336" stroke-width="3" />
+    <rect x="-2" y="5" width="10" height="8" fill="#41573b" />
+    <rect x="4" y="20" width="11" height="8" fill="#465b3e" />
+    <rect x="-3" y="34" width="10" height="8" fill="#314936" />
+    <rect x="5" y="49" width="10" height="8" fill="#516444" />
+   </g>
+   <g transform="translate(1310 397)">
+    <path d="M2 0V66" fill="none" stroke="#2f4336" stroke-width="3" />
+    <rect x="-2" y="5" width="10" height="8" fill="#41573b" />
+    <rect x="4" y="20" width="11" height="8" fill="#465b3e" />
+    <rect x="-3" y="34" width="10" height="8" fill="#314936" />
+    <rect x="5" y="49" width="10" height="8" fill="#516444" />
+   </g>
+   <g transform="translate(1310 540)">
+    <path d="M2 0V66" fill="none" stroke="#2f4336" stroke-width="3" />
+    <rect x="-2" y="5" width="10" height="8" fill="#41573b" />
+    <rect x="4" y="20" width="11" height="8" fill="#465b3e" />
+    <rect x="-3" y="34" width="10" height="8" fill="#314936" />
+    <rect x="5" y="49" width="10" height="8" fill="#516444" />
+   </g>
+  </g>
+  <g transform="translate(1367.44 -557.8) rotate(90) scale(1.08)" opacity=".2">
+   <path d="M560 64H1080V968H1144V1168H848V1096H600V904H576V368H560Z" fill="#162b34" />
+  </g>
+  <g id="floorplan" transform="translate(1361.44 -564.8) rotate(90) scale(1.08)" data-floor-transform="unchanged-v6" data-style="shallow-extrusion">
+   <path d="M560 64H1080V968H1144V1168H848V1096H600V904H576V368H560Z" fill="#3f322d" />
+   <path d="M580 80H1064V984H1124V1148H868V1080H620V888H596V352H580Z" fill="url(#planks)" />
+   <rect x="580" y="80" width="288" height="228" fill="url(#master-mint)" />
+   <ellipse cx="720" cy="248" rx="110" ry="56" fill="#465c47" stroke="#384a3c" stroke-width="3" />
+   <ellipse cx="720" cy="248" rx="99" ry="45" fill="#748562" stroke="#ada883" stroke-width="3" />
+   <ellipse cx="720" cy="248" rx="78" ry="31" fill="#959a70" opacity=".7" />
+   <path d="M650 84H776L822 226H696Z" fill="#cdc6a8" opacity=".16" />
+   <rect x="888" y="80" width="176" height="268" fill="url(#tile)" />
+   <rect x="884" y="240" width="64" height="144" fill="url(#tile)" />
+   <rect x="960" y="360" width="104" height="112" fill="url(#tile)" />
+   <rect x="596" y="372" width="196" height="208" fill="url(#carpet)" />
+   <rect x="684" y="324" width="108" height="40" fill="url(#tile)" />
+   <path d="M620 908h112l60 48v124H620z" fill="url(#slate)" />
+   <path d="M928 984h196v164H868v-56l28-32-20-28z" fill="url(#slate)" />
+   <rect x="888" y="488" width="176" height="240" fill="url(#kitchen-stone)" />
+   <rect x="650.0" y="84.0" width="147.0" height="148.0" fill="#253836" opacity=".15" />
+   <rect x="787.0" y="88.0" width="11" height="144.0" fill="#644533" stroke="#574f44" stroke-width="2" />
+   <rect x="644" y="88" width="144" height="144" fill="#8d6646" stroke="#473b32" stroke-width="3" />
+   <rect x="644" y="88" width="144" height="48" fill="#c2b49a" stroke="#473b32" stroke-width="3" />
+   <rect x="652" y="96" width="56" height="24" fill="#c6bca8" stroke="#a29b84" stroke-width="2" />
+   <rect x="724" y="96" width="56" height="24" fill="#c6bca8" stroke="#a29b84" stroke-width="2" />
+   <rect x="644" y="136" width="144" height="84" fill="#697f5b" stroke="#473b32" stroke-width="3" />
+   <rect x="652" y="144" width="128" height="60" fill="url(#quilt)" />
+   <rect x="644" y="208" width="144" height="20" fill="#b2a577" stroke="#473b32" stroke-width="3" />
+   <rect x="594.0" y="80.0" width="55.0" height="40.0" fill="#253836" opacity=".15" />
+   <rect x="639.0" y="84.0" width="8" height="36.0" fill="#644533" stroke="#574f44" stroke-width="2" />
+   <rect x="588" y="84" width="52" height="36" fill="#8b6242" stroke="#473b32" stroke-width="3" />
+   <rect x="592" y="88" width="44" height="8" fill="#af9066" />
+   <rect x="608" y="104" width="12" height="4" fill="#5c463a" />
+   <rect x="806.0" y="80.0" width="55.0" height="40.0" fill="#253836" opacity=".15" />
+   <rect x="851.0" y="84.0" width="8" height="36.0" fill="#644533" stroke="#574f44" stroke-width="2" />
+   <rect x="800" y="84" width="52" height="36" fill="#8b6242" stroke="#473b32" stroke-width="3" />
+   <rect x="804" y="88" width="44" height="8" fill="#af9066" />
+   <rect x="820" y="104" width="12" height="4" fill="#5c463a" />
+   <rect x="968" y="84" width="92" height="44" fill="#cbc2af" stroke="#473b32" stroke-width="3" />
+   <rect x="976" y="92" width="76" height="24" fill="#7a9799" stroke="#5b7981" stroke-width="2" />
+   <rect x="976" y="92" width="68" height="12" fill="#9fb0ac" />
+   <path d="M1044 84v12h-8" fill="none" stroke="#5b7174" stroke-width="4" stroke-linejoin="miter" />
+   <use href="#sink" transform="translate(1012 156) scale(1)" />
+   <use href="#toilet" transform="translate(1024 224) scale(1)" />
+   <rect x="888" y="244" width="56" height="48" fill="#99b3b7" stroke="#473b32" stroke-width="3" />
+   <path d="M892 280h44M904 248v12h12" fill="none" stroke="#5e767d" stroke-width="4" stroke-linejoin="miter" />
+   <use href="#toilet" transform="translate(900 308) scale(1)" />
+   <rect x="968" y="300" width="92" height="40" fill="#bbb49d" />
+   <use href="#sink" transform="translate(968 360) scale(0.75)" />
+   <use href="#toilet" transform="translate(1024 364) scale(1)" />
+   <rect x="610.0" y="376.0" width="115.0" height="44.0" fill="#253836" opacity=".15" />
+   <rect x="715.0" y="380.0" width="11" height="40.0" fill="#6b4a36" stroke="#574f44" stroke-width="2" />
+   <rect x="604" y="380" width="112" height="40" fill="#8b6242" stroke="#473b32" stroke-width="3" />
+   <rect x="608" y="384" width="104" height="8" fill="#a88b62" />
+   <rect x="624" y="384" width="44" height="24" fill="#3f322d" />
+   <rect x="628" y="388" width="36" height="16" fill="#649094" />
+   <rect x="632" y="412" width="36" height="4" fill="#bfa880" />
+   <rect x="628" y="436" width="36" height="32" fill="#936646" stroke="#473b32" stroke-width="3" />
+   <rect x="632" y="440" width="28" height="20" fill="#a88056" />
+   <path d="M644 468v8m-12 0h24" fill="none" stroke="#473b32" stroke-width="3" stroke-linejoin="miter" />
+   <rect x="766.0" y="476.0" width="31.0" height="100.0" fill="#253836" opacity=".15" />
+   <rect x="787.0" y="480.0" width="10" height="96.0" fill="#6b4a36" stroke="#574f44" stroke-width="2" />
+   <rect x="760" y="480" width="28" height="96" fill="#8b6242" stroke="#473b32" stroke-width="3" />
+   <rect x="764" y="488" width="20" height="8" fill="#ae916b" />
+   <rect x="764" y="512" width="20" height="8" fill="#ae916b" />
+   <rect x="764" y="536" width="20" height="8" fill="#ae916b" />
+   <rect x="764" y="560" width="20" height="8" fill="#ae916b" />
+   <rect x="696" y="332" width="84" height="24" fill="#94a6a9" stroke="#473b32" stroke-width="3" />
+   <path d="M708 344h60" fill="none" stroke="#b9c1ba" stroke-width="4" stroke-linejoin="miter" />
+   <rect x="630.0" y="596.0" width="151.0" height="44.0" fill="#253836" opacity=".15" />
+   <rect x="771.0" y="600.0" width="12" height="40.0" fill="#644533" stroke="#574f44" stroke-width="2" />
+   <rect x="624" y="600" width="148" height="40" fill="#8b6242" stroke="#473b32" stroke-width="3" />
+   <rect x="640" y="600" width="116" height="16" fill="#3f322d" />
+   <rect x="648" y="600" width="100" height="8" fill="#527476" />
+   <rect x="636" y="624" width="124" height="4" fill="#ac8d68" />
+   <rect x="620" y="668" width="208" height="148" fill="#7c5b3f" stroke="#473b32" stroke-width="3" />
+   <rect x="628" y="676" width="192" height="132" fill="#ab906b" />
+   <rect x="640" y="688" width="168" height="108" fill="url(#rug-diamonds)" />
+   <path d="M644 700h160M644 780h160" fill="none" stroke="#6e5741" stroke-width="4" stroke-linejoin="miter" />
+   <path d="M676 724h20v-12h64v12h20v40h-20v12h-64v-12h-20z" fill="#b9a88a" />
+   <rect x="600" y="860" width="108" height="28" fill="#c2b49a" stroke="#473b32" stroke-width="3" />
+   <rect x="706.0" y="816.0" width="55.0" height="72.0" fill="#253836" opacity=".15" />
+   <rect x="751.0" y="820.0" width="9" height="68.0" fill="#7b6048" stroke="#574f44" stroke-width="2" />
+   <rect x="700" y="820" width="52" height="68" fill="#9e8363" stroke="#473b32" stroke-width="3" />
+   <rect x="708" y="828" width="36" height="52" fill="#b79e7d" />
+   <rect x="708" y="828" width="8" height="52" fill="#c1ab8a" />
+   <path d="M888 520H1060V732H888V680H1016V576H888z" fill="#253836" stroke="#253836" stroke-width="4" stroke-linejoin="miter" transform="translate(8 -4)" opacity=".14" />
+   <path d="M888 520H1060V732H888V680H1016V576H888z" fill="#806444" stroke="#806444" stroke-width="4" stroke-linejoin="miter" transform="translate(9 0)" />
+   <path d="M888 520H1060V732H888V680H1016V576H888z" fill="#8c785e" stroke="#473b32" stroke-width="3" stroke-linejoin="miter" />
+   <path d="M892 524H1056V728H892V684H1020V572H892z" fill="#bab096" />
+   <path d="M932 524v48m44-48v48m-84 112v44m52-44v44m36-44v44m40-120h36m-36 56h36" fill="none" stroke="#94846c" stroke-width="4" stroke-linejoin="miter" />
+   <use href="#sink" transform="translate(948 528) scale(1)" />
+   <rect x="1024" y="620" width="36" height="52" fill="#3f322d" />
+   <rect x="1028" y="624" width="12" height="16" fill="#435356" />
+   <rect x="1032" y="628" width="4" height="8" fill="#677468" />
+   <rect x="1044" y="624" width="12" height="16" fill="#435356" />
+   <rect x="1048" y="628" width="4" height="8" fill="#677468" />
+   <rect x="1028" y="648" width="12" height="16" fill="#435356" />
+   <rect x="1032" y="652" width="4" height="8" fill="#677468" />
+   <rect x="1044" y="648" width="12" height="16" fill="#435356" />
+   <rect x="1048" y="652" width="4" height="8" fill="#677468" />
+   <rect x="1024" y="588" width="28" height="20" fill="#90a496" stroke="#473b32" stroke-width="3" />
+   <rect x="1028" y="592" width="20" height="12" fill="#b6bba6" />
+   <rect x="932" y="760" width="24" height="28" fill="#c1b79a" stroke="#473b32" stroke-width="3" />
+   <rect x="976" y="760" width="24" height="28" fill="#c1b79a" stroke="#473b32" stroke-width="3" />
+   <rect x="932" y="848" width="24" height="28" fill="#c1b79a" stroke="#473b32" stroke-width="3" />
+   <rect x="976" y="848" width="24" height="28" fill="#c1b79a" stroke="#473b32" stroke-width="3" />
+   <rect x="904" y="800" width="28" height="32" fill="#c1b79a" stroke="#473b32" stroke-width="3" />
+   <rect x="1004" y="800" width="28" height="32" fill="#c1b79a" stroke="#473b32" stroke-width="3" />
+   <path d="M936 780h64v8h16v48h-16v12h-64v-12h-20v-48h20z" fill="#253836" stroke="#253836" stroke-width="4" stroke-linejoin="miter" transform="translate(8 -4)" opacity=".14" />
+   <path d="M936 780h64v8h16v48h-16v12h-64v-12h-20v-48h20z" fill="#806444" stroke="#806444" stroke-width="4" stroke-linejoin="miter" transform="translate(9 0)" />
+   <path d="M936 780h64v8h16v48h-16v12h-64v-12h-20v-48h20z" fill="#8b6242" stroke="#473b32" stroke-width="3" stroke-linejoin="miter" />
+   <path d="M944 788h48v8h16v32h-16v12h-48v-12h-20v-32h20z" fill="#a5805a" />
+   <path d="M940 804h52m-60 16h64" fill="none" stroke="#97734f" stroke-width="4" stroke-linejoin="miter" />
+   <use href="#pot" transform="translate(948 796) scale(0.55)" />
+   <rect x="630.0" y="944.0" width="27.0" height="68.0" fill="#253836" opacity=".15" />
+   <rect x="647.0" y="948.0" width="8" height="64.0" fill="#6b4a36" stroke="#574f44" stroke-width="2" />
+   <rect x="624" y="948" width="24" height="64" fill="#8b6242" stroke="#473b32" stroke-width="3" />
+   <rect x="628" y="952" width="16" height="56" fill="#a07f5b" />
+   <use href="#pot" transform="translate(628 1020) scale(1)" />
+   <rect x="958.0" y="924.0" width="91.0" height="44.0" fill="#253836" opacity=".15" />
+   <rect x="1039.0" y="928.0" width="9" height="40.0" fill="#3f4f50" stroke="#574f44" stroke-width="2" />
+   <rect x="952" y="928" width="88" height="40" fill="#3f322d" />
+   <rect x="960" y="936" width="20" height="20" fill="#738583" />
+   <rect x="992" y="944" width="20" height="8" fill="#9ca596" />
+   <rect x="560" y="64" width="80" height="16" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="564" y="68" width="72" height="4" fill="#7d5f45" />
+   <rect x="780" y="64" width="104" height="16" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="784" y="68" width="96" height="4" fill="#7d5f45" />
+   <rect x="960" y="64" width="120" height="16" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="964" y="68" width="112" height="4" fill="#7d5f45" />
+   <rect x="560" y="80" width="16" height="48" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="564" y="84" width="8" height="4" fill="#7d5f45" />
+   <rect x="560" y="208" width="16" height="160" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="564" y="212" width="8" height="4" fill="#7d5f45" />
+   <rect x="868" y="80" width="16" height="64" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="872" y="84" width="8" height="4" fill="#7d5f45" />
+   <rect x="868" y="200" width="16" height="184" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="872" y="204" width="8" height="4" fill="#7d5f45" />
+   <rect x="560" y="308" width="48" height="16" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="564" y="312" width="40" height="4" fill="#7d5f45" />
+   <rect x="664" y="308" width="140" height="16" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="668" y="312" width="132" height="4" fill="#7d5f45" />
+   <rect x="860" y="308" width="24" height="16" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="864" y="312" width="16" height="4" fill="#7d5f45" />
+   <rect x="576" y="352" width="104" height="16" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="580" y="356" width="96" height="4" fill="#7d5f45" />
+   <rect x="664" y="324" width="16" height="44" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="668" y="328" width="8" height="4" fill="#7d5f45" />
+   <rect x="792" y="324" width="16" height="64" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="796" y="328" width="8" height="4" fill="#7d5f45" />
+   <rect x="792" y="448" width="16" height="144" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="796" y="452" width="8" height="4" fill="#7d5f45" />
+   <rect x="576" y="368" width="16" height="84" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="580" y="372" width="8" height="4" fill="#7d5f45" />
+   <rect x="576" y="560" width="16" height="112" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="580" y="564" width="8" height="4" fill="#7d5f45" />
+   <rect x="576" y="788" width="16" height="116" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="580" y="792" width="8" height="4" fill="#7d5f45" />
+   <rect x="592" y="580" width="216" height="16" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="596" y="584" width="208" height="4" fill="#7d5f45" />
+   <rect x="948" y="224" width="16" height="176" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="952" y="228" width="8" height="4" fill="#7d5f45" />
+   <rect x="964" y="348" width="116" height="12" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="968" y="352" width="108" height="4" fill="#7d5f45" />
+   <rect x="948" y="464" width="132" height="16" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="952" y="468" width="124" height="4" fill="#7d5f45" />
+   <rect x="868" y="448" width="16" height="148" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="872" y="452" width="8" height="4" fill="#7d5f45" />
+   <rect x="868" y="680" width="16" height="64" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="872" y="684" width="8" height="4" fill="#7d5f45" />
+   <rect x="884" y="728" width="196" height="16" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="888" y="732" width="188" height="4" fill="#7d5f45" />
+   <rect x="1064" y="80" width="16" height="464" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="1068" y="84" width="8" height="4" fill="#7d5f45" />
+   <rect x="1064" y="648" width="16" height="144" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="1068" y="652" width="8" height="4" fill="#7d5f45" />
+   <rect x="1064" y="888" width="16" height="96" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="1068" y="892" width="8" height="4" fill="#7d5f45" />
+   <rect x="600" y="888" width="36" height="16" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="604" y="892" width="28" height="4" fill="#7d5f45" />
+   <rect x="752" y="888" width="56" height="16" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="756" y="892" width="48" height="4" fill="#7d5f45" />
+   <rect x="600" y="904" width="16" height="40" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="604" y="908" width="8" height="4" fill="#7d5f45" />
+   <rect x="600" y="1040" width="16" height="56" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="604" y="1044" width="8" height="4" fill="#7d5f45" />
+   <rect x="616" y="1080" width="232" height="16" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="620" y="1084" width="224" height="4" fill="#7d5f45" />
+   <rect x="796" y="952" width="16" height="128" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="800" y="956" width="8" height="4" fill="#7d5f45" />
+   <rect x="928" y="968" width="216" height="16" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="932" y="972" width="208" height="4" fill="#7d5f45" />
+   <rect x="1128" y="984" width="16" height="184" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="1132" y="988" width="8" height="4" fill="#7d5f45" />
+   <rect x="848" y="1152" width="80" height="16" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="852" y="1156" width="72" height="4" fill="#7d5f45" />
+   <rect x="1064" y="1152" width="80" height="16" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="1068" y="1156" width="72" height="4" fill="#7d5f45" />
+   <rect x="848" y="1096" width="16" height="72" fill="#624839" stroke="#41332f" stroke-width="3" />
+   <rect x="852" y="1100" width="8" height="4" fill="#7d5f45" />
+   <path d="M748 888h16l48 56v20h-16l-48-56z" fill="#624839" stroke="#41332f" stroke-width="3" stroke-linejoin="miter" />
+   <path d="M872 1080h16v-16l44-48-12-12-48 52z" fill="#624839" stroke="#41332f" stroke-width="3" stroke-linejoin="miter" />
+   <rect x="644" y="64" width="132" height="12" fill="#6c8d98" stroke="#473b32" stroke-width="3" />
+   <rect x="648" y="68" width="124" height="4" fill="#a9b8b0" />
+   <rect x="888" y="64" width="68" height="12" fill="#6c8d98" stroke="#473b32" stroke-width="3" />
+   <rect x="892" y="68" width="60" height="4" fill="#a9b8b0" />
+   <rect x="560" y="132" width="12" height="72" fill="#6c8d98" stroke="#473b32" stroke-width="3" />
+   <rect x="564" y="136" width="4" height="64" fill="#a9b8b0" />
+   <rect x="612" y="308" width="48" height="12" fill="#6c8d98" stroke="#473b32" stroke-width="3" />
+   <rect x="616" y="312" width="40" height="4" fill="#a9b8b0" />
+   <rect x="808" y="308" width="48" height="12" fill="#6c8d98" stroke="#473b32" stroke-width="3" />
+   <rect x="812" y="312" width="40" height="4" fill="#a9b8b0" />
+   <rect x="576" y="456" width="12" height="100" fill="#6c8d98" stroke="#473b32" stroke-width="3" />
+   <rect x="580" y="460" width="4" height="92" fill="#a9b8b0" />
+   <rect x="576" y="676" width="12" height="108" fill="#6c8d98" stroke="#473b32" stroke-width="3" />
+   <rect x="580" y="680" width="4" height="100" fill="#a9b8b0" />
+   <rect x="1068" y="548" width="12" height="96" fill="#6c8d98" stroke="#473b32" stroke-width="3" />
+   <rect x="1072" y="552" width="4" height="88" fill="#a9b8b0" />
+   <rect x="1068" y="800" width="12" height="80" fill="#6c8d98" stroke="#473b32" stroke-width="3" />
+   <rect x="1072" y="804" width="4" height="72" fill="#a9b8b0" />
+   <rect x="636" y="892" width="104" height="12" fill="#6c8d98" stroke="#473b32" stroke-width="3" />
+   <rect x="640" y="896" width="96" height="4" fill="#a9b8b0" />
+   <rect x="600" y="952" width="12" height="80" fill="#6c8d98" stroke="#473b32" stroke-width="3" />
+   <rect x="604" y="956" width="4" height="72" fill="#a9b8b0" />
+   <rect x="932" y="1156" width="128" height="12" fill="#6c8d98" stroke="#473b32" stroke-width="3" />
+   <rect x="936" y="1160" width="120" height="4" fill="#a9b8b0" />
+   <path d="M868 144h-48v8h-8v40h56" fill="none" stroke="#6b7d77" stroke-width="4" stroke-linejoin="miter" />
+   <path d="M792 388h-44v8h-8v44h52" fill="none" stroke="#6b7d77" stroke-width="4" stroke-linejoin="miter" />
+   <path d="M952 400h44v8h12v44h-56" fill="none" stroke="#6b7d77" stroke-width="4" stroke-linejoin="miter" />
+   <path d="M748 904h-4v40h8v8h40" fill="none" stroke="#5f7475" stroke-width="4" stroke-linejoin="miter" />
+   <use href="#pot" transform="translate(736 1008) scale(0.72)" />
+   <use href="#pot" transform="translate(674 1032) scale(0.7)" />
+   <rect x="664" y="920" width="48" height="18" fill="#8b6242" stroke="#473b32" stroke-width="3" />
+   <use href="#pot" transform="translate(664 904) scale(0.55)" />
+   <use href="#pot" transform="translate(687 903) scale(0.55)" />
+   <path d="M812 1012H860V1040H884V1080H812Z" fill="url(#stair-depth)" stroke="#64634a" stroke-width="3" stroke-linejoin="round" />
+   <path d="M816 1020H856" fill="none" stroke="#b5a88f" stroke-width="4" stroke-linejoin="round" />
+   <path d="M816 1023H856" fill="none" stroke="#7f755f" stroke-width="2" stroke-linejoin="round" />
+   <path d="M816 1032H856" fill="none" stroke="#b5a88f" stroke-width="4" stroke-linejoin="round" />
+   <path d="M816 1035H856" fill="none" stroke="#7f755f" stroke-width="2" stroke-linejoin="round" />
+   <path d="M816 1044H880" fill="none" stroke="#b5a88f" stroke-width="4" stroke-linejoin="round" />
+   <path d="M816 1047H880" fill="none" stroke="#7f755f" stroke-width="2" stroke-linejoin="round" />
+   <path d="M816 1056H880" fill="none" stroke="#b5a88f" stroke-width="4" stroke-linejoin="round" />
+   <path d="M816 1059H880" fill="none" stroke="#7f755f" stroke-width="2" stroke-linejoin="round" />
+   <path d="M816 1068H880" fill="none" stroke="#b5a88f" stroke-width="4" stroke-linejoin="round" />
+   <path d="M816 1071H880" fill="none" stroke="#7f755f" stroke-width="2" stroke-linejoin="round" />
+   <path d="M812 1012V1080H884" fill="none" stroke="#615341" stroke-width="4" stroke-linejoin="round" />
+   <g id="wall-depth">
+    <rect x="560" y="64" width="80" height="16" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="780" y="64" width="104" height="16" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="960" y="64" width="120" height="16" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="560" y="80" width="16" height="48" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="560" y="208" width="16" height="160" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="868" y="80" width="16" height="64" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="868" y="200" width="16" height="184" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="560" y="308" width="48" height="16" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="664" y="308" width="140" height="16" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="860" y="308" width="24" height="16" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="576" y="352" width="104" height="16" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="664" y="324" width="16" height="44" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="792" y="324" width="16" height="64" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="792" y="448" width="16" height="144" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="576" y="368" width="16" height="84" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="576" y="560" width="16" height="112" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="576" y="788" width="16" height="116" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="592" y="580" width="216" height="16" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="948" y="224" width="16" height="176" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="964" y="348" width="116" height="12" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="948" y="464" width="132" height="16" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="868" y="448" width="16" height="148" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="868" y="680" width="16" height="64" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="884" y="728" width="196" height="16" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="1064" y="80" width="16" height="464" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="1064" y="648" width="16" height="144" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="1064" y="888" width="16" height="96" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="600" y="888" width="36" height="16" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="752" y="888" width="56" height="16" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="600" y="904" width="16" height="40" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="600" y="1040" width="16" height="56" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="616" y="1080" width="232" height="16" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="796" y="952" width="16" height="128" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="928" y="968" width="216" height="16" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="1128" y="984" width="16" height="184" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="848" y="1152" width="80" height="16" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="1064" y="1152" width="80" height="16" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <rect x="848" y="1096" width="16" height="72" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" transform="translate(-5 0)" />
+    <path d="M748 888h16l48 56v20h-16l-48-56z" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" stroke-linejoin="miter" transform="translate(-5 0)" />
+    <path d="M872 1080h16v-16l44-48-12-12-48 52z" fill="url(#warm-brick)" stroke="#5a4133" stroke-width="2" stroke-linejoin="miter" transform="translate(-5 0)" />
+    <rect x="560" y="64" width="80" height="16" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="780" y="64" width="104" height="16" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="960" y="64" width="120" height="16" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="560" y="80" width="16" height="48" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="560" y="208" width="16" height="160" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="868" y="80" width="16" height="64" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="868" y="200" width="16" height="184" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="560" y="308" width="48" height="16" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="664" y="308" width="140" height="16" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="860" y="308" width="24" height="16" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="576" y="352" width="104" height="16" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="664" y="324" width="16" height="44" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="792" y="324" width="16" height="64" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="792" y="448" width="16" height="144" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="576" y="368" width="16" height="84" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="576" y="560" width="16" height="112" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="576" y="788" width="16" height="116" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="592" y="580" width="216" height="16" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="948" y="224" width="16" height="176" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="964" y="348" width="116" height="12" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="948" y="464" width="132" height="16" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="868" y="448" width="16" height="148" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="868" y="680" width="16" height="64" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="884" y="728" width="196" height="16" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="1064" y="80" width="16" height="464" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="1064" y="648" width="16" height="144" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="1064" y="888" width="16" height="96" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="600" y="888" width="36" height="16" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="752" y="888" width="56" height="16" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="600" y="904" width="16" height="40" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="600" y="1040" width="16" height="56" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="616" y="1080" width="232" height="16" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="796" y="952" width="16" height="128" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="928" y="968" width="216" height="16" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="1128" y="984" width="16" height="184" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="848" y="1152" width="80" height="16" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="1064" y="1152" width="80" height="16" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <rect x="848" y="1096" width="16" height="72" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" transform="translate(-11 0)" stroke-linejoin="round" />
+    <path d="M748 888h16l48 56v20h-16l-48-56z" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" stroke-linejoin="round" transform="translate(-11 0)" />
+    <path d="M872 1080h16v-16l44-48-12-12-48 52z" fill="url(#oak-cap)" stroke="#5a4133" stroke-width="2" stroke-linejoin="round" transform="translate(-11 0)" />
+    <rect x="644" y="64" width="132" height="12" fill="#7a9aa4" stroke="#4b5d56" stroke-width="2" transform="translate(-11 0)" />
+    <rect x="648" y="68" width="124" height="4" fill="#b5bdb2" transform="translate(-11 0)" />
+    <rect x="888" y="64" width="68" height="12" fill="#7a9aa4" stroke="#4b5d56" stroke-width="2" transform="translate(-11 0)" />
+    <rect x="892" y="68" width="60" height="4" fill="#b5bdb2" transform="translate(-11 0)" />
+    <rect x="560" y="132" width="12" height="72" fill="#7a9aa4" stroke="#4b5d56" stroke-width="2" transform="translate(-11 0)" />
+    <rect x="564" y="136" width="4" height="64" fill="#b5bdb2" transform="translate(-11 0)" />
+    <rect x="612" y="308" width="48" height="12" fill="#7a9aa4" stroke="#4b5d56" stroke-width="2" transform="translate(-11 0)" />
+    <rect x="616" y="312" width="40" height="4" fill="#b5bdb2" transform="translate(-11 0)" />
+    <rect x="808" y="308" width="48" height="12" fill="#7a9aa4" stroke="#4b5d56" stroke-width="2" transform="translate(-11 0)" />
+    <rect x="812" y="312" width="40" height="4" fill="#b5bdb2" transform="translate(-11 0)" />
+    <rect x="576" y="456" width="12" height="100" fill="#7a9aa4" stroke="#4b5d56" stroke-width="2" transform="translate(-11 0)" />
+    <rect x="580" y="460" width="4" height="92" fill="#b5bdb2" transform="translate(-11 0)" />
+    <rect x="576" y="676" width="12" height="108" fill="#7a9aa4" stroke="#4b5d56" stroke-width="2" transform="translate(-11 0)" />
+    <rect x="580" y="680" width="4" height="100" fill="#b5bdb2" transform="translate(-11 0)" />
+    <rect x="1068" y="548" width="12" height="96" fill="#7a9aa4" stroke="#4b5d56" stroke-width="2" transform="translate(-11 0)" />
+    <rect x="1072" y="552" width="4" height="88" fill="#b5bdb2" transform="translate(-11 0)" />
+    <rect x="1068" y="800" width="12" height="80" fill="#7a9aa4" stroke="#4b5d56" stroke-width="2" transform="translate(-11 0)" />
+    <rect x="1072" y="804" width="4" height="72" fill="#b5bdb2" transform="translate(-11 0)" />
+    <rect x="636" y="892" width="104" height="12" fill="#7a9aa4" stroke="#4b5d56" stroke-width="2" transform="translate(-11 0)" />
+    <rect x="640" y="896" width="96" height="4" fill="#b5bdb2" transform="translate(-11 0)" />
+    <rect x="600" y="952" width="12" height="80" fill="#7a9aa4" stroke="#4b5d56" stroke-width="2" transform="translate(-11 0)" />
+    <rect x="604" y="956" width="4" height="72" fill="#b5bdb2" transform="translate(-11 0)" />
+    <rect x="932" y="1156" width="128" height="12" fill="#7a9aa4" stroke="#4b5d56" stroke-width="2" transform="translate(-11 0)" />
+    <rect x="936" y="1160" width="120" height="4" fill="#b5bdb2" transform="translate(-11 0)" />
+   </g>
+  </g>
+  <g id="porch-furnishings">
+   <ellipse cx="192" cy="627" rx="61" ry="10" fill="#2d4241" opacity=".14" />
+   <rect x="137" y="590" width="106" height="14" fill="#825f42" stroke="#536058" stroke-width="2" />
+   <rect x="137" y="604" width="106" height="24" fill="#6a4b36" stroke="#536058" stroke-width="2" />
+   <rect x="140" y="602" width="100" height="17" fill="#a37f56" stroke="#696a5b" stroke-width="2" />
+   <path d="M145 607H235M145 613H235" fill="none" stroke="#927961" stroke-width="2" />
+   <rect x="143" y="626" width="8" height="8" fill="#746253" />
+   <rect x="229" y="626" width="8" height="8" fill="#746253" />
+   <rect x="135" y="598" width="7" height="22" fill="#a4896a" stroke="#696a5b" stroke-width="2" />
+   <rect x="238" y="598" width="7" height="22" fill="#a4896a" stroke="#696a5b" stroke-width="2" />
+   <use href="#pot" transform="translate(253 562) scale(.7)" />
+  </g>
+  <g id="stair-descent-cue" pointer-events="none">
+   <path d="M250 382H207" fill="none" stroke="#c6c1b2" stroke-width="5" stroke-linecap="round" />
+   <path d="M250 382H207M214 377L207 382L214 387" fill="none" stroke="#4d625d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <g id="original-cozy-details">
+   <g transform="translate(744 261)">
+    <rect x="0" y="0" width="94" height="24" fill="#614131" stroke="#42312b" stroke-width="2" />
+    <rect x="2" y="2" width="90" height="3" fill="#97744d" />
+    <rect x="2" y="21" width="90" height="3" fill="#43312b" />
+    <use href="#little-books" transform="translate(7 1) scale(0.75)" />
+    <use href="#little-books" transform="translate(33 1) scale(0.75)" />
+    <use href="#little-books" transform="translate(59 1) scale(0.75)" />
+   </g>
+   <g transform="translate(1041 77)">
+    <rect x="0" y="0" width="59" height="24" fill="#614131" stroke="#42312b" stroke-width="2" />
+    <rect x="2" y="2" width="55" height="3" fill="#97744d" />
+    <rect x="2" y="21" width="55" height="3" fill="#43312b" />
+    <use href="#little-books" transform="translate(7 1) scale(0.75)" />
+    <use href="#little-books" transform="translate(33 1) scale(0.75)" />
+   </g>
+   <g transform="translate(513 73)">
+    <rect x="0" y="0" width="12" height="25" fill="#c1b9a6" />
+    <rect x="1" y="1" width="3" height="22" fill="#cdc2ae" />
+    <rect x="7" y="1" width="3" height="22" fill="#aba28d" />
+    <rect x="-1" y="15" width="14" height="4" fill="#969783" />
+   </g>
+   <g transform="translate(622 73)">
+    <rect x="0" y="0" width="12" height="25" fill="#c1b9a6" />
+    <rect x="1" y="1" width="3" height="22" fill="#cdc2ae" />
+    <rect x="7" y="1" width="3" height="22" fill="#aba28d" />
+    <rect x="-1" y="15" width="14" height="4" fill="#969783" />
+   </g>
+   <g transform="translate(760 72)">
+    <rect x="0" y="0" width="12" height="25" fill="#c1b9a6" />
+    <rect x="1" y="1" width="3" height="22" fill="#cdc2ae" />
+    <rect x="7" y="1" width="3" height="22" fill="#aba28d" />
+    <rect x="-1" y="15" width="14" height="4" fill="#969783" />
+   </g>
+   <g transform="translate(857 72)">
+    <rect x="0" y="0" width="12" height="25" fill="#c1b9a6" />
+    <rect x="1" y="1" width="3" height="22" fill="#cdc2ae" />
+    <rect x="7" y="1" width="3" height="22" fill="#aba28d" />
+    <rect x="-1" y="15" width="14" height="4" fill="#969783" />
+   </g>
+   <g transform="translate(1140 55)">
+    <rect x="0" y="0" width="12" height="25" fill="#c1b9a6" />
+    <rect x="1" y="1" width="3" height="22" fill="#cdc2ae" />
+    <rect x="7" y="1" width="3" height="22" fill="#aba28d" />
+    <rect x="-1" y="15" width="14" height="4" fill="#969783" />
+   </g>
+   <g transform="translate(1205 55)">
+    <rect x="0" y="0" width="12" height="25" fill="#c1b9a6" />
+    <rect x="1" y="1" width="3" height="22" fill="#cdc2ae" />
+    <rect x="7" y="1" width="3" height="22" fill="#aba28d" />
+    <rect x="-1" y="15" width="14" height="4" fill="#969783" />
+   </g>
+   <g transform="translate(777 82)">
+    <rect x="0" y="0" width="28" height="24" fill="#5b4032" />
+    <rect x="3" y="3" width="22" height="18" fill="#aaa28a" />
+    <path d="M13 5H17V9H21V15H15V19H11V15H7V9H13Z" fill="#5a754d" />
+    <rect x="13" y="12" width="2" height="9" fill="#736042" />
+   </g>
+   <g transform="translate(1008 77)">
+    <rect x="0" y="0" width="28" height="24" fill="#5b4032" />
+    <rect x="3" y="3" width="22" height="18" fill="#aaa28a" />
+    <path d="M13 5H17V9H21V15H15V19H11V15H7V9H13Z" fill="#5a754d" />
+    <rect x="13" y="12" width="2" height="9" fill="#736042" />
+   </g>
+   <use href="#pot" transform="translate(713 88) scale(0.62)" />
+   <use href="#pot" transform="translate(975 310) scale(0.62)" />
+   <use href="#pot" transform="translate(618 94) scale(0.62)" />
+   <use href="#pot" transform="translate(1040 304) scale(0.65)" />
+   <use href="#pot" transform="translate(824 538) scale(0.58)" />
+   <use href="#pot" transform="translate(1227 539) scale(0.6)" />
+   <use href="#pot" transform="translate(118 555) scale(0.52)" />
+   <use href="#gold-bloom" transform="translate(724 80) scale(0.5)" />
+   <use href="#gold-bloom" transform="translate(980 305) scale(0.5)" />
+   <use href="#gold-bloom" transform="translate(1049 297) scale(0.5)" />
+   <use href="#gold-bloom" transform="translate(1237 530) scale(0.5)" />
+   <rect x="913" y="182" width="22" height="13" fill="#5b6557" stroke="#3e372e" stroke-width="2" />
+   <rect x="916" y="183" width="16" height="3" fill="#afa58c" />
+   <rect x="786" y="478" width="13" height="18" fill="#708781" stroke="#50615a" stroke-width="2" />
+   <rect x="788" y="475" width="9" height="4" fill="#ada185" />
+   <rect x="445" y="480" width="34" height="18" fill="#7e6044" stroke="#584032" stroke-width="2" />
+   <rect x="452" y="482" width="10" height="9" fill="#bbb49e" />
+   <rect x="463" y="484" width="7" height="6" fill="#97a18a" />
+  </g>
+ </g>
+ <rect x="8" y="8" width="1384" height="684" fill="none" stroke="#5a6962" stroke-width="4" />
+ <metadata>Original Stardew-inspired pixel-art room and garden illustration. It borrows only general cozy timber, brick, foliage and craft aesthetics; no reference-image pixels or game sprites are copied. The exact second-floor v8 corner-unit footprint and pin geometry are preserved. Planted balcony and covered porch are left; Entry remains inside; porch stairs lead to one single-car garage below. No garage is added to the floorplan or beside the house. Lane above, street frontage left, attached neighbor right, planted pedestrian edge below. No addresses, street names, unit numbers, logos or room labels. Editable SVG and clean lossless PNG; motion belongs to the separate live dashboard overlays.</metadata>
+ <g id="warm-night-windows" transform="translate(1361.44 -564.8) rotate(90) scale(1.08)" pointer-events="none">
+  <rect x="641" y="66" width="116" height="8" fill="#ffd997" opacity=".85" />
+  <rect x="645" y="66" width="116" height="8" fill="#ecb66d" opacity=".3" />
+  <rect x="881" y="66" width="60" height="8" fill="#ffd997" opacity=".85" />
+  <rect x="885" y="66" width="60" height="8" fill="#ecb66d" opacity=".3" />
+  <rect x="551" y="140" width="8" height="56" fill="#ffd997" opacity=".85" />
+  <rect x="555" y="140" width="8" height="56" fill="#ecb66d" opacity=".3" />
+  <rect x="567" y="466" width="8" height="80" fill="#ffd997" opacity=".85" />
+  <rect x="571" y="466" width="8" height="80" fill="#ecb66d" opacity=".3" />
+  <rect x="1058" y="558" width="8" height="72" fill="#ffd997" opacity=".85" />
+  <rect x="1062" y="558" width="8" height="72" fill="#ecb66d" opacity=".3" />
+  <rect x="929" y="1158" width="112" height="8" fill="#ffd997" opacity=".85" />
+  <rect x="933" y="1158" width="112" height="8" fill="#ecb66d" opacity=".3" />
+ </g>
+</svg>

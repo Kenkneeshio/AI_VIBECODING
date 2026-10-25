@@ -35,8 +35,8 @@ ishiohoCss += `
 .immersive .map-wrap{width:100%;height:100%;min-width:0;max-height:none;aspect-ratio:auto}
 .immersive .house-map{width:100%;height:100%;object-fit:fill}
 .immersive.theme-pokemon .map-wrap{background:linear-gradient(#778589 0 50%,#9aad8e 50% 100%)}
-.immersive.theme-pokemon .house-map{object-fit:contain}
-.immersive.theme-pokemon .map-pins{inset:auto;left:50%;top:50%;width:min(100%,200vh);width:min(100%,200dvh);height:auto;aspect-ratio:2/1;transform:translate(-50%,-50%)}
+.immersive:is(.theme-pokemon,.theme-stardew) .house-map{object-fit:contain}
+.immersive:is(.theme-pokemon,.theme-stardew) .map-pins{inset:auto;left:50%;top:50%;width:min(100%,200vh);width:min(100%,200dvh);height:auto;aspect-ratio:2/1;transform:translate(-50%,-50%)}
 .immersive.theme-pokemon.is-night .map-wrap{background:linear-gradient(#37434f 0 50%,#496554 50% 100%)}
 .immersive .world-footer,.immersive>.foot{display:none}
 .immersive>.masthead{position:absolute;z-index:8;inset:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) auto max(16px,env(safe-area-inset-left));padding:0;border:0;gap:12px;pointer-events:none;flex-wrap:nowrap}
@@ -57,3 +57,15 @@ ishiohoCss += `
 
 /* Pokémon porch and interior entry markers follow the corrected floorplan. */
 ishiohoCss += `.shell.theme-pokemon .room-pin[data-room="porch"]{background:#fff0d9ed;border-color:#a78366;color:#40564d}.shell.theme-pokemon .room-pin[data-room="entryway"]{background:#f6f5e9f2;border-color:#6a927e}.shell.theme-pokemon.is-night .room-pin[data-room="porch"]{background:#3d3833ed;color:#f0e5cb;border-color:#b59c7d}.shell.theme-pokemon.is-night .room-pin[data-room="entryway"]{background:#30433ded;color:#e3ecd9;border-color:#9ec4a4}`;
+
+/* Countryside palette; the scene and pins share the unscaled 2:1 floor-plan box. */
+ishiohoCss += `
+.shell.theme-stardew{--accent:#5d7e43;--accent-soft:#e4d5a7;--shadow:#9b6543;--page:#a4b77e;--border:#775538;--paper:#f4dfac;--ink:#513b2c;--muted:#705d43;--green:#526f39;--line:#b99865;--red:#a95c43}
+.theme-stardew .house-emblem{background:#a4b77e;color:#513b2c;border-color:#775538;border-radius:5px;box-shadow:2px 2px 0 #9b6543}
+.theme-stardew .room-pin{background:#f4dfacf5;border:2px solid #775538;border-radius:4px;box-shadow:2px 3px 0 #513b2c66}.theme-stardew .room-pin.active{background:#ffe9a6;box-shadow:0 0 14px #edc16a88,2px 3px 0 #513b2c66}.theme-stardew .room-pin[data-room="porch"]{background:#ead6b4f5}.theme-stardew .room-pin[data-room="entryway"]{background:#f8e9c6f5}
+.immersive.theme-stardew .map-wrap{background:linear-gradient(#9b8a6b 0 50%,#a4b77e 50% 100%)}.immersive.theme-stardew.is-night .map-wrap{background:linear-gradient(#354454 0 50%,#465c48 50% 100%)}
+.theme-stardew .dialog{border-color:#775538;border-radius:6px}.theme-stardew .dialog-header{background:#e4d5a7}.theme-stardew .garage-illustration{border-color:#775538;background:repeating-linear-gradient(0deg,#bf9b6f 0 7px,#775538 8px 9px)}.theme-stardew .robot-sprite{background:#e6bd7e;border-color:#513b2c}.theme-stardew .robot-pin-label{background:#f4dfacf5;border-color:#775538;color:#513b2c}
+.shell.theme-stardew.is-night{--accent:#a4b77e;--accent-soft:#3e4c42;--shadow:#26342e;--page:#354454;--border:#a88b65;--paper:#303c36;--ink:#f4dfac;--muted:#c4b89b;--green:#b2cd8d;--line:#6d755d}.shell.theme-stardew.is-night .room-pin{background:#303c36ed;border-color:#a88b65;color:#f4dfac}.shell.theme-stardew.is-night .room-pin.active{background:#675438}.shell.theme-stardew.is-night .dialog-header{background:#3e4c42}
+.immersive .theme-tabs{min-width:0}.immersive .theme-tabs a{flex-shrink:0}
+@media(min-width:701px) and (max-width:900px){.immersive .theme-tabs{gap:1px;padding:3px}.immersive .theme-tabs a{gap:5px;padding:6px}.immersive .theme-tabs a span{font-size:9px}.immersive .brand{padding:7px}.immersive .brand h1{font-size:12px}}
+`;
