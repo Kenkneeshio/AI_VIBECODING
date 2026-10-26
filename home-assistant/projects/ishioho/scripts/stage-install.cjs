@@ -131,6 +131,8 @@ function stageInstall(output) {
       '   Do not overwrite those installed files during an upgrade.',
       '4. Create a dashboard from examples/dashboard.json, then replace example',
       '   entity IDs and physical room assignments with your own verified IDs.',
+      '   The bundled floorplan.json is the default geometry for Stardew. Room',
+      '   pins and named fixture anchors follow it after the model loads.',
       '5. Register this JavaScript module resource in Settings > Dashboards:',
       `   ${resource}`,
       '6. Reload the dashboard. Open each room, weather, garage, cameras, and robot',
@@ -138,7 +140,7 @@ function stageInstall(output) {
       '',
       'Files under /config/www are served without authentication to anyone who',
       'can reach your Home Assistant. Never put secrets or private registry exports',
-      'in catalog.json or robot.json. See the GitHub project README for details.',
+      'in catalog.json, robot.json, or floorplan.json. See the GitHub project README.',
       'From the GitHub project source, verify this package with:',
       '   node scripts/stage-install.cjs --verify <this-directory>',
       ''

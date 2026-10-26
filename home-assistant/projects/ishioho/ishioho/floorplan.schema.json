@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Kenkneeshio/AI_VIBECODING/main/home-assistant/projects/ishioho/ishioho/floorplan.schema.json",
+  "title": "Ishioho floor-plan model, version 1",
+  "description": "Typed diagram geometry for the ishioho SVG renderer. Coordinates are diagram units, not surveyed dimensions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "title", "coordinateSystem", "levels", "spaces", "walls", "openings", "objects", "deviceAnchors", "connections"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "id": {"$ref": "#/$defs/id"},
+    "title": {"$ref": "#/$defs/label"},
+    "coordinateSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["viewBox", "units", "xAxis", "yAxis", "measured"],
+      "properties": {
+        "viewBox": {"const": [0, 0, 100, 50]},
+        "units": {"const": "diagram"},
+        "xAxis": {"const": "right"},
+        "yAxis": {"const": "down"},
+        "measured": {"type": "boolean"},
+        "note": {"type": "string"}
+      }
+    },
+    "levels": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/level"}},
+    "spaces": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/space"}},
+    "walls": {"type": "array", "items": {"$ref": "#/$defs/wall"}},
+    "openings": {"type": "array", "items": {"$ref": "#/$defs/opening"}},
+    "objects": {"type": "array", "items": {"$ref": "#/$defs/object"}},
+    "deviceAnchors": {"type": "array", "items": {"$ref": "#/$defs/deviceAnchor"}},
+    "connections": {"type": "array", "items": {"$ref": "#/$defs/connection"}}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"},
+    "label": {"type": "string", "minLength": 1},
+    "x": {"type": "number", "minimum": 0, "maximum": 100},
+    "y": {"type": "number", "minimum": 0, "maximum": 50},
+    "point": {
+      "type": "array", "prefixItems": [{"$ref": "#/$defs/x"}, {"$ref": "#/$defs/y"}],
+      "items": false, "minItems": 2, "maxItems": 2
+    },
+    "segment": {
+      "type": "array", "items": {"$ref": "#/$defs/point"},
+      "minItems": 2, "maxItems": 2
+    },
+    "polygon": {
+      "type": "array", "items": {"$ref": "#/$defs/point"},
+      "minItems": 3, "maxItems": 100
+    },
+    "level": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "number", "label", "default", "footprint"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "number": {"type": "integer"},
+        "label": {"$ref": "#/$defs/label"},
+        "default": {"type": "boolean"},
+        "footprint": {"$ref": "#/$defs/polygon"}
+      }
+    },
+    "space": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "levelId", "kind", "label", "polygon", "anchor"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "levelId": {"$ref": "#/$defs/id"},
+        "kind": {"$ref": "#/$defs/id"},
+        "label": {"$ref": "#/$defs/label"},
+        "polygon": {"$ref": "#/$defs/polygon"},
+        "anchor": {"$ref": "#/$defs/point"}
+      }
+    },
+    "wall": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "levelId", "kind", "segment"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "levelId": {"$ref": "#/$defs/id"},
+        "kind": {"enum": ["exterior", "interior", "railing", "parapet"]},
+        "segment": {"$ref": "#/$defs/segment"}
+      }
+    },
+    "opening": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "levelId", "kind", "segment"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "levelId": {"$ref": "#/$defs/id"},
+        "kind": {"enum": ["door", "sliding_door", "gate", "passage", "window", "garage_door"]},
+        "segment": {"$ref": "#/$defs/segment"},
+        "connects": {
+          "type": "array", "items": {"$ref": "#/$defs/id"},
+          "minItems": 2, "maxItems": 2
+        }
+      }
+    },
+    "object": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "levelId", "spaceId", "kind", "label", "geometry"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "levelId": {"$ref": "#/$defs/id"},
+        "spaceId": {"$ref": "#/$defs/id"},
+        "kind": {"$ref": "#/$defs/id"},
+        "label": {"$ref": "#/$defs/label"},
+        "geometry": {"oneOf": [{"$ref": "#/$defs/pointGeometry"}, {"$ref": "#/$defs/rectGeometry"}, {"$ref": "#/$defs/polygonGeometry"}]}
+      }
+    },
+    "pointGeometry": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "x", "y"],
+      "properties": {"type": {"const": "point"}, "x": {"$ref": "#/$defs/x"}, "y": {"$ref": "#/$defs/y"}}
+    },
+    "rectGeometry": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "x", "y", "width", "height"],
+      "properties": {
+        "type": {"const": "rect"},
+        "x": {"$ref": "#/$defs/x"},
+        "y": {"$ref": "#/$defs/y"},
+        "width": {"type": "number", "exclusiveMinimum": 0},
+        "height": {"type": "number", "exclusiveMinimum": 0},
+        "rotation": {"type": "number", "minimum": -360, "maximum": 360}
+      }
+    },
+    "polygonGeometry": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type", "points"],
+      "properties": {"type": {"const": "polygon"}, "points": {"$ref": "#/$defs/polygon"}}
+    },
+    "deviceAnchor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "levelId", "spaceId", "kind", "point"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "levelId": {"$ref": "#/$defs/id"},
+        "spaceId": {"$ref": "#/$defs/id"},
+        "kind": {"$ref": "#/$defs/id"},
+        "point": {"$ref": "#/$defs/point"},
+        "effectPolygon": {"$ref": "#/$defs/polygon"},
+        "positionSource": {"type": "string"},
+        "note": {"type": "string"}
+      }
+    },
+    "endpoint": {
+      "type": "object", "additionalProperties": false,
+      "required": ["levelId", "spaceId"],
+      "properties": {"levelId": {"$ref": "#/$defs/id"}, "spaceId": {"$ref": "#/$defs/id"}}
+    },
+    "connection": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "kind", "from", "to"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "kind": {"$ref": "#/$defs/id"},
+        "from": {"$ref": "#/$defs/endpoint"},
+        "to": {"$ref": "#/$defs/endpoint"}
+      }
+    }
+  }
+}

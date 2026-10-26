@@ -10,6 +10,7 @@ const moduleFiles = [
   'ishioho/ishioho-panel.js',
   'ishioho/ishioho-directory.js',
   'ishioho/ishioho-environment.js',
+  'ishioho/ishioho-floorplan.js',
   'ishioho/ishioho-style.js',
   'ishioho/ishioho-weather-visuals.js',
   'pallet-house/pallet-panel.js'
@@ -17,6 +18,8 @@ const moduleFiles = [
 const baseFiles = [
   ...moduleFiles,
   'ishioho/room-positions.json',
+  'ishioho/floorplan.json',
+  'ishioho/floorplan.schema.json',
   'pallet-house/house-map.svg',
   'pallet-house/press-start.ttf',
   'pallet-house/font-OFL.txt',
@@ -81,6 +84,21 @@ function verifySource() {
   const catalog = JSON.parse(read('examples/catalog.json'));
   const robot = JSON.parse(read('examples/robot.json'));
   const positions = JSON.parse(read('ishioho/room-positions.json'));
+  const floorplan = JSON.parse(read('ishioho/floorplan.json'));
+  const floorplanSchema = JSON.parse(read('ishioho/floorplan.schema.json'));
+  assert.equal(floorplan.schemaVersion, 1, 'Unsupported floor-plan schema version');
+  assert.deepEqual(floorplan.coordinateSystem.viewBox, [0, 0, 100, 50], 'Unexpected floor-plan coordinate box');
+  assert.match(floorplanSchema.$schema, /2020-12/, 'Floor-plan JSON Schema draft missing');
+  assert.ok(floorplanSchema.$defs?.point && floorplanSchema.$defs?.polygon, 'Floor-plan JSON Schema lacks geometry types');
+  const levelIds = new Set(floorplan.levels.map(level => level.id));
+  assert.ok(levelIds.has('home') && levelIds.has('garage'), 'Default floor plan must model home and lower garage levels');
+  assert.equal(floorplan.levels.find(level => level.id === 'home').number, 2, 'Home must be above the garage');
+  assert.equal(floorplan.levels.find(level => level.id === 'garage').number, 1, 'Garage must be one level below');
+  const spaces = new Map(floorplan.spaces.map(space => [space.id, space]));
+  assert.ok(['balcony', 'porch', 'entryway', 'garage_stairs'].every(id => spaces.get(id)?.levelId === 'home'), 'Missing separated balcony, porch, interior entry, or stairhead');
+  assert.equal(spaces.get('garage')?.levelId, 'garage', 'Garage must not occupy the main home level');
+  assert.ok(floorplan.connections.some(link => link.from?.spaceId === 'garage_stairs' && link.to?.spaceId === 'garage'), 'Missing garage stair link');
+  assert.ok(floorplan.deviceAnchors.length >= 8, 'Default plan lacks scene fixture anchors');
   assert.ok(Array.isArray(dashboard.views) && dashboard.views.length > 0, 'Dashboard has no views');
   const paths = new Set(), themes = new Set();
   for (const view of dashboard.views) {

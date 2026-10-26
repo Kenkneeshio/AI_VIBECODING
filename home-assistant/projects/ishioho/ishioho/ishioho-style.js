@@ -153,3 +153,51 @@ ishiohoCss += `
 .motion-paused .scene-device-shade{transition:none!important}
 @media(prefers-reduced-motion:reduce){.scene-device *{animation:none!important;transition:none!important}.scene-device-shade{transition:none!important}}
 `;
+
+/* The Stardew art and SVG use the same coordinate space. Keep the diagram
+   hidden over the illustration; Plan mode reveals it as an independent floor. */
+ishiohoCss += `
+.theme-stardew .floorplan-layer{position:absolute;left:50%;top:50%;width:min(100%,200vh);width:min(100%,200dvh);height:auto;aspect-ratio:2/1;transform:translate(-50%,-50%);z-index:1;opacity:0;pointer-events:none;transition:opacity .2s ease;background:transparent}
+.theme-stardew .floorplan-svg{display:block;width:100%;height:100%;overflow:visible}
+.theme-stardew .floor-walls,.theme-stardew .floor-openings,.theme-stardew .floor-objects{pointer-events:none}
+.theme-stardew .floor-bg,.theme-stardew .floor-footprint,.theme-stardew .floor-space,.theme-stardew .floor-object>*{fill:transparent}
+.theme-stardew .floor-wall{stroke:#fff2cf;stroke-width:.2;stroke-linecap:square;vector-effect:non-scaling-stroke}
+.theme-stardew .floor-opening{stroke:#d5f1ed;stroke-width:.28;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.theme-stardew .floor-space{stroke:#fff2cf;stroke-width:.07;vector-effect:non-scaling-stroke}
+.theme-stardew .floor-object>*{stroke:#fff2cf;stroke-width:.08;vector-effect:non-scaling-stroke}
+.theme-stardew .floor-label{display:none}
+.theme-stardew .floorplan-status{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;background:#f4dfac;color:#513b2c;padding:9px 12px;border:1px solid #775538;border-radius:4px;font-size:11px;pointer-events:none}
+.theme-stardew .scene-plan{display:flex;align-items:center;gap:5px;padding:9px;border:1px solid transparent;border-radius:10px;font-size:12px;font-weight:700;white-space:nowrap}
+.theme-stardew .scene-plan[aria-pressed="true"]{background:#5d7e43;color:#fff5d8}
+.theme-stardew.floorplan-mode .house-map{visibility:hidden}
+.theme-stardew.floorplan-mode .floorplan-layer{opacity:1;pointer-events:auto;background:#8fa97e}
+.theme-stardew.floorplan-mode .floor-bg{fill:#8fa97e}
+.theme-stardew.floorplan-mode .floor-footprint{fill:#b9936e;stroke:#553d2e;stroke-width:.55}
+.theme-stardew.floorplan-mode .floor-space{fill:#d8ba8c;stroke:#7a5237;stroke-width:.12;transition:fill .15s ease}
+.theme-stardew.floorplan-mode .floor-space-group[data-kind="balcony"] .floor-space{fill:#8dab75}
+.theme-stardew.floorplan-mode .floor-space-group[data-kind="covered_porch"] .floor-space{fill:#c7ac86}
+.theme-stardew.floorplan-mode .floor-space-group[data-kind="bathroom"] .floor-space{fill:#a9c8c8}
+.theme-stardew.floorplan-mode .floor-space-group:is(:hover,:focus) .floor-space{fill:#f1d6a0;stroke:#fff4d7;stroke-width:.3}
+.theme-stardew.floorplan-mode .floor-space-group[data-floorplan-action]{cursor:pointer;outline:none}
+.theme-stardew.floorplan-mode .floor-wall{stroke:#573d2c;stroke-width:.55;stroke-linecap:square}
+.theme-stardew.floorplan-mode .floor-opening{stroke:#d6eff0;stroke-width:.5}
+.theme-stardew.floorplan-mode .floor-opening[data-kind="door"]{stroke:#805a3b;stroke-width:.36}
+.theme-stardew.floorplan-mode .floor-object>*{fill:#9d7754;stroke:#5d422f;stroke-width:.12}
+.theme-stardew.floorplan-mode .floor-object-plant>*,.theme-stardew.floorplan-mode .floor-object-plants>*{fill:#518752;stroke:#355b3d}
+.theme-stardew.floorplan-mode .floor-object-stairs>*{fill:#8d846b;stroke:#594b39}
+.theme-stardew.floorplan-mode .floor-stair-tread{stroke:#e2c9a4;stroke-width:.18;vector-effect:non-scaling-stroke}
+.theme-stardew.floorplan-mode .floor-object-bed>*{fill:#f1dfb7;stroke:#7b5d49}
+.theme-stardew.floorplan-mode .scene-device-shade{display:none}
+.theme-stardew.floorplan-mode .weather-atmosphere{opacity:.25}
+.theme-stardew.is-night.floorplan-mode .floorplan-layer{background:#354454}
+.theme-stardew.is-night.floorplan-mode .floor-bg{fill:#354454}
+.theme-stardew.is-night.floorplan-mode .floor-footprint{fill:#5a5550;stroke:#d1aa7f}
+.theme-stardew.is-night.floorplan-mode .floor-space{fill:#645744;stroke:#c0a782}
+.theme-stardew.is-night.floorplan-mode .floor-space-group[data-kind="bathroom"] .floor-space{fill:#42646d}
+.theme-stardew.is-night.floorplan-mode .floor-space-group[data-kind="balcony"] .floor-space{fill:#3e644f}
+.theme-stardew.is-night.floorplan-mode .floor-space-group[data-kind="covered_porch"] .floor-space{fill:#5f5549}
+.theme-stardew.is-night.floorplan-mode .floor-wall{stroke:#f1d8a8}
+.theme-stardew.is-night.floorplan-mode .floor-object>*{fill:#8c745a;stroke:#e5c59b}
+.theme-stardew.is-night.floorplan-mode .floor-object-plant>*,.theme-stardew.is-night.floorplan-mode .floor-object-plants>*{fill:#5b9468;stroke:#c8d59e}
+@media(prefers-reduced-motion:reduce){.theme-stardew .floorplan-layer,.theme-stardew .floor-space{transition:none!important}}
+`;

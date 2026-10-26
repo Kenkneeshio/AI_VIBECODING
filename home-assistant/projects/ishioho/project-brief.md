@@ -14,7 +14,7 @@ Local JavaScript custom dashboard card. It extends a shared base card and uses n
 
 ## Scope
 
-- Pokémon v8 and Stardew v3 static PNG day/night backgrounds. Stardew v3 depicts a second-floor unit with a separate plant balcony and covered porch, blue entry door, compact upper stairhead, and neighboring attached-building edges. The single-car garage is below and opens as a popup from the stairhead. Historical v1/v2 PNGs and independent v1 SVG reconstructions remain available, but no SVG matches v3. Pokédex and Animal Crossing retain their existing SVG artwork.
+- Pokémon v8 and Stardew v3 static PNG day/night backgrounds. Stardew v3 depicts a second-floor unit with a separate plant balcony and covered porch, blue entry door, exterior stairs descending beside the porch, and neighboring attached-building edges. The single-car garage is below and opens as a popup from those stairs. Historical v1/v2 PNGs and independent v1 SVG reconstructions remain available; the current SVG plan is generated from `floorplan.json` and is a spatial diagram rather than an exact tracing of the v3 illustration. Pokédex and Animal Crossing retain their existing SVG artwork.
 - The same base indoor floor-plan geometry, with Pokémon and Stardew sharing the interior Entry and Balcony coordinates. Stardew v3 places its Porch pin on the landing and its Garage popup at the new stairhead; contained image/pin layers preserve proportions.
 - Contextual room, camera, garage, robot, environment, energy, and calendar popups.
 - Read-only current weather and forecast display with distinct on-map and upcoming effects, local-day grouping, real sun transitions, and reduced-motion support.

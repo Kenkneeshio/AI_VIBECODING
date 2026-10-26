@@ -11,13 +11,14 @@ class Node {
 }
 class Element extends Node{attachShadow(){return this.shadowRoot=new Node();}dispatchEvent(e){this.events ||= [];this.events.push(e);return true;}}
 const defined=new Map(),nativeCards=[],fetches=[],fetchOptions=[];
-const context=vm.createContext({HTMLElement:Element,FontFace:class{async load(){return this;}},document:{fonts:{add(){}},createElement:tag=>new Node(tag)},CustomEvent:class{constructor(type,opts){this.type=type;Object.assign(this,opts);}},customElements:{get:n=>defined.get(n),define:(n,c)=>defined.set(n,c)},window:{loadCardHelpers:async()=>({createCardElement:config=>{const n=new Node('native-card');n.config=config;nativeCards.push(n);return n;}})},fetch:async(url,options)=>{fetches.push(url);fetchOptions.push(options);return{ok:true,json:async()=>url.includes('catalog')?{entities:[],areas:[]}:{room_segments:[]}};},setTimeout:()=>1,clearTimeout(){},setInterval:()=>1,clearInterval(){},console});
+const context=vm.createContext({HTMLElement:Element,FontFace:class{async load(){return this;}},document:{fonts:{add(){}},createElement:tag=>new Node(tag)},CustomEvent:class{constructor(type,opts){this.type=type;Object.assign(this,opts);}},customElements:{get:n=>defined.get(n),define:(n,c)=>defined.set(n,c)},window:{loadCardHelpers:async()=>({createCardElement:config=>{const n=new Node('native-card');n.config=config;nativeCards.push(n);return n;}})},fetch:async(url,options)=>{fetches.push(url);fetchOptions.push(options);return{ok:true,json:async()=>url.includes('catalog')?{entities:[],areas:[]}:url.includes('floorplan')?JSON.parse(fs.readFileSync(path.join(__dirname,'floorplan.json'),'utf8')):{room_segments:[]}};},setTimeout:()=>1,clearTimeout(){},setInterval:()=>1,clearInterval(){},console});
 const read=name=>fs.readFileSync(path.join(__dirname,name),'utf8');
 vm.runInContext(read('pallet-panel.js'),context,{filename:'pallet-panel.js'});
 Object.assign(context,vm.runInContext('(function(){'+read('ishioho-directory.js').replace(/\bexport /g,'')+';return {directoryMethods,directoryCss};})()',context));
 Object.assign(context,vm.runInContext('(function(){'+read('ishioho-style.js').replace(/\bexport /g,'')+';return {ishiohoCss};})()',context));
 Object.assign(context,vm.runInContext('(function(){'+read('ishioho-environment.js').replace(/\bexport /g,'')+';return {environmentMethods,environmentCss};})()',context));
 Object.assign(context,vm.runInContext('(function(){'+read('ishioho-weather-visuals.js').replace(/\bexport /g,'')+';return {weatherVisualMethods};})()',context));
+Object.assign(context,vm.runInContext('(function(){'+read('ishioho-floorplan.js').replace(/\bexport /g,'')+';return {validateFloorplan,roomAnchors,renderFloorplanSvg};})()',context));
 vm.runInContext(read('ishioho-panel.js').replace(/^import .*;\r?\n/gm,''),context,{filename:'ishioho-panel.js'});
 const Panel=defined.get('ishioho-panel');
 const state=(value,attributes={})=>({state:value,attributes,last_updated:'2026-10-25T18:00:00Z'});
@@ -147,12 +148,13 @@ test('Stardew example preserves Pokemon controls while placing its upper porch p
   const {rooms:pokemonRooms,theme:pokemonTheme,...pokemonControls}=pokemon;
   assert.deepEqual(stardewControls,pokemonControls);
   assert.deepEqual(sceneDevices.map(device=>device.kind),['light','light','purifier']);
-  assert.ok(sceneDevices.every(device=>Number.isFinite(device.x)&&Number.isFinite(device.y)&&device.x>=0&&device.x<=100&&device.y>=0&&device.y<=100));
-  assert.deepEqual(sceneDevices[0].shade,[[74,9],[92,9],[92,50],[74,50]]);
+  assert.deepEqual(sceneDevices.map(device=>device.anchor),['bedroom_light','kitchen_sink_light','dining_air_purifier']);
+  assert.ok(sceneDevices.every(device=>!Object.hasOwn(device,'x')&&!Object.hasOwn(device,'y')),'Named floor-plan anchors replace duplicate coordinates');
+  assert.ok(sceneDevices.every(device=>!Object.hasOwn(device,'shade')),'Example light effect geometry belongs to the floor-plan model');
   assert.deepEqual(stardewRooms.map(r=>r.id),pokemonRooms.map(r=>r.id));
   for(const room of stardewRooms.filter(r=>!['porch','garage'].includes(r.id)))assert.deepEqual(room,pokemonRooms.find(r=>r.id===room.id));
   const entry=stardew.rooms.find(r=>r.id==='entryway'),porch=stardew.rooms.find(r=>r.id==='porch'),garage=stardew.rooms.find(r=>r.id==='garage');
-  assert.deepEqual([entry.x,entry.y],[25.5,55]);assert.deepEqual([porch.x,porch.y],[10.8,37.5]);assert.deepEqual([garage.x,garage.y],[9.8,21.4]);
+  assert.deepEqual([entry.x,entry.y],[25.5,55]);assert.deepEqual([porch.x,porch.y],[10.8,37.5]);assert.deepEqual([garage.x,garage.y],[18.8,63.2]);
   assert.equal(garage.short,'Garage ↓');
 });
 test('Stardew builds its own images and accessible fourth navigation link without device calls',()=>{
@@ -160,6 +162,51 @@ test('Stardew builds its own images and accessible fourth navigation link withou
   assert.match(html,/theme-stardew/);assert.match(html,/stardew-map-v3\.png\?v=3/);assert.match(html,/stardew-still-v3\.png\?v=3/);
   assert.match(html,/href="\/prototype-copy\/stardew" aria-label="Stardew theme" aria-current="page"/);
   for(const path of ['home','pokedex','crossing'])assert.ok(html.includes('href="/prototype-copy/'+path+'"'));
+  assert.equal(calls.length,0);
+});
+test('Stardew loads the default structured home and uses its room anchors instead of stale card coordinates',async()=>{
+  const{p,calls}=fixture();const c=config();c.theme='stardew';c.rooms.find(room=>room.id==='living').x=1;c.rooms.find(room=>room.id==='living').y=1;c.rooms.find(room=>room.id==='garage').x=90;
+  p.setConfig(c);await new Promise(setImmediate);
+  assert.equal(p._floorplan?.id,'ishioho-default');
+  assert.deepEqual([p._config.rooms.find(room=>room.id==='living').x,p._config.rooms.find(room=>room.id==='living').y],[39.543,29.474]);
+  assert.deepEqual([p._config.rooms.find(room=>room.id==='garage').x,p._config.rooms.find(room=>room.id==='garage').y],[18.8,63.2]);
+  assert.match(p.shadowRoot.innerHTML,/class="floorplan-svg"/);
+  assert.match(p.shadowRoot.innerHTML,/data-floorplan-room="living"/);
+  assert.match(p.shadowRoot.innerHTML,/data-floorplan-action="garage"/);
+  assert.equal(calls.length,0);
+});
+test('Stardew fixture bindings derive placement from named model anchors',async()=>{
+  const{p,calls}=fixture({'light.bedroom':state('off')});
+  p.setConfig({...config(),theme:'stardew',scene_devices:[
+    {entity:'light.bedroom',kind:'light',anchor:'bedroom_light',label:'Bedroom light',x:2,y:2,shade:[[1,1],[2,1],[2,2]]},
+    {entity:'light.wrong_floor',kind:'light',anchor:'garage_door',label:'Wrong floor',x:20,y:20}
+  ]});
+  await new Promise(setImmediate);
+  assert.equal(p._sceneDevices().length,1,'Garage-level anchors cannot appear on the upstairs map');
+  const mapped=p._sceneDevices()[0];
+  assert.deepEqual([mapped.x,mapped.y],[89.18,11.61]);
+  assert.deepEqual(JSON.parse(JSON.stringify(mapped.shade)),[[73.7,9],[91.8,9],[91.8,50],[73.7,50]]);
+  assert.match(p.shadowRoot.innerHTML,/data-scene-entity="light.bedroom"[^>]*left:89.18%;top:11.61%/);
+  assert.equal(calls.length,0);
+});
+test('structured floor mode and SVG rooms open native popups without operating devices',async()=>{
+  const{p,calls}=fixture();p.setConfig({...config(),theme:'stardew'});await new Promise(setImmediate);
+  const button=new Node('button');button.dataset.action='floorplan';
+  await p._click({target:{closest:selector=>selector==='button'?button:null}});
+  assert.equal(p._floorplanMode,true);
+  assert.equal(p._q('.shell').classList.contains('floorplan-mode'),true);
+  p._floorplanOpen({dataset:{floorplanAction:'room',floorplanRoom:'living'}});
+  assert.equal(p._modal,'room');
+  p._floorplanOpen({dataset:{floorplanAction:'garage',floorplanRoom:'garage'}});
+  assert.equal(p._modal,'garage');
+  assert.equal(calls.length,0);
+});
+test('a missing active illustration automatically reveals the structured SVG',async()=>{
+  const{p,calls}=fixture();p.setConfig({...config(),theme:'stardew'});await new Promise(setImmediate);
+  p._mapImageError({target:{classList:{contains:name=>name==='house-map'||name==='animated-map'}}});
+  assert.equal(p._floorplanMode,true);
+  assert.equal(p._q('.shell').classList.contains('floorplan-mode'),true);
+  assert.equal(p._q('.floorplan-layer').inert,false);
   assert.equal(calls.length,0);
 });
 test('Stardew scene devices render only safe configured art controls, without actuation',()=>{

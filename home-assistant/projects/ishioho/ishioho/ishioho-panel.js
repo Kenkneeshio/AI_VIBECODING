@@ -2,6 +2,7 @@ import {environmentMethods,environmentCss} from './ishioho-environment.js?v=14';
 import {directoryMethods,directoryCss} from './ishioho-directory.js?v=13';
 import {ishiohoCss} from './ishioho-style.js?v=14';
 import {weatherVisualMethods} from './ishioho-weather-visuals.js?v=1';
+import {validateFloorplan,roomAnchors,renderFloorplanSvg} from './ishioho-floorplan.js?v=1';
 import '/local/pallet-house/pallet-panel.js?v=5';
 const BasePanel=customElements.get('pallet-house-panel');
 const ASSETS='/local/ishioho';
@@ -10,11 +11,52 @@ const hasOwn=(object,key)=>Object.prototype.hasOwnProperty.call(object,key);
 const THEMES={pokemon:{title:'Pokémon',edition:'GAME BOY EDITION',subtitle:'A little adventure. A place called home.',icon:'◒'},pokedex:{title:'Pokédex',edition:'HOME ENCYCLOPEDIA',subtitle:'Every room. Every reading. One living atlas.',icon:'◉'},crossing:{title:'Animal Crossing',edition:'ISLAND LIFE EDITION',subtitle:'Slow mornings. Little discoveries. Welcome home.',icon:'❧'},stardew:{title:'Stardew',edition:'COUNTRYSIDE EDITION',subtitle:'Warm wood. Quiet evenings. A home to tend.',icon:'✿'}};
 let metadataPromise;
 function metadata(){return metadataPromise ||= Promise.all([fetch(`${ASSETS}/catalog.json`,{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('catalog');return r.json();}),fetch(`${ASSETS}/robot.json`,{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({}))]).catch(error=>{metadataPromise=null;throw error;});}
+let floorplanPromise;
+function defaultFloorplan(){return floorplanPromise ||= fetch(`${ASSETS}/floorplan.json`,{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('floorplan');return r.json();}).then(model=>{const result=validateFloorplan(model);if(!result.ok)throw Error(`Invalid floor plan: ${result.errors.join('; ')}`);return model;}).catch(error=>{floorplanPromise=null;throw error;});}
 class IshiohoPanel extends BasePanel {
-  constructor(){super();this._motion=true;this.shadowRoot.addEventListener('input',e=>this._directoryInput?.(e));this.shadowRoot.addEventListener('change',e=>this._directoryInput?.(e));}
+  constructor(){super();this._motion=true;this._floorplanMode=false;this._floorplanRequest=0;this._failedMapImages=new Set();this.shadowRoot.addEventListener('input',e=>this._directoryInput?.(e));this.shadowRoot.addEventListener('change',e=>this._directoryInput?.(e));this.shadowRoot.addEventListener('keydown',e=>this._floorplanKey(e));this.shadowRoot.addEventListener('error',e=>this._mapImageError(e),true);}
   connectedCallback(){super.connectedCallback();if(this._built&&this._hass)this._updateEnvironment();}
   disconnectedCallback(){this._stopForecast?.();super.disconnectedCallback();}
-  setConfig(config){this._theme=hasOwn(THEMES,config.theme)?config.theme:'pokemon';super.setConfig(config);metadata().then(([catalog,robot])=>{this._catalog=catalog;this._robotMetadata=robot;this._catalogFailure=false;if(this._built){this._update();if(this._modal==='directory')this._renderDirectory();}}).catch(()=>{this._catalog={entities:[],areas:[]};this._catalogFailure=true;if(this._built)this._update();});}
+  setConfig(config){
+    this._theme=hasOwn(THEMES,config.theme)?config.theme:'pokemon';
+    const request=++this._floorplanRequest;
+    const needsFloorplan=this._theme==='stardew'&&!this._floorplan;
+    super.setConfig(this._theme==='stardew'&&this._floorplan?this._positionedConfig(config):config);
+    if(needsFloorplan)defaultFloorplan().then(model=>{
+      if(request!==this._floorplanRequest||this._theme!=='stardew')return;
+      this._floorplan=model;this._floorplanError=false;if(this._failedMapImages.has(this._motion?'animated':'still'))this._floorplanMode=true;this._config=this._positionedConfig(this._config);this._built=false;this._render();
+    }).catch(()=>{if(request===this._floorplanRequest){this._floorplanError=true;this._q('.floorplan-status')?.removeAttribute('hidden');}});
+    metadata().then(([catalog,robot])=>{this._catalog=catalog;this._robotMetadata=robot;this._catalogFailure=false;if(this._built){this._update();if(this._modal==='directory')this._renderDirectory();}}).catch(()=>{this._catalog={entities:[],areas:[]};this._catalogFailure=true;if(this._built)this._update();});
+  }
+  _positionedConfig(config){
+    const anchors=roomAnchors(this._floorplan,'home');
+    return {...config,rooms:config.rooms.map(room=>{
+      const point=anchors[room.id==='garage'?'garage_stairs':room.id];
+      return point?{...room,x:point.x,y:point.y}:room;
+    })};
+  }
+  _floorplanKey(e){
+    if(this._theme!=='stardew'||!['Enter',' '].includes(e.key))return;
+    const target=e.target.closest?.('[data-floorplan-action]');if(!target)return;
+    e.preventDefault();this._floorplanOpen(target);
+  }
+  _floorplanOpen(target){
+    const action=target.dataset.floorplanAction,room=target.dataset.floorplanRoom;
+    if(action==='garage')this._open(this._config.garage?'garage':'room',{room:'garage'});
+    else if(action==='room'&&this._config.rooms.some(item=>item.id===room))this._open('room',{room});
+  }
+  _mapImageError(event){
+    if(this._theme!=='stardew'||!event.target?.classList?.contains('house-map'))return;
+    const kind=event.target.classList.contains('still-map')?'still':'animated';
+    this._failedMapImages.add(kind);
+    if(this._floorplan&&kind===(this._motion?'animated':'still')){this._floorplanMode=true;this._applyFloorplanMode();}
+  }
+  _applyFloorplanMode(){
+    const active=this._theme==='stardew'&&this._floorplanMode&&!!this._floorplan;
+    this._q('.shell')?.classList.toggle('floorplan-mode',active);
+    const layer=this._q('.floorplan-layer');if(layer){layer.inert=!active;layer.setAttribute('aria-hidden',String(!active));}
+    const button=this._q('.scene-plan');if(button){button.setAttribute('aria-pressed',String(active));button.setAttribute('aria-label',active?'Show illustrated floor plan':'Show structured floor plan');}
+  }
   _themeHref(theme){
     const configured=this._config?.dashboard_path;
     const slug=typeof configured==='string'?configured.trim().replace(/^\/+|\/+$/g,''):'';
@@ -29,10 +71,11 @@ class IshiohoPanel extends BasePanel {
     this.shadowRoot.innerHTML=`<style>${this._css()}</style><main class="shell immersive theme-${this._theme}">
     <header class="masthead"><div class="brand"><span class="house-emblem" aria-hidden="true">${t.icon}</span><div><div class="eyebrow">${t.edition}</div><h1>ishioho<span>YOUR HOME, ALIVE</span></h1></div></div>
     <nav class="theme-tabs" aria-label="Choose art style">${Object.entries(THEMES).map(([key,val])=>`<a class="${key===this._theme?'current':''}" href="${escapeHtml(this._themeHref(key))}" aria-label="${escapeHtml(val.title)} theme" ${key===this._theme?'aria-current="page"':''}>${val.icon}<span>${val.title}</span></a>`).join('')}</nav>
-    <div class="header-right">${this._button('<span id="scene-weather">Sky</span><span id="scene-moon" aria-hidden="true">☾</span>','weather','aria-label="Open weather and moon phase"','scene-sky')}${this._button('☷ <span>Controls</span>','overview','aria-label="Open home overview and map settings"','scene-menu')}<span class="connection"><i></i><span id="connection">Connected</span></span><div class="clock"><strong id="time"></strong><span id="date"></span></div>${this._button('<span class="alert-dot">!</span><span id="alert-count">0</span>','alerts','aria-label="Open all alerts"','alert-top')}</div></header>
+    <div class="header-right">${this._button('<span id="scene-weather">Sky</span><span id="scene-moon" aria-hidden="true">☾</span>','weather','aria-label="Open weather and moon phase"','scene-sky')}${this._theme==='stardew'?this._button('▦ <span>Plan</span>','floorplan',`aria-label="${this._floorplanMode?'Show illustrated floor plan':'Show structured floor plan'}" aria-pressed="${this._floorplanMode}" ${!this._floorplan?'disabled':''}`,'scene-plan'):''}${this._button('☷ <span>Controls</span>','overview','aria-label="Open home overview and map settings"','scene-menu')}<span class="connection"><i></i><span id="connection">Connected</span></span><div class="clock"><strong id="time"></strong><span id="date"></span></div>${this._button('<span class="alert-dot">!</span><span id="alert-count">0</span>','alerts','aria-label="Open all alerts"','alert-top')}</div></header>
     <section class="dashboard-grid">
     <div class="world-panel panel">
     <div class="landscape-scroll"><div class="map-wrap"><img class="house-map animated-map" src="${this._mapAsset('map')}" alt="Landscape floor plan of ishioho, with planted balcony on the left and garage access at the stairs"><img class="house-map still-map" src="${this._mapAsset('still')}" alt="Landscape floor plan of ishioho">
+    ${this._theme==='stardew'?`<div class="floorplan-layer" ${this._floorplanMode?'aria-hidden="false"':'inert aria-hidden="true"'}>${this._floorplan?renderFloorplanSvg(this._floorplan,{levelId:'home',interactiveRoomIds:c.rooms.map(room=>room.id)}):''}</div><div class="floorplan-status" ${this._floorplanError?'':'hidden'}>Structured floor plan unavailable; illustrated view remains available.</div>`:''}
     ${this._weatherVisualMarkup()}
     ${this._sceneDeviceMarkup()}
     <div class="map-pins">${c.rooms.map(r=>`<button class="room-pin ${r.id==='garage'?'garage-pin':''}" style="left:${r.x}%;top:${r.y}%" data-action="${r.id==='garage'&&c.garage?'garage':'room'}" data-room="${escapeHtml(r.id)}" aria-label="Open ${escapeHtml(r.name)} controls"><span class="pin-light"></span><strong>${escapeHtml(r.short||r.name)}</strong><small data-room-state="${escapeHtml(r.id)}">Explore</small></button>`).join('')}
@@ -44,6 +87,7 @@ class IshiohoPanel extends BasePanel {
     <footer class="foot"><span>${t.icon} <span>ishioho · ${t.title} edition</span></span><span id="last-sync">Live status</span></footer>
     <div hidden id="alerts-preview"></div><span hidden id="notice-number"></span><div id="toast" role="status" aria-live="polite" hidden></div><div id="modal-root"></div></main>`;
     this._q('.shell').classList.toggle('motion-paused',!this._motion);
+    this._applyFloorplanMode();
   }
   _overviewMarkup(){
     const c=this._config,t=THEMES[this._theme];
@@ -60,7 +104,15 @@ class IshiohoPanel extends BasePanel {
   _sceneDevices(){
     if(this._theme!=='stardew'||!Array.isArray(this._config?.scene_devices))return [];
     const excluded=new Set(this._config.excluded_entities||[]),seen=new Set(),kinds=new Set(['light','fan','purifier','vent']);
-    return this._config.scene_devices.filter(item=>{
+    const anchors=new Map((this._floorplan?.deviceAnchors||[]).map(anchor=>[anchor.id,anchor]));
+    return this._config.scene_devices.map(item=>{
+      const anchor=anchors.get(item?.anchor);
+      if(anchor&&anchor.levelId!=='home')return null;
+      return anchor&&Array.isArray(anchor.point)?{
+        ...item,x:anchor.point[0],y:anchor.point[1]*2,
+        ...(Array.isArray(anchor.effectPolygon)?{shade:anchor.effectPolygon.map(([x,y])=>[x,y*2])}:{})
+      }:item;
+    }).filter(item=>{
       if(!item||typeof item!=='object'||typeof item.entity!=='string'||!/^(light|switch|fan|humidifier)\.[a-z0-9_]+$/.test(item.entity)||!kinds.has(item.kind)||!Number.isFinite(item.x)||!Number.isFinite(item.y)||item.x<0||item.x>100||item.y<0||item.y>100||excluded.has(item.entity)||seen.has(item.entity))return false;
       seen.add(item.entity);return true;
     });
@@ -181,11 +233,18 @@ class IshiohoPanel extends BasePanel {
   }
   _entityRows(ids){return ids.map(id=>{const domain=id.split('.')[0],tog=['light','switch','fan','humidifier'].includes(domain);return `<div class="entity-row">${this._button(`<span class="device-icon">${domain==='light'?'☀':domain==='cover'?'▥':domain==='sensor'?'◈':'◉'}</span><span><strong>${escapeHtml(this._name(id))}</strong><small data-entity-state="${escapeHtml(id)}">${escapeHtml(this._state(id))}</small><small class="entity-id">${escapeHtml(id)}</small></span>`,'info',`data-entity="${escapeHtml(id)}"`,'entity-name')}${tog?this._button(this._on(id)?'Turn off':'Turn on','toggle',`data-toggle="${escapeHtml(id)}" aria-label="${this._on(id)?'Turn off':'Turn on'} ${escapeHtml(this._name(id))}" ${!this._valid(id)?'disabled':''}`,'toggle'):this._button('↗','info',`data-entity="${escapeHtml(id)}" aria-label="Open ${escapeHtml(this._name(id))} details"`,'square')}</div>`;}).join('')||'<p class="dialog-intro">No entities are assigned here yet.</p>';}
   async _click(e){
+    if(this._theme==='stardew'&&this._floorplanMode){const target=e.target.closest?.('[data-floorplan-action]');if(target){this._floorplanOpen(target);return;}}
     const button=e.target.closest?.('button');if(!button)return;const action=button.dataset.action;
+    if(action==='floorplan'){
+      if(!this._floorplan||this._failedMapImages.has(this._motion?'animated':'still'))return;
+      this._floorplanMode=!this._floorplanMode;
+      this._applyFloorplanMode();
+      return;
+    }
     if(action==='fullscreen'){try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch{this._toast('Use Fully Kiosk fullscreen settings on this device.',true);}return;}
     if(action==='weather'){this._openEnvironment();return;}
     if(action==='appearance'){this._cycleAppearance();return;}
-    if(action==='motion'){this._motion=!this._motion;this._q('.shell').classList.toggle('motion-paused',!this._motion);button.setAttribute('aria-pressed',String(!this._motion));button.setAttribute('aria-label',this._motion?'Pause decorative animation':'Resume decorative animation');button.textContent=this._motion?'Ⅱ':'▶';this._text('#motion-status',this._motion?'Animation on':'Animation paused');return;}
+    if(action==='motion'){this._motion=!this._motion;this._q('.shell').classList.toggle('motion-paused',!this._motion);button.setAttribute('aria-pressed',String(!this._motion));button.setAttribute('aria-label',this._motion?'Pause decorative animation':'Resume decorative animation');button.textContent=this._motion?'Ⅱ':'▶';this._text('#motion-status',this._motion?'Animation on':'Animation paused');if(this._theme==='stardew'&&this._floorplan&&this._failedMapImages.has(this._motion?'animated':'still')){this._floorplanMode=true;this._applyFloorplanMode();}return;}
     if(action==='room-directory'){const room=this._config.rooms.find(r=>r.id===button.dataset.room);if(room)this._openDirectory({ids:this._roomEntities(room),title:`${room.name} · all devices`});return;}
     if(action==='robot-directory'){this._openDirectory({ids:this._robotEntityIds(),title:'ROTO · all sensors & controls'});return;}
     if(action?.startsWith('directory-')){this._directoryClick(action,button);return;}

@@ -27,6 +27,9 @@ test('staging produces relative /www files, separate examples, and a complete SH
   const result = stageInstall(bundle);
   assert.equal(result.target, bundle);
   assert.ok(fs.existsSync(path.join(bundle, 'www', 'ishioho', 'ishioho-panel.js')));
+  assert.ok(fs.existsSync(path.join(bundle, 'www', 'ishioho', 'ishioho-floorplan.js')));
+  assert.ok(fs.existsSync(path.join(bundle, 'www', 'ishioho', 'floorplan.json')));
+  assert.ok(fs.existsSync(path.join(bundle, 'www', 'ishioho', 'floorplan.schema.json')));
   for (const kind of ['map', 'still', 'night-map', 'night-still']) {
     assert.ok(fs.existsSync(path.join(bundle, 'www', 'ishioho', `stardew-${kind}-v3.png`)), `Active Stardew ${kind} v3 PNG`);
     assert.ok(fs.existsSync(path.join(bundle, 'www', 'ishioho', `stardew-${kind}-v2.png`)), `Historical Stardew ${kind} v2 PNG`);
@@ -45,6 +48,7 @@ test('staging produces relative /www files, separate examples, and a complete SH
   assert.equal(release.recommended_resource_url, `/local/ishioho/ishioho-panel.js?v=${panelHash.slice(0, 12)}`);
   assert.ok(quickstart.includes(release.recommended_resource_url));
   assert.ok(release.panel_imports.some(item => item.specifier.startsWith('./ishioho-environment.js?v=')));
+  assert.ok(release.panel_imports.some(item => item.specifier.startsWith('./ishioho-floorplan.js?v=')));
   assert.ok(release.panel_imports.every(item => /^[0-9a-f]{64}$/.test(item.sha256) && item.specifier.endsWith(`?v=${item.sha256.slice(0, 12)}`)));
   assert.ok(!fs.existsSync(path.join(bundle, 'www', 'ishioho', 'catalog.json')), 'Do not overwrite installed user-specific catalog metadata on upgrade');
   assert.ok(!fs.existsSync(path.join(bundle, 'www', 'ishioho', 'robot.json')), 'Do not overwrite installed user-specific robot metadata on upgrade');

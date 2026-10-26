@@ -782,8 +782,8 @@
               "id": "garage",
               "name": "Garage",
               "short": "Garage ↓",
-              "x": 9.8,
-              "y": 21.4,
+              "x": 18.8,
+              "y": 63.2,
               "area_names": [
                 "Garage"
               ],
@@ -861,28 +861,19 @@
             {
               "entity": "light.bedroom",
               "kind": "light",
-              "x": 82,
-              "y": 25,
-              "label": "Bedroom light",
-              "shade": [
-                [74, 9],
-                [92, 9],
-                [92, 50],
-                [74, 50]
-              ]
+              "anchor": "bedroom_light",
+              "label": "Bedroom light"
             },
             {
               "entity": "light.kitchen",
               "kind": "light",
-              "x": 53,
-              "y": 63,
+              "anchor": "kitchen_sink_light",
               "label": "Kitchen light"
             },
             {
               "entity": "fan.dining_purifier",
               "kind": "purifier",
-              "x": 33,
-              "y": 64,
+              "anchor": "dining_air_purifier",
               "label": "Dining purifier"
             }
           ],
