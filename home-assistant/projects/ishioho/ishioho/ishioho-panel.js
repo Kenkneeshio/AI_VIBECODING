@@ -34,6 +34,7 @@ class IshiohoPanel extends BasePanel {
     <div class="world-panel panel">
     <div class="landscape-scroll"><div class="map-wrap"><img class="house-map animated-map" src="${this._mapAsset('map')}" alt="Landscape floor plan of ishioho, with planted balcony on the left and garage access at the stairs"><img class="house-map still-map" src="${this._mapAsset('still')}" alt="Landscape floor plan of ishioho">
     ${this._weatherVisualMarkup()}
+    ${this._sceneDeviceMarkup()}
     <div class="map-pins">${c.rooms.map(r=>`<button class="room-pin ${r.id==='garage'?'garage-pin':''}" style="left:${r.x}%;top:${r.y}%" data-action="${r.id==='garage'&&c.garage?'garage':'room'}" data-room="${escapeHtml(r.id)}" aria-label="Open ${escapeHtml(r.name)} controls"><span class="pin-light"></span><strong>${escapeHtml(r.short||r.name)}</strong><small data-room-state="${escapeHtml(r.id)}">Explore</small></button>`).join('')}
     ${c.vacuum?'<button class="robot-pin" data-action="vacuum" aria-label="Open robot tracker" style="left:60%;top:65%"><span class="robot-ring"></span><span class="robot-sprite"><i></i></span><span class="robot-pin-label">ROTO</span></button>':''}</div>
     </div></div>
@@ -56,7 +57,48 @@ class IshiohoPanel extends BasePanel {
   }
   _updateClock(){super._updateClock();this._updateEnvironment();}
   _dashboardIds(){const excluded=new Set(this._config.excluded_entities||[]);return Object.keys(this._hass?.states||{}).filter(id=>!excluded.has(id));}
-  _update(){super._update();if(!this._q('.shell'))return;const count=this._dashboardIds().length;this._text('#directory-count',count.toLocaleString());this._text('#map-coverage',`${count.toLocaleString()} live entities · all in All devices`);this._updateRobot();this._directoryUpdate?.();if(this._modal==='garage')this._text('#garage-status',this._state(this._config.garage));if(this._filter==='rooms')for(const room of this._config.rooms)if(!room.temperature&&!room.status)this._text(`[data-room-state="${room.id}"]`,this._roomCount(room));}
+  _sceneDevices(){
+    if(this._theme!=='stardew'||!Array.isArray(this._config?.scene_devices))return [];
+    const excluded=new Set(this._config.excluded_entities||[]),seen=new Set(),kinds=new Set(['light','fan','purifier','vent']);
+    return this._config.scene_devices.filter(item=>{
+      if(!item||typeof item!=='object'||typeof item.entity!=='string'||!/^(light|switch|fan|humidifier)\.[a-z0-9_]+$/.test(item.entity)||!kinds.has(item.kind)||!Number.isFinite(item.x)||!Number.isFinite(item.y)||item.x<0||item.x>100||item.y<0||item.y>100||excluded.has(item.entity)||seen.has(item.entity))return false;
+      seen.add(item.entity);return true;
+    });
+  }
+  _sceneShade(item){
+    if(item.kind!=='light'||!Array.isArray(item.shade)||item.shade.length<3||item.shade.length>12)return '';
+    if(!item.shade.every(point=>Array.isArray(point)&&point.length===2&&point.every(value=>Number.isFinite(value)&&value>=0&&value<=100)))return '';
+    const xs=item.shade.map(point=>point[0]),ys=item.shade.map(point=>point[1]);
+    const left=Math.min(...xs),top=Math.min(...ys),width=Math.max(...xs)-left,height=Math.max(...ys)-top;
+    if(width<1||height<1)return '';
+    const polygon=item.shade.map(([x,y])=>`${Math.round((x-left)/width*1000)/10}% ${Math.round((y-top)/height*1000)/10}%`).join(',');
+    return `<div class="scene-device-shade" data-scene-shade="${escapeHtml(item.entity)}" data-state="unavailable" style="left:${left}%;top:${top}%;width:${width}%;height:${height}%;clip-path:polygon(${polygon})"></div>`;
+  }
+  _sceneDeviceMarkup(){
+    const devices=this._sceneDevices();if(!devices.length)return '';
+    return `<div class="scene-devices" aria-label="Interactive home fixtures">${devices.map(item=>this._sceneShade(item)).join('')}${devices.map(item=>{
+      const id=escapeHtml(item.entity),label=escapeHtml(typeof item.label==='string'&&item.label.trim()?item.label.trim():this._name(item.entity));
+      return `<div class="scene-device" data-scene-entity="${id}" data-kind="${item.kind}" data-state="unavailable" style="left:${item.x}%;top:${item.y}%"><span class="scene-device-art" aria-hidden="true"><i class="scene-device-halo"></i><i class="scene-device-sprite"></i><i class="scene-device-air"></i></span><span class="scene-device-label" aria-hidden="true">${label}</span><button class="scene-device-hit" type="button" data-action="toggle" data-toggle="${id}" aria-label="${label} unavailable" title="${label} unavailable" aria-pressed="false" disabled>Turn on</button></div>`;
+    }).join('')}</div>`;
+  }
+  _updateSceneDevices(){
+    const connected=this._hass?.connected!==false,devices=new Map(this._sceneDevices().map(device=>[device.entity,device]));
+    const stateFor=id=>connected&&this._valid(id)&&['on','off'].includes(this._value(id))?this._value(id):'unavailable';
+    this.shadowRoot.querySelectorAll('.scene-device').forEach(item=>{
+      const id=item.dataset.sceneEntity,button=item.querySelector('.scene-device-hit');if(!button)return;
+      const state=stateFor(id);
+      const configuredLabel=devices.get(id)?.label,label=typeof configuredLabel==='string'&&configuredLabel.trim()?configuredLabel.trim():this._name(id);
+      item.dataset.state=state;
+      item.dataset.pending=String(this._busy.has(id));
+      button.disabled=state==='unavailable'||this._busy.has(id);
+      button.setAttribute('aria-pressed',String(state==='on'));
+      const action=state==='unavailable'?'Unavailable':this._busy.has(id)?'Waiting for':state==='on'?'Turn off':'Turn on';
+      button.setAttribute('aria-label',`${action} ${label}`);
+      button.title=`${label} · ${state==='unavailable'?'unavailable':this._busy.has(id)?'waiting for device':state}`;
+    });
+    this.shadowRoot.querySelectorAll('.scene-device-shade').forEach(shade=>{shade.dataset.state=stateFor(shade.dataset.sceneShade);});
+  }
+  _update(){super._update();if(!this._q('.shell'))return;const count=this._dashboardIds().length;this._text('#directory-count',count.toLocaleString());this._text('#map-coverage',`${count.toLocaleString()} live entities · all in All devices`);this._updateSceneDevices();this._updateRobot();this._directoryUpdate?.();if(this._modal==='garage')this._text('#garage-status',this._state(this._config.garage));if(this._filter==='rooms')for(const room of this._config.rooms)if(!room.temperature&&!room.status)this._text(`[data-room-state="${room.id}"]`,this._roomCount(room));}
   _robotStem(){
     const configured=this._config?.robot_entity_prefix;
     if(typeof configured==='string'&&/^[a-z0-9_]+$/i.test(configured.trim()))return configured.trim().toLowerCase();

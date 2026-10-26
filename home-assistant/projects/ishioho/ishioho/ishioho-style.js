@@ -114,3 +114,42 @@ ishiohoCss += `
 @media(max-height:540px) and (orientation:landscape){.scene-forecast{display:none}.wx-sky-band{height:6%}.wx-cloud{opacity:.45}}
 @media(prefers-reduced-motion:reduce){.weather-stage *,.weather-stage *:after{animation:none!important;transition:none!important}.weather-stage :is(.wx-rain,.wx-snow,.wx-wind,.wx-lightning){display:none!important}}
 `;
+
+/* Scene controls are small furnishings on the same 2:1 plane as the artwork.
+   The invisible touch target stays 44px wide; only verified HA state moves art. */
+ishiohoCss += `
+.immersive.theme-stardew .scene-devices{position:absolute;left:50%;top:50%;width:min(100%,200vh);width:min(100%,200dvh);height:auto;aspect-ratio:2/1;transform:translate(-50%,-50%);z-index:3;pointer-events:none}
+.theme-stardew .map-pins{z-index:4}
+.scene-device-shade{position:absolute;pointer-events:none;background:#101927;mix-blend-mode:multiply;-webkit-mask-image:radial-gradient(ellipse at center,#000 32%,transparent 82%);mask-image:radial-gradient(ellipse at center,#000 32%,transparent 82%);opacity:0;transition:opacity .75s ease}
+.theme-stardew .scene-device-shade[data-state="off"]{opacity:.20}.theme-stardew.is-night .scene-device-shade[data-state="off"]{opacity:.63}
+.scene-device{position:absolute;width:44px;height:44px;transform:translate(-50%,-50%);pointer-events:none}
+.scene-device-art{position:absolute;inset:0;display:block;pointer-events:none;filter:drop-shadow(1px 2px 0 #40302688)}
+.scene-device-halo{position:absolute;left:50%;top:50%;width:64px;height:64px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,#1b2223a8 0,#26302d73 35%,transparent 71%);mix-blend-mode:multiply;opacity:.86;transition:opacity .45s,background .45s}
+.scene-device[data-state="on"] .scene-device-halo{width:112px;height:98px;background:radial-gradient(ellipse,#ffeab5a8 0,#ffd77b70 23%,#f7c86723 48%,transparent 70%);mix-blend-mode:screen;opacity:1;animation:sceneLampWarm 3.2s ease-in-out infinite}
+.scene-device:is([data-kind="fan"],[data-kind="vent"],[data-kind="purifier"])[data-state="on"] .scene-device-halo{width:75px;height:70px;background:radial-gradient(ellipse,#b8ead099 0,#a8d9c84d 35%,transparent 70%)}
+.scene-device-sprite{position:absolute;left:15px;top:13px;display:block;width:14px;height:12px;background:#827c6f;border:2px solid #5c4935;box-shadow:0 2px 0 #3e352b;clip-path:polygon(21% 0,79% 0,100% 100%,0 100%)}
+.scene-device[data-kind="light"] .scene-device-art:after{content:'';position:absolute;width:3px;height:8px;left:21px;top:25px;background:#745335;box-shadow:-4px 8px 0 1px #634832,0 8px 0 1px #634832,4px 8px 0 1px #634832}
+.scene-device[data-kind="light"][data-state="on"] .scene-device-sprite{background:#ffe59a;border-color:#a46535;box-shadow:0 0 0 1px #804d2e,0 0 12px 5px #ffd16eaa}
+.scene-device[data-kind="light"][data-state="on"] .scene-device-sprite:after{content:'';position:absolute;left:3px;top:2px;width:3px;height:3px;background:#fff8da;box-shadow:5px 3px 0 #fff3c0;animation:sceneTwinkle 2.4s steps(2,end) infinite}
+.scene-device[data-kind="fan"] .scene-device-sprite,.scene-device[data-kind="vent"] .scene-device-sprite{left:9px;top:9px;width:26px;height:26px;border:3px solid #644c37;clip-path:none;background:#e0cc9e;box-shadow:0 2px 0 #3d332b;border-radius:3px}
+.scene-device[data-kind="fan"] .scene-device-sprite:before,.scene-device[data-kind="vent"] .scene-device-sprite:before{content:'';position:absolute;inset:1px;background:#90775d;clip-path:polygon(39% 0,61% 0,63% 36%,100% 39%,100% 61%,64% 63%,61% 100%,39% 100%,37% 64%,0 61%,0 39%,36% 37%)}
+.scene-device[data-kind="fan"] .scene-device-sprite:after,.scene-device[data-kind="vent"] .scene-device-sprite:after{content:'';position:absolute;left:8px;top:8px;width:4px;height:4px;background:#f0dfb5;border:1px solid #6d543b;border-radius:50%}
+.scene-device[data-kind="fan"][data-state="on"] .scene-device-sprite:before,.scene-device[data-kind="vent"][data-state="on"] .scene-device-sprite:before{background:#a5ceb2;animation:sceneFanSpin 1.3s linear infinite}
+.scene-device[data-kind="purifier"] .scene-device-sprite{left:10px;top:12px;width:24px;height:25px;clip-path:none;border:3px solid #604a36;border-radius:3px;background:linear-gradient(#c6b388 0 35%,#e1d2a7 35% 100%);box-shadow:0 3px 0 #3d332b}
+.scene-device[data-kind="purifier"] .scene-device-sprite:before{content:'';position:absolute;left:3px;right:3px;top:8px;height:8px;border:1px solid #7d6547;background:repeating-linear-gradient(0deg,#7c7463 0 2px,#d8c99d 2px 4px)}
+.scene-device-air{position:absolute;left:10px;top:0;width:24px;height:10px;display:none;border-top:2px dotted #c9e3bf;opacity:.9}
+.scene-device[data-kind="purifier"][data-state="on"] .scene-device-air{display:block;animation:sceneAirFlow 1.9s ease-out infinite}
+.scene-device[data-kind="purifier"][data-state="on"] .scene-device-sprite{background:linear-gradient(#b8d8bd 0 35%,#e1d2a7 35% 100%)}
+.scene-device[data-state="unavailable"] .scene-device-art{filter:grayscale(1) drop-shadow(1px 2px 0 #40302688);opacity:.48}
+.scene-device[data-state="unavailable"] .scene-device-halo{opacity:0}
+.scene-device-label{position:absolute;left:50%;bottom:43px;transform:translateX(-50%);padding:5px 7px;background:#f2e1b6f2;color:#513b2c;border:1px solid #775538;border-radius:3px;box-shadow:1px 2px 0 #35291e88;font:700 9px/1.2 Segoe UI,sans-serif;white-space:nowrap;opacity:0;visibility:hidden;transition:opacity .18s;z-index:3}
+.theme-stardew.is-night .scene-device-label{background:#303c36f2;color:#f4dfac;border-color:#a88b65}
+.scene-device:is(:hover,:focus-within) .scene-device-label{opacity:1;visibility:visible}
+.scene-device-hit{position:absolute;inset:0;z-index:2;width:100%;height:100%;padding:0;border:0;background:transparent;color:transparent;font-size:0;cursor:pointer;pointer-events:auto;touch-action:manipulation}
+.scene-device-hit:disabled{cursor:default}.scene-device:focus-within .scene-device-art{outline:2px solid #fff3b6;outline-offset:2px;border-radius:4px}.scene-device:hover .scene-device-art{filter:drop-shadow(0 0 4px #fff2bf)}
+.scene-device[data-pending="true"] .scene-device-art{opacity:.65}
+@keyframes sceneLampWarm{50%{opacity:.73;transform:translate(-50%,-50%) scale(.94)}}@keyframes sceneTwinkle{50%{opacity:.42}}@keyframes sceneFanSpin{to{transform:rotate(360deg)}}@keyframes sceneAirFlow{0%{transform:translateY(5px);opacity:0}30%{opacity:.9}100%{transform:translateY(-7px);opacity:0}}
+.motion-paused .scene-device *{animation-play-state:paused!important;transition:none!important}
+.motion-paused .scene-device-shade{transition:none!important}
+@media(prefers-reduced-motion:reduce){.scene-device *{animation:none!important;transition:none!important}.scene-device-shade{transition:none!important}}
+`;

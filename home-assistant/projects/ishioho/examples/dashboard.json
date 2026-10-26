@@ -856,6 +856,35 @@
           "moon_entity": "sensor.moon_phase",
           "sun_entity": "sun.sun",
           "night_assets": true,
+          "scene_devices": [
+            {
+              "entity": "light.bedroom",
+              "kind": "light",
+              "x": 82,
+              "y": 25,
+              "label": "Bedroom light",
+              "shade": [
+                [74, 9],
+                [92, 9],
+                [92, 50],
+                [74, 50]
+              ]
+            },
+            {
+              "entity": "light.kitchen",
+              "kind": "light",
+              "x": 53,
+              "y": 63,
+              "label": "Kitchen light"
+            },
+            {
+              "entity": "fan.dining_purifier",
+              "kind": "purifier",
+              "x": 33,
+              "y": 64,
+              "label": "Dining purifier"
+            }
+          ],
           "theme": "stardew"
         }
       ]

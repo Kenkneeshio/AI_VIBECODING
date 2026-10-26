@@ -143,9 +143,12 @@ test('Stardew example preserves Pokemon controls while placing its upper porch p
   assert.deepEqual(doc.views.map(v=>v.path),['home','pokedex','crossing','stardew']);
   const pokemon=doc.views.find(v=>v.path==='home').cards[0],stardew=doc.views.find(v=>v.path==='stardew').cards[0];
   assert.equal(stardew.theme,'stardew');
-  const {rooms:stardewRooms,theme:stardewTheme,...stardewControls}=stardew;
+  const {rooms:stardewRooms,theme:stardewTheme,scene_devices:sceneDevices,...stardewControls}=stardew;
   const {rooms:pokemonRooms,theme:pokemonTheme,...pokemonControls}=pokemon;
   assert.deepEqual(stardewControls,pokemonControls);
+  assert.deepEqual(sceneDevices.map(device=>device.kind),['light','light','purifier']);
+  assert.ok(sceneDevices.every(device=>Number.isFinite(device.x)&&Number.isFinite(device.y)&&device.x>=0&&device.x<=100&&device.y>=0&&device.y<=100));
+  assert.deepEqual(sceneDevices[0].shade,[[74,9],[92,9],[92,50],[74,50]]);
   assert.deepEqual(stardewRooms.map(r=>r.id),pokemonRooms.map(r=>r.id));
   for(const room of stardewRooms.filter(r=>!['porch','garage'].includes(r.id)))assert.deepEqual(room,pokemonRooms.find(r=>r.id===room.id));
   const entry=stardew.rooms.find(r=>r.id==='entryway'),porch=stardew.rooms.find(r=>r.id==='porch'),garage=stardew.rooms.find(r=>r.id==='garage');
@@ -158,6 +161,95 @@ test('Stardew builds its own images and accessible fourth navigation link withou
   assert.match(html,/href="\/prototype-copy\/stardew" aria-label="Stardew theme" aria-current="page"/);
   for(const path of ['home','pokedex','crossing'])assert.ok(html.includes('href="/prototype-copy/'+path+'"'));
   assert.equal(calls.length,0);
+});
+test('Stardew scene devices render only safe configured art controls, without actuation',()=>{
+  const{p,calls}=fixture({'light.bedroom':state('on'),'switch.office_fan':state('off'),'fan.dining_purifier':state('unavailable')});
+  const scene_devices=[
+    {entity:'light.bedroom',kind:'light',x:89,y:12,label:'Bedroom <lamp>'},
+    {entity:'switch.office_fan',kind:'fan',x:60,y:27,label:'Office fan'},
+    {entity:'fan.dining_purifier',kind:'purifier',x:38,y:75,label:'Dining purifier'},
+    {entity:'light.bedroom',kind:'light',x:85,y:15,label:'Duplicate fixture'},
+    {entity:'light.hidden',kind:'light',x:20,y:20,label:'Excluded'},
+    {entity:'cover.garage',kind:'fan',x:16,y:50,label:'Wrong domain'},
+    {entity:'light.bad_kind',kind:'spinner',x:50,y:50,label:'Wrong kind'},
+    {entity:'light.bad_x',kind:'light',x:-1,y:50,label:'Wrong coordinate'},
+    {entity:'light.bad_y',kind:'light',x:50,y:101,label:'Wrong coordinate'},
+    {entity:'light.bad_number',kind:'light',x:'50',y:50,label:'Wrong coordinate'}
+  ];
+  p.setConfig({...config(),theme:'stardew',scene_devices,excluded_entities:['light.hidden']});
+  const ids=p._sceneDevices().map(device=>device.entity);
+  assert.deepEqual(ids,['light.bedroom','switch.office_fan','fan.dining_purifier']);
+  const html=p.shadowRoot.innerHTML;
+  for(const id of ids){assert.ok(html.includes(`data-scene-entity="${id}"`),id);assert.ok(html.includes(`data-toggle="${id}"`),id);}
+  for(const id of ['light.hidden','cover.garage','light.bad_kind','light.bad_x','light.bad_y','light.bad_number'])assert.ok(!html.includes(`data-scene-entity="${id}"`),id);
+  assert.ok(html.includes('style="left:89%;top:12%"'),'art coordinates must use map-relative percentages');
+  assert.ok(html.includes('Bedroom &lt;lamp&gt;'));
+  assert.equal(calls.length,0);
+  p.setConfig({...config(),theme:'pokemon',scene_devices});
+  assert.ok(!p.shadowRoot.innerHTML.includes('data-scene-entity='));
+});
+test('Stardew fixture art follows live on, off, unavailable, and disconnected states',()=>{
+  const{p,h,calls}=fixture({'light.bedroom':state('off')});
+  p.setConfig({...config(),theme:'stardew',scene_devices:[{entity:'light.bedroom',kind:'light',x:89,y:12,label:'Bedroom light'}]});
+  const wrapper=new Node(),button=new Node('button');wrapper.dataset.sceneEntity='light.bedroom';wrapper.dataset.kind='light';wrapper.querySelector=()=>button;
+  p.shadowRoot.querySelectorAll=selector=>selector==='.scene-device'?[wrapper]:[];
+  p._updateSceneDevices();
+  assert.equal(wrapper.dataset.state,'off');assert.equal(button.attrs['aria-pressed'],'false');assert.equal(button.disabled,false);
+  h.states['light.bedroom']=state('on');p._updateSceneDevices();
+  assert.equal(wrapper.dataset.state,'on');assert.equal(button.attrs['aria-pressed'],'true');
+  h.states['light.bedroom']=state('unavailable');p._updateSceneDevices();
+  assert.equal(wrapper.dataset.state,'unavailable');assert.equal(button.disabled,true);
+  h.states['light.bedroom']=state('on');h.connected=false;p._updateSceneDevices();
+  assert.equal(button.disabled,true);assert.equal(calls.length,0);
+});
+test('room artwork shade accepts bounded light polygons and ignores malformed masks without losing controls',()=>{
+  const{p,calls}=fixture({'light.valid':state('off'),'light.too_few':state('off'),'light.bad_point':state('off'),'light.bad_number':state('off'),'fan.with_shade':state('off')});
+  const valid=[[74,9],[92,9],[92,50],[74,50]];
+  p.setConfig({...config(),theme:'stardew',scene_devices:[
+    {entity:'light.valid',kind:'light',x:82,y:25,label:'Bedroom',shade:valid},
+    {entity:'light.too_few',kind:'light',x:10,y:20,label:'Too few',shade:[[10,10],[20,20]]},
+    {entity:'light.bad_point',kind:'light',x:20,y:20,label:'Out of bounds',shade:[[10,10],[101,10],[20,20]]},
+    {entity:'light.bad_number',kind:'light',x:30,y:20,label:'String coordinate',shade:[[10,10],['20',10],[20,20]]},
+    {entity:'fan.with_shade',kind:'fan',x:60,y:25,label:'Fan',shade:valid}
+  ]});
+  assert.equal(p._sceneDevices().length,5,'bad masks must not remove otherwise valid controls');
+  const html=p.shadowRoot.innerHTML;
+  assert.ok(html.includes('data-scene-shade="light.valid"'));
+  assert.ok(html.includes('left:74%;top:9%;width:18%;height:41%;clip-path:polygon(0% 0%,100% 0%,100% 100%,0% 100%)'));
+  assert.equal((html.match(/data-scene-shade=/g)||[]).length,1);
+  for(const id of ['light.too_few','light.bad_point','light.bad_number','fan.with_shade'])assert.ok(html.includes(`data-toggle="${id}"`),id);
+  const css=context.ishiohoCss;
+  const day=css.match(/\.theme-stardew \.scene-device-shade\[data-state="off"\]\{opacity:([\d.]+)\}/);
+  const night=css.match(/\.theme-stardew\.is-night \.scene-device-shade\[data-state="off"\]\{opacity:([\d.]+)\}/);
+  assert.ok(day&&night&&Number(day[1])>0&&Number(night[1])>Number(day[1]),'off artwork should dim subtly by day and more at night');
+  assert.match(css,/\.scene-device-shade\{[^}]*opacity:0/,'on and unavailable should leave the original illustration unshaded');
+  assert.equal(calls.length,0);
+});
+test('room artwork shade state tracks the actual light without operating it',()=>{
+  const{p,h,calls}=fixture({'light.bedroom':state('off')});
+  p.setConfig({...config(),theme:'stardew',scene_devices:[{entity:'light.bedroom',kind:'light',x:82,y:25,label:'Bedroom',shade:[[74,9],[92,9],[92,50],[74,50]]}]});
+  const shade=new Node();shade.dataset.sceneShade='light.bedroom';
+  p.shadowRoot.querySelectorAll=selector=>selector==='.scene-device-shade'?[shade]:[];
+  p._updateSceneDevices();assert.equal(shade.dataset.state,'off');
+  h.states['light.bedroom']=state('on');p._updateSceneDevices();assert.equal(shade.dataset.state,'on');
+  h.states['light.bedroom']=state('unavailable');p._updateSceneDevices();assert.equal(shade.dataset.state,'unavailable');
+  h.states['light.bedroom']=state('off');h.connected=false;p._updateSceneDevices();assert.equal(shade.dataset.state,'unavailable');
+  assert.equal(calls.length,0);
+});
+test('Stardew art controls route live light and fan toggles through guarded Home Assistant calls',async()=>{
+  const{p,h,calls}=fixture({'light.bedroom':state('off'),'switch.office_fan':state('on'),'fan.dining_purifier':state('unavailable')});
+  p.setConfig({...config(),theme:'stardew',scene_devices:[
+    {entity:'light.bedroom',kind:'light',x:89,y:12,label:'Bedroom light'},
+    {entity:'switch.office_fan',kind:'fan',x:60,y:27,label:'Office fan'},
+    {entity:'fan.dining_purifier',kind:'purifier',x:38,y:75,label:'Dining purifier'}
+  ]});
+  assert.equal(calls.length,0,'rendering must not operate devices');
+  await click(p,'toggle',{toggle:'light.bedroom'});
+  await click(p,'toggle',{toggle:'switch.office_fan'});
+  await click(p,'toggle',{toggle:'fan.dining_purifier'});
+  assert.deepEqual(calls.map(([domain,service,data])=>[domain,service,data.entity_id]),[['light','turn_on','light.bedroom'],['switch','turn_off','switch.office_fan']]);
+  assert.equal(h.states['light.bedroom'].state,'off','art must wait for reported state');
+  h.connected=false;await click(p,'toggle',{toggle:'light.bedroom'});assert.equal(calls.length,2);
 });
 test('Stardew garage uses the inherited viewing popup and native door controls without actuation',()=>{
   const{p,calls}=fixture({'cover.garage':state('closed')});p.setConfig({...config(),theme:'stardew'});let camera;

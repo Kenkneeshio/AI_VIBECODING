@@ -12,7 +12,7 @@ The image is the bundled static artwork. Device readings and camera images are n
 
 ## Behavior
 
-- Four views reuse the same controls and underlying floor plan. Stardew reuses the Pokémon v8 configuration: the plant balcony is on the left; the covered upstairs Porch and blue front door are outside; Entry is inside that door; railed exterior stairs descend toward the single-car garage below.
+- Four views reuse the same underlying floor plan and room/device catalog. Stardew adds optional `scene_devices` artwork controls. The plant balcony is on the left; the covered upstairs Porch and blue front door are outside; Entry is inside that door; railed exterior stairs descend toward the single-car garage below.
 - Pokémon v8 and Stardew v2 use static PNG day/night backgrounds; interface effects still animate. Pokémon v8 uses 2800×1400 raster exports of its SVG artwork. Stardew v2 uses 1774×887 generated illustrations; the older v1 PNGs and independent v1 SVG reconstructions remain in the repository for reference. No SVG in this project is an editable source of the v2 illustrations. Pokédex and Animal Crossing retain their SVG animated/still backgrounds and prior room coordinates.
 - The panel fills the screen, with status, map settings and thumbnails in the **Controls** popup. Pokémon and Stardew preserve the artwork's 2:1 proportions and align pins with the contained image instead of stretching rooms to the screen.
 - Room popups combine an explicit entity list with exact Home Assistant area metadata. The directory supports name/ID search, domain, area, availability, and pagination.
@@ -21,6 +21,7 @@ The image is the bundled static artwork. Device readings and camera images are n
 - The robot marker shows its reported room only when location is available and unambiguous. The robot's own map camera provides its precise position and route.
 - Weather, moon phase, sunrise/sunset, and automatic day/night appearance come from Home Assistant entities. A manual day/night preview changes appearance only. A calculated moon fallback is labeled as calculated.
 - The Stardew map animates the **current** provider condition in exterior sky and garden bands: sunlight, moonlight, clouds, wind, rain, snow, fog, and storms. Near-horizon sun telemetry adds a dawn or dusk tint. The separate **Next hours** strip animates predicted conditions without making the map appear to show future weather. Pause and reduced-motion settings stop decorative animation.
+- Optional Stardew `scene_devices` make the fixtures themselves into controls. Their light, fan, purifier, and vent sprites reflect current Home Assistant on/off/availability states; animation runs only while a device reports on and decorative motion is enabled. Tap a fixture to toggle its configured entity, or open its room for device-specific controls. A light can also shade its part of the illustration while it reports off, covering lamps baked into the static PNG with a subtle daytime tint and stronger night shading.
 - The weather popup shows the remaining hourly outlook for today and dated upcoming periods when the provider supplies them. Forecasts use the Home Assistant time zone and a shared 15-minute cache; unavailable or stale data is labeled. Missing precipitation probability is never inferred from precipitation amount.
 - Alerts cover configured binary events, garage-open state, maintenance events, unavailable monitored entities, and PM2.5 readings over the current fixed threshold of 35.
 
@@ -78,6 +79,7 @@ The **Controls** popup includes a browser fullscreen button. A kiosk browser may
 | `cameras` | Ordered `{entity, name}` entries; optional paired `start_service`/`stop_service` names for Eufy on-demand streams |
 | `garage_camera` | Optional camera entity ID from `cameras` for the garage popup. Otherwise the card looks for a camera in the Garage room, then a configured camera whose name contains “garage”. |
 | `lights`, `climate` | Quick control entities and thermostat |
+| `scene_devices` | Optional Stardew-only artwork controls: `{entity, kind, x, y, label, shade?}`. `kind` is `light`, `fan`, `purifier`, or `vent`; `x` and `y` are percentages of the contained 2:1 map. For a `light`, `shade` is an optional polygon of 3–12 `[x, y]` map-percentage points. |
 | `outside`, `outside_humidity`, `living_temp`, `power` | Summary sensor IDs; `living_temp` supplies the current Dining summary tile |
 | `weather_entity`, `moon_entity`, `sun_entity`, `night_assets` | Environment sources and day/night artwork selection |
 | `vacuum`, `vacuum_battery`, `vacuum_map`, `robot_room` | Robot controls, telemetry, native map camera, and reported room |
@@ -93,6 +95,8 @@ The **Controls** popup includes a browser fullscreen button. A kiosk browser may
 Remove an unusable camera from `cameras` and room lists, then add its ID to `excluded_entities` if it should also be hidden in the directory. This affects this dashboard only. The example excludes `camera.front_door` to demonstrate the configuration; it makes no claim about any device with that ID.
 
 Only place a control in a room after confirming its physical location. A device's friendly name is not a location source. Unknown assignments belong in the directory's **No area assigned** group. The illustrated balcony plants are decorative; they do not imply plant sensors or irrigation controls.
+
+For `scene_devices`, identify the actual fixture and its entity before placing its sprite. A room-level location is appropriate when a fixture's exact mount point is unknown; do not use a ceiling-fan sprite for an air purifier. The card accepts only `light`, `switch`, `fan`, and `humidifier` entity domains for these controls. Excluded, missing, unknown, or unavailable entities must not operate. On/off appearance follows the live state; loading the map does not issue a service call. A valid `shade` uses the same image coordinates as the fixture and dims only its polygon when that mapped light reports **off**—slightly by day, more visibly at night. On and unavailable states leave the artwork unshaded, so missing telemetry does not pretend the room is dark. Keep polygons within their actual room and avoid overlapping masks where multiple independent lights share a space. The room pin and **All devices** remain the route to full native controls such as brightness and speed. The public example uses fictional IDs and positions; replace them with verified assignments for your home.
 
 `examples/catalog.json` documents the metadata schema: `entities` is an array of `{entity_id, name, domain, area_id, area_name, device_id, device_name}`, and `areas` is an array of `{area_id, name}`. The card lists current `hass.states`, enriched by this metadata. Registry entries with no runtime state are not shown. New runtime IDs remain searchable even if absent from the catalog.
 
@@ -122,7 +126,7 @@ The files in GitHub are the public source of the card; the Home Assistant dashbo
 | Change | Source to edit | Installed copy to update |
 | --- | --- | --- |
 | Card logic, weather, styles | `ishioho/*.js`, `pallet-house/pallet-panel.js` | Corresponding files in `www/`; staging rewrites direct import cache keys and recommends the registered resource URL |
-| Entity IDs, room pins, cameras | A private copy of `examples/dashboard.json`; keep the public file synthetic | Dashboard raw configuration through Home Assistant's editor or supported API |
+| Entity IDs, room pins, cameras, scene fixtures | A private copy of `examples/dashboard.json`; keep the public file synthetic | Dashboard raw configuration through Home Assistant's editor or supported API |
 | Area and robot labels | Minimal, non-sensitive `catalog.json` and `robot.json` | Corresponding `www/ishioho/` files; reload the dashboard after editing them (metadata fetches bypass the browser cache) |
 | Pokémon or Stardew visible art | Versioned runtime PNG and the appropriate editable source if available | New PNG files in `www/ishioho/`; update `_mapAsset` in `ishioho-environment.js` and any changed room coordinates |
 | Pokédex or Animal Crossing art | Runtime SVG | SVG in `www/ishioho/`; update its asset URL query when replacing content |
@@ -141,7 +145,7 @@ node tests/run.cjs
 
 The runner stages sources, synthetic fixtures, and artwork in a temporary directory, then runs the component, directory, environment, and base-card suites. Check its output for the current number of passing checks. It removes only its own temporary directory after checking its resolved location. Home Assistant, network access, camera playback, and device actions are mocked.
 
-Checks cover pagination across a generated inventory, configuration exclusions, unassigned areas, robot location honesty, day/night selection, forecast caching and time-zone boundaries, escaping, unavailable entities, camera session ownership/races, and native-card configuration. The tests do not prove physical device actuation or camera compatibility on another installation.
+Checks cover pagination across a generated inventory, configuration exclusions, unassigned areas, robot location honesty, day/night selection, forecast caching and time-zone boundaries, escaping, unavailable entities, scene fixture state and safe toggle routing, camera session ownership/races, and native-card configuration. The tests do not prove physical device actuation or camera compatibility on another installation.
 
 During prototype development, browser checks covered the original three themes, searching and native entity details, room popups, a working garage feed, the robot's native map, and a phone-landscape viewport. Real lights, covers, climate equipment, and vacuum commands were not actuated as part of those checks. Recheck your own configured feeds, room placement, unavailable states, and mobile layout after installation.
 
