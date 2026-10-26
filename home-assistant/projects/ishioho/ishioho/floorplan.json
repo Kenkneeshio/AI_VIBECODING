@@ -23,7 +23,7 @@
       "number": 1,
       "label": "Single-car garage below",
       "default": false,
-      "footprint": [[5, 19], [15, 19], [15, 39.7], [5, 39.7]]
+      "footprint": [[24, 29], [41, 29], [41, 46], [24, 46]]
     }
   ],
   "spaces": [
@@ -32,15 +32,15 @@
       "levelId": "home",
       "kind": "exterior_stair",
       "label": "Stairs to garage",
-      "polygon": [[5, 5], [12.2, 5], [12.2, 17.7], [5, 17.7]],
-      "anchor": [9.8, 10.7]
+      "polygon": [[5, 22.5], [11, 22.5], [11, 44.5], [5, 44.5]],
+      "anchor": [7.8, 31.5]
     },
     {
       "id": "porch",
       "levelId": "home",
       "kind": "covered_porch",
       "label": "Covered porch",
-      "polygon": [[5, 17.7], [12.2, 17.7], [12.2, 19], [22.5, 19], [22.5, 27.5], [5, 27.5]],
+      "polygon": [[5, 17.7], [12.2, 17.7], [12.2, 19], [22.5, 19], [22.5, 27.5], [11, 27.5], [11, 22.5], [5, 22.5]],
       "anchor": [10.8, 18.75]
     },
     {
@@ -136,8 +136,8 @@
       "levelId": "garage",
       "kind": "single_car_garage",
       "label": "Garage",
-      "polygon": [[5, 19], [15, 19], [15, 39.7], [5, 39.7]],
-      "anchor": [10, 29.35]
+      "polygon": [[24, 29], [41, 29], [41, 46], [24, 46]],
+      "anchor": [32.5, 37.5]
     }
   ],
   "walls": [
@@ -165,18 +165,20 @@
     {"id": "balcony_west", "levelId": "home", "kind": "railing", "segment": [[12.2, 4.5], [12.2, 19]]},
     {"id": "balcony_south", "levelId": "home", "kind": "railing", "segment": [[12.2, 19], [22.5, 19]]},
     {"id": "balcony_south_east", "levelId": "home", "kind": "parapet", "segment": [[22.5, 19], [28, 22]]},
-    {"id": "porch_west", "levelId": "home", "kind": "railing", "segment": [[5, 17.7], [5, 27.5]]},
-    {"id": "porch_south", "levelId": "home", "kind": "railing", "segment": [[5, 27.5], [22.5, 27.5]]},
-    {"id": "stair_guard", "levelId": "home", "kind": "railing", "segment": [[12.2, 5], [12.2, 17.7]]},
-    {"id": "garage_west", "levelId": "garage", "kind": "exterior", "segment": [[5, 19], [5, 39.7]]},
-    {"id": "garage_north", "levelId": "garage", "kind": "exterior", "segment": [[5, 19], [15, 19]]},
-    {"id": "garage_east", "levelId": "garage", "kind": "exterior", "segment": [[15, 19], [15, 39.7]]},
-    {"id": "garage_south", "levelId": "garage", "kind": "exterior", "segment": [[5, 39.7], [15, 39.7]]}
+    {"id": "porch_west", "levelId": "home", "kind": "railing", "segment": [[5, 17.7], [5, 22.5]]},
+    {"id": "porch_south", "levelId": "home", "kind": "railing", "segment": [[11, 27.5], [22.5, 27.5]]},
+    {"id": "stair_guard", "levelId": "home", "kind": "railing", "segment": [[11, 27.5], [11, 44.5]]},
+    {"id": "stair_outer_guard", "levelId": "home", "kind": "railing", "segment": [[5, 22.5], [5, 44.5]]},
+    {"id": "garage_west", "levelId": "garage", "kind": "exterior", "segment": [[24, 29], [24, 46]]},
+    {"id": "garage_north", "levelId": "garage", "kind": "exterior", "segment": [[24, 29], [41, 29]]},
+    {"id": "garage_east", "levelId": "garage", "kind": "exterior", "segment": [[41, 29], [41, 46]]},
+    {"id": "garage_south", "levelId": "garage", "kind": "exterior", "segment": [[24, 46], [41, 46]]}
   ],
   "openings": [
     {"id": "front_door", "levelId": "home", "kind": "door", "segment": [[22.5, 22.8], [22.5, 25.1]], "connects": ["porch", "entryway"]},
     {"id": "balcony_living_slider", "levelId": "home", "kind": "sliding_door", "segment": [[28, 10.5], [28, 16.5]], "connects": ["balcony", "living"]},
     {"id": "porch_balcony_gate", "levelId": "home", "kind": "gate", "segment": [[12.2, 17.7], [12.2, 19]], "connects": ["porch", "balcony"]},
+    {"id": "porch_stair_gate", "levelId": "home", "kind": "gate", "segment": [[6, 22.5], [10, 22.5]], "connects": ["porch", "garage_stairs"]},
     {"id": "entry_hall_passage", "levelId": "home", "kind": "passage", "segment": [[28.5, 22.5], [28.5, 24.5]], "connects": ["entryway", "hall"]},
     {"id": "living_hall_passage", "levelId": "home", "kind": "passage", "segment": [[37, 22], [44.5, 22]], "connects": ["living", "hall"]},
     {"id": "office_door", "levelId": "home", "kind": "door", "segment": [[63, 22], [66, 22]], "connects": ["hall", "office"]},
@@ -193,15 +195,15 @@
     {"id": "bath_east_window", "levelId": "home", "kind": "window", "segment": [[92.4, 30], [92.4, 35.5]]},
     {"id": "dining_south_window", "levelId": "home", "kind": "window", "segment": [[29.5, 39.7], [35, 39.7]]},
     {"id": "kitchen_south_window", "levelId": "home", "kind": "window", "segment": [[48.5, 39.7], [54, 39.7]]},
-    {"id": "garage_vehicle_door", "levelId": "garage", "kind": "garage_door", "segment": [[6.5, 39.7], [14.5, 39.7]], "connects": ["garage", "outside"]},
-    {"id": "garage_pedestrian_door", "levelId": "garage", "kind": "door", "segment": [[15, 25.5], [15, 28.3]], "connects": ["garage", "outside"]}
+    {"id": "garage_vehicle_door", "levelId": "garage", "kind": "garage_door", "segment": [[25, 46], [40, 46]], "connects": ["garage", "outside"]},
+    {"id": "garage_pedestrian_door", "levelId": "garage", "kind": "door", "segment": [[24, 36], [24, 38.8]], "connects": ["garage", "outside"]}
   ],
   "objects": [
     {"id": "balcony_table", "levelId": "home", "spaceId": "balcony", "kind": "table", "label": "Small balcony table", "geometry": {"type": "rect", "x": 16.2, "y": 11.4, "width": 4.2, "height": 4.2}},
     {"id": "balcony_planters", "levelId": "home", "spaceId": "balcony", "kind": "plants", "label": "Balcony plants", "geometry": {"type": "rect", "x": 13, "y": 5.3, "width": 14, "height": 1.7}},
-    {"id": "porch_bench", "levelId": "home", "spaceId": "porch", "kind": "bench", "label": "Porch bench", "geometry": {"type": "rect", "x": 6.8, "y": 20.6, "width": 1.3, "height": 5.4}},
+    {"id": "porch_bench", "levelId": "home", "spaceId": "porch", "kind": "bench", "label": "Porch bench", "geometry": {"type": "rect", "x": 6.8, "y": 18.2, "width": 1.3, "height": 3.6}},
     {"id": "porch_plant", "levelId": "home", "spaceId": "porch", "kind": "plant", "label": "Porch plant", "geometry": {"type": "point", "x": 8.3, "y": 18.7}},
-    {"id": "exterior_stair_flight", "levelId": "home", "spaceId": "garage_stairs", "kind": "stairs", "label": "Stairs down", "geometry": {"type": "rect", "x": 7.2, "y": 7.4, "width": 3.9, "height": 9.3}},
+    {"id": "exterior_stair_flight", "levelId": "home", "spaceId": "garage_stairs", "kind": "stairs", "label": "Stairs down", "geometry": {"type": "rect", "x": 5.8, "y": 23.2, "width": 4.4, "height": 20.5}},
     {"id": "entry_console", "levelId": "home", "spaceId": "entryway", "kind": "console", "label": "Entry console", "geometry": {"type": "rect", "x": 24.1, "y": 29.8, "width": 4, "height": 1.1}},
     {"id": "living_sofa", "levelId": "home", "spaceId": "living", "kind": "sofa", "label": "Living sofa", "geometry": {"type": "rect", "x": 37.8, "y": 10.8, "width": 3.1, "height": 9.4}},
     {"id": "living_coffee_table", "levelId": "home", "spaceId": "living", "kind": "coffee_table", "label": "Coffee table", "geometry": {"type": "rect", "x": 42.3, "y": 11.2, "width": 3.8, "height": 5.1}},
@@ -222,7 +224,7 @@
     {"id": "primary_bath_sink", "levelId": "home", "spaceId": "bathroom", "kind": "sink", "label": "Primary bath sink", "geometry": {"type": "point", "x": 84.5, "y": 37}},
     {"id": "primary_bath_toilet", "levelId": "home", "spaceId": "bathroom", "kind": "toilet", "label": "Primary bath toilet", "geometry": {"type": "point", "x": 78.3, "y": 37.5}},
     {"id": "primary_bath_tub", "levelId": "home", "spaceId": "bathroom", "kind": "bathtub", "label": "Tub", "geometry": {"type": "rect", "x": 89.2, "y": 29.1, "width": 1.9, "height": 9.1}},
-    {"id": "garage_car_bay", "levelId": "garage", "spaceId": "garage", "kind": "vehicle_bay", "label": "Single-car bay", "geometry": {"type": "rect", "x": 6.2, "y": 23, "width": 7.6, "height": 13.7}}
+    {"id": "garage_car_bay", "levelId": "garage", "spaceId": "garage", "kind": "vehicle_bay", "label": "Single-car bay", "geometry": {"type": "rect", "x": 25.2, "y": 31, "width": 14.6, "height": 12.8}}
   ],
   "deviceAnchors": [
     {"id": "living_room_light", "levelId": "home", "spaceId": "living", "kind": "light", "point": [32.36, 5.635], "effectPolygon": [[29, 4.5], [36, 4.5], [36, 12], [29, 12]]},
@@ -233,8 +235,8 @@
     {"id": "office_window_fan", "levelId": "home", "spaceId": "office", "kind": "fan", "point": [59, 7]},
     {"id": "dining_air_purifier", "levelId": "home", "spaceId": "dining", "kind": "purifier", "point": [38.28, 37.655]},
     {"id": "bathroom_humidifier_light", "levelId": "home", "spaceId": "bathroom", "kind": "light", "point": [85.5, 37.5], "effectPolygon": [[80, 33.5], [91, 33.5], [91, 39.5], [80, 39.5]]},
-    {"id": "garage_door", "levelId": "garage", "spaceId": "garage", "kind": "cover", "point": [10, 39]},
-    {"id": "garage_camera", "levelId": "garage", "spaceId": "garage", "kind": "camera", "point": [13.5, 22.5]},
+    {"id": "garage_door", "levelId": "garage", "spaceId": "garage", "kind": "cover", "point": [32.5, 45.2]},
+    {"id": "garage_camera", "levelId": "garage", "spaceId": "garage", "kind": "camera", "point": [39.5, 30.5]},
     {"id": "robot_tracker", "levelId": "home", "spaceId": "dining", "kind": "vacuum", "point": [37.2, 37.4], "positionSource": "runtime_room", "note": "Fallback display position only. Use the robot's reported room or coordinates when available."}
   ],
   "connections": [

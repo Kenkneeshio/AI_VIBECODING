@@ -37,12 +37,29 @@ test('the default home is a typed, bounded, two-level model with a lower garage'
   assert.ok(model.spaces.filter(space => space.levelId === 'home').length >= 12);
 });
 
+test('the long left stair reaches the porch and the single-car garage sits beneath the main home to its right', () => {
+  const spaces = new Map(model.spaces.map(space => [space.id, space]));
+  const stair = spaces.get('garage_stairs'), porch = spaces.get('porch'), garage = spaces.get('garage');
+  const left = polygon => Math.min(...polygon.map(([x]) => x));
+  const right = polygon => Math.max(...polygon.map(([x]) => x));
+  const bottom = polygon => Math.max(...polygon.map(([, y]) => y));
+  assert.equal(stair.levelId, 'home');
+  assert.ok(bottom(stair.polygon) > bottom(porch.polygon), 'stair must descend from the upper porch');
+  assert.ok(right(stair.polygon) < left(garage.polygon), 'garage must be right of the exterior stair');
+  assert.ok(inside(garage.anchor, model.levels.find(level => level.id === 'home').footprint),
+    'garage center must project beneath the main home');
+  assert.ok(model.openings.some(opening => opening.id === 'porch_stair_gate' &&
+    opening.connects.includes('porch') && opening.connects.includes('garage_stairs')));
+  assert.deepEqual(model.openings.find(opening => opening.id === 'garage_vehicle_door').segment,
+    [[25, 46], [40, 46]]);
+});
+
 test('the porch, interior entry, balcony, and stair popup remain distinct', () => {
   const anchors = roomAnchors(model);
   assert.deepEqual(Array.from(Object.values(anchors.porch)), [10.8, 37.5]);
   assert.deepEqual(Array.from(Object.values(anchors.entryway)), [25.5, 55]);
   assert.deepEqual(Array.from(Object.values(anchors.balcony)), [19.023, 28.24]);
-  assert.deepEqual(Array.from(Object.values(anchors.garage_stairs)), [9.8, 21.4]);
+  assert.deepEqual(Array.from(Object.values(anchors.garage_stairs)), [7.8, 63]);
   assert.equal(anchors.garage, undefined);
   for (const space of model.spaces) assert.ok(inside(space.anchor, space.polygon), `${space.id} anchor outside room`);
 });

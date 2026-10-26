@@ -31,7 +31,7 @@ test('staging produces relative /www files, separate examples, and a complete SH
   assert.ok(fs.existsSync(path.join(bundle, 'www', 'ishioho', 'floorplan.json')));
   assert.ok(fs.existsSync(path.join(bundle, 'www', 'ishioho', 'floorplan.schema.json')));
   for (const kind of ['map', 'still', 'night-map', 'night-still']) {
-    assert.ok(fs.existsSync(path.join(bundle, 'www', 'ishioho', `stardew-${kind}-v3.png`)), `Active Stardew ${kind} v3 PNG`);
+    assert.ok(fs.existsSync(path.join(bundle, 'www', 'ishioho', `stardew-${kind}-v4.png`)), `Active Stardew ${kind} v4 PNG`);
     assert.ok(fs.existsSync(path.join(bundle, 'www', 'ishioho', `stardew-${kind}-v2.png`)), `Historical Stardew ${kind} v2 PNG`);
     assert.ok(fs.existsSync(path.join(bundle, 'www', 'ishioho', `stardew-${kind}-v1.png`)), `Historical Stardew ${kind} v1 PNG`);
     assert.ok(fs.existsSync(path.join(bundle, 'www', 'ishioho', `stardew-${kind}-v1.svg`)), `Historical Stardew ${kind} v1 SVG`);

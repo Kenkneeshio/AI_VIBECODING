@@ -14,8 +14,8 @@ Local JavaScript custom dashboard card. It extends a shared base card and uses n
 
 ## Scope
 
-- Pokémon v8 and Stardew v3 static PNG day/night backgrounds. Stardew v3 depicts a second-floor unit with a separate plant balcony and covered porch, blue entry door, upper-left exterior stairs, and neighboring attached-building edges. The single-car garage is below and opens as a popup from those stairs. Historical v1/v2 PNGs and independent v1 SVG reconstructions remain available; the current SVG plan is generated from `floorplan.json` and is a spatial diagram rather than an exact tracing of the v3 illustration. Pokédex and Animal Crossing retain their existing SVG artwork.
-- The same base indoor floor-plan geometry, with Pokémon and Stardew sharing the interior Entry and Balcony coordinates. Stardew v3 places its Porch pin on the landing and its Garage popup at the new stairhead; contained image/pin layers preserve proportions.
+- Pokémon v8 and Stardew v4 static PNG day/night backgrounds. Stardew v4 depicts the second-floor unit elevated above a visible street-level, single-car garage under the main home. Its long exterior stair descends at the far left from the covered porch, with a separate plant balcony and indoor Entry beyond the blue front door. The Garage popup opens from the stair; the garage itself is a separate lower-level model space. Historical v1/v2/v3 PNGs and independent v1 SVG reconstructions remain available; the current SVG Plan is generated from `floorplan.json` and is a spatial diagram rather than an exact tracing of the v4 illustration. Pokédex and Animal Crossing retain their existing SVG artwork.
+- The same base indoor floor-plan geometry, with Pokémon and Stardew sharing the interior Entry and Balcony coordinates. Stardew v4 places its Porch pin on the landing and Garage popup on the left stair; contained image/pin layers preserve proportions.
 - Contextual room, camera, garage, robot, environment, energy, and calendar popups.
 - Read-only current weather and forecast display with distinct on-map and upcoming effects, local-day grouping, real sun transitions, and reduced-motion support.
 - Runtime entity search with area/domain/availability filters and bounded pagination.
@@ -31,7 +31,7 @@ Home Assistant frontend native cards, WebRTC Camera, and the user's separately c
 
 ## Acceptance checks
 
-- [x] Four views include day/night assets; Pokémon v8 and Stardew v3 use PNG rendering, while Pokédex and Animal Crossing retain SVG animation/still variants.
+- [x] Four views include day/night assets; Pokémon v8 and Stardew v4 use PNG rendering, while Pokédex and Animal Crossing retain SVG animation/still variants.
 - [x] Runtime entities remain reachable through the searchable directory.
 - [x] Missing locations and unavailable data are not presented as measured values.
 - [x] Current weather and upcoming forecast are visually separate; unavailable forecasts and sun readings are labeled, and decorative motion can be paused.
@@ -42,6 +42,7 @@ Home Assistant frontend native cards, WebRTC Camera, and the user's separately c
 - [x] Pokémon v8 day/night rendering and garage popup verified on the target tablet; no SVG flecks in the displayed PNG backgrounds.
 - [x] Stardew v2 day/night rendering, four theme tabs, revised porch and stair pin placement, and live garage viewing verified on the target tablet; appearance returned to Auto.
 - [x] Stardew v3 day/night rendering, second-floor art, repositioned Garage popup, and Garage/Porch camera images verified on the target tablet; appearance returned to Auto.
+- [x] Corrected Stardew v4 day/night art, Plan geometry, long-left-stair Garage popup, and garage camera verified on the target tablet without operating the garage door.
 - [x] Prototype browser checks cover themes, popups, native robot map, camera viewing, and phone-landscape layout.
 - [x] Installation, configuration limits, removal, and rollback are documented.
 
@@ -51,4 +52,4 @@ Run `node scripts/verify-source.cjs`, `node tests/run.cjs`, then `node scripts/s
 
 ## Status
 
-Tested prototype. Public source uses sanitized examples. Stardew reuses Pokémon's control configuration, with theme-specific Porch and Garage popup coordinates for its v3 art. Its active v3 PNG art and historical v1/v2 assets have separate provenance documented in the README and [art spec](stardew-v3-art-spec.md). Private layout reference photos are not included. Physical device commands and compatibility with other hardware/installations remain to be verified by each installer.
+Tested prototype. Public source uses sanitized examples. Stardew reuses Pokémon's control configuration, with theme-specific Porch and Garage popup coordinates for its v4 art. Its active v4 PNG art and historical assets have separate provenance documented in the README and [art spec](stardew-v4-art-spec.md). Private layout reference photos are not included. Physical device commands and compatibility with other hardware/installations remain to be verified by each installer.

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/Kenkneeshio/AI_VIBECODING/main/home-assistant/projects/ishioho/ishioho/floorplan.schema.json",
   "title": "Ishioho floor-plan model, version 1",
-  "description": "Typed diagram geometry for the ishioho SVG renderer. Coordinates are diagram units, not surveyed dimensions.",
+  "description": "Typed diagram geometry for the ishioho SVG renderer. Coordinates are diagram units, not surveyed dimensions; level numbers express vertical order rather than measured height.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "id", "title", "coordinateSystem", "levels", "spaces", "walls", "openings", "objects", "deviceAnchors", "connections"],
@@ -53,7 +53,7 @@
       "required": ["id", "number", "label", "default", "footprint"],
       "properties": {
         "id": {"$ref": "#/$defs/id"},
-        "number": {"type": "integer"},
+        "number": {"type": "integer", "description": "Building storey number; a higher number is above a lower number, without implying measured floor height."},
         "label": {"$ref": "#/$defs/label"},
         "default": {"type": "boolean"},
         "footprint": {"$ref": "#/$defs/polygon"}

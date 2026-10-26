@@ -776,14 +776,14 @@
               "area_names": [
                 "Porch"
               ],
-              "note": "Covered upstairs porch outside the blue front door. Exterior stairs descend beside the single-car garage below. Example porch devices appear here."
+              "note": "Covered upstairs porch outside the blue front door. Long exterior stairs descend on the far left; the single-car garage is under the main home to their right. Example porch devices appear here."
             },
             {
               "id": "garage",
               "name": "Garage",
               "short": "Garage ↓",
-              "x": 9.8,
-              "y": 21.4,
+              "x": 7.8,
+              "y": 63,
               "area_names": [
                 "Garage"
               ],
@@ -791,7 +791,7 @@
                 "cover.garage_door",
                 "camera.garage_camera"
               ],
-              "note": "Popup at the upstairs porch stairhead; the single-car garage is below this floor."
+              "note": "Popup on the long exterior stair descending from the upstairs porch; the single-car garage is under the main home to the right."
             }
           ],
           "cameras": [

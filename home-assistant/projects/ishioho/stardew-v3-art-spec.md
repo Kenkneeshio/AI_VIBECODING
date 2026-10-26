@@ -1,5 +1,7 @@
 # Stardew v3 art and layout spec
 
+Historical reference only. V3 placed the garage and stairs incorrectly and is no longer active; use the [v4 art and layout spec](stardew-v4-art-spec.md) and current `floorplan.json` for the installed geometry.
+
 This is the public layout contract for the Stardew-inspired view. It describes the illustrated second floor and the controls that sit over it. It does not include the private reference floor plan, marked screenshot, photographs, address, entity inventory, or camera images.
 
 ## Runtime assets
