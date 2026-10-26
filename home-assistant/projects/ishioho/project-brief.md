@@ -44,7 +44,7 @@ Home Assistant frontend native cards, WebRTC Camera, and the user's separately c
 - [x] Stardew v2 day/night rendering, four theme tabs, revised porch and stair pin placement, and live garage viewing verified on the target tablet; appearance returned to Auto.
 - [x] Stardew v3 day/night rendering, second-floor art, repositioned Garage popup, and Garage/Porch camera images verified on the target tablet; appearance returned to Auto.
 - [x] Corrected Stardew v4 day/night art, Plan geometry, long-left-stair Garage popup, and garage camera verified on the target tablet without operating the garage door.
-- [ ] Stardew v5 illustrated day/night views, compact Menu, Plan geometry, and Garage popup to be checked on the target tablet after installation.
+- [x] Stardew v5 illustrated day/night views, compact Menu, Plan geometry, and Garage popup checked on the 1920×1080 target tablet; live garage camera image and cover status were visible without operating devices.
 - [x] Prototype browser checks cover themes, popups, native robot map, camera viewing, and phone-landscape layout.
 - [x] Installation, configuration limits, removal, and rollback are documented.
 
@@ -54,4 +54,4 @@ Run `node scripts/verify-source.cjs`, `node tests/run.cjs`, then `node scripts/s
 
 ## Status
 
-Tested prototype with a v5 source update pending target-tablet verification. Public source uses sanitized examples. Stardew reuses Pokémon's control configuration, with a themed Menu and Porch/Garage positions supplied by the floor-plan model. Its active v5 PNG art and historical assets have separate provenance documented in the README and [art spec](stardew-v5-art-spec.md). Private layout reference photos are not included. Physical device commands and compatibility with other hardware/installations remain to be verified by each installer.
+Tested prototype with v5 verified on the target tablet. Public source uses sanitized examples. Stardew reuses Pokémon's control configuration, with a themed Menu and Porch/Garage positions supplied by the floor-plan model. Its active v5 PNG art and historical assets have separate provenance documented in the README and [art spec](stardew-v5-art-spec.md). Private layout reference photos are not included. Physical device commands and compatibility with other hardware/installations remain to be verified by each installer.
