@@ -173,7 +173,7 @@ ishiohoCss += `
 .theme-stardew.floorplan-mode .floorplan-layer{opacity:1;pointer-events:auto;background:#8fa97e}
 .theme-stardew.floorplan-mode .floor-bg{fill:#8fa97e}
 .theme-stardew.floorplan-mode .floor-footprint{fill:#b9936e;stroke:#553d2e;stroke-width:.55}
-.theme-stardew.floorplan-mode .floor-space{fill:#d8ba8c;stroke:#7a5237;stroke-width:.12;transition:fill .15s ease}
+.theme-stardew.floorplan-mode .floor-space{fill:#d8ba8c;stroke:none;transition:fill .15s ease}
 .theme-stardew.floorplan-mode .floor-space-group[data-kind="balcony"] .floor-space{fill:#8dab75}
 .theme-stardew.floorplan-mode .floor-space-group[data-kind="covered_porch"] .floor-space{fill:#c7ac86}
 .theme-stardew.floorplan-mode .floor-space-group[data-kind="bathroom"] .floor-space{fill:#a9c8c8}
@@ -192,7 +192,7 @@ ishiohoCss += `
 .theme-stardew.is-night.floorplan-mode .floorplan-layer{background:#354454}
 .theme-stardew.is-night.floorplan-mode .floor-bg{fill:#354454}
 .theme-stardew.is-night.floorplan-mode .floor-footprint{fill:#5a5550;stroke:#d1aa7f}
-.theme-stardew.is-night.floorplan-mode .floor-space{fill:#645744;stroke:#c0a782}
+.theme-stardew.is-night.floorplan-mode .floor-space{fill:#645744;stroke:none}
 .theme-stardew.is-night.floorplan-mode .floor-space-group[data-kind="bathroom"] .floor-space{fill:#42646d}
 .theme-stardew.is-night.floorplan-mode .floor-space-group[data-kind="balcony"] .floor-space{fill:#3e644f}
 .theme-stardew.is-night.floorplan-mode .floor-space-group[data-kind="covered_porch"] .floor-space{fill:#5f5549}
@@ -200,4 +200,72 @@ ishiohoCss += `
 .theme-stardew.is-night.floorplan-mode .floor-object>*{fill:#8c745a;stroke:#e5c59b}
 .theme-stardew.is-night.floorplan-mode .floor-object-plant>*,.theme-stardew.is-night.floorplan-mode .floor-object-plants>*{fill:#5b9468;stroke:#c8d59e}
 @media(prefers-reduced-motion:reduce){.theme-stardew .floorplan-layer,.theme-stardew .floor-space{transition:none!important}}
+`;
+
+/* A compact storybook house replaces the four permanent theme tabs. The
+   native details element keeps every theme keyboard and touch accessible. */
+ishiohoCss += `
+.immersive>.masthead{z-index:20}
+.immersive .theme-menu{position:relative;flex:none;align-self:flex-start;margin:0 0 0 auto;padding:0;overflow:visible}
+.immersive .theme-menu summary{box-sizing:border-box;list-style:none;display:flex;align-items:center;justify-content:center;gap:4px;min-width:70px;height:50px;padding:5px 8px;border-radius:13px;cursor:pointer;user-select:none;touch-action:manipulation;color:var(--ink);background:var(--paper)}
+.immersive .theme-menu summary::-webkit-details-marker{display:none}
+.immersive .theme-menu summary::marker{content:''}
+.immersive .theme-menu summary:hover,.immersive .theme-menu[open] summary{background:var(--accent-soft)}
+.immersive .theme-menu summary:focus-visible,.immersive .theme-choice:focus-visible,.immersive .theme-menu-actions button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.theme-menu-art{position:relative;display:block;flex:none;width:28px;height:29px;filter:drop-shadow(2px 2px 0 #41362970)}
+.theme-menu-art::before{content:'';position:absolute;z-index:2;left:1px;top:1px;width:26px;height:11px;background:#a45f46;clip-path:polygon(50% 0,100% 65%,100% 100%,0 100%,0 65%);box-shadow:inset 0 -3px #694437}
+.theme-menu-art i{position:absolute;z-index:1;left:4px;top:10px;width:20px;height:17px;background:#edcb91;border:2px solid #78553d;box-sizing:border-box}
+.theme-menu-art b{position:absolute;z-index:3;left:12px;top:17px;width:6px;height:10px;background:#745441;border:1px solid #573d32;box-sizing:border-box}
+.theme-menu-art em{position:absolute;z-index:4;left:18px;top:16px;width:5px;height:5px;background:#7da366;border:1px solid #557849;border-radius:50%;box-shadow:2px 2px 0 #e9c972}
+.theme-menu-label{font-family:Segoe UI,sans-serif;font-size:11px;font-weight:800;line-height:1;letter-spacing:.2px}
+.theme-menu-caret{font-size:13px;line-height:1;transition:transform .18s ease}
+.theme-menu[open] .theme-menu-caret{transform:rotate(180deg)}
+.immersive .theme-menu-popover{position:absolute;z-index:50;top:calc(100% + 8px);right:0;width:min(270px,calc(100vw - 24px));box-sizing:border-box;padding:11px;background:var(--paper);color:var(--ink);border:2px solid var(--border);border-radius:12px;box-shadow:5px 6px 0 var(--shadow),0 12px 30px #17251d55}
+.theme-menu-heading{display:flex;flex-direction:column;gap:5px;padding:4px 6px 11px;border-bottom:1px solid var(--line)}
+.theme-menu-heading .eyebrow{font-size:7px;letter-spacing:1.2px;color:var(--muted)}
+.theme-menu-heading strong{font-size:15px;line-height:1.2}
+.theme-choices{display:grid;gap:4px;margin:9px 0}
+.theme-choice{display:flex;align-items:center;gap:9px;min-height:44px;padding:6px 9px;box-sizing:border-box;text-decoration:none;color:var(--ink);border:1px solid transparent;border-radius:8px}
+.theme-choice:hover,.theme-choice:focus-visible{background:var(--accent-soft)}
+.theme-choice.current{background:var(--accent-soft);border-color:var(--accent)}
+.theme-choice-icon{display:grid;place-items:center;flex:none;width:28px;height:28px;border-radius:6px;background:#a4b77e;color:#493629;font-size:18px}
+.theme-choice:nth-child(2) .theme-choice-icon{background:#e8d29d}.theme-choice:nth-child(3) .theme-choice-icon{background:#8f4750;color:#f6eedb}.theme-choice:nth-child(4) .theme-choice-icon{background:#b8d4a4}
+.theme-choice strong,.theme-choice small{display:block;line-height:1.3}.theme-choice strong{font-size:12px}.theme-choice small{font-size:9px;color:var(--muted)}
+.theme-choice-check{margin-left:auto;color:var(--accent);font-size:16px;font-weight:800}
+.theme-menu-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding-top:9px;border-top:1px solid var(--line)}
+.theme-menu-actions button{min-height:44px;padding:8px 6px;background:var(--accent-soft);border:1px solid var(--border);border-radius:7px;color:var(--ink);font:600 10px Segoe UI,sans-serif;cursor:pointer}
+.theme-menu-actions button:hover{filter:brightness(1.06)}
+@media(max-width:700px){.immersive .theme-menu{margin-left:0;margin-right:auto}.immersive .theme-menu summary{min-width:50px;padding:5px}.immersive .theme-menu-label{display:none}.immersive .theme-menu-popover{left:0;right:auto}}
+@media(max-height:550px) and (min-width:700px){.immersive .theme-menu summary{height:44px}.immersive .theme-menu-popover{top:calc(100% + 4px)}}
+@media(prefers-reduced-motion:reduce){.theme-menu-caret{transition:none}}
+`;
+
+/* The garage is a separate lower level. Its scene is decorative; the native
+   Home Assistant card below remains the only door control. */
+ishiohoCss += `
+.theme-stardew .stair-hotspot{z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:96px;max-width:114px;min-height:62px;padding:5px 7px;text-align:center;background:#f3dca4f7;border:2px solid #6c5038;border-radius:7px;box-shadow:3px 4px 0 #46362988,0 0 0 3px #f6e4b871}
+.theme-stardew .stair-hotspot .pin-light{display:none}
+.theme-stardew .stair-hotspot strong{font-size:11px;line-height:1.1;white-space:nowrap}
+.theme-stardew .stair-hotspot strong:before{content:none}
+.theme-stardew .stair-hotspot .stair-pin-target{font-size:10px;font-weight:750;line-height:1.1;color:#75523a}
+.theme-stardew .stair-hotspot small{font-size:8px;line-height:1.1;grid-column:auto;color:#705740}
+.theme-stardew .stair-pin-emblem{position:relative;display:block;width:28px;height:14px;background:repeating-linear-gradient(0deg,#e6cb98 0 3px,#8e7152 3px 5px);border:2px solid #664c39;border-radius:2px;box-shadow:2px 2px 0 #88684a}
+.theme-stardew .stair-pin-emblem:after{content:'↑';position:absolute;left:9px;top:-9px;font:bold 13px Segoe UI,sans-serif;color:#543b2c;text-shadow:1px 1px #f6dfaf}
+.theme-stardew .stair-hotspot:hover,.theme-stardew .stair-hotspot:focus-visible{background:#ffe7a9;box-shadow:3px 4px 0 #46362988,0 0 0 4px #fff0beaa}
+.theme-stardew .room-pin[data-room="entryway"]{z-index:4;border-color:#537557;background:#f7e7bbf7}
+.theme-stardew .room-pin[data-room="entryway"] strong:before{content:'⌂ ';color:#5e774f}
+.garage-status{padding:12px 16px;margin-bottom:12px}.garage-status h3{font-size:23px;margin:3px 0;text-transform:capitalize}.garage-status p{font-size:11px;line-height:1.4}
+.garage-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.12fr) minmax(185px,.8fr);gap:14px;align-items:start}
+.garage-grid>div{min-width:0}.garage-grid h3{margin:0 0 8px;font-size:14px}
+.garage-scene{position:relative;aspect-ratio:660/430;overflow:hidden;border:2px solid #775538;border-radius:6px;background:#91a974;box-shadow:2px 3px 0 #513b2c55}
+.garage-scene img{display:block;width:100%;height:100%;object-fit:contain}
+.garage-door-curtain{position:absolute;pointer-events:none;left:38.3%;top:24.2%;width:44.4%;height:0;opacity:0;background:repeating-linear-gradient(0deg,#d5be98 0 5px,#7f6550 5px 7px);border-left:2px solid #624b38;border-right:2px solid #624b38;box-shadow:0 2px 2px #49372f55;transition:height .45s ease,opacity .45s ease}
+.garage-scene[data-state="closed"] .garage-door-curtain{height:8%;opacity:1;border-bottom:2px solid #624b38}
+.garage-scene[data-state="opening"] .garage-door-curtain,.garage-scene[data-state="closing"] .garage-door-curtain{height:4%;opacity:1;border-bottom:2px solid #624b38}
+.theme-stardew.is-night .garage-scene img{filter:brightness(.73) saturate(.82)}
+.garage-camera-panel #garage-live>*{max-width:100%}
+.garage-controls-panel .all-room-button{width:100%;margin-top:12px;text-align:center}
+@media(max-width:900px){.garage-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.garage-controls-panel{grid-column:1/-1}}
+@media(max-width:620px){.garage-grid{grid-template-columns:1fr}.garage-controls-panel{grid-column:auto}.garage-status{padding:10px}.garage-status p{font-size:10px}.garage-grid h3{font-size:13px}}
+@media(prefers-reduced-motion:reduce){.garage-door-curtain{transition:none}}
 `;

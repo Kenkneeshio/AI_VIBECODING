@@ -76,8 +76,9 @@ test('specialized domains remain native details rather than generic toggle actio
 test('decorative animation toggle makes no device calls and records accessible state',async()=>{
   const{p,calls}=fixture();const b=new Node('button');b.dataset.action='motion';await p._click({target:{closest:()=>b}});assert.equal(p._motion,false);assert.equal(p._q('.shell').classList.contains('motion-paused'),true);assert.equal(b.attrs['aria-pressed'],'true');assert.equal(calls.length,0);
 });
-test('all themes retain the inherited lifecycle and unsupported theme defaults safely',async()=>{
-  const{p}=fixture();for(const theme of ['pokemon','pokedex','crossing','stardew','invalid']){p.setConfig({...config(),theme});assert.equal(p._theme,theme==='invalid'?'pokemon':theme);}await new Promise(setImmediate);assert.ok(fetches.every(url=>url.startsWith('/local/ishioho/')));assert.equal(typeof p._connectCamera,'function');assert.equal(typeof p._close,'function');
+test('all themes retain the inherited lifecycle and unsupported theme defaults to Stardew',async()=>{
+  const{p}=fixture();for(const theme of ['pokemon','pokedex','crossing','stardew','invalid']){p.setConfig({...config(),theme});assert.equal(p._theme,theme==='invalid'?'stardew':theme);}await new Promise(setImmediate);assert.ok(fetches.every(url=>url.startsWith('/local/ishioho/')));assert.equal(typeof p._connectCamera,'function');assert.equal(typeof p._close,'function');
+  p.setConfig(config());assert.equal(p._theme,'stardew','missing theme also opens the default world');
 });
 test('user-specific catalog and robot metadata are fetched without browser caching',()=>{
   assert.ok(fetches.includes('/local/ishioho/catalog.json'));
@@ -129,7 +130,7 @@ test('live sun changes flow through inherited updates without camera remounting'
   const{p,h,calls}=fixture({'sun.sun':state('above_horizon'),'weather.forecast_ishioho_city':state('sunny')});p._config.night_assets=true;let remounts=0;p._mountCameras=()=>remounts++;p._update();assert.equal(p._q('.shell').classList.contains('is-night'),false);h.states['sun.sun'].state='below_horizon';p.hass=h;assert.equal(p._q('.shell').classList.contains('is-night'),true);assert.equal(p._q('.animated-map').attrs.src,'/local/ishioho/pokemon-night-map-v8.png?v=8');assert.equal(remounts,0);assert.equal(calls.length,0);
 });
 test('synthetic example retains configured feeds and bundles the correct assets for every theme',()=>{
-  const doc=JSON.parse(read('ishioho-dashboard.json'));for(const view of doc.views){const c=view.cards[0];assert.deepEqual(c.cameras.map(x=>x.entity),['camera.porch_camera_profile_000','camera.garage_camera']);assert.ok(c.excluded_entities.includes('camera.front_door'));assert.ok(!c.rooms.some(r=>(r.entities||[]).includes('camera.front_door')));assert.equal(c.night_assets,true);assert.equal(c.weather_entity,'weather.forecast_ishioho_city');assert.equal(c.moon_entity,'sensor.moon_phase');const profile={pokemon:{version:8,extensions:['png','svg']},stardew:{version:4,extensions:['png']}}[c.theme];for(const suffix of ['-map','-still','-night-map','-night-still']){const stem=c.theme+suffix+(profile?'-v'+profile.version:'');for(const ext of profile?.extensions||['svg'])assert.ok(fs.existsSync(path.join(__dirname,'ishioho-assets',stem+'.'+ext)),stem+'.'+ext);}}
+  const doc=JSON.parse(read('ishioho-dashboard.json'));for(const view of doc.views){const c=view.cards[0];assert.deepEqual(c.cameras.map(x=>x.entity),['camera.porch_camera_profile_000','camera.garage_camera']);assert.ok(c.excluded_entities.includes('camera.front_door'));assert.ok(!c.rooms.some(r=>(r.entities||[]).includes('camera.front_door')));assert.equal(c.night_assets,true);assert.equal(c.weather_entity,'weather.forecast_ishioho_city');assert.equal(c.moon_entity,'sensor.moon_phase');const profile={pokemon:{version:8,extensions:['png','svg']},stardew:{version:5,extensions:['png']}}[c.theme];for(const suffix of ['-map','-still','-night-map','-night-still']){const stem=c.theme+suffix+(profile?'-v'+profile.version:'');for(const ext of profile?.extensions||['svg'])assert.ok(fs.existsSync(path.join(__dirname,'ishioho-assets',stem+'.'+ext)),stem+'.'+ext);}}
 });
 
 test('live updates work when optional robot battery widget is not mounted',()=>{
@@ -139,7 +140,7 @@ test('overview opens status and camera widgets on demand without device actuatio
   const {p,calls}=fixture();let mounts=0;p._mountCameras=()=>mounts++;p._open('overview');assert.equal(p._modal,'overview');assert.equal(mounts,1);assert.equal(calls.length,0);p._close();assert.equal(p._modal,null);
 });
 
-test('Stardew example preserves Pokemon controls while placing its upper porch pin on the revised art',()=>{
+test('Stardew example preserves Pokemon controls while aligning every room pin to the structured plan',()=>{
   const doc=JSON.parse(read('ishioho-dashboard.json'));
   assert.deepEqual(doc.views.map(v=>v.path),['home','pokedex','crossing','stardew']);
   const pokemon=doc.views.find(v=>v.path==='home').cards[0],stardew=doc.views.find(v=>v.path==='stardew').cards[0];
@@ -152,24 +153,52 @@ test('Stardew example preserves Pokemon controls while placing its upper porch p
   assert.ok(sceneDevices.every(device=>!Object.hasOwn(device,'x')&&!Object.hasOwn(device,'y')),'Named floor-plan anchors replace duplicate coordinates');
   assert.ok(sceneDevices.every(device=>!Object.hasOwn(device,'shade')),'Example light effect geometry belongs to the floor-plan model');
   assert.deepEqual(stardewRooms.map(r=>r.id),pokemonRooms.map(r=>r.id));
-  for(const room of stardewRooms.filter(r=>!['porch','garage'].includes(r.id)))assert.deepEqual(room,pokemonRooms.find(r=>r.id===room.id));
+  const modeled=context.roomAnchors(JSON.parse(read('floorplan.json')));
+  for(const room of stardewRooms){
+    const pokemonRoom=pokemonRooms.find(r=>r.id===room.id);
+    const {x,y,note,short,...binding}=room;
+    const {x:pokemonX,y:pokemonY,note:pokemonNote,short:pokemonShort,...pokemonBinding}=pokemonRoom;
+    assert.deepEqual(binding,pokemonBinding,`${room.id} entity and area bindings must be retained`);
+    const anchor=modeled[room.id==='garage'?'garage_stairs':room.id];
+    assert.deepEqual([room.x,room.y],[anchor.x,anchor.y],`${room.id} pin must follow the model`);
+  }
   const entry=stardew.rooms.find(r=>r.id==='entryway'),porch=stardew.rooms.find(r=>r.id==='porch'),garage=stardew.rooms.find(r=>r.id==='garage');
-  assert.deepEqual([entry.x,entry.y],[25.5,55]);assert.deepEqual([porch.x,porch.y],[10.8,37.5]);assert.deepEqual([garage.x,garage.y],[7.8,63]);
+  assert.ok(entry.x>porch.x&&entry.y>porch.y,'Entry is indoors beyond the porch door');
+  assert.ok(garage.x<porch.x&&garage.y<porch.y,'garage popup is on the stair at the far left');
   assert.equal(garage.short,'Garage ↓');
 });
-test('Stardew builds its own images and accessible fourth navigation link without device calls',()=>{
+test('Stardew builds v5 images and a compact accessible theme menu without device calls',()=>{
   const{p,calls}=fixture();p.setConfig({...config(),theme:'stardew'});const html=p.shadowRoot.innerHTML;
-  assert.match(html,/theme-stardew/);assert.match(html,/stardew-map-v4\.png\?v=4/);assert.match(html,/stardew-still-v4\.png\?v=4/);
+  assert.match(html,/theme-stardew/);assert.match(html,/stardew-map-v5\.png\?v=5/);assert.match(html,/stardew-still-v5\.png\?v=5/);
+  assert.match(html,/<details class="theme-menu">/);
+  assert.match(html,/<summary[^>]*aria-label="Open themes and settings"/);
+  assert.match(html,/<nav class="theme-choices" aria-label="Dashboard themes">/);
+  assert.match(html,/Default world/);
+  assert.match(html,/Down stairs ↑/);
+  assert.match(html,/Garage at top/);
+  assert.ok(!html.includes('class="theme-tabs"'));
   assert.match(html,/href="\/prototype-copy\/stardew" aria-label="Stardew theme" aria-current="page"/);
   for(const path of ['home','pokedex','crossing'])assert.ok(html.includes('href="/prototype-copy/'+path+'"'));
+  assert.match(html,/aria-label="Open home controls and settings"/);
+  assert.equal(calls.length,0);
+});
+test('theme menu closes on outside click and Escape without touching devices',()=>{
+  const{p,calls}=fixture();p.setConfig({...config(),theme:'stardew'});
+  const menu=p._q('.theme-menu');menu.open=true;
+  p._themeMenuClick({target:{closest:()=>null}});assert.equal(menu.open,false);
+  menu.open=true;let prevented=false;p._themeMenuKey({key:'Escape',preventDefault(){prevented=true;}});
+  assert.equal(prevented,true);assert.equal(menu.open,false);assert.equal(menu.querySelector('summary').focusCount,1);
   assert.equal(calls.length,0);
 });
 test('Stardew loads the default structured home and uses its room anchors instead of stale card coordinates',async()=>{
   const{p,calls}=fixture();const c=config();c.theme='stardew';c.rooms.find(room=>room.id==='living').x=1;c.rooms.find(room=>room.id==='living').y=1;c.rooms.find(room=>room.id==='garage').x=90;
   p.setConfig(c);await new Promise(setImmediate);
   assert.equal(p._floorplan?.id,'ishioho-default');
-  assert.deepEqual([p._config.rooms.find(room=>room.id==='living').x,p._config.rooms.find(room=>room.id==='living').y],[39.543,29.474]);
-  assert.deepEqual([p._config.rooms.find(room=>room.id==='garage').x,p._config.rooms.find(room=>room.id==='garage').y],[7.8,63]);
+  const anchors=context.roomAnchors(JSON.parse(read('floorplan.json')));
+  assert.deepEqual([p._config.rooms.find(room=>room.id==='living').x,p._config.rooms.find(room=>room.id==='living').y],
+    [anchors.living.x,anchors.living.y]);
+  assert.deepEqual([p._config.rooms.find(room=>room.id==='garage').x,p._config.rooms.find(room=>room.id==='garage').y],
+    [anchors.garage_stairs.x,anchors.garage_stairs.y]);
   assert.match(p.shadowRoot.innerHTML,/class="floorplan-svg"/);
   assert.match(p.shadowRoot.innerHTML,/data-floorplan-room="living"/);
   assert.match(p.shadowRoot.innerHTML,/data-floorplan-action="garage"/);
@@ -184,9 +213,12 @@ test('Stardew fixture bindings derive placement from named model anchors',async(
   await new Promise(setImmediate);
   assert.equal(p._sceneDevices().length,1,'Garage-level anchors cannot appear on the upstairs map');
   const mapped=p._sceneDevices()[0];
-  assert.deepEqual([mapped.x,mapped.y],[89.18,11.61]);
-  assert.deepEqual(JSON.parse(JSON.stringify(mapped.shade)),[[73.7,9],[91.8,9],[91.8,50],[73.7,50]]);
-  assert.match(p.shadowRoot.innerHTML,/data-scene-entity="light.bedroom"[^>]*left:89.18%;top:11.61%/);
+  const anchor=JSON.parse(read('floorplan.json')).deviceAnchors.find(item=>item.id==='bedroom_light');
+  assert.deepEqual([mapped.x,mapped.y],[anchor.point[0],anchor.point[1]*2]);
+  assert.deepEqual(JSON.parse(JSON.stringify(mapped.shade)),
+    anchor.effectPolygon.map(([x,y])=>[x,y*2]));
+  assert.ok(p.shadowRoot.innerHTML.includes(`data-scene-entity="light.bedroom"`) &&
+    p.shadowRoot.innerHTML.includes(`left:${mapped.x}%;top:${mapped.y}%`));
   assert.equal(calls.length,0);
 });
 test('structured floor mode and SVG rooms open native popups without operating devices',async()=>{
@@ -299,9 +331,14 @@ test('Stardew art controls route live light and fan toggles through guarded Home
   h.connected=false;await click(p,'toggle',{toggle:'light.bedroom'});assert.equal(calls.length,2);
 });
 test('Stardew garage uses the inherited viewing popup and native door controls without actuation',()=>{
-  const{p,calls}=fixture({'cover.garage':state('closed')});p.setConfig({...config(),theme:'stardew'});let camera;
+  const{p,h,calls}=fixture({'cover.garage':state('closed')});p.setConfig({...config(),theme:'stardew'});let camera;
   p._connectCamera=cam=>{camera=cam.entity;};const mounted=[];p._mountCard=(host,config)=>mounted.push(config);
   p._open('garage');assert.equal(p._modal,'garage');assert.equal(camera,'camera.garage_camera');
+  assert.match(p._q('#modal-root').innerHTML,/garage-scene-v5\.svg\?v=5/);
+  assert.match(p._q('#modal-root').innerHTML,/stairs descend screen-up beside the left pedestrian door/);
+  assert.equal(p._q('.garage-scene').dataset.state,'closed');
+  h.states['cover.garage'].state='open';p._update();assert.equal(p._q('.garage-scene').dataset.state,'open');
+  h.connected=false;p._update();assert.equal(p._q('.garage-scene').dataset.state,'unknown');
   assert.equal(mounted[0].type,'entities');assert.equal(mounted[0].entities[0].entity,'cover.garage');assert.equal(mounted[0].show_header_toggle,false);assert.equal(calls.length,0);
 });
 test('Stardew room directory and robot source keep the same live entity behavior',()=>{

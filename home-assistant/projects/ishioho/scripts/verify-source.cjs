@@ -20,6 +20,7 @@ const baseFiles = [
   'ishioho/room-positions.json',
   'ishioho/floorplan.json',
   'ishioho/floorplan.schema.json',
+  'ishioho/garage-scene-v5.svg',
   'pallet-house/house-map.svg',
   'pallet-house/press-start.ttf',
   'pallet-house/font-OFL.txt',
@@ -32,7 +33,7 @@ const activeArt = {
   pokemon: {extension: 'png', suffix: '-v8'},
   pokedex: {extension: 'svg', suffix: ''},
   crossing: {extension: 'svg', suffix: ''},
-  stardew: {extension: 'png', suffix: '-v4'}
+  stardew: {extension: 'png', suffix: '-v5'}
 };
 
 function sourceFiles() {
@@ -98,6 +99,17 @@ function verifySource() {
   assert.ok(['balcony', 'porch', 'entryway', 'garage_stairs'].every(id => spaces.get(id)?.levelId === 'home'), 'Missing separated balcony, porch, interior entry, or stairhead');
   assert.equal(spaces.get('garage')?.levelId, 'garage', 'Garage must not occupy the main home level');
   assert.ok(floorplan.connections.some(link => link.from?.spaceId === 'garage_stairs' && link.to?.spaceId === 'garage'), 'Missing garage stair link');
+  const garage = spaces.get('garage');
+  const garageTop = Math.min(...garage.polygon.map(([, y]) => y));
+  const garageLeft = Math.min(...garage.polygon.map(([x]) => x));
+  const rollUp = floorplan.openings.find(opening => opening.id === 'garage_vehicle_door');
+  const sideDoor = floorplan.openings.find(opening => opening.id === 'garage_pedestrian_door');
+  assert.ok(rollUp?.segment.every(([, y]) => y === garageTop), 'Garage roll-up must face the top driveway');
+  assert.ok(sideDoor?.segment.every(([x]) => x === garageLeft), 'Garage pedestrian door must be on the left wall');
+  const stair = floorplan.objects.find(object => object.id === 'exterior_stair_flight');
+  assert.ok(stair?.ascentSegment?.[0]?.[1] < stair?.ascentSegment?.[1]?.[1], 'Exterior stair must descend toward the top driveway on the map');
+  assert.ok(!floorplan.openings.some(opening => opening.connects?.includes('garage_stairs') && opening.connects.includes('balcony')),
+    'Stair must enter the covered porch, not the balcony');
   assert.ok(floorplan.deviceAnchors.length >= 8, 'Default plan lacks scene fixture anchors');
   assert.ok(Array.isArray(dashboard.views) && dashboard.views.length > 0, 'Dashboard has no views');
   const paths = new Set(), themes = new Set();

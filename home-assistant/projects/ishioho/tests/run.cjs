@@ -12,6 +12,7 @@ const sourceFiles={
  'ishioho-floorplan.js':'ishioho/ishioho-floorplan.js',
  'floorplan.json':'ishioho/floorplan.json',
  'floorplan.schema.json':'ishioho/floorplan.schema.json',
+ 'room-positions.json':'ishioho/room-positions.json',
  'ishioho-dashboard.json':'examples/dashboard.json',
  'test-ishioho-floorplan.cjs':'tests/test-ishioho-floorplan.cjs',
  'test-ishioho-panel.cjs':'tests/test-ishioho-panel.cjs',

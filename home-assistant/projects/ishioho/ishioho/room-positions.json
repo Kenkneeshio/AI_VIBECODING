@@ -1,5 +1,5 @@
 {
-  "revision": 10,
+  "revision": 11,
   "viewBox": [
     0,
     0,
@@ -212,10 +212,11 @@
   "notes": [
     "Source house is rotated clockwise, with actual plant balcony on LEFT; no mirrored room geometry.",
     "Balcony and entry purposes correct the prior inference; balcony is the plant-and-bench room from original bottom left.",
-    "Pokemon retains its prior garage popup anchor. Stardew places the Garage popup on the long far-left exterior stair below the upstairs porch; the single-car garage is on the lower level under the main home to the right of those stairs.",
-    "Stardew v4 has a separate plant balcony and covered second-floor porch outside the blue front door; Entry is indoors immediately beyond that door.",
-    "Stardew v4 shows a visible single-car garage door under the main home and the long left stair rising to the porch. Stair length and garage bounds are diagrammatic rather than surveyed dimensions.",
-    "The sofa, office-to-bedroom closet edge, and split bathrooms follow the corrected room layout; fixture positions remain illustrative until confirmed on site.",
+    "Pokemon retains its prior garage popup anchor. Stardew places the Garage popup on the far-left exterior stair descending toward the top-side driveway; the single-car garage is on the lower level beneath the left wing.",
+    "Stardew v5 shows a separate planted balcony and covered second-floor porch outside the blue unit door; Entry is indoors immediately beyond that door.",
+    "Stardew v5 has a solid barrier between plant balcony and covered porch. The stair joins the lower-screen porch walkway directly and has no balcony access.",
+    "Stardew v5 keeps the lower garage out of the upstairs illustration. Its separate popup and structured floorplan show the single-car garage with a top-facing roll-up and left-side pedestrian door. Stair and garage dimensions are diagrammatic rather than surveyed.",
+    "The sofa, unverified closet access, and split bathrooms follow the corrected room layout; fixture positions remain illustrative until confirmed on site.",
     "Plantings stay inside the balcony; neighboring roofs and exterior margins are decorative and contain no home controls.",
     "Camera belongs in external utility rail; no large empty area is reserved in art.",
     "Both day and night assets plus frozen -still variants are provided; parent selects from actual sun/weather state.",
@@ -248,11 +249,11 @@
       "nightStill": "crossing-night-still.svg"
     },
     "stardew": {
-      "day": "stardew-map-v4.png",
-      "night": "stardew-night-map-v4.png",
-      "dayStill": "stardew-still-v4.png",
-      "nightStill": "stardew-night-still-v4.png",
-      "historicalEditableSVG": "stardew-map-v1.svg; approximate reconstruction only, not a source for v4 PNG"
+      "day": "stardew-map-v5.png",
+      "night": "stardew-night-map-v5.png",
+      "dayStill": "stardew-still-v5.png",
+      "nightStill": "stardew-night-still-v5.png",
+      "historicalEditableSVG": "stardew-map-v1.svg; approximate reconstruction only, not a source for v5 PNG"
     }
   },
   "theme_pin_overrides": {
@@ -267,18 +268,54 @@
       }
     },
     "stardew": {
+      "master": {
+        "x": 85.8,
+        "y": 37.8
+      },
+      "bathroom": {
+        "x": 86.4,
+        "y": 73.4
+      },
+      "guest_bathroom": {
+        "x": 71.8,
+        "y": 73.6
+      },
+      "hall": {
+        "x": 52,
+        "y": 54.6
+      },
+      "office": {
+        "x": 61.3,
+        "y": 35.4
+      },
+      "kitchen": {
+        "x": 57.9,
+        "y": 74.4
+      },
+      "living": {
+        "x": 39.1,
+        "y": 37.4
+      },
+      "dining": {
+        "x": 41.6,
+        "y": 70.6
+      },
+      "balcony": {
+        "x": 18.3,
+        "y": 35.2
+      },
       "entryway": {
-        "x": 25.5,
-        "y": 55
+        "x": 28.7,
+        "y": 68.4
       },
       "porch": {
-        "x": 10.8,
-        "y": 37.5
+        "x": 17.7,
+        "y": 64.4
       },
       "garage": {
-        "x": 7.8,
-        "y": 63,
-        "role": "popup anchor on the long far-left exterior stairs; garage is below the main home to their right"
+        "x": 5.7,
+        "y": 46.8,
+        "role": "popup anchor on exterior stairs; single-car garage is a separate lower level beneath the left wing"
       }
     }
   }

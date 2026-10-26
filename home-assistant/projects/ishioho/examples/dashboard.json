@@ -650,8 +650,8 @@
             {
               "id": "master",
               "name": "Master Bedroom",
-              "x": 76.417,
-              "y": 30.4,
+              "x": 85.8,
+              "y": 37.8,
               "area_names": [
                 "Master Bedroom"
               ],
@@ -662,8 +662,8 @@
             {
               "id": "bathroom",
               "name": "Master Bathroom",
-              "x": 76.417,
-              "y": 69.897,
+              "x": 86.4,
+              "y": 73.4,
               "area_names": [
                 "Master Bathroom"
               ],
@@ -672,8 +672,8 @@
             {
               "id": "guest_bathroom",
               "name": "Guest Bathroom",
-              "x": 63.611,
-              "y": 75.451,
+              "x": 71.8,
+              "y": 73.6,
               "area_names": [
                 "Guest Bathroom"
               ],
@@ -682,8 +682,8 @@
             {
               "id": "hall",
               "name": "Hallway",
-              "x": 64.383,
-              "y": 47.989,
+              "x": 52,
+              "y": 54.6,
               "area_names": [
                 "Hallway"
               ],
@@ -692,8 +692,8 @@
             {
               "id": "office",
               "name": "Office",
-              "x": 56.669,
-              "y": 25.771,
+              "x": 61.3,
+              "y": 35.4,
               "area_names": [
                 "Office"
               ],
@@ -704,8 +704,8 @@
             {
               "id": "kitchen",
               "name": "Kitchen",
-              "x": 48.8,
-              "y": 65.269,
+              "x": 57.9,
+              "y": 74.4,
               "area_names": [
                 "Kitchen"
               ],
@@ -718,8 +718,8 @@
             {
               "id": "living",
               "name": "Living Room",
-              "x": 39.543,
-              "y": 29.474,
+              "x": 39.1,
+              "y": 37.4,
               "area_names": [
                 "Living Room"
               ],
@@ -731,8 +731,8 @@
             {
               "id": "dining",
               "name": "Dining Room",
-              "x": 28.974,
-              "y": 68.354,
+              "x": 41.6,
+              "y": 70.6,
               "area_names": [
                 "Dining Room"
               ],
@@ -747,8 +747,8 @@
             {
               "id": "balcony",
               "name": "Balcony",
-              "x": 19.023,
-              "y": 28.24,
+              "x": 18.3,
+              "y": 35.2,
               "area_names": [
                 "Balcony"
               ],
@@ -758,8 +758,8 @@
             {
               "id": "entryway",
               "name": "Entryway",
-              "x": 25.5,
-              "y": 55,
+              "x": 28.7,
+              "y": 68.4,
               "area_names": [
                 "Entryway"
               ],
@@ -770,20 +770,20 @@
               "id": "porch",
               "name": "Porch",
               "short": "Porch",
-              "x": 10.8,
-              "y": 37.5,
+              "x": 17.7,
+              "y": 64.4,
               "entities": [],
               "area_names": [
                 "Porch"
               ],
-              "note": "Covered upstairs porch outside the blue front door. Long exterior stairs descend on the far left; the single-car garage is under the main home to their right. Example porch devices appear here."
+              "note": "Covered upstairs porch outside the blue unit door; a lower-screen walkway connects directly to the far-left stair. The plant balcony is separate."
             },
             {
               "id": "garage",
               "name": "Garage",
               "short": "Garage ↓",
-              "x": 7.8,
-              "y": 63,
+              "x": 5.7,
+              "y": 46.8,
               "area_names": [
                 "Garage"
               ],
@@ -791,7 +791,7 @@
                 "cover.garage_door",
                 "camera.garage_camera"
               ],
-              "note": "Popup on the long exterior stair descending from the upstairs porch; the single-car garage is under the main home to the right."
+              "note": "Popup on the exterior stair descending screen-up from the upstairs porch. The separate single-car garage is on level 1 beneath the left wing, with the roll-up facing the top driveway."
             }
           ],
           "cameras": [

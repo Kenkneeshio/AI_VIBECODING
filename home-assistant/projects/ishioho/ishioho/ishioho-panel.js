@@ -14,11 +14,11 @@ function metadata(){return metadataPromise ||= Promise.all([fetch(`${ASSETS}/cat
 let floorplanPromise;
 function defaultFloorplan(){return floorplanPromise ||= fetch(`${ASSETS}/floorplan.json`,{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('floorplan');return r.json();}).then(model=>{const result=validateFloorplan(model);if(!result.ok)throw Error(`Invalid floor plan: ${result.errors.join('; ')}`);return model;}).catch(error=>{floorplanPromise=null;throw error;});}
 class IshiohoPanel extends BasePanel {
-  constructor(){super();this._motion=true;this._floorplanMode=false;this._floorplanRequest=0;this._failedMapImages=new Set();this.shadowRoot.addEventListener('input',e=>this._directoryInput?.(e));this.shadowRoot.addEventListener('change',e=>this._directoryInput?.(e));this.shadowRoot.addEventListener('keydown',e=>this._floorplanKey(e));this.shadowRoot.addEventListener('error',e=>this._mapImageError(e),true);}
+  constructor(){super();this._motion=true;this._floorplanMode=false;this._floorplanRequest=0;this._failedMapImages=new Set();this.shadowRoot.addEventListener('input',e=>this._directoryInput?.(e));this.shadowRoot.addEventListener('change',e=>this._directoryInput?.(e));this.shadowRoot.addEventListener('keydown',e=>{this._floorplanKey(e);this._themeMenuKey(e);});this.shadowRoot.addEventListener('click',e=>this._themeMenuClick(e));this.shadowRoot.addEventListener('error',e=>this._mapImageError(e),true);}
   connectedCallback(){super.connectedCallback();if(this._built&&this._hass)this._updateEnvironment();}
   disconnectedCallback(){this._stopForecast?.();super.disconnectedCallback();}
   setConfig(config){
-    this._theme=hasOwn(THEMES,config.theme)?config.theme:'pokemon';
+    this._theme=hasOwn(THEMES,config.theme)?config.theme:'stardew';
     const request=++this._floorplanRequest;
     const needsFloorplan=this._theme==='stardew'&&!this._floorplan;
     super.setConfig(this._theme==='stardew'&&this._floorplan?this._positionedConfig(config):config);
@@ -65,20 +65,37 @@ class IshiohoPanel extends BasePanel {
     const view=theme==='pokemon'?'home':theme;
     return `/${dashboard}/${view}`;
   }
+  _themeMenuMarkup(){
+    const choices=['stardew','pokemon','pokedex','crossing'].map(key=>{
+      const theme=THEMES[key],current=key===this._theme;
+      return `<a class="theme-choice ${current?'current':''}" href="${escapeHtml(this._themeHref(key))}" aria-label="${escapeHtml(theme.title)} theme" ${current?'aria-current="page"':''}><span class="theme-choice-icon" aria-hidden="true">${theme.icon}</span><span><strong>${escapeHtml(theme.title)}</strong><small>${key==='stardew'?'Default world':escapeHtml(theme.edition.toLowerCase())}</small></span>${current?'<span class="theme-choice-check" aria-hidden="true">✓</span>':''}</a>`;
+    }).join('');
+    return `<details class="theme-menu"><summary aria-label="Open themes and settings" title="Themes and settings"><span class="theme-menu-art" aria-hidden="true"><i></i><b></b><em></em></span><span class="theme-menu-label" aria-hidden="true">Menu</span><span class="theme-menu-caret" aria-hidden="true">⌄</span></summary><div class="theme-menu-popover"><div class="theme-menu-heading"><span class="eyebrow">ISHIOHO / LITTLE WORLDS</span><strong>Choose a world</strong></div><nav class="theme-choices" aria-label="Dashboard themes">${choices}</nav><div class="theme-menu-actions">${this._button('▦ <span>Home controls</span>','overview','aria-label="Open home controls and settings"')}${this._button('⛶ <span>Full screen</span>','fullscreen','aria-label="Enter browser full screen"')}</div></div></details>`;
+  }
+  _themeMenuClick(event){
+    const menu=this._q('.theme-menu');
+    if(menu?.open&&!event.target.closest?.('.theme-menu'))menu.open=false;
+  }
+  _themeMenuKey(event){
+    if(event.key!=='Escape'||this._modal)return;
+    const menu=this._q('.theme-menu');
+    if(!menu?.open)return;
+    event.preventDefault();menu.open=false;menu.querySelector('summary')?.focus();
+  }
   _build(){
     this._stopStreams();this._alertKey=null;this._modal=null;this._cards=[];
     const c=this._config,t=THEMES[this._theme];
     this.shadowRoot.innerHTML=`<style>${this._css()}</style><main class="shell immersive theme-${this._theme}">
     <header class="masthead"><div class="brand"><span class="house-emblem" aria-hidden="true">${t.icon}</span><div><div class="eyebrow">${t.edition}</div><h1>ishioho<span>YOUR HOME, ALIVE</span></h1></div></div>
-    <nav class="theme-tabs" aria-label="Choose art style">${Object.entries(THEMES).map(([key,val])=>`<a class="${key===this._theme?'current':''}" href="${escapeHtml(this._themeHref(key))}" aria-label="${escapeHtml(val.title)} theme" ${key===this._theme?'aria-current="page"':''}>${val.icon}<span>${val.title}</span></a>`).join('')}</nav>
-    <div class="header-right">${this._button('<span id="scene-weather">Sky</span><span id="scene-moon" aria-hidden="true">☾</span>','weather','aria-label="Open weather and moon phase"','scene-sky')}${this._theme==='stardew'?this._button('▦ <span>Plan</span>','floorplan',`aria-label="${this._floorplanMode?'Show illustrated floor plan':'Show structured floor plan'}" aria-pressed="${this._floorplanMode}" ${!this._floorplan?'disabled':''}`,'scene-plan'):''}${this._button('☷ <span>Controls</span>','overview','aria-label="Open home overview and map settings"','scene-menu')}<span class="connection"><i></i><span id="connection">Connected</span></span><div class="clock"><strong id="time"></strong><span id="date"></span></div>${this._button('<span class="alert-dot">!</span><span id="alert-count">0</span>','alerts','aria-label="Open all alerts"','alert-top')}</div></header>
+    ${this._themeMenuMarkup()}
+    <div class="header-right">${this._button('<span id="scene-weather">Sky</span><span id="scene-moon" aria-hidden="true">☾</span>','weather','aria-label="Open weather and moon phase"','scene-sky')}${this._theme==='stardew'?this._button('▦ <span>Plan</span>','floorplan',`aria-label="${this._floorplanMode?'Show illustrated floor plan':'Show structured floor plan'}" aria-pressed="${this._floorplanMode}" ${!this._floorplan?'disabled':''}`,'scene-plan'):''}<span class="connection"><i></i><span id="connection">Connected</span></span><div class="clock"><strong id="time"></strong><span id="date"></span></div>${this._button('<span class="alert-dot">!</span><span id="alert-count">0</span>','alerts','aria-label="Open all alerts"','alert-top')}</div></header>
     <section class="dashboard-grid">
     <div class="world-panel panel">
     <div class="landscape-scroll"><div class="map-wrap"><img class="house-map animated-map" src="${this._mapAsset('map')}" alt="Landscape floor plan of ishioho, with planted balcony on the left and garage access at the stairs"><img class="house-map still-map" src="${this._mapAsset('still')}" alt="Landscape floor plan of ishioho">
     ${this._theme==='stardew'?`<div class="floorplan-layer" ${this._floorplanMode?'aria-hidden="false"':'inert aria-hidden="true"'}>${this._floorplan?renderFloorplanSvg(this._floorplan,{levelId:'home',interactiveRoomIds:c.rooms.map(room=>room.id)}):''}</div><div class="floorplan-status" ${this._floorplanError?'':'hidden'}>Structured floor plan unavailable; illustrated view remains available.</div>`:''}
     ${this._weatherVisualMarkup()}
     ${this._sceneDeviceMarkup()}
-    <div class="map-pins">${c.rooms.map(r=>`<button class="room-pin ${r.id==='garage'?'garage-pin':''}" style="left:${r.x}%;top:${r.y}%" data-action="${r.id==='garage'&&c.garage?'garage':'room'}" data-room="${escapeHtml(r.id)}" aria-label="Open ${escapeHtml(r.name)} controls"><span class="pin-light"></span><strong>${escapeHtml(r.short||r.name)}</strong><small data-room-state="${escapeHtml(r.id)}">Explore</small></button>`).join('')}
+    <div class="map-pins">${c.rooms.map(r=>{const stairs=this._theme==='stardew'&&r.id==='garage';return `<button class="room-pin ${r.id==='garage'?'garage-pin':''} ${stairs?'stair-hotspot':''}" style="left:${r.x}%;top:${r.y}%" data-action="${r.id==='garage'&&c.garage?'garage':'room'}" data-room="${escapeHtml(r.id)}" aria-label="${stairs?'Open garage popup from stairs descending screen-up toward the top driveway':r.id==='entryway'?'Open indoor Entry controls':`Open ${escapeHtml(r.name)} controls`}">${stairs?'<span class="stair-pin-emblem" aria-hidden="true"></span><strong>Down stairs ↑</strong><span class="stair-pin-target">Garage at top</span>':`<span class="pin-light"></span><strong>${escapeHtml(r.short||r.name)}</strong>`}<small data-room-state="${escapeHtml(r.id)}">Explore</small></button>`;}).join('')}
     ${c.vacuum?'<button class="robot-pin" data-action="vacuum" aria-label="Open robot tracker" style="left:60%;top:65%"><span class="robot-ring"></span><span class="robot-sprite"><i></i></span><span class="robot-pin-label">ROTO</span></button>':''}</div>
     </div></div>
     <div class="world-footer"><span><i class="legend-on"></i> Lights on <span class="separator">·</span> <span id="map-coverage">All devices within reach</span></span><span id="motion-status">Animation on</span></div></div>
@@ -150,7 +167,7 @@ class IshiohoPanel extends BasePanel {
     });
     this.shadowRoot.querySelectorAll('.scene-device-shade').forEach(shade=>{shade.dataset.state=stateFor(shade.dataset.sceneShade);});
   }
-  _update(){super._update();if(!this._q('.shell'))return;const count=this._dashboardIds().length;this._text('#directory-count',count.toLocaleString());this._text('#map-coverage',`${count.toLocaleString()} live entities · all in All devices`);this._updateSceneDevices();this._updateRobot();this._directoryUpdate?.();if(this._modal==='garage')this._text('#garage-status',this._state(this._config.garage));if(this._filter==='rooms')for(const room of this._config.rooms)if(!room.temperature&&!room.status)this._text(`[data-room-state="${room.id}"]`,this._roomCount(room));}
+  _update(){super._update();if(!this._q('.shell'))return;const count=this._dashboardIds().length;this._text('#directory-count',count.toLocaleString());this._text('#map-coverage',`${count.toLocaleString()} live entities · all in All devices`);this._updateSceneDevices();this._updateRobot();this._directoryUpdate?.();if(this._modal==='garage'){this._text('#garage-status',this._state(this._config.garage));const scene=this._q('.garage-scene');if(scene){const state=this._hass?.connected!==false&&['open','closed','opening','closing'].includes(this._value(this._config.garage))?this._value(this._config.garage):'unknown';scene.dataset.state=state;}}if(this._filter==='rooms')for(const room of this._config.rooms)if(!room.temperature&&!room.status)this._text(`[data-room-state="${room.id}"]`,this._roomCount(room));}
   _robotStem(){
     const configured=this._config?.robot_entity_prefix;
     if(typeof configured==='string'&&/^[a-z0-9_]+$/i.test(configured.trim()))return configured.trim().toLowerCase();
@@ -219,7 +236,7 @@ class IshiohoPanel extends BasePanel {
     if(kind==='garage'){
       const room=this._config.rooms.find(r=>r.id==='garage'),ids=room?this._roomEntities(room):[this._config.garage];
       if(!this._config.garage){if(room)this._open('room',{room:'garage'});return;}
-      this._dialog('Garage',`<div class="garage-status"><span class="garage-illustration" aria-hidden="true"><i></i></span><div><span class="eyebrow">SINGLE-CAR GARAGE · BELOW HOME</span><h3 id="garage-status">${escapeHtml(this._state(this._config.garage))}</h3><p>Reached by the porch stairs. Check the live view before operating the door.</p></div></div><div class="garage-grid"><div><h3>Live view</h3><div id="garage-live"></div></div><div><h3>Door & devices</h3><div id="garage-controls"></div>${this._button(`All ${ids.length} garage entities →`,'room-directory','data-room="garage"','all-room-button')}</div></div>`,{kind:'garage',wide:true});
+      this._dialog('Garage',`<div class="garage-status"><div><span class="eyebrow">SINGLE-CAR GARAGE · BELOW HOME</span><h3 id="garage-status">${escapeHtml(this._state(this._config.garage))}</h3><p>The roll-up faces the driveway at the top of the map. From the upstairs porch at the bottom, the stairs descend screen-up beside the left pedestrian door.</p></div></div><div class="garage-grid"><div class="garage-scene-panel"><h3>Garage & stairs</h3><div class="garage-scene" data-state="unknown"><img src="${ASSETS}/garage-scene-v5.svg?v=5" alt="Top-down single-car garage: roll-up opens toward the top driveway; left pedestrian door is beside stairs that descend screen-up from the bottom-side porch; no openings on the right or bottom" loading="lazy"><span class="garage-door-curtain" aria-hidden="true"></span></div></div><div class="garage-camera-panel"><h3>Live view</h3><div id="garage-live"></div></div><div class="garage-controls-panel"><h3>Door & devices</h3><div id="garage-controls"></div>${this._button(`All ${ids.length} garage entities →`,'room-directory','data-room="garage"','all-room-button')}</div></div>`,{kind:'garage',wide:true});
       this._mountCard(this._q('#garage-controls'),{type:'entities',entities:[{entity:this._config.garage,name:'Garage door'}],show_header_toggle:false});const camera=this._garageCamera(room);if(camera)this._connectCamera(camera,this._q('#garage-live'));else this._q('#garage-live').textContent='No garage camera is configured.';this._update();return;
     }
     if(kind==='vacuum'){
@@ -235,6 +252,7 @@ class IshiohoPanel extends BasePanel {
   async _click(e){
     if(this._theme==='stardew'&&this._floorplanMode){const target=e.target.closest?.('[data-floorplan-action]');if(target){this._floorplanOpen(target);return;}}
     const button=e.target.closest?.('button');if(!button)return;const action=button.dataset.action;
+    if(button.closest?.('.theme-menu'))this._q('.theme-menu').open=false;
     if(action==='floorplan'){
       if(!this._floorplan||this._failedMapImages.has(this._motion?'animated':'still'))return;
       this._floorplanMode=!this._floorplanMode;

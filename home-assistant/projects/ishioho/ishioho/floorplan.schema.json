@@ -60,7 +60,7 @@
       }
     },
     "space": {
-      "type": "object", "additionalProperties": false,
+      "type": "object", "description": "A selectable named zone; adjacent zones may be open to one another without a wall.", "additionalProperties": false,
       "required": ["id", "levelId", "kind", "label", "polygon", "anchor"],
       "properties": {
         "id": {"$ref": "#/$defs/id"},
@@ -72,7 +72,7 @@
       }
     },
     "wall": {
-      "type": "object", "additionalProperties": false,
+      "type": "object", "description": "A physical wall, railing, or parapet segment, with gaps where modeled openings occur; not every zone edge is a wall.", "additionalProperties": false,
       "required": ["id", "levelId", "kind", "segment"],
       "properties": {
         "id": {"$ref": "#/$defs/id"},
@@ -82,7 +82,7 @@
       }
     },
     "opening": {
-      "type": "object", "additionalProperties": false,
+      "type": "object", "description": "A door, window, gate, or open passage joining adjacent spaces. A passage can mark circulation without any wall on the shared zone edge.", "additionalProperties": false,
       "required": ["id", "levelId", "kind", "segment"],
       "properties": {
         "id": {"$ref": "#/$defs/id"},
@@ -104,7 +104,8 @@
         "spaceId": {"$ref": "#/$defs/id"},
         "kind": {"$ref": "#/$defs/id"},
         "label": {"$ref": "#/$defs/label"},
-        "geometry": {"oneOf": [{"$ref": "#/$defs/pointGeometry"}, {"$ref": "#/$defs/rectGeometry"}, {"$ref": "#/$defs/polygonGeometry"}]}
+        "geometry": {"oneOf": [{"$ref": "#/$defs/pointGeometry"}, {"$ref": "#/$defs/rectGeometry"}, {"$ref": "#/$defs/polygonGeometry"}]},
+        "ascentSegment": {"$ref": "#/$defs/segment", "description": "For stairs, a directed lower-floor-to-upper-floor line in plan coordinates; the reverse gives the descent direction. Its screen direction depends on the plan orientation."}
       }
     },
     "pointGeometry": {

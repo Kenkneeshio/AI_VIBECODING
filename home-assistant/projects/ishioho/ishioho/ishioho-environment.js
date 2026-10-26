@@ -195,7 +195,7 @@ export const environmentMethods={
     return `<h3>${heading}</h3>${forecast.status==='stale'?'<p class="environment-note">Cached forecast · refresh pending or unavailable</p>':''}${periods}<p class="environment-note">Provider forecast · retrieved ${escapeHtml(localTime(new Date(forecast.fetchedAt).toISOString(),forecast.timeZone))}. Forecast periods are predictions, not current observations.</p>`;
   },
   _mapAsset(type='map',night=false){
-    const profiles={pokemon:{version:8,extension:'png'},pokedex:{version:6,extension:'svg'},crossing:{version:6,extension:'svg'},stardew:{version:4,extension:'png'}};
+    const profiles={pokemon:{version:8,extension:'png'},pokedex:{version:6,extension:'svg'},crossing:{version:6,extension:'svg'},stardew:{version:5,extension:'png'}};
     const theme=hasOwn(profiles,this._theme)?this._theme:'pokemon',profile=profiles[theme];
     return `/local/ishioho/${theme}${night?'-night':''}-${type==='still'?'still':'map'}${profile.extension==='png'?'-v'+profile.version:''}.${profile.extension}?v=${profile.version}`;
   },

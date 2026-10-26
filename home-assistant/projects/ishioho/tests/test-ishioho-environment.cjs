@@ -67,16 +67,16 @@ test('no night asset configuration uses CSS fallback and never requests an image
   const{p}=fixture();p._config={};p._hass.states['sun.sun'].state='below_horizon';p._updateEnvironment();assert.equal(p._q('.animated-map').writes,0);assert.match(environmentCss,/is-night:not\(\.has-night-art\) \.house-map/);
 });
 test('all four theme asset profiles preserve their expected local day and night paths',()=>{
-  const{p}=fixture();for(const[theme,suffix,ext,version]of [['pokemon','-v8','png',8],['pokedex','','svg',6],['crossing','','svg',6],['stardew','-v4','png',4]]){
+  const{p}=fixture();for(const[theme,suffix,ext,version]of [['pokemon','-v8','png',8],['pokedex','','svg',6],['crossing','','svg',6],['stardew','-v5','png',5]]){
     p._theme=theme;for(const night of [false,true])for(const type of ['map','still'])assert.equal(p._mapAsset(type,night),`/local/ishioho/${theme}${night?'-night':''}-${type}${suffix}.${ext}?v=${version}`);
   }
   for(const theme of ['unknown','../outside','__proto__','constructor']){p._theme=theme;assert.equal(p._mapAsset(),'\/local/ishioho/pokemon-map-v8.png?v=8');}
 });
 test('Stardew sun changes and manual preview switch both art layers without rebuilding controls',()=>{
   const{p}=fixture();p._theme='stardew';p._updateEnvironment();const art=p._q('.animated-map');
-  assert.equal(art.attrs.src,'/local/ishioho/stardew-map-v4.png?v=4');const writes=art.writes;p._updateEnvironment();assert.equal(art.writes,writes);
-  p._hass.states['sun.sun'].state='below_horizon';p._updateEnvironment();assert.equal(art.attrs.src,'/local/ishioho/stardew-night-map-v4.png?v=4');assert.equal(p._q('.still-map').attrs.src,'/local/ishioho/stardew-night-still-v4.png?v=4');
-  p._cycleAppearance();assert.equal(art.attrs.src,'/local/ishioho/stardew-map-v4.png?v=4');assert.equal(p._environment.modeLabel,'Preview · Day');assert.equal(p._hass.states['sun.sun'].state,'below_horizon');
+  assert.equal(art.attrs.src,'/local/ishioho/stardew-map-v5.png?v=5');const writes=art.writes;p._updateEnvironment();assert.equal(art.writes,writes);
+  p._hass.states['sun.sun'].state='below_horizon';p._updateEnvironment();assert.equal(art.attrs.src,'/local/ishioho/stardew-night-map-v5.png?v=5');assert.equal(p._q('.still-map').attrs.src,'/local/ishioho/stardew-night-still-v5.png?v=5');
+  p._cycleAppearance();assert.equal(art.attrs.src,'/local/ishioho/stardew-map-v5.png?v=5');assert.equal(p._environment.modeLabel,'Preview · Day');assert.equal(p._hass.states['sun.sun'].state,'below_horizon');
 });
 test('open weather popup is live and does not replace its markup on sensor updates',()=>{
   const{p}=fixture();p._openEnvironment();assert.equal(p._modal,'environment');assert.equal(p._q('#environment-condition').textContent,'Sunny');const html=p.dialog.html;p._hass.states['weather.forecast_ishioho_city'].state='rainy';p._hass.states['sensor.hub_temperature'].state='64';p._updateEnvironment();assert.equal(p.dialog.html,html);assert.equal(p._q('#environment-condition').textContent,'Rain');assert.equal(p._q('#environment-outside').textContent,'64°F');assert.match(html,/Weather details &amp; forecast/);

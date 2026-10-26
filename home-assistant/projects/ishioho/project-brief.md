@@ -14,8 +14,9 @@ Local JavaScript custom dashboard card. It extends a shared base card and uses n
 
 ## Scope
 
-- Pokémon v8 and Stardew v4 static PNG day/night backgrounds. Stardew v4 depicts the second-floor unit elevated above a visible street-level, single-car garage under the main home. Its long exterior stair descends at the far left from the covered porch, with a separate plant balcony and indoor Entry beyond the blue front door. The Garage popup opens from the stair; the garage itself is a separate lower-level model space. Historical v1/v2/v3 PNGs and independent v1 SVG reconstructions remain available; the current SVG Plan is generated from `floorplan.json` and is a spatial diagram rather than an exact tracing of the v4 illustration. Pokédex and Animal Crossing retain their existing SVG artwork.
-- The same base indoor floor-plan geometry, with Pokémon and Stardew sharing the interior Entry and Balcony coordinates. Stardew v4 places its Porch pin on the landing and Garage popup on the left stair; contained image/pin layers preserve proportions.
+- Pokémon v8 and Stardew v5 static PNG day/night backgrounds. Stardew v5 depicts the second-floor unit without an invented garage façade along the bottom edge. Its exterior stair runs beside the separate plant balcony and joins the covered porch at its lower-screen end; descending from the upstairs porch toward the lower garage/driveway goes toward the **top of the screen**. The blue door leads into the indoor Entry, and Dining lies to the right. The Garage popup opens from the stair. The single-car garage is a separate lower-level model space beneath the left wing, with a top-facing roll-up and a left-wall pedestrian door. Historical v1–v4 PNGs and independent v1 SVG reconstructions remain available; the current SVG Plan is generated from `floorplan.json` and is a spatial diagram rather than an exact tracing of the v5 illustration. Pokédex and Animal Crossing retain their existing SVG artwork.
+- Pokémon and Stardew share the same device configuration, while their illustrated room coordinates differ. Stardew v5 places its Porch pin on the outdoor landing and Garage popup on the left stair; contained image/pin layers preserve proportions.
+- Stardew is the default card theme. A compact illustrated Menu opens theme choices, home controls, and fullscreen settings while leaving the landscape map visible.
 - Contextual room, camera, garage, robot, environment, energy, and calendar popups.
 - Read-only current weather and forecast display with distinct on-map and upcoming effects, local-day grouping, real sun transitions, and reduced-motion support.
 - Runtime entity search with area/domain/availability filters and bounded pagination.
@@ -31,7 +32,7 @@ Home Assistant frontend native cards, WebRTC Camera, and the user's separately c
 
 ## Acceptance checks
 
-- [x] Four views include day/night assets; Pokémon v8 and Stardew v4 use PNG rendering, while Pokédex and Animal Crossing retain SVG animation/still variants.
+- [x] Four views include day/night assets; Pokémon v8 and Stardew v5 use PNG rendering, while Pokédex and Animal Crossing retain SVG animation/still variants.
 - [x] Runtime entities remain reachable through the searchable directory.
 - [x] Missing locations and unavailable data are not presented as measured values.
 - [x] Current weather and upcoming forecast are visually separate; unavailable forecasts and sun readings are labeled, and decorative motion can be paused.
@@ -43,6 +44,7 @@ Home Assistant frontend native cards, WebRTC Camera, and the user's separately c
 - [x] Stardew v2 day/night rendering, four theme tabs, revised porch and stair pin placement, and live garage viewing verified on the target tablet; appearance returned to Auto.
 - [x] Stardew v3 day/night rendering, second-floor art, repositioned Garage popup, and Garage/Porch camera images verified on the target tablet; appearance returned to Auto.
 - [x] Corrected Stardew v4 day/night art, Plan geometry, long-left-stair Garage popup, and garage camera verified on the target tablet without operating the garage door.
+- [ ] Stardew v5 illustrated day/night views, compact Menu, Plan geometry, and Garage popup to be checked on the target tablet after installation.
 - [x] Prototype browser checks cover themes, popups, native robot map, camera viewing, and phone-landscape layout.
 - [x] Installation, configuration limits, removal, and rollback are documented.
 
@@ -52,4 +54,4 @@ Run `node scripts/verify-source.cjs`, `node tests/run.cjs`, then `node scripts/s
 
 ## Status
 
-Tested prototype. Public source uses sanitized examples. Stardew reuses Pokémon's control configuration, with theme-specific Porch and Garage popup coordinates for its v4 art. Its active v4 PNG art and historical assets have separate provenance documented in the README and [art spec](stardew-v4-art-spec.md). Private layout reference photos are not included. Physical device commands and compatibility with other hardware/installations remain to be verified by each installer.
+Tested prototype with a v5 source update pending target-tablet verification. Public source uses sanitized examples. Stardew reuses Pokémon's control configuration, with a themed Menu and Porch/Garage positions supplied by the floor-plan model. Its active v5 PNG art and historical assets have separate provenance documented in the README and [art spec](stardew-v5-art-spec.md). Private layout reference photos are not included. Physical device commands and compatibility with other hardware/installations remain to be verified by each installer.
