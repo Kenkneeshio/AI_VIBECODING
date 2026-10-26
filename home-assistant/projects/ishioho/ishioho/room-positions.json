@@ -1,5 +1,5 @@
 {
-  "revision": 9,
+  "revision": 10,
   "viewBox": [
     0,
     0,
@@ -212,10 +212,11 @@
   "notes": [
     "Source house is rotated clockwise, with actual plant balcony on LEFT; no mirrored room geometry.",
     "Balcony and entry purposes correct the prior inference; balcony is the plant-and-bench room from original bottom left.",
-    "Pokemon garage artwork remains popup-only; Stardew v2 shows the single-car garage on the lower level with its popup anchor at the exterior stairs.",
-    "Stardew v2 has a covered second-floor porch outside the blue front door; the porch pin moved to that landing while Entry remains indoors.",
-    "Stairwell shape restored from original export; precise measurements are not claimed from low-resolution illustration.",
-    "Plantings now appear inside balcony; thin ornamental margins preserve useful space.",
+    "Pokemon retains its prior garage popup anchor. Stardew v3 places the Garage popup at the compact upper exterior stairhead; the single-car garage is below the displayed second floor and is not a room in its plan.",
+    "Stardew v3 has a separate plant balcony and covered second-floor porch outside the blue front door; Entry is indoors immediately beyond that door.",
+    "Stardew v3 replaces the old ground-level road and garden strips with neighboring attached-building edges. Its stairhead is a visual access cue, not a measured stair survey.",
+    "The sofa, office-to-bedroom closet edge, and split bathrooms follow the v3 corrected room layout; fixture positions remain illustrative until confirmed on site.",
+    "Plantings stay inside the balcony; neighboring roofs and exterior margins are decorative and contain no home controls.",
     "Camera belongs in external utility rail; no large empty area is reserved in art.",
     "Both day and night assets plus frozen -still variants are provided; parent selects from actual sun/weather state.",
     "Animations respect prefers-reduced-motion. No external images, fonts or dependencies.",
@@ -247,11 +248,11 @@
       "nightStill": "crossing-night-still.svg"
     },
     "stardew": {
-      "day": "stardew-map-v2.png",
-      "night": "stardew-night-map-v2.png",
-      "dayStill": "stardew-still-v2.png",
-      "nightStill": "stardew-night-still-v2.png",
-      "historicalEditableSVG": "stardew-map-v1.svg; approximate reconstruction only, not a source for v2 PNG"
+      "day": "stardew-map-v3.png",
+      "night": "stardew-night-map-v3.png",
+      "dayStill": "stardew-still-v3.png",
+      "nightStill": "stardew-night-still-v3.png",
+      "historicalEditableSVG": "stardew-map-v1.svg; approximate reconstruction only, not a source for v3 PNG"
     }
   },
   "theme_pin_overrides": {
@@ -275,9 +276,9 @@
         "y": 37.5
       },
       "garage": {
-        "x": 16.246,
-        "y": 49.84,
-        "role": "popup anchor on exterior stairs for garage below"
+        "x": 9.8,
+        "y": 21.4,
+        "role": "popup anchor at compact upper exterior stairhead for the single-car garage below this second-floor plan"
       }
     }
   }

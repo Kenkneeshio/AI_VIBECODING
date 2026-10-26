@@ -782,15 +782,16 @@
               "id": "garage",
               "name": "Garage",
               "short": "Garage ↓",
-              "x": 16.246,
-              "y": 49.84,
+              "x": 9.8,
+              "y": 21.4,
               "area_names": [
                 "Garage"
               ],
               "entities": [
                 "cover.garage_door",
                 "camera.garage_camera"
-              ]
+              ],
+              "note": "Popup at the upstairs porch stairhead; the single-car garage is below this floor."
             }
           ],
           "cameras": [
