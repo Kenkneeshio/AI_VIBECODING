@@ -6,9 +6,9 @@ This is an Ishioho-specific diagram format using standard JSON, JSON Schema Draf
 
 ## Coordinate space
 
-The model's fixed `coordinateSystem.viewBox` is `[0, 0, 100, 50]`: origin at the upper left, x increasing right, y increasing down. This 2:1 canvas matches the contained 1774×887 Stardew assets. Coordinates are diagram units, not feet, meters, or geographic position. To convert a model point `[x, y]` to the dashboard's map percentages, use `x% = x` and `y% = 2 × y`. For example, the exterior stair anchor `[18.8, 31.6]` appears at `(18.8%, 63.2%)`. Do not base positions on the whole tablet viewport; letterboxing and screen size must not shift them.
+The model's fixed `coordinateSystem.viewBox` is `[0, 0, 100, 50]`: origin at the upper left, x increasing right, y increasing down. This 2:1 canvas matches the contained 1774×887 Stardew assets. Coordinates are diagram units, not feet, meters, or geographic position. To convert a model point `[x, y]` to the dashboard's map percentages, use `x% = x` and `y% = 2 × y`. For example, the upper-left exterior stair anchor `[9.8, 10.7]` appears at `(9.8%, 21.4%)`. Do not base positions on the whole tablet viewport; letterboxing and screen size must not shift them.
 
-The model groups elements by `levelId`. `home` is the second-floor unit and default rendered level. `garage` is a separate first-floor, single-car garage. The upstairs `garage_stairs` space follows the exterior stair flight down from the porch beside the garage, connected to the lower garage by `connections[].from`/`to`. Its stair anchor opens the Garage popup. The garage does not occupy a room in the upstairs plan. The separate planted `balcony`, covered `porch`, and indoor `entryway` have distinct polygons and IDs.
+The model groups elements by `levelId`. `home` is the second-floor unit and default rendered level. `garage` is a separate first-floor, single-car garage. The upstairs `garage_stairs` space is the upper-left exterior stairwell marked in the homeowner's annotated art, connected to the lower garage by `connections[].from`/`to`. Its stair anchor opens the Garage popup. The garage does not occupy a room in the upstairs plan. The separate planted `balcony`, covered `porch`, and indoor `entryway` have distinct polygons and IDs.
 
 | Collection | Meaning | Key geometry |
 | --- | --- | --- |

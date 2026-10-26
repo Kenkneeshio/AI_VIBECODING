@@ -42,7 +42,7 @@ test('the porch, interior entry, balcony, and stair popup remain distinct', () =
   assert.deepEqual(Array.from(Object.values(anchors.porch)), [10.8, 37.5]);
   assert.deepEqual(Array.from(Object.values(anchors.entryway)), [25.5, 55]);
   assert.deepEqual(Array.from(Object.values(anchors.balcony)), [19.023, 28.24]);
-  assert.deepEqual(Array.from(Object.values(anchors.garage_stairs)), [18.8, 63.2]);
+  assert.deepEqual(Array.from(Object.values(anchors.garage_stairs)), [9.8, 21.4]);
   assert.equal(anchors.garage, undefined);
   for (const space of model.spaces) assert.ok(inside(space.anchor, space.polygon), `${space.id} anchor outside room`);
 });

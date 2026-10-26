@@ -212,9 +212,9 @@
   "notes": [
     "Source house is rotated clockwise, with actual plant balcony on LEFT; no mirrored room geometry.",
     "Balcony and entry purposes correct the prior inference; balcony is the plant-and-bench room from original bottom left.",
-    "Pokemon retains its prior garage popup anchor. Stardew places the Garage popup on the exterior stairs descending from the covered porch; the single-car garage is below the displayed second floor and is not a room in its plan.",
+    "Pokemon retains its prior garage popup anchor. Stardew places the Garage popup at the upper-left exterior stairs marked in the homeowner's annotated art; the single-car garage is below the displayed second floor and is not a room in its plan.",
     "Stardew v3 has a separate plant balcony and covered second-floor porch outside the blue front door; Entry is indoors immediately beyond that door.",
-    "Stardew v3 replaces the old ground-level road and garden strips with neighboring attached-building edges. Its porch-side stair flight is a visual access cue, not a measured stair survey.",
+    "Stardew v3 replaces the old ground-level road and garden strips with neighboring attached-building edges. Its upper-left stairwell is a visual access cue, not a measured stair survey.",
     "The sofa, office-to-bedroom closet edge, and split bathrooms follow the v3 corrected room layout; fixture positions remain illustrative until confirmed on site.",
     "Plantings stay inside the balcony; neighboring roofs and exterior margins are decorative and contain no home controls.",
     "Camera belongs in external utility rail; no large empty area is reserved in art.",
@@ -276,9 +276,9 @@
         "y": 37.5
       },
       "garage": {
-        "x": 18.8,
-        "y": 63.2,
-        "role": "popup anchor on the exterior stair flight descending beside the porch to the single-car garage below"
+        "x": 9.8,
+        "y": 21.4,
+        "role": "popup anchor at the annotated upper-left exterior stairs for the single-car garage below"
       }
     }
   }

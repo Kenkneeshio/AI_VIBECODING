@@ -154,7 +154,7 @@ test('Stardew example preserves Pokemon controls while placing its upper porch p
   assert.deepEqual(stardewRooms.map(r=>r.id),pokemonRooms.map(r=>r.id));
   for(const room of stardewRooms.filter(r=>!['porch','garage'].includes(r.id)))assert.deepEqual(room,pokemonRooms.find(r=>r.id===room.id));
   const entry=stardew.rooms.find(r=>r.id==='entryway'),porch=stardew.rooms.find(r=>r.id==='porch'),garage=stardew.rooms.find(r=>r.id==='garage');
-  assert.deepEqual([entry.x,entry.y],[25.5,55]);assert.deepEqual([porch.x,porch.y],[10.8,37.5]);assert.deepEqual([garage.x,garage.y],[18.8,63.2]);
+  assert.deepEqual([entry.x,entry.y],[25.5,55]);assert.deepEqual([porch.x,porch.y],[10.8,37.5]);assert.deepEqual([garage.x,garage.y],[9.8,21.4]);
   assert.equal(garage.short,'Garage ↓');
 });
 test('Stardew builds its own images and accessible fourth navigation link without device calls',()=>{
@@ -169,7 +169,7 @@ test('Stardew loads the default structured home and uses its room anchors instea
   p.setConfig(c);await new Promise(setImmediate);
   assert.equal(p._floorplan?.id,'ishioho-default');
   assert.deepEqual([p._config.rooms.find(room=>room.id==='living').x,p._config.rooms.find(room=>room.id==='living').y],[39.543,29.474]);
-  assert.deepEqual([p._config.rooms.find(room=>room.id==='garage').x,p._config.rooms.find(room=>room.id==='garage').y],[18.8,63.2]);
+  assert.deepEqual([p._config.rooms.find(room=>room.id==='garage').x,p._config.rooms.find(room=>room.id==='garage').y],[9.8,21.4]);
   assert.match(p.shadowRoot.innerHTML,/class="floorplan-svg"/);
   assert.match(p.shadowRoot.innerHTML,/data-floorplan-room="living"/);
   assert.match(p.shadowRoot.innerHTML,/data-floorplan-action="garage"/);
