@@ -332,7 +332,7 @@ function dashboard() {
     views: [
       { path: 'plan', cards: [{ type: 'picture-elements', image: '/api/image/serve/old/original', elements: [
         { type: 'state-icon', entity: 'light.study', style: { left: '30%', top: '40%' } },
-        { type: 'state-label', entity: 'sensor.time', style: { left: '50%', top: '10%' } },
+        { type: 'state-label', entity: 'sensor.time', style: { left: '50%', top: '9%' } },
       ] }] },
       { path: 'live', cards: [{ type: 'entities', title: 'Live' }] },
     ],
@@ -343,8 +343,8 @@ function dashboard() {
 function pngDataUrl() {
   const bytes = Buffer.alloc(24);
   Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(bytes);
-  bytes.writeUInt32BE(1536, 16);
-  bytes.writeUInt32BE(1024, 20);
+  bytes.writeUInt32BE(1472, 16);
+  bytes.writeUInt32BE(828, 20);
   return `data:image/png;base64,${bytes.toString('base64')}`;
 }
 
@@ -372,18 +372,29 @@ test('LAN bridge imports, exports, and retains unrelated HA elements/views', asy
   };
   const imported = await card._readDashboard();
   assert.equal(imported.hotspots.length, 1);
+  assert.equal(imported.hotspots[0].style.left, '30%');
   const project = { version: 2, rooms: [], walls: [], items: [], hotspots: [
     { id: 'control-1', type: 'state-icon', entity: 'light.study', style: { left: '42%', top: '41%' } },
   ] };
   const exported = await card._writeDashboard({ project, revision: imported.revision, pngDataUrl: pngDataUrl() });
   assert.equal(uploaded, true);
   assert.equal(exported.project.hotspots.length, 1);
+  assert.equal(saved.views[0].cards[0].roomcraft_scene, 'wall-to-wall-v1');
   assert.equal(saved.views[0].cards[0].elements.length, 3);
-  assert.equal(saved.views[0].cards[0].elements[0].style.left, '42%');
+  assert.equal(saved.views[0].cards[0].elements[0].style.left, '42.47%');
+  assert.equal(saved.views[0].cards[0].elements[0].style.top, '39.11%');
   assert.equal(saved.views[0].cards[0].elements[1].type, 'custom:roomcraft-entity-menu');
   assert.equal(saved.views[0].cards[0].elements[2].entity, 'sensor.time');
+  assert.equal(saved.views[0].cards[0].elements[2].style.top, '3.6%');
   assert.equal(saved.views[1].cards[0].title, 'Live');
   assert.match(saved.views[0].cards[0].image, /^\/api\/image\/serve\/a{32}\/original$/);
+  const roundTrip = await card._readDashboard();
+  assert.equal(roundTrip.hotspots[0].style.left, '42%');
+  assert.equal(roundTrip.hotspots[0].style.top, '41%');
+  saved.views[0].cards[0].elements[2].style.top = '7%';
+  const changed = await card._readDashboard();
+  await card._writeDashboard({ project, revision: changed.revision, pngDataUrl: pngDataUrl() });
+  assert.equal(saved.views[0].cards[0].elements[2].style.top, '7%');
 });
 
 test('LAN bridge refuses a stale revision before upload', async () => {

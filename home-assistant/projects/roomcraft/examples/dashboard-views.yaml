@@ -5,62 +5,63 @@ views:
     path: plan
     icon: mdi:floor-plan
     type: custom:grid-layout
-    # Keep the 3:2 plan and its percentage-positioned controls aligned. On a
-    # widescreen tablet, the view background fills the remaining side gutters.
+    # The 1472 x 828 wall-to-wall image is a crop of the unchanged 1536 x 1024
+    # editable project. Example controls below use percentages of that crop.
     background: "linear-gradient(180deg, #98c54d 0%, #a4c954 69%, #d6a36d 100%)"
     layout:
-      grid-template-columns: "minmax(0, 1fr) min(100%, calc(100dvh * 1.5)) minmax(0, 1fr)"
+      grid-template-columns: "minmax(0, 1fr) min(100%, calc(100dvh * 1.77777778)) minmax(0, 1fr)"
       padding: "0"
       margin: "0"
     cards:
       - type: picture-elements
-        image: /local/roomcraft/example-plan.png
+        image: /local/roomcraft/example-plan-16x9.png
+        roomcraft_scene: wall-to-wall-v1
         view_layout:
           grid-column: "2"
         elements:
           - type: state-icon
             entity: light.example_living_room
             style:
-              left: 40%
-              top: 35%
+              left: 40.38%
+              top: 31.69%
             tap_action:
               action: toggle
           - type: state-icon
             entity: light.example_dining_room
-            style: { left: 30%, top: 60% }
+            style: { left: 29.95%, top: 62.61% }
             tap_action: { action: toggle }
           - type: state-icon
             entity: switch.example_kitchen
-            style: { left: 50%, top: 62% }
+            style: { left: 50.82%, top: 65.08% }
             tap_action: { action: toggle }
           - type: state-icon
             entity: light.example_study
-            style: { left: 61%, top: 34% }
+            style: { left: 62.29%, top: 30.45% }
             tap_action: { action: toggle }
           - type: state-icon
             entity: light.example_bedroom
-            style: { left: 84%, top: 34% }
+            style: { left: 86.29%, top: 30.45% }
             tap_action: { action: toggle }
           - type: state-icon
             entity: cover.example_sofa_blind
-            style: { left: 28%, top: 28% }
+            style: { left: 27.86%, top: 23.03% }
             tap_action: { action: more-info }
           - type: state-icon
             entity: cover.example_tv_blind
-            style: { left: 47%, top: 28% }
+            style: { left: 47.68%, top: 23.03% }
             tap_action: { action: more-info }
           - type: state-label
             entity: weather.example_home
-            style: { left: 68%, top: 9% }
+            style: { left: 68%, top: 3.6% }
           - type: state-label
             entity: sensor.example_time
-            style: { left: 83%, top: 9% }
+            style: { left: 83%, top: 3.6% }
           - type: icon
             icon: mdi:pencil-ruler
             title: Edit layout in Roomcraft
             style:
               left: 94%
-              top: 9%
+              top: 3.6%
             tap_action:
               action: navigate
               navigation_path: /second-floor/studio

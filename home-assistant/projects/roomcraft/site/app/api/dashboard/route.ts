@@ -169,6 +169,10 @@ function decodePng(dataUrl: unknown): Uint8Array {
       signature.some((part, index) => bytes[index] !== part)) {
     throw new BridgeError(400, "invalid_png", "The PNG is malformed or too large.");
   }
+  const header = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (header.getUint32(16) !== 1472 || header.getUint32(20) !== 828) {
+    throw new BridgeError(400, "invalid_png", "The plan PNG must be 1472 × 828 pixels.");
+  }
   return bytes;
 }
 
@@ -308,7 +312,7 @@ export async function GET(request: Request): Promise<Response> {
     return json({
       project: isObject(dashboard.roomcraft_layout) ? dashboard.roomcraft_layout : null,
       imageUrl: absoluteImageUrl(config.haOrigin, card.image),
-      hotspots: editableDashboardHotspots(card.elements),
+      hotspots: editableDashboardHotspots(card.elements, card.roomcraft_scene),
       entityOptions,
       source: `${config.haOrigin}/${DASHBOARD_PATH}/${VIEW_PATH}`,
       revision: await revisionOf(dashboard),
@@ -362,7 +366,7 @@ export async function POST(request: Request): Promise<Response> {
     return json({
       project,
       imageUrl: absoluteImageUrl(config.haOrigin, image),
-      hotspots: editableDashboardHotspots(card.elements),
+      hotspots: editableDashboardHotspots(card.elements, card.roomcraft_scene),
       source: `${config.haOrigin}/${DASHBOARD_PATH}/${VIEW_PATH}`,
       revision: await revisionOf(verified),
     });

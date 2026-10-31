@@ -1,5 +1,13 @@
 # Decision log
 
+## 2026-10-31 — Crop the scene to place outer walls at the tablet edges
+
+**Decision:** Render a 1472 × 828 crop of the existing 1536 × 1024 project, using source x20–1492 and y96–924. Keep authored room, wall, item, and independent-marker coordinates in the established project space. Convert only presentation coordinates when placing Home Assistant overlays, and mark the cropped `picture-elements` card `roomcraft_scene: wall-to-wall-v1` so imports reverse the conversion. Preserve weather, time, menu, and editor controls as viewport chrome; move the camera thumbnail within the visible lower exterior.
+
+**Reason:** The prior 3:2 image reached the tablet's height but left side gutters. The owner's clarified requirement is for the house's outer walls to reach the tablet edges. A source crop uses the 16:9 screen without altering the underlying home geometry, furnishing positions, or perspective. A marked reversible mapping protects editable projects and older dashboard images from a silent coordinate migration.
+
+**Consequence:** The exported image is exactly 16:9. Project coordinates remain 1536 × 1024; the presentation omits 20 pixels at left, 44 at right, 96 at top, and 100 at bottom. Both the HA-hosted and cloud transports must apply the same x/y/size transform and inverse for marked independent markers; unmarked legacy cards import as before. The porch camera frame must fit inside the cropped exterior. Visual and touch alignment on the physical tablet must be checked after deploying the matching editor, card, image, and dashboard view together. See [layout format](layout-format.md) and [deployment](deployment.md).
+
 ## 2026-10-31 — Fit the 3:2 plan to the calendar tablet's height
 
 **Decision:** Size the Second Floor plan's centered grid column with `min(100%, calc(100dvh * 1.5))`, preserving the source artwork's 3:2 aspect ratio. Use a matching green-to-tan background on the plan view to fill the remaining landscape side gutters.

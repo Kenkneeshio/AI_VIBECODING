@@ -6,6 +6,7 @@ import { test } from 'node:test';
 const source = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
 const controlsSource = readFileSync(new URL('../public/object-controls.js', import.meta.url), 'utf8');
 const storageKey = 'roomcraft.second-floor.v2';
+const crop = { x: 20, y: 96, width: 1472, height: 828 };
 
 function boot(savedProject, dashboardRequest) {
   const data = new Map([[storageKey, JSON.stringify(savedProject)]]);
@@ -25,7 +26,7 @@ function boot(savedProject, dashboardRequest) {
       id, style: {}, dataset: {}, classList: { add() {}, remove() {}, toggle() {} },
       addEventListener(name, fn) { listeners.set(`${id}:${name}`, fn); },
       getContext() { return drawing; },
-      getBoundingClientRect() { return { left: 0, top: 0, width: 1564, height: 1052 }; },
+      getBoundingClientRect() { return { left: 0, top: 0, width: crop.width + 28, height: crop.height + 28 }; },
       querySelectorAll() { return []; },
       setPointerCapture() {}, setAttribute() {},
       appendChild() {}, remove() {}, focus() {}
@@ -61,7 +62,9 @@ function boot(savedProject, dashboardRequest) {
     requestAnimationFrame(fn) { fn(); },
     AbortSignal, console
   });
-  const event = (x, y) => ({ clientX: x + 14, clientY: y + 14, button: 0, pointerId: 1, preventDefault() {} });
+  // Input arrives in the 16:9 cropped viewport; the saved item coordinates
+  // stay in the original 1536 × 1024 house project.
+  const event = (x, y) => ({ clientX: x - crop.x + 14, clientY: y - crop.y + 14, button: 0, pointerId: 1, preventDefault() {} });
   const pointer = (kind, x, y) => listeners.get(`planCanvas:${kind}`)(event(x, y));
   const read = () => JSON.parse(data.get(storageKey));
   return { pointer, read, elements, storage: data,

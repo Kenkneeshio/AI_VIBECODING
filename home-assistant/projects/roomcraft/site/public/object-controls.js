@@ -6,6 +6,10 @@
   const bindingKeys = new Set(['tapAction', 'holdAction', 'tapEntityId', 'holdEntityId',
     'controlLabel', 'controlIcon']);
   const entityPattern = /^[a-z_]+\.[a-z0-9_]+$/i;
+  const sceneWidth = 1472;
+  const sceneHeight = 828;
+  const sceneLeft = 20;
+  const sceneTop = 96;
 
   function normalizeEntityOptions(raw) {
     if (!Array.isArray(raw)) return [];
@@ -65,12 +69,24 @@
     const linked = items.filter(item => item.type !== 'cameraThumbnail'
       && typeof item.entityId === 'string' && /^[a-z_]+\.[a-z0-9_]+$/i.test(item.entityId));
     const linkedEntities = new Set(linked.map(item => item.entityId));
-    const independent = hotspots.filter(hotspot => !linkedEntities.has(hotspot.entity))
-      .map(hotspot => { const element = { ...hotspot }; delete element.id; return element; });
     const percent = (value, span) => (Math.round(value / span * 10000) / 100) + '%';
+    const independent = hotspots.filter(hotspot => !linkedEntities.has(hotspot.entity))
+      .map(hotspot => {
+        const element = { ...hotspot, style: { ...hotspot.style } };
+        delete element.id;
+        const left = Number.parseFloat(element.style.left);
+        if (Number.isFinite(left)) element.style.left = percent(1536 * left / 100 - sceneLeft, sceneWidth);
+        const width = Number.parseFloat(element.style.width);
+        if (Number.isFinite(width)) element.style.width = percent(1536 * width / 100, sceneWidth);
+        const top = Number.parseFloat(element.style.top);
+        if (Number.isFinite(top)) element.style.top = percent(1024 * top / 100 - sceneTop, sceneHeight);
+        const height = Number.parseFloat(element.style.height);
+        if (Number.isFinite(height)) element.style.height = percent(1024 * height / 100, sceneHeight);
+        return element;
+      });
     const dimensions = (item, zIndex) => ({
-      left: percent(item.x, 1536), top: percent(item.y, 1024),
-      width: percent(item.w, 1536), height: percent(item.h, 1024),
+      left: percent(item.x - sceneLeft, sceneWidth), top: percent(item.y - sceneTop, sceneHeight),
+      width: percent(item.w, sceneWidth), height: percent(item.h, sceneHeight),
       transform: 'translate(-50%, -50%) rotate(' + (item.rotation || 0) + 'deg)',
       'z-index': zIndex
     });
@@ -105,7 +121,7 @@
         entity_id: item.entityId, label: item.controlLabel || item.name || item.entityId,
         icon: item.controlIcon || ''
       })),
-      style: { left: '5.2%', top: '8.8%', 'z-index': 12 }
+      style: { left: '5.2%', top: '3.6%', 'z-index': 12 }
     };
     return [...independent, ...objects, ...cameras, menu];
   }
@@ -125,6 +141,7 @@
       '    type: panel',
       '    cards:',
       '      - type: picture-elements',
+      '        roomcraft_scene: wall-to-wall-v1',
       '        image: /local/second-floor/roomcraft-second-floor.png',
       '        elements:'
     ];

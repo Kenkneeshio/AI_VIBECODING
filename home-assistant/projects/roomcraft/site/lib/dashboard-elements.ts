@@ -9,17 +9,58 @@ const OBJECT_ELEMENT_TYPE = "custom:roomcraft-object-control";
 const MENU_ELEMENT_TYPE = "custom:roomcraft-entity-menu";
 const PLAN_WIDTH = 1536;
 const PLAN_HEIGHT = 1024;
+const SCENE_WIDTH = 1472;
+const SCENE_HEIGHT = 828;
+const SCENE_LEFT = 20;
+const SCENE_TOP = 96;
+export const ROOMCRAFT_SCENE = "wall-to-wall-v1";
 const ACTIONS = ["auto", "toggle", "activate", "more-info", "none"];
 
 function isObject(value: unknown): value is JsonObject {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-export function editableDashboardHotspots(elements: unknown): JsonObject[] {
+function stylePercent(value: unknown): number | null {
+  if (typeof value !== "string" || !/^-?\d{1,3}(?:\.\d+)?%$/.test(value)) return null;
+  const number = Number.parseFloat(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function sceneHotspot(hotspot: JsonObject): JsonObject {
+  const element = structuredClone(hotspot);
+  if (isObject(element.style)) {
+    const left = stylePercent(element.style.left);
+    if (left !== null) element.style.left = percent(PLAN_WIDTH * left / 100 - SCENE_LEFT, SCENE_WIDTH);
+    const width = stylePercent(element.style.width);
+    if (width !== null) element.style.width = percent(PLAN_WIDTH * width / 100, SCENE_WIDTH);
+    const top = stylePercent(element.style.top);
+    if (top !== null) element.style.top = percent(PLAN_HEIGHT * top / 100 - SCENE_TOP, SCENE_HEIGHT);
+    const height = stylePercent(element.style.height);
+    if (height !== null) element.style.height = percent(PLAN_HEIGHT * height / 100, SCENE_HEIGHT);
+  }
+  return element;
+}
+
+function projectHotspot(element: JsonObject): JsonObject {
+  const hotspot = structuredClone(element);
+  if (isObject(hotspot.style)) {
+    const left = stylePercent(hotspot.style.left);
+    if (left !== null) hotspot.style.left = percent(SCENE_WIDTH * left / 100 + SCENE_LEFT, PLAN_WIDTH);
+    const width = stylePercent(hotspot.style.width);
+    if (width !== null) hotspot.style.width = percent(SCENE_WIDTH * width / 100, PLAN_WIDTH);
+    const top = stylePercent(hotspot.style.top);
+    if (top !== null) hotspot.style.top = percent((SCENE_HEIGHT * top / 100) + SCENE_TOP, PLAN_HEIGHT);
+    const height = stylePercent(hotspot.style.height);
+    if (height !== null) hotspot.style.height = percent(SCENE_HEIGHT * height / 100, PLAN_HEIGHT);
+  }
+  return hotspot;
+}
+
+export function editableDashboardHotspots(elements: unknown, scene: unknown = null): JsonObject[] {
   if (!Array.isArray(elements)) return [];
   return elements.filter((element) => isObject(element) && element.type === "state-icon")
     .map((element, index) => ({
-      ...element,
+      ...(scene === ROOMCRAFT_SCENE ? projectHotspot(element) : structuredClone(element)),
       id: typeof element.id === "string" ? element.id : `ha-dashboard-${index + 1}`,
     }));
 }
@@ -79,8 +120,8 @@ export function objectControlElements(items: unknown): JsonObject[] {
         ...(item.tapEntityId ? { roomcraft_tap_entity: item.tapEntityId } : {}),
         ...(item.holdEntityId ? { roomcraft_hold_entity: item.holdEntityId } : {}),
         style: {
-          left: percent(item.x as number, PLAN_WIDTH), top: percent(item.y as number, PLAN_HEIGHT),
-          width: percent(item.w as number, PLAN_WIDTH), height: percent(item.h as number, PLAN_HEIGHT),
+          left: percent((item.x as number) - SCENE_LEFT, SCENE_WIDTH), top: percent((item.y as number) - SCENE_TOP, SCENE_HEIGHT),
+          width: percent(item.w as number, SCENE_WIDTH), height: percent(item.h as number, SCENE_HEIGHT),
           transform: `translate(-50%, -50%) rotate(${item.rotation ?? 0}deg)`,
           "z-index": 4,
         },
@@ -108,7 +149,7 @@ export function entityMenuElement(items: unknown = [], existing: unknown = []): 
     title: "Devices and sensors",
     sections,
     bound_objects: boundObjects,
-    style: { left: "5.2%", top: "8.8%", "z-index": 12 },
+    style: { left: "5.2%", top: "3.6%", "z-index": 12 },
   };
 }
 
@@ -125,10 +166,10 @@ export function cameraThumbnailElements(items: unknown): JsonObject[] {
         image_entity: item.imageEntityId || "",
         preview_mode: item.previewMode || "event",
         style: {
-          left: percent(item.x as number, PLAN_WIDTH),
-          top: percent(item.y as number, PLAN_HEIGHT),
-          width: percent(item.w as number, PLAN_WIDTH),
-          height: percent(item.h as number, PLAN_HEIGHT),
+          left: percent((item.x as number) - SCENE_LEFT, SCENE_WIDTH),
+          top: percent((item.y as number) - SCENE_TOP, SCENE_HEIGHT),
+          width: percent(item.w as number, SCENE_WIDTH),
+          height: percent(item.h as number, SCENE_HEIGHT),
           transform: `translate(-50%, -50%) rotate(${item.rotation ?? 0}deg)`,
           "z-index": 3,
         },
@@ -142,17 +183,29 @@ function isManagedElement(element: JsonObject): boolean {
     (element.type === MENU_ELEMENT_TYPE && element.roomcraft_menu === true);
 }
 
-export function mergeDashboardElements(hotspots: JsonObject[], existing: unknown, items: unknown = []): JsonObject[] {
+function migrateHeaderChrome(element: JsonObject): JsonObject {
+  const result = structuredClone(element);
+  if (!isObject(result.style) || result.style.top !== "9%") return result;
+  const stateLabel = result.type === "state-label" && typeof result.entity === "string" &&
+    (result.entity === "sensor.time" || result.entity.startsWith("weather."));
+  const action = isObject(result.tap_action) ? result.tap_action : {};
+  const editorLink = result.type === "icon" && result.icon === "mdi:pencil-ruler" &&
+    action.navigation_path === "/second-floor/studio";
+  if (stateLabel || editorLink) result.style.top = "3.6%";
+  return result;
+}
+
+export function mergeDashboardElements(hotspots: JsonObject[], existing: unknown, items: unknown = [], migrateLegacyChrome = false): JsonObject[] {
   const objects = objectControlElements(items);
   const linkedEntities = new Set(objects.map((element) => element.entity));
   const managed = hotspots.filter((hotspot) => !linkedEntities.has(hotspot.entity)).map((hotspot) => {
-    const element = { ...hotspot };
+    const element = sceneHotspot(hotspot);
     delete element.id;
     return element;
   });
   const retained = Array.isArray(existing)
     ? existing.filter((element) => isObject(element) && element.type !== "state-icon" && !isManagedElement(element))
-      .map((element) => structuredClone(element))
+      .map((element) => migrateLegacyChrome ? migrateHeaderChrome(element) : structuredClone(element))
     : [];
   return [...managed, ...objects, ...cameraThumbnailElements(items), entityMenuElement(items, existing), ...retained];
 }
@@ -164,7 +217,9 @@ export function withUpdatedPlanCard(config: JsonObject, image: string, hotspots:
   const cards = isObject(view) && Array.isArray(view.cards) ? view.cards : [];
   const card = cards.find((candidate) => isObject(candidate) && candidate.type === "picture-elements");
   if (!isObject(card)) throw new Error("Floor-plan card was not found");
+  const migrateLegacyChrome = card.roomcraft_scene !== ROOMCRAFT_SCENE;
   card.image = image;
-  card.elements = mergeDashboardElements(hotspots, card.elements, items);
+  card.roomcraft_scene = ROOMCRAFT_SCENE;
+  card.elements = mergeDashboardElements(hotspots, card.elements, items, migrateLegacyChrome);
   return { config: next, card };
 }
