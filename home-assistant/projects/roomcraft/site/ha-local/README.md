@@ -26,7 +26,7 @@ For an asset-only refresh without changing the dashboard:
 python ha-local/install.py --host <HA-LAN-IP> --ssh-key <SSH-KEY-PATH> --assets-only
 ```
 
-Keep `/second-floor/studio` as the link given to LAN users. If its editor area stays blank, use **Open editor in a new tab** on that page. The Studio tab must remain open while the new tab imports or exports. Opening `/local/roomcraft/editor.html` directly from the address bar bypasses the authenticated Lovelace card and cannot transfer a layout to the dashboard.
+Keep `/second-floor/studio` as the link given to LAN users. If Studio shows **Configuration error** after a card update, reload the HA tab; we observed stale frontend state clear on reload. If its editor area stays blank, use **Open editor in a new tab** on that page. The Studio tab must remain open while the new tab imports or exports. Opening `/local/roomcraft/editor.html` directly from the address bar bypasses the authenticated Lovelace card and cannot transfer a layout to the dashboard.
 
 The static files, custom card resource, and dashboard configuration persist across Home Assistant restarts. Updating the editor uses the same install command and does not require a Home Assistant core restart.
 

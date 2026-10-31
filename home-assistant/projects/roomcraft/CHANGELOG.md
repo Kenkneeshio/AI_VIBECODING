@@ -2,6 +2,12 @@
 
 All notable Roomcraft changes are recorded here. Deployment status is tracked separately from a source commit.
 
+## 2026-10-31 — Studio frontend reload guard
+
+- Made `roomcraft-editor-card` and its Home Assistant card metadata registration idempotent if the resource is evaluated more than once. A fourth VM regression test reruns the module and checks that only one card entry remains.
+- An affected Chrome Studio tab showed **Configuration error** although the live dashboard configuration and card resource read back correctly; reloading that tab cleared the error. A duplicate registration was a possible failure mode, not a confirmed cause of the observed error.
+- If a Studio tab shows the error after an update, reload it. If the embedded editor is blank, use **Open editor in a new tab** and keep Studio open for authenticated import/export.
+
 ## 2026-10-31 — Home Assistant Layout Studio
 
 ### Added
