@@ -1,12 +1,28 @@
 # Decision log
 
+## 2026-10-31 — Fit the 3:2 plan to the calendar tablet's height
+
+**Decision:** Size the Second Floor plan's centered grid column with `min(100%, calc(100dvh * 1.5))`, preserving the source artwork's 3:2 aspect ratio. Use a matching green-to-tan background on the plan view to fill the remaining landscape side gutters.
+
+**Reason:** The earlier `100dvh - 90px` reservation shortened the plan on the 1920 × 1080 wall tablet and left dark surrounding space. The view needs its available height; stretching the plan to 16:9 would distort rooms and controls.
+
+**Consequence:** The plan now uses about 1074 of 1080 tablet pixels in height and about 1612 pixels in width; the rest is intentional color-matched gutter. The plan's 15 picture elements and other dashboard views were unchanged. Visual fit was verified in a private tablet capture; touch behavior and other orientations remain separate tests.
+
+## 2026-10-31 — Use Home Assistant Companion as the calendar tablet's Home app
+
+**Decision:** Set the installed Home Assistant Companion app as Android's default Home app on the Apolosign Calendar tablet. Keep the vendor launcher available as the documented rollback, and keep ADB only for maintenance and recovery. Configure the intended Second Floor dashboard for the tablet user separately from Android's Home selection.
+
+**Reason:** Android was still resolving Home to the vendor calendar launcher, so a restarted tablet could return to that screen. Companion already had its Home component enabled. [Home Assistant documents](https://companion.home-assistant.io/docs/integrations/android-home-app-launcher/) this launcher mode for wall tablets and says it opens the app at boot. A separate kiosk installation or host-side ADB launch loop would add an unnecessary dependency.
+
+**Consequence:** HOME resolution and the Home key now select the Companion app. The Home key also cold-launched `/second-floor/plan` after Companion was force-stopped. Boot behavior remains an acceptance gate until a supervised tablet restart. The launcher setting cannot explain or prevent the reported restarts. Android's latest recorded reason was `reboot,userrequested`; an orderly shutdown log and a nearby Bluetooth HAL crash still do not identify the initiator. The [runbook](tablet-access.md) contains verification, diagnosis, and reversal steps without private device access data.
+
 ## 2026-10-31 — Keep tablet recovery separate from Roomcraft and document private trust boundaries
 
 **Decision:** Pair the Apolosign Calendar to the Home Assistant host's ADB identity, use the HA Companion app for the Second Floor frontend, and document the reconnect path with placeholders in a public runbook. Keep ADB identity material, HA credentials, transient pairing codes, network endpoints, raw captures, and camera frames out of GitHub. Back up the HA add-on's ADB identity in root-only persistent add-on data. Treat ADB as a recovery channel; do not claim unattended tablet startup or automatic ADB reconnect until a controlled reboot test passes.
 
 **Reason:** The HA host reached the tablet's pairing port when the Windows workstation could not, and it had previously managed this tablet. Android pairing trust can survive a dropped TCP connection, but the current debugging port and wireless-debugging state can change. Phone Codex Remote independently needs an awake, online desktop. An explicit recovery chain is more durable than relying on a live chat or remembering a one-time code.
 
-**Consequence:** An authorized engineer can find the architecture and safe verification commands in [the tablet access runbook](tablet-access.md), then retrieve private access material from the owner or HA host. The Terminal & SSH add-on requests `android-tools` through its persistent `apks` option, but its rebuild behavior and ADB identity restoration are not yet verified. The tablet's full-plan display fit is verified. Touch behavior, boot-time app launch, and automatic reconnect remain acceptance gates.
+**Consequence:** An authorized engineer can find the architecture and safe verification commands in [the tablet access runbook](tablet-access.md), then retrieve private access material from the owner or HA host. The Terminal & SSH add-on requests `android-tools` through its persistent `apks` option, but its rebuild behavior and ADB identity restoration are not yet verified. The tablet's full-plan display fit is verified. Touch behavior, boot-time app launch, and automatic reconnect remain acceptance gates. The later same-day default-Home decision above supersedes the earlier lack of an auto-start configuration.
 
 ## 2026-10-31 — Translate the living-room photo into independent plan objects
 

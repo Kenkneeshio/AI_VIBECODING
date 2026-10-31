@@ -2,6 +2,13 @@
 
 All notable Roomcraft changes are recorded here. Deployment status is tracked separately from a source commit.
 
+## 2026-10-31 — Calendar tablet full-height plan and Home app recovery
+
+- Updated the installed Second Floor `plan` view's grid width from `min(100%, calc((100dvh - 90px) * 1.5))` to `min(100%, calc(100dvh * 1.5))` and filled the view background with a matching green-to-tan gradient. On a private 1920 × 1080 tablet capture after pressing Home, the 3:2 plan occupied about 1612 × 1074 pixels (x154–1765, y5–1078). The narrow side gutters use the gradient instead of black. Weather, time, menu, edit link, and the authenticated porch camera remained visible. All 15 plan picture elements matched the pre-change backup; other dashboard views were unchanged. No HA scene or device command was sent. The private camera frame and capture were not published.
+- Set the installed Home Assistant Companion app as the Apolosign Calendar tablet's default Android Home app. The launcher component was already enabled; Android HOME resolution now selects Home Assistant, and the Home key returns to its WebView dashboard. After an app force-stop, the Home key cold-launched `/second-floor/plan` with the layout visible in a private capture. This is the [supported Home Assistant wall-panel path](https://companion.home-assistant.io/docs/integrations/android-home-app-launcher/). A tablet reboot has not yet verified automatic launch.
+- Updated the [tablet runbook](docs/tablet-access.md) with a default-Home check, reversible HA/vendor launcher commands, on-device dashboard selection, and supervised reboot acceptance steps. ADB remains a recovery channel rather than a dashboard dependency.
+- Read-only reboot diagnostics found `reboot,userrequested` in two Android boot-reason properties and an orderly previous-kernel shutdown log. A vendor Bluetooth HAL tombstone shortly before that boot had no proven causal connection. Scheduled sleep was disabled with no matching pending alarm; power and thermal state were normal during inspection. The recurring-restart cause remains unproven.
+
 ## 2026-10-31 — Calendar tablet pairing and remote-access handoff
 
 - Paired the Home Assistant host with the **Apolosign Calendar** wall tablet using Android wireless debugging, connected on the separate current debugging port, and verified `adb devices -l` reported the correct model. The Windows workstation could not reach the pairing port directly in this session; the HA host is the paired ADB workstation.
