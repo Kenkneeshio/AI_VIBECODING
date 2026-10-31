@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { editableDashboardHotspots, validCameraThumbnail, validObjectControl, withUpdatedPlanCard } from "../../../lib/dashboard-elements";
+import { SCENE_HEIGHT, SCENE_WIDTH, editableDashboardHotspots, validCameraThumbnail, validObjectControl, withUpdatedPlanCard } from "../../../lib/dashboard-elements";
 
 const DASHBOARD_PATH = "second-floor";
 const VIEW_PATH = "plan";
@@ -170,8 +170,8 @@ function decodePng(dataUrl: unknown): Uint8Array {
     throw new BridgeError(400, "invalid_png", "The PNG is malformed or too large.");
   }
   const header = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  if (header.getUint32(16) !== 1472 || header.getUint32(20) !== 828) {
-    throw new BridgeError(400, "invalid_png", "The plan PNG must be 1472 × 828 pixels.");
+  if (header.getUint32(16) !== SCENE_WIDTH || header.getUint32(20) !== SCENE_HEIGHT) {
+    throw new BridgeError(400, "invalid_png", `The plan PNG must be ${SCENE_WIDTH} × ${SCENE_HEIGHT} pixels.`);
   }
   return bytes;
 }

@@ -125,11 +125,11 @@ test('manual YAML keeps linked furniture and invisible zones as custom controls'
     ]
   });
   assert.match(yaml, /register \/local\/roomcraft\/roomcraft-card\.js as a JavaScript module/);
-  assert.match(yaml, /roomcraft_scene: wall-to-wall-v1/);
-  assert.match(yaml, /"left": "80\.16%"/);
-  assert.match(yaml, /"left": "29\.95%"/);
-  assert.match(yaml, /"left": "16\.3%"/);
-  assert.match(yaml, /"top": "25\.51%"/);
+  assert.match(yaml, /roomcraft_scene: full-width-v1/);
+  assert.match(yaml, /"left": "78\.13%"/);
+  assert.match(yaml, /"left": "30%"/);
+  assert.match(yaml, /"left": "16\.93%"/);
+  assert.match(yaml, /"top": "26\.3%"/);
   assert.equal((yaml.match(/- type: "custom:roomcraft-object-control"/g) || []).length, 2);
   assert.equal((yaml.match(/- type: "state-icon"/g) || []).length, 1);
   assert.match(yaml, /roomcraft_item_id: "window-zone"/);

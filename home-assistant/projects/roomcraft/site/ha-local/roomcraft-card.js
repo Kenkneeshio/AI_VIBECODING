@@ -15,11 +15,14 @@ const OBJECT_ELEMENT_TYPE = 'custom:roomcraft-object-control';
 const MENU_ELEMENT_TYPE = 'custom:roomcraft-entity-menu';
 const PLAN_WIDTH = 1536;
 const PLAN_HEIGHT = 1024;
-const SCENE_WIDTH = 1472;
-const SCENE_HEIGHT = 828;
-const SCENE_LEFT = 20;
-const SCENE_TOP = 96;
-const ROOMCRAFT_SCENE = 'wall-to-wall-v1';
+const SCENE_WIDTH = 1536;
+const SCENE_HEIGHT = 864;
+const SCENE_LEFT = 0;
+const SCENE_TOP = 80;
+const ROOMCRAFT_SCENE = 'full-width-v1';
+const PREVIOUS_SCENE = 'wall-to-wall-v1';
+const PREVIOUS_SCENE_BOUNDS = { width: 1472, height: 828, left: 20, top: 96 };
+const HEADER_TOP = '5.3%';
 const CONTROL_ACTIONS = ['auto', 'toggle', 'activate', 'more-info', 'none'];
 const ACTIVATION_SERVICES = new Map([['scene', 'turn_on'], ['script', 'turn_on'], ['button', 'press']]);
 
@@ -76,17 +79,19 @@ function sceneHotspot(hotspot) {
   return element;
 }
 
-function projectHotspot(element) {
+function projectHotspot(element, scene) {
   const hotspot = structuredClone(element);
+  const bounds = scene === PREVIOUS_SCENE ? PREVIOUS_SCENE_BOUNDS :
+    { width: SCENE_WIDTH, height: SCENE_HEIGHT, left: SCENE_LEFT, top: SCENE_TOP };
   if (isObject(hotspot.style)) {
     const left = stylePercent(hotspot.style.left);
-    if (left !== null) hotspot.style.left = percent(SCENE_WIDTH * left / 100 + SCENE_LEFT, PLAN_WIDTH);
+    if (left !== null) hotspot.style.left = percent(bounds.width * left / 100 + bounds.left, PLAN_WIDTH);
     const width = stylePercent(hotspot.style.width);
-    if (width !== null) hotspot.style.width = percent(SCENE_WIDTH * width / 100, PLAN_WIDTH);
+    if (width !== null) hotspot.style.width = percent(bounds.width * width / 100, PLAN_WIDTH);
     const top = stylePercent(hotspot.style.top);
-    if (top !== null) hotspot.style.top = percent(SCENE_HEIGHT * top / 100 + SCENE_TOP, PLAN_HEIGHT);
+    if (top !== null) hotspot.style.top = percent(bounds.height * top / 100 + bounds.top, PLAN_HEIGHT);
     const height = stylePercent(hotspot.style.height);
-    if (height !== null) hotspot.style.height = percent(SCENE_HEIGHT * height / 100, PLAN_HEIGHT);
+    if (height !== null) hotspot.style.height = percent(bounds.height * height / 100, PLAN_HEIGHT);
   }
   return hotspot;
 }
@@ -95,7 +100,8 @@ function editableHotspots(elements, scene = null) {
   return Array.isArray(elements)
     ? elements.filter(element => isObject(element) && element.type === 'state-icon')
       .map((element, index) => ({
-        ...(scene === ROOMCRAFT_SCENE ? projectHotspot(element) : structuredClone(element)),
+        ...((scene === ROOMCRAFT_SCENE || scene === PREVIOUS_SCENE)
+          ? projectHotspot(element, scene) : structuredClone(element)),
         id: typeof element.id === 'string' ? element.id : `ha-dashboard-${index + 1}`,
       }))
     : [];
@@ -190,25 +196,26 @@ function entityMenuElement(items = [], existing = []) {
       icon: item.controlIcon || '' }));
   return { type: MENU_ELEMENT_TYPE, roomcraft_menu: true, title: 'Devices and sensors',
     sections, bound_objects: boundObjects,
-    style: { left: '5.2%', top: '3.6%', 'z-index': 12 } };
+    style: { left: '5.2%', top: HEADER_TOP, 'z-index': 12 } };
 }
 
-function migrateHeaderChrome(element) {
+function migrateHeaderChrome(element, previousScene) {
   const result = structuredClone(element);
-  if (!isObject(result.style) || result.style.top !== '9%') return result;
+  const previousTop = previousScene === PREVIOUS_SCENE ? '3.6%' : '9%';
+  if (!isObject(result.style) || result.style.top !== previousTop) return result;
   const stateLabel = result.type === 'state-label' && typeof result.entity === 'string' &&
     (result.entity === 'sensor.time' || result.entity.startsWith('weather.'));
   const action = isObject(result.tap_action) ? result.tap_action : {};
   const editorLink = result.type === 'icon' && result.icon === 'mdi:pencil-ruler' &&
     action.navigation_path === '/second-floor/studio';
-  if (stateLabel || editorLink) result.style.top = '3.6%';
+  if (stateLabel || editorLink) result.style.top = HEADER_TOP;
   return result;
 }
 
 function updatePlanCard(config, image, hotspots, items = []) {
   const next = structuredClone(config);
   const card = findPlanCard(next);
-  const migrateLegacyChrome = card.roomcraft_scene !== ROOMCRAFT_SCENE;
+  const previousScene = card.roomcraft_scene;
   const objects = objectControlElements(items);
   const linkedEntities = new Set(objects.map(element => element.entity));
   const retained = Array.isArray(card.elements)
@@ -224,7 +231,8 @@ function updatePlanCard(config, image, hotspots, items = []) {
     delete element.id;
     return element;
   }), ...objects, ...cameraThumbnailElements(items), entityMenuElement(items, card.elements || []),
-    ...retained.map(element => migrateLegacyChrome ? migrateHeaderChrome(element) : structuredClone(element))];
+    ...retained.map(element => previousScene !== ROOMCRAFT_SCENE
+      ? migrateHeaderChrome(element, previousScene) : structuredClone(element))];
   return { next, card };
 }
 
@@ -280,7 +288,7 @@ function decodePng(dataUrl) {
   const size = offset => ((bytes[offset] << 24) | (bytes[offset + 1] << 16) |
     (bytes[offset + 2] << 8) | bytes[offset + 3]) >>> 0;
   if (size(16) !== SCENE_WIDTH || size(20) !== SCENE_HEIGHT) {
-    throw new Error('The plan PNG must be 1472 × 828 pixels.');
+    throw new Error('The plan PNG must be 1536 × 864 pixels.');
   }
   return bytes;
 }

@@ -6,7 +6,7 @@ import { test } from 'node:test';
 const source = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
 const controlsSource = readFileSync(new URL('../public/object-controls.js', import.meta.url), 'utf8');
 const storageKey = 'roomcraft.second-floor.v2';
-const crop = { x: 20, y: 96, width: 1472, height: 828 };
+const crop = { x: 0, y: 80, width: 1536, height: 864 };
 
 function boot(savedProject, dashboardRequest) {
   const data = new Map([[storageKey, JSON.stringify(savedProject)]]);

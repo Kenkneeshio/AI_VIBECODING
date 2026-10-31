@@ -1,6 +1,14 @@
 # Decision log
 
-## 2026-10-31 — Crop the scene to place outer walls at the tablet edges
+## 2026-10-31 — Preserve the entire house width in the 16:9 scene
+
+**Decision:** Render the existing 1536 × 1024 editable project at its original pixel scale across the complete x0–1536 width, cropping only y80–944 to make a 1536 × 864 display image. Keep all authored geometry in project coordinates. Export `roomcraft_scene: full-width-v1` and map overlay y positions by `(y - 80) / 864`; x positions use `x / 1536`. Import reverses this mapping for marked independent markers and still recognizes the earlier `wall-to-wall-v1` crop and unmarked 3:2 cards.
+
+**Reason:** The first 16:9 crop removed 20 pixels from the left and 44 from the right. The owner wants every side of the house visible, slightly farther out, while retaining the full-width tablet presentation. Removing only top and bottom margins meets that request without changing room dimensions or perspective.
+
+**Consequence:** The editor preview, PNG export, both dashboard bridges, manual YAML, and HA image validator must agree on 1536 × 864 and `full-width-v1`. Previous crop and legacy imports remain readable. HA readback and a private 1920 × 1080 tablet capture verified the full-width image, both exterior sides, and no gutters; physical touch alignment still needs its own check. The 1472 × 828 result remains historical evidence. See [layout format](layout-format.md) and [deployment](deployment.md).
+
+## 2026-10-31 — Earlier wall-to-wall crop (superseded)
 
 **Decision:** Render a 1472 × 828 crop of the existing 1536 × 1024 project, using source x20–1492 and y96–924. Keep authored room, wall, item, and independent-marker coordinates in the established project space. Convert only presentation coordinates when placing Home Assistant overlays, and mark the cropped `picture-elements` card `roomcraft_scene: wall-to-wall-v1` so imports reverse the conversion. Preserve weather, time, menu, and editor controls as viewport chrome; move the camera thumbnail within the visible lower exterior.
 

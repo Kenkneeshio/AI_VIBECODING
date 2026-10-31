@@ -1,9 +1,9 @@
 (() => {
   'use strict';
 
-  // Keep the editable house at its original coordinates. The 16:9 view crops
-  // the surrounding outdoors so the house reaches the display's side edges.
-  const W = 1536, H = 1024, VIEW_W = 1472, VIEW_H = 828, CROP_X = 20, CROP_Y = 96;
+  // Keep the editable house at its original coordinates. The 16:9 view shows
+  // the full source width and trims only outdoor space above and below it.
+  const W = 1536, H = 1024, VIEW_W = 1536, VIEW_H = 864, CROP_X = 0, CROP_Y = 80;
   // v2 starts from the furnished image currently used by Home Assistant.
   // Keep v1 untouched so an older browser draft can be recovered explicitly.
   const STORAGE_KEY = 'roomcraft.second-floor.v2';

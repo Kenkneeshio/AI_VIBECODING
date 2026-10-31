@@ -343,8 +343,8 @@ function dashboard() {
 function pngDataUrl() {
   const bytes = Buffer.alloc(24);
   Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(bytes);
-  bytes.writeUInt32BE(1472, 16);
-  bytes.writeUInt32BE(828, 20);
+  bytes.writeUInt32BE(1536, 16);
+  bytes.writeUInt32BE(864, 20);
   return `data:image/png;base64,${bytes.toString('base64')}`;
 }
 
@@ -379,13 +379,13 @@ test('LAN bridge imports, exports, and retains unrelated HA elements/views', asy
   const exported = await card._writeDashboard({ project, revision: imported.revision, pngDataUrl: pngDataUrl() });
   assert.equal(uploaded, true);
   assert.equal(exported.project.hotspots.length, 1);
-  assert.equal(saved.views[0].cards[0].roomcraft_scene, 'wall-to-wall-v1');
+  assert.equal(saved.views[0].cards[0].roomcraft_scene, 'full-width-v1');
   assert.equal(saved.views[0].cards[0].elements.length, 3);
-  assert.equal(saved.views[0].cards[0].elements[0].style.left, '42.47%');
-  assert.equal(saved.views[0].cards[0].elements[0].style.top, '39.11%');
+  assert.equal(saved.views[0].cards[0].elements[0].style.left, '42%');
+  assert.equal(saved.views[0].cards[0].elements[0].style.top, '39.33%');
   assert.equal(saved.views[0].cards[0].elements[1].type, 'custom:roomcraft-entity-menu');
   assert.equal(saved.views[0].cards[0].elements[2].entity, 'sensor.time');
-  assert.equal(saved.views[0].cards[0].elements[2].style.top, '3.6%');
+  assert.equal(saved.views[0].cards[0].elements[2].style.top, '5.3%');
   assert.equal(saved.views[1].cards[0].title, 'Live');
   assert.match(saved.views[0].cards[0].image, /^\/api\/image\/serve\/a{32}\/original$/);
   const roundTrip = await card._readDashboard();
@@ -395,6 +395,23 @@ test('LAN bridge imports, exports, and retains unrelated HA elements/views', asy
   const changed = await card._readDashboard();
   await card._writeDashboard({ project, revision: changed.revision, pngDataUrl: pngDataUrl() });
   assert.equal(saved.views[0].cards[0].elements[2].style.top, '7%');
+});
+
+test('LAN bridge imports controls from the previous 1472 by 828 scene', async () => {
+  const saved = dashboard();
+  const plan = saved.views[0].cards[0];
+  plan.roomcraft_scene = 'wall-to-wall-v1';
+  plan.elements[0].style = { left: '42.47%', top: '39.11%' };
+  plan.elements[1].style.top = '3.6%';
+  const card = new Card();
+  card.hass = {
+    connected: true,
+    user: { is_admin: true },
+    callWS: async () => structuredClone(saved),
+  };
+  const imported = await card._readDashboard();
+  assert.equal(imported.hotspots[0].style.left, '42%');
+  assert.equal(imported.hotspots[0].style.top, '41%');
 });
 
 test('LAN bridge refuses a stale revision before upload', async () => {

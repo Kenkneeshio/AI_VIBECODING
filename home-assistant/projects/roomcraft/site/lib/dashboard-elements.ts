@@ -9,11 +9,14 @@ const OBJECT_ELEMENT_TYPE = "custom:roomcraft-object-control";
 const MENU_ELEMENT_TYPE = "custom:roomcraft-entity-menu";
 const PLAN_WIDTH = 1536;
 const PLAN_HEIGHT = 1024;
-const SCENE_WIDTH = 1472;
-const SCENE_HEIGHT = 828;
-const SCENE_LEFT = 20;
-const SCENE_TOP = 96;
-export const ROOMCRAFT_SCENE = "wall-to-wall-v1";
+export const SCENE_WIDTH = 1536;
+export const SCENE_HEIGHT = 864;
+const SCENE_LEFT = 0;
+const SCENE_TOP = 80;
+export const ROOMCRAFT_SCENE = "full-width-v1";
+const PREVIOUS_SCENE = "wall-to-wall-v1";
+const PREVIOUS_SCENE_BOUNDS = { width: 1472, height: 828, left: 20, top: 96 };
+const HEADER_TOP = "5.3%";
 const ACTIONS = ["auto", "toggle", "activate", "more-info", "none"];
 
 function isObject(value: unknown): value is JsonObject {
@@ -41,17 +44,19 @@ function sceneHotspot(hotspot: JsonObject): JsonObject {
   return element;
 }
 
-function projectHotspot(element: JsonObject): JsonObject {
+function projectHotspot(element: JsonObject, scene: string): JsonObject {
   const hotspot = structuredClone(element);
+  const bounds = scene === PREVIOUS_SCENE ? PREVIOUS_SCENE_BOUNDS :
+    { width: SCENE_WIDTH, height: SCENE_HEIGHT, left: SCENE_LEFT, top: SCENE_TOP };
   if (isObject(hotspot.style)) {
     const left = stylePercent(hotspot.style.left);
-    if (left !== null) hotspot.style.left = percent(SCENE_WIDTH * left / 100 + SCENE_LEFT, PLAN_WIDTH);
+    if (left !== null) hotspot.style.left = percent(bounds.width * left / 100 + bounds.left, PLAN_WIDTH);
     const width = stylePercent(hotspot.style.width);
-    if (width !== null) hotspot.style.width = percent(SCENE_WIDTH * width / 100, PLAN_WIDTH);
+    if (width !== null) hotspot.style.width = percent(bounds.width * width / 100, PLAN_WIDTH);
     const top = stylePercent(hotspot.style.top);
-    if (top !== null) hotspot.style.top = percent((SCENE_HEIGHT * top / 100) + SCENE_TOP, PLAN_HEIGHT);
+    if (top !== null) hotspot.style.top = percent((bounds.height * top / 100) + bounds.top, PLAN_HEIGHT);
     const height = stylePercent(hotspot.style.height);
-    if (height !== null) hotspot.style.height = percent(SCENE_HEIGHT * height / 100, PLAN_HEIGHT);
+    if (height !== null) hotspot.style.height = percent(bounds.height * height / 100, PLAN_HEIGHT);
   }
   return hotspot;
 }
@@ -60,7 +65,8 @@ export function editableDashboardHotspots(elements: unknown, scene: unknown = nu
   if (!Array.isArray(elements)) return [];
   return elements.filter((element) => isObject(element) && element.type === "state-icon")
     .map((element, index) => ({
-      ...(scene === ROOMCRAFT_SCENE ? projectHotspot(element) : structuredClone(element)),
+      ...((scene === ROOMCRAFT_SCENE || scene === PREVIOUS_SCENE)
+        ? projectHotspot(element, scene) : structuredClone(element)),
       id: typeof element.id === "string" ? element.id : `ha-dashboard-${index + 1}`,
     }));
 }
@@ -149,7 +155,7 @@ export function entityMenuElement(items: unknown = [], existing: unknown = []): 
     title: "Devices and sensors",
     sections,
     bound_objects: boundObjects,
-    style: { left: "5.2%", top: "3.6%", "z-index": 12 },
+    style: { left: "5.2%", top: HEADER_TOP, "z-index": 12 },
   };
 }
 
@@ -183,19 +189,20 @@ function isManagedElement(element: JsonObject): boolean {
     (element.type === MENU_ELEMENT_TYPE && element.roomcraft_menu === true);
 }
 
-function migrateHeaderChrome(element: JsonObject): JsonObject {
+function migrateHeaderChrome(element: JsonObject, previousScene: unknown): JsonObject {
   const result = structuredClone(element);
-  if (!isObject(result.style) || result.style.top !== "9%") return result;
+  const previousTop = previousScene === PREVIOUS_SCENE ? "3.6%" : "9%";
+  if (!isObject(result.style) || result.style.top !== previousTop) return result;
   const stateLabel = result.type === "state-label" && typeof result.entity === "string" &&
     (result.entity === "sensor.time" || result.entity.startsWith("weather."));
   const action = isObject(result.tap_action) ? result.tap_action : {};
   const editorLink = result.type === "icon" && result.icon === "mdi:pencil-ruler" &&
     action.navigation_path === "/second-floor/studio";
-  if (stateLabel || editorLink) result.style.top = "3.6%";
+  if (stateLabel || editorLink) result.style.top = HEADER_TOP;
   return result;
 }
 
-export function mergeDashboardElements(hotspots: JsonObject[], existing: unknown, items: unknown = [], migrateLegacyChrome = false): JsonObject[] {
+export function mergeDashboardElements(hotspots: JsonObject[], existing: unknown, items: unknown = [], previousScene: unknown = ROOMCRAFT_SCENE): JsonObject[] {
   const objects = objectControlElements(items);
   const linkedEntities = new Set(objects.map((element) => element.entity));
   const managed = hotspots.filter((hotspot) => !linkedEntities.has(hotspot.entity)).map((hotspot) => {
@@ -205,7 +212,7 @@ export function mergeDashboardElements(hotspots: JsonObject[], existing: unknown
   });
   const retained = Array.isArray(existing)
     ? existing.filter((element) => isObject(element) && element.type !== "state-icon" && !isManagedElement(element))
-      .map((element) => migrateLegacyChrome ? migrateHeaderChrome(element) : structuredClone(element))
+      .map((element) => previousScene !== ROOMCRAFT_SCENE ? migrateHeaderChrome(element, previousScene) : structuredClone(element))
     : [];
   return [...managed, ...objects, ...cameraThumbnailElements(items), entityMenuElement(items, existing), ...retained];
 }
@@ -217,9 +224,9 @@ export function withUpdatedPlanCard(config: JsonObject, image: string, hotspots:
   const cards = isObject(view) && Array.isArray(view.cards) ? view.cards : [];
   const card = cards.find((candidate) => isObject(candidate) && candidate.type === "picture-elements");
   if (!isObject(card)) throw new Error("Floor-plan card was not found");
-  const migrateLegacyChrome = card.roomcraft_scene !== ROOMCRAFT_SCENE;
+  const previousScene = card.roomcraft_scene ?? null;
   card.image = image;
   card.roomcraft_scene = ROOMCRAFT_SCENE;
-  card.elements = mergeDashboardElements(hotspots, card.elements, items, migrateLegacyChrome);
+  card.elements = mergeDashboardElements(hotspots, card.elements, items, previousScene);
   return { config: next, card };
 }

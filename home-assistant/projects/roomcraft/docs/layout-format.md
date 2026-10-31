@@ -11,18 +11,18 @@ The [JSON Schema](../layout.schema.json) describes Roomcraft layout version 2 sh
 | `items[]` | Catalog type, name, center, size, rotation, and optional HA binding. Bound items generate custom on-plan controls; `controlZone` is a movable invisible hit area. Camera thumbnails also carry an optional event-image entity and preview mode. |
 | `hotspots[]` | Legacy, independent `state-icon` controls with entity, title, action, and percentage position. Bound item controls are derived from `items[]` instead. |
 
-The editable project is 1536 × 1024. `x` and `y` are project pixels; room and item IDs should remain stable across edits. The wall-to-wall dashboard image crops that scene to x20–1492 and y96–924, producing 1472 × 828 pixels at **the same source pixel scale**. Its exact 16:9 aspect fits a landscape tablet while leaving project geometry unchanged. A wall's absence of `finish` means graphite for compatibility with layouts saved before wall finishes were added. Catalog `type` values must match the installed editor inventory; JSON Schema cannot enumerate dynamically added inventory templates.
+The editable project is 1536 × 1024. `x` and `y` are project pixels; room and item IDs should remain stable across edits. The full-width dashboard image includes the entire source width x0–1536 and crops only y80–944, producing 1536 × 864 pixels at **the same source pixel scale**. Its exact 16:9 aspect fits a landscape tablet while leaving project geometry unchanged. A wall's absence of `finish` means graphite for compatibility with layouts saved before wall finishes were added. Catalog `type` values must match the installed editor inventory; JSON Schema cannot enumerate dynamically added inventory templates.
 
 Home Assistant positions `picture-elements` controls by percentage of the **displayed image**. For an item center `(x, y)` and size `(w, h)` in project pixels, both dashboard transports use:
 
 ```text
-left = 100 × (x - 20) / 1472 %
-top = 100 × (y - 96) / 828 %
-width = 100 × w / 1472 %
-height = 100 × h / 828 %
+left = 100 × x / 1536 %
+top = 100 × (y - 80) / 864 %
+width = 100 × w / 1536 %
+height = 100 × h / 864 %
 ```
 
-An independent marker's project-space percentages first convert to project pixels with `x = 1536 × left / 100` and `y = 1024 × top / 100`, then map as above. On import, `x = 1472 × cardLeft / 100 + 20` and `y = 828 × cardTop / 100 + 96` restore its project percentages. The card's `roomcraft_scene: wall-to-wall-v1` flag enables this inverse; older cards without the flag retain their original 3:2 percentages. The top-level `roomcraft_layout` remains version 2 and does not store a second set of cropped coordinates. Bound-object and camera overlays are derived from item geometry on export, while weather, time, menu, and editor chrome are positioned separately. Elements outside the crop may be clipped; place the camera frame and other essential targets inside x20–1492/y96–924 before publishing. Keep the image dimensions, marker, two transports, and manual YAML export in sync.
+An independent marker's project-space percentages first convert to project pixels with `x = 1536 × left / 100` and `y = 1024 × top / 100`, then map as above. On import from a `full-width-v1` card, `x = 1536 × cardLeft / 100` and `y = 864 × cardTop / 100 + 80` restore its project percentages. A card marked `wall-to-wall-v1` instead uses the preceding crop's inverse: `x = 1472 × cardLeft / 100 + 20`, `y = 828 × cardTop / 100 + 96`. Unmarked legacy 3:2 cards retain their original percentages. The top-level `roomcraft_layout` remains version 2 and does not store a second set of cropped coordinates. Bound-object and camera overlays are derived from item geometry on export, while weather, time, menu, and editor chrome are positioned separately. Elements above y80 or below y944 may be clipped; place the camera frame and other essential targets within that visible height before publishing. Keep the image dimensions, marker, two transports, and manual YAML export in sync.
 
 Do not put telemetry such as current light state or robot coordinates in this file. Those values belong in live adapters. On a format change, add a new schema and explicit migration; keep old imports readable until the migration has been tested.
 

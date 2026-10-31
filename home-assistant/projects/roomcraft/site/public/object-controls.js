@@ -6,10 +6,10 @@
   const bindingKeys = new Set(['tapAction', 'holdAction', 'tapEntityId', 'holdEntityId',
     'controlLabel', 'controlIcon']);
   const entityPattern = /^[a-z_]+\.[a-z0-9_]+$/i;
-  const sceneWidth = 1472;
-  const sceneHeight = 828;
-  const sceneLeft = 20;
-  const sceneTop = 96;
+  const sceneWidth = 1536;
+  const sceneHeight = 864;
+  const sceneLeft = 0;
+  const sceneTop = 80;
 
   function normalizeEntityOptions(raw) {
     if (!Array.isArray(raw)) return [];
@@ -121,7 +121,7 @@
         entity_id: item.entityId, label: item.controlLabel || item.name || item.entityId,
         icon: item.controlIcon || ''
       })),
-      style: { left: '5.2%', top: '3.6%', 'z-index': 12 }
+      style: { left: '5.2%', top: '5.3%', 'z-index': 12 }
     };
     return [...independent, ...objects, ...cameras, menu];
   }
@@ -141,7 +141,7 @@
       '    type: panel',
       '    cards:',
       '      - type: picture-elements',
-      '        roomcraft_scene: wall-to-wall-v1',
+      '        roomcraft_scene: full-width-v1',
       '        image: /local/second-floor/roomcraft-second-floor.png',
       '        elements:'
     ];
