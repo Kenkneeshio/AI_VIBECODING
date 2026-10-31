@@ -22246,10 +22246,25 @@
         },
         {
           "entity_id": "switch.ceiling_fan",
-          "label": "Ceiling fan",
-          "role": "tap fan; location needs confirmation",
+          "label": "Ceiling fan state and motor artwork",
+          "role": "provisional living-ceiling fan; tap runs Fan On scene, hold runs Fan Off scene",
           "mapping_confidence": "room_unverified",
-          "availability": "available"
+          "availability": "available",
+          "plan_position": {
+            "x": 690,
+            "y": 420,
+            "status": "provisional"
+          },
+          "tap_target_entity_id": "scene.ceiling_fan_on_scene",
+          "hold_target_entity_id": "scene.ceiling_fan_off"
+        },
+        {
+          "entity_id": "scene.ceiling_fan_light_toggle",
+          "label": "Ceiling fan light toggle",
+          "role": "separate 68 by 68 center area activates one-shot light toggle scene; no on/off state",
+          "mapping_confidence": "room_unverified",
+          "availability": "available",
+          "plan_placement": "centered on provisional living-ceiling fan"
         }
       ]
     },
@@ -22576,9 +22591,21 @@
     {
       "object": "ceiling fan",
       "binding_domain": "switch",
-      "primary_action": "switch.toggle",
-      "detail_action": "more-info",
-      "note": "Current `switch.ceiling_fan` supports on/off; physical room is unverified."
+      "state_entity_id": "switch.ceiling_fan",
+      "primary_action": "scene.turn_on",
+      "tap_target_entity_id": "scene.ceiling_fan_on_scene",
+      "hold_action": "scene.turn_on",
+      "hold_target_entity_id": "scene.ceiling_fan_off",
+      "detail_action": "more-info for monitored switch",
+      "note": "Fan placement at living ceiling center is provisional; the switch is monitored as state, not assumed to control motor alone. No fan speed entity is verified."
+    },
+    {
+      "object": "ceiling fan center light area",
+      "binding_domain": "scene",
+      "primary_action": "scene.turn_on",
+      "target_entity_id": "scene.ceiling_fan_light_toggle",
+      "state_reporting": "none",
+      "note": "One-shot light toggle; no independent light entity or on/off state. Move the 68 by 68 center area together with the fan artwork when its physical room is confirmed."
     },
     {
       "object": "robot vacuum",

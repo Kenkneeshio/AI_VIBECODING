@@ -15,7 +15,8 @@ const OBJECT_ELEMENT_TYPE = 'custom:roomcraft-object-control';
 const MENU_ELEMENT_TYPE = 'custom:roomcraft-entity-menu';
 const PLAN_WIDTH = 1536;
 const PLAN_HEIGHT = 1024;
-const CONTROL_ACTIONS = ['auto', 'toggle', 'more-info', 'none'];
+const CONTROL_ACTIONS = ['auto', 'toggle', 'activate', 'more-info', 'none'];
+const ACTIVATION_SERVICES = new Map([['scene', 'turn_on'], ['script', 'turn_on'], ['button', 'press']]);
 
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -96,6 +97,10 @@ function validObjectControl(item) {
     (item.controlIcon === undefined || item.controlIcon === '' || typeof item.controlIcon === 'string' && /^mdi:[a-z0-9-]+$/.test(item.controlIcon)) &&
     (item.tapAction === undefined || CONTROL_ACTIONS.includes(item.tapAction)) &&
     (item.holdAction === undefined || CONTROL_ACTIONS.includes(item.holdAction)) &&
+    (item.tapEntityId === undefined || typeof item.tapEntityId === 'string' &&
+      (item.tapEntityId === '' || /^[a-z_]+\.[a-z0-9_]+$/.test(item.tapEntityId))) &&
+    (item.holdEntityId === undefined || typeof item.holdEntityId === 'string' &&
+      (item.holdEntityId === '' || /^[a-z_]+\.[a-z0-9_]+$/.test(item.holdEntityId))) &&
     [item.x, item.y, item.w, item.h, item.rotation ?? 0].every(value => typeof value === 'number' && Number.isFinite(value)) &&
     item.x >= 0 && item.x <= PLAN_WIDTH && item.y >= 0 && item.y <= PLAN_HEIGHT &&
     item.w >= 12 && item.w <= PLAN_WIDTH && item.h >= 12 && item.h <= PLAN_HEIGHT;
@@ -114,6 +119,8 @@ function objectControlElements(items) {
       control_zone: item.type === 'controlZone',
       roomcraft_tap_action: item.tapAction || 'auto',
       roomcraft_hold_action: item.holdAction || 'auto',
+      ...(item.tapEntityId ? { roomcraft_tap_entity: item.tapEntityId } : {}),
+      ...(item.holdEntityId ? { roomcraft_hold_entity: item.holdEntityId } : {}),
       style: {
         left: percent(item.x, PLAN_WIDTH), top: percent(item.y, PLAN_HEIGHT),
         width: percent(item.w, PLAN_WIDTH), height: percent(item.h, PLAN_HEIGHT),
@@ -451,7 +458,13 @@ class RoomcraftObjectControl extends HTMLElement {
     if (!isObject(config) || typeof config.entity !== 'string' ||
         !/^[a-z_]+\.[a-z0-9_]+$/.test(config.entity) ||
         !CONTROL_ACTIONS.includes(config.roomcraft_tap_action || 'auto') ||
-        !CONTROL_ACTIONS.includes(config.roomcraft_hold_action || 'auto')) {
+        !CONTROL_ACTIONS.includes(config.roomcraft_hold_action || 'auto') ||
+        (config.roomcraft_tap_entity !== undefined &&
+          (typeof config.roomcraft_tap_entity !== 'string' ||
+            !/^[a-z_]+\.[a-z0-9_]+$/.test(config.roomcraft_tap_entity))) ||
+        (config.roomcraft_hold_entity !== undefined &&
+          (typeof config.roomcraft_hold_entity !== 'string' ||
+            !/^[a-z_]+\.[a-z0-9_]+$/.test(config.roomcraft_hold_entity)))) {
       throw new Error('The Roomcraft object has an invalid device binding.');
     }
     this._config = config;
@@ -512,7 +525,10 @@ class RoomcraftObjectControl extends HTMLElement {
     if (!this._button || !this._config) return;
     const state = this._hass?.states?.[this._config.entity];
     const value = state?.state || 'unavailable';
-    const active = ['on', 'open', 'playing', 'cleaning', 'heat', 'cool', 'heating', 'cooling'].includes(value);
+    const domain = this._config.entity.split('.')[0];
+    const actionOnly = domain === 'scene' || domain === 'button';
+    const displayValue = actionOnly && !['unavailable', 'unknown'].includes(value) ? 'ready' : value;
+    const active = !actionOnly && ['on', 'open', 'playing', 'cleaning', 'heat', 'cool', 'heating', 'cooling'].includes(value);
     this._button.setAttribute('data-state', value === 'unavailable' || value === 'unknown' ? 'unavailable' : active ? 'on' : 'off');
     this._button.setAttribute('data-zone', String(this._config.control_zone === true));
     this._icon.icon = this._config.control_icon || state?.attributes?.icon || 'mdi:gesture-tap';
@@ -520,17 +536,26 @@ class RoomcraftObjectControl extends HTMLElement {
     const tap = this._actionFor('tap');
     const hold = this._actionFor('hold');
     const describe = (action, gesture) => action === 'toggle' ? `${gesture} to toggle` :
+      action === 'activate' ? `${gesture} to run` :
       action === 'more-info' ? `${gesture} for details` : `${gesture} disabled`;
-    this._button.setAttribute('aria-label', `${label}: ${value}. ${describe(tap, 'Tap')}; ${describe(hold, 'hold')}.`);
-    this._button.title = `${label} · ${value}`;
+    this._button.setAttribute('aria-label', `${label}: ${displayValue}. ${describe(tap, 'Tap')}; ${describe(hold, 'hold')}.`);
+    this._button.title = `${label} · ${displayValue}`;
   }
 
   _actionFor(kind) {
-    const domain = (this._config?.entity || '').split('.')[0];
+    const target = this._targetFor(kind);
+    const domain = target.split('.')[0];
     let action = this._config[kind === 'hold' ? 'roomcraft_hold_action' : 'roomcraft_tap_action'] || 'auto';
     if (action === 'auto') action = kind === 'hold' ? 'more-info' :
+      ACTIVATION_SERVICES.has(domain) ? 'activate' :
       ['light', 'switch', 'fan', 'input_boolean'].includes(domain) ? 'toggle' : 'more-info';
+    if (action === 'activate' && !ACTIVATION_SERVICES.has(domain)) action = 'more-info';
     return action;
+  }
+
+  _targetFor(kind) {
+    return this._config?.[kind === 'hold' ? 'roomcraft_hold_entity' : 'roomcraft_tap_entity'] ||
+      this._config?.entity || '';
   }
 
   _activate(kind) {
@@ -538,16 +563,21 @@ class RoomcraftObjectControl extends HTMLElement {
     if (!entityId || !this._hass) return;
     let action = this._actionFor(kind);
     if (action === 'none') return;
-    if (action === 'toggle' && ['unavailable', 'unknown'].includes(this._hass.states?.[entityId]?.state)) {
+    const targetId = this._targetFor(kind);
+    if (['toggle', 'activate'].includes(action) &&
+        ['unavailable', 'unknown'].includes(this._hass.states?.[targetId]?.state)) {
       action = 'more-info';
     }
-    if (action === 'toggle') {
+    if (action === 'toggle' || action === 'activate') {
       try {
-        Promise.resolve(this._hass.callService('homeassistant', 'toggle', { entity_id: entityId }))
-          .catch(() => this._showDetails(entityId));
-      } catch { this._showDetails(entityId); }
+        const domain = targetId.split('.')[0];
+        const service = action === 'activate' ? ACTIVATION_SERVICES.get(domain) : 'toggle';
+        Promise.resolve(this._hass.callService(action === 'activate' ? domain : 'homeassistant',
+          service, { entity_id: targetId }))
+          .catch(() => this._showDetails(targetId));
+      } catch { this._showDetails(targetId); }
     } else {
-      this._showDetails(entityId);
+      this._showDetails(targetId);
     }
   }
 
@@ -772,7 +802,9 @@ class RoomcraftEntityMenu extends HTMLElement {
       detail.addEventListener('click', () => { this._close(); this._showDetails(item.entityId); });
       const status = document.createElement('span');
       status.className = 'state';
-      status.textContent = item.disabled ? 'Disabled' : item.state || 'Unknown';
+      status.textContent = item.disabled ? 'Disabled' :
+        ['scene', 'button'].includes(item.domain) && !['unavailable', 'unknown'].includes(item.state)
+          ? 'Ready' : item.state || 'Unknown';
       row.append(detail, status);
       if (['light', 'switch', 'fan', 'input_boolean'].includes(item.domain)) {
         const toggle = document.createElement('button');
@@ -789,6 +821,21 @@ class RoomcraftEntityMenu extends HTMLElement {
           } catch { this._showDetails(item.entityId); }
         });
         row.append(toggle);
+      } else if (ACTIVATION_SERVICES.has(item.domain)) {
+        const run = document.createElement('button');
+        run.type = 'button';
+        run.className = 'toggle';
+        run.textContent = 'Run';
+        run.title = `Run ${item.name}`;
+        run.setAttribute('aria-label', `Run ${item.name}`);
+        run.disabled = item.disabled || ['unavailable', 'unknown'].includes(item.state);
+        run.addEventListener('click', () => {
+          try {
+            Promise.resolve(this._hass.callService(item.domain, ACTIVATION_SERVICES.get(item.domain),
+              { entity_id: item.entityId })).catch(() => this._showDetails(item.entityId));
+          } catch { this._showDetails(item.entityId); }
+        });
+        row.append(run);
       }
       this._rows.append(row);
     }

@@ -1,9 +1,11 @@
 (() => {
   'use strict';
 
-  const actions = new Set(['auto', 'toggle', 'more-info', 'none']);
+  const actions = new Set(['auto', 'toggle', 'activate', 'more-info', 'none']);
   const iconPattern = /^mdi:[a-z0-9-]+$/i;
-  const bindingKeys = new Set(['tapAction', 'holdAction', 'controlLabel', 'controlIcon']);
+  const bindingKeys = new Set(['tapAction', 'holdAction', 'tapEntityId', 'holdEntityId',
+    'controlLabel', 'controlIcon']);
+  const entityPattern = /^[a-z_]+\.[a-z0-9_]+$/i;
 
   function normalizeEntityOptions(raw) {
     if (!Array.isArray(raw)) return [];
@@ -11,7 +13,7 @@
     return raw.map(option => {
       if (!option || typeof option !== 'object' || typeof option.entity_id !== 'string') return null;
       const entity_id = option.entity_id.trim();
-      if (!/^[a-z_]+\.[a-z0-9_]+$/i.test(entity_id) || seen.has(entity_id)) return null;
+      if (!entityPattern.test(entity_id) || seen.has(entity_id)) return null;
       seen.add(entity_id);
       return {
         entity_id,
@@ -25,6 +27,10 @@
   function validBinding(item) {
     return (!('tapAction' in item) || actions.has(item.tapAction))
       && (!('holdAction' in item) || actions.has(item.holdAction))
+      && (!('tapEntityId' in item) || typeof item.tapEntityId === 'string'
+        && (!item.tapEntityId || entityPattern.test(item.tapEntityId)))
+      && (!('holdEntityId' in item) || typeof item.holdEntityId === 'string'
+        && (!item.holdEntityId || entityPattern.test(item.holdEntityId)))
       && (!('controlLabel' in item) || (typeof item.controlLabel === 'string' && item.controlLabel.length <= 80))
       && (!('controlIcon' in item) || (typeof item.controlIcon === 'string' && (!item.controlIcon || iconPattern.test(item.controlIcon))));
   }
@@ -35,13 +41,17 @@
     if (key === 'tapAction' || key === 'holdAction') {
       return actions.has(value) ? { valid: true, value: value === 'auto' ? undefined : value } : { valid: false };
     }
+    if (key === 'tapEntityId' || key === 'holdEntityId') {
+      return !value || entityPattern.test(value) ? { valid: true, value: value || undefined } : { valid: false };
+    }
     if (key === 'controlLabel') return value.length <= 80 ? { valid: true, value: value || undefined } : { valid: false };
     return !value || iconPattern.test(value) ? { valid: true, value: value || undefined } : { valid: false };
   }
 
   function effectiveTapAction(item) {
     if (item.tapAction && item.tapAction !== 'auto') return item.tapAction;
-    const domain = (item.entityId || '').split('.')[0];
+    const domain = (item.tapEntityId || item.entityId || '').split('.')[0];
+    if (['scene', 'script', 'button'].includes(domain)) return 'activate';
     return ['light', 'switch', 'fan', 'input_boolean'].includes(domain) ? 'toggle' : 'more-info';
   }
 
@@ -73,6 +83,8 @@
       control_zone: item.type === 'controlZone',
       roomcraft_tap_action: item.tapAction || 'auto',
       roomcraft_hold_action: item.holdAction || 'auto',
+      ...(item.tapEntityId ? { roomcraft_tap_entity: item.tapEntityId } : {}),
+      ...(item.holdEntityId ? { roomcraft_hold_entity: item.holdEntityId } : {}),
       style: dimensions(item, 4)
     }));
     const cameras = items.filter(item => item.type === 'cameraThumbnail').map(item => ({
@@ -135,7 +147,8 @@
 
   function actionField(key, label, current, autoLabel) {
     const options = [
-      ['auto', autoLabel], ['toggle', 'Toggle device'], ['more-info', 'Open device details'], ['none', 'Do nothing']
+      ['auto', autoLabel], ['toggle', 'Toggle device'], ['activate', 'Run scene, script, or button'],
+      ['more-info', 'Open device details'], ['none', 'Do nothing']
     ];
     return '<div class="field"><label for="prop-' + key + '">' + label + '</label><select id="prop-' + key + '" data-prop="' + key + '">'
       + options.map(([value, name]) => '<option value="' + value + '"' + ((current || 'auto') === value ? ' selected' : '') + '>' + name + '</option>').join('')
@@ -191,8 +204,11 @@
           + '<option value="mdi:window-closed"><option value="mdi:garage"><option value="mdi:television">'
           + '<option value="mdi:robot-vacuum"><option value="mdi:power"></datalist></div>')
         + actionField('tapAction', 'Tap action', item.tapAction, 'Automatic for device')
+        + entityField('Tap target (optional)', 'tapEntityId', item.tapEntityId || '', entityOptions, null, escape)
         + actionField('holdAction', 'Hold action', item.holdAction, 'Default · open device details')
-        + '<p class="field-hint">Search available devices by name or enter an entity ID. Automatic tap toggles lights, switches, and fans; other devices open details. The object name is the button label unless you set one above.'
+        + entityField('Hold target (optional)', 'holdEntityId', item.holdEntityId || '', entityOptions, null, escape)
+        + '<p class="field-hint">Search available devices by name or enter an entity ID. Automatic tap toggles lights, switches, and fans; runs scenes, scripts, and buttons; and opens details for other devices. The object name is the button label unless you set one above.'
+        + ' Optional tap and hold targets let this object show one entity’s state while running a different scene, script, or button.'
         + (zone ? ' This area stays invisible on the dashboard.' : '') + '</p></div>';
     }
     return '<div class="inspector-block"><p class="inspector-label">SELECTED OBJECT</p>'

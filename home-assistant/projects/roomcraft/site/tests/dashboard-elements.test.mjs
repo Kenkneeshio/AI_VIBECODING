@@ -91,6 +91,20 @@ test('linked artwork replaces a duplicate icon and preserves curated menu sectio
   assert.deepEqual(result[1].bound_objects, [{ entity_id: 'light.bedroom', label: 'Bedside light', icon: 'mdi:lamp' }]);
 });
 
+test('a linked fan exports separate scene targets without losing its monitored switch', () => {
+  const fan = { id: 'fan', type: 'fans-fan-light-white', name: 'Ceiling fan',
+    x: 650, y: 350, w: 158, h: 158, rotation: 0, entityId: 'switch.ceiling_fan',
+    tapAction: 'activate', tapEntityId: 'scene.ceiling_fan_on_scene',
+    holdAction: 'activate', holdEntityId: 'scene.ceiling_fan_off' };
+  assert.equal(validObjectControl(fan), true);
+  assert.equal(validObjectControl({ ...fan, holdEntityId: 'https://outside.example' }), false);
+  const [element] = mergeDashboardElements([], [], [fan]);
+  assert.equal(element.entity, 'switch.ceiling_fan');
+  assert.equal(element.roomcraft_tap_action, 'activate');
+  assert.equal(element.roomcraft_tap_entity, 'scene.ceiling_fan_on_scene');
+  assert.equal(element.roomcraft_hold_entity, 'scene.ceiling_fan_off');
+});
+
 test('camera thumbnail validation rejects external or malformed entities and invalid geometry', () => {
   const item = { id: 'cam', type: 'cameraThumbnail', x: 260, y: 390, w: 170, h: 110,
     rotation: 0, entityId: 'camera.entry', imageEntityId: 'image.entry_event', previewMode: 'event' };

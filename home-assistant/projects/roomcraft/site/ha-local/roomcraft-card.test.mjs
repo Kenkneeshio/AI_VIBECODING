@@ -247,6 +247,45 @@ test('the object artwork is the light control, with details on hold', async () =
   assert.match(object._button.attributes['aria-label'], /Tap disabled; hold to toggle/);
 });
 
+test('a scene bound to the fan light runs from its artwork without pretending to show light state', () => {
+  const object = new ObjectControl();
+  object.setConfig({ type: 'custom:roomcraft-object-control', roomcraft_item_id: 'fan-light',
+    entity: 'scene.ceiling_fan_light_toggle', title: 'Ceiling fan light',
+    roomcraft_tap_action: 'auto', roomcraft_hold_action: 'auto' });
+  const calls = [];
+  object.hass = { states: { 'scene.ceiling_fan_light_toggle': { state: '2026-10-31T18:00:00Z' } },
+    callService: (...args) => { calls.push(args); return Promise.resolve(); } };
+  assert.equal(object._button.attributes['data-state'], 'off');
+  assert.match(object._button.attributes['aria-label'], /Ceiling fan light: ready\. Tap to run; hold for details/);
+  assert.equal(object._button.title, 'Ceiling fan light · ready');
+  object._activate('tap');
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0])),
+    ['scene', 'turn_on', { entity_id: 'scene.ceiling_fan_light_toggle' }]);
+});
+
+test('fan artwork monitors its switch while tap and hold activate distinct motor scenes', () => {
+  const object = new ObjectControl();
+  object.setConfig({ type: 'custom:roomcraft-object-control', roomcraft_item_id: 'fan',
+    entity: 'switch.ceiling_fan', title: 'Ceiling fan',
+    roomcraft_tap_action: 'activate', roomcraft_tap_entity: 'scene.ceiling_fan_on_scene',
+    roomcraft_hold_action: 'activate', roomcraft_hold_entity: 'scene.ceiling_fan_off' });
+  const calls = [];
+  object.hass = { states: {
+    'switch.ceiling_fan': { state: 'off' },
+    'scene.ceiling_fan_on_scene': { state: '2026-10-31T18:00:00Z' },
+    'scene.ceiling_fan_off': { state: '2026-10-31T18:00:00Z' },
+  }, callService: (...args) => { calls.push(args); return Promise.resolve(); } };
+  assert.match(object._button.attributes['aria-label'], /Ceiling fan: off\. Tap to run; hold to run/);
+  object._activate('tap');
+  object._activate('hold');
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [
+    ['scene', 'turn_on', { entity_id: 'scene.ceiling_fan_on_scene' }],
+    ['scene', 'turn_on', { entity_id: 'scene.ceiling_fan_off' }],
+  ]);
+  assert.throws(() => object.setConfig({ entity: 'switch.ceiling_fan',
+    roomcraft_tap_entity: 'javascript:alert(1)' }), /invalid device binding/i);
+});
+
 test('the entity menu includes live and disabled registry entities', () => {
   const menu = new EntityMenu();
   menu.setConfig({ type: 'custom:roomcraft-entity-menu', roomcraft_menu: true,
@@ -262,6 +301,28 @@ test('the entity menu includes live and disabled registry entities', () => {
   menu._open();
   assert.equal(menu._rows.children.length, 1);
   assert.equal(menu._summary.textContent, '1 entities · including disabled registrations');
+  menu._close();
+});
+
+test('the entity menu offers an accessible Run action for a live scene', () => {
+  const menu = new EntityMenu();
+  menu.setConfig({ type: 'custom:roomcraft-entity-menu', roomcraft_menu: true,
+    bound_objects: [{ entity_id: 'scene.ceiling_fan_light_toggle', label: 'Ceiling fan light' }],
+    sections: [] });
+  const calls = [];
+  menu.hass = { states: { 'scene.ceiling_fan_light_toggle':
+    { state: '2026-10-31T18:00:00Z', attributes: { friendly_name: 'Ceiling fan light' } } },
+    callService: (...args) => { calls.push(args); return Promise.resolve(); } };
+  menu._open();
+  const row = menu._rows.children[0];
+  assert.equal(row.children.find(child => child.className === 'state').textContent, 'Ready');
+  const run = row.children.find(child => child.className === 'toggle');
+  assert.equal(run.textContent, 'Run');
+  assert.equal(run.attributes['aria-label'], 'Run Ceiling fan light');
+  assert.equal(run.disabled, false);
+  run.listeners.click();
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0])),
+    ['scene', 'turn_on', { entity_id: 'scene.ceiling_fan_light_toggle' }]);
   menu._close();
 });
 

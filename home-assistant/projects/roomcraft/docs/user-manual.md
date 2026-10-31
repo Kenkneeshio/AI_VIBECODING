@@ -14,9 +14,9 @@ The canvas is a top-down plan with lightly raised walls and furniture. The balco
 
 The supplied reference is a single PNG, so some details are still baked into it: rugs, some nightstands and cabinetry, and sinks are not independent objects in the current layout. The prominent sofa, bed, table, desk, bedside lamp, new room fixtures, and newly placed catalog objects have editable placement. Check **Design** against **Reference** after a large move; baked details cannot be dragged independently.
 
-![Public-safe Roomcraft plan capture with recessed windows, corrected sofa, movable room lighting, and a camera placeholder without private media](images/published-plan.png)
+![Public-safe Roomcraft plan capture with recessed windows, corrected sofa, movable room lighting, ceiling fan, and a camera placeholder without private media](images/published-plan.png)
 
-This public-safe PNG was exported after the lighting and camera layout update. It shows the corrected sofa orientation, recessed blue windows, distinct floor textures, nine movable light fixtures including the bedside lamp, and a drawn camera placeholder on the left. The actual event image is a separate authenticated Home Assistant overlay and is absent from this graphic. The upstairs rooms remain on one level. This is a release capture; later dashboard edits can change object positions. The [legacy screenshot archive](legacy/README.md) retains earlier flat-window captures for comparison.
+This public-safe PNG was exported after the ceiling fan update. It shows the corrected sofa orientation, recessed blue windows, distinct floor textures, nine movable light fixtures including the bedside lamp, the five-blade ceiling fan, and a drawn camera placeholder on the left. The actual event image is a separate authenticated Home Assistant overlay and is absent from this graphic. The upstairs rooms remain on one level. This is a release capture; later dashboard edits can change object positions. The [legacy screenshot archive](legacy/README.md) retains earlier flat-window captures for comparison.
 
 ## 1. Open the editor and choose a view
 
@@ -30,7 +30,7 @@ This 960 × 600 browser preview shows the complete 696 × 465 plan card without 
 
 The owner-private cloud editor is an alternate route when available; use the Site URL supplied by the owner. It has its own sign-in. Both editors share the dashboard's saved `roomcraft_layout` and load it on opening. Use **Import from dashboard** to refresh without reloading the page after someone else publishes a change. Use Layout Studio on the home network as the normal authoring path.
 
-This manual describes the HA-hosted Studio and owner-private cloud editor version 17. Both editors load the current Home Assistant layout on opening; a different local browser draft remains recoverable. The own-tab Studio fallback and the current layout transfer have readback evidence in the [changelog](../CHANGELOG.md).
+This manual describes the HA-hosted Studio and owner-private cloud editor version 18. Both editors load the current Home Assistant layout on opening; a different local browser draft remains recoverable. The own-tab Studio fallback and the current layout transfer have readback evidence in the [changelog](../CHANGELOG.md).
 
 If Chrome leaves the embedded editor blank, use **Open editor in a new tab** inside Layout Studio. Keep the Studio tab open while editing in the new tab: it supplies the authenticated dashboard connection through the opener. A direct visit to `/local/roomcraft/editor.html` has no such connection and cannot import or export to the dashboard.
 
@@ -72,6 +72,8 @@ The plan's markers represent Home Assistant controls. Select a marker to change 
 4. If a separate control marker already represents the same entity, review its position before publishing. The linked fixture takes the entity's placement in the exported plan so there is one control for that device.
 
 The default furnished scene includes the bedside lamp and room light fixtures as editable objects. They can be moved, resized, or removed without changing the original PNG. A fixture with no entity binding is artwork only.
+
+For this home's ceiling fan, the old Main Dashboard uses `scene.ceiling_fan_on_scene` and `scene.ceiling_fan_off` for the fan motor, plus `scene.ceiling_fan_light_toggle` for its light. These are one-shot scene actions. The available `switch.ceiling_fan` is shown there as state, not as the fan's only on/off command. The published fan artwork is **provisionally** at the living-room ceiling center (canvas position 690, 420); a separate 68 × 68 center area activates its light. Select the fan to review its `switch.ceiling_fan` state binding, **Tap action** Run with **Tap target** `scene.ceiling_fan_on_scene`, and **Hold action** Run with **Hold target** `scene.ceiling_fan_off`. The center area runs `scene.ceiling_fan_light_toggle`. No separate `light.*` entity reports the fan-light state, so that area says **Toggle light** without claiming it is on or off. Home Assistant has not assigned the fan to a room; confirm its physical location and move the fan and center target together in Studio if needed.
 
 ### Add a camera thumbnail
 
