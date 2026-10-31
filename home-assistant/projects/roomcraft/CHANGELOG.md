@@ -2,6 +2,13 @@
 
 All notable Roomcraft changes are recorded here. Deployment status is tracked separately from a source commit.
 
+## 2026-10-31 — Dashboard-first editor startup, Site v16
+
+- Aligned the public HA-hosted editor source with the owner-private Site v16 startup behavior. Both editor transports now request the current `roomcraft_layout` when opened, even if that browser has a local draft. **Import from dashboard** remains the manual refresh action for an editor that is already open.
+- A different local draft is saved for **Recover previous browser draft** before the dashboard layout replaces it. If Home Assistant is unreachable, the local draft remains usable. A slow dashboard response does not overwrite a drag, an in-progress edit, or an active Inspector edit.
+- Synced `ha-local/README.md`, `public/app.js`, `public/editor.html`, and `tests/editor-migration.test.mjs` from the Site source. The user manual and deployment checklist explain the changed startup behavior.
+- Public checkout verification: 23 Site tests passed, 13 Home Assistant card tests passed, and the editor JavaScript syntax check passed. This source commit alone does not deploy Home Assistant or publish the Site.
+
 ## 2026-10-31 — Interactive plan and complete entity drawer
 
 - Published the owner-private Roomcraft Site as version 15 from source commit `52a7394a4ef03068780574ab1969608793b8f45d`. The hosted editor imported the current Home Assistant layout after its previous browser draft was backed up locally.

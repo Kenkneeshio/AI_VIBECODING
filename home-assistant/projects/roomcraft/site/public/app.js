@@ -7,6 +7,7 @@
   const STORAGE_KEY = 'roomcraft.second-floor.v2';
   const LEGACY_STORAGE_KEY = 'roomcraft.second-floor.v1';
   const BEFORE_RECOVERY_KEY = 'roomcraft.second-floor.before-recovery.v2';
+  const REPLACED_DRAFT_KEY = 'roomcraft.second-floor.dashboard-replaced-draft.v2';
   const canvas = document.getElementById('planCanvas');
   const ctx = canvas.getContext('2d');
   const viewport = document.getElementById('viewport');
@@ -596,7 +597,13 @@
     document.getElementById('hotspotSummary').textContent=`Home Assistant controls · ${independent.length+linked.length}`;
     document.getElementById('hotspotList').innerHTML=linked.map(o=>`<button type="button" class="ha-control-item ${selected?.kind==='item'&&selected.id===o.id?'active':''}" data-control-item="${htmlEscape(o.id)}"><strong>${htmlEscape(o.name)}</strong><small>${htmlEscape(o.entityId)} · object control</small></button>`).concat(independent.map(h=>`<button type="button" class="ha-control-item ${selected?.kind==='hotspot'&&selected.id===h.id?'active':''}" data-hotspot="${htmlEscape(h.id)}"><strong>${htmlEscape(h.title)}</strong><small>${htmlEscape(h.entity)}</small></button>`)).join('')||'<p class="help-copy">No controls in this layout.</p>';
   }
-  function readPreviousDraft(){try{const raw=localStorage.getItem(LEGACY_STORAGE_KEY);if(!raw)return null;const parsed=JSON.parse(raw);return validProject(parsed)?parsed:null;}catch(_){return null;}}
+  function readPreviousDraft(){
+    for(const key of [REPLACED_DRAFT_KEY,LEGACY_STORAGE_KEY]){
+      try{const raw=localStorage.getItem(key);if(!raw)continue;const parsed=JSON.parse(raw);if(validProject(parsed))return parsed;}
+      catch(_){/* try the other saved draft */}
+    }
+    return null;
+  }
   function readPreRecoveryLayout(){try{const raw=localStorage.getItem(BEFORE_RECOVERY_KEY);if(!raw)return null;const parsed=JSON.parse(raw);return validProject(parsed)?parsed:null;}catch(_){return null;}}
   function updateRecoveryButton(){const b=document.getElementById('recoverDraftButton');if(b)b.hidden=!readPreviousDraft();const back=document.getElementById('returnPreRecoveryButton');if(back)back.hidden=!readPreRecoveryLayout();}
   function recoverPreviousDraft(){const previous=readPreviousDraft();if(!previous){showToast('No previous browser draft found');return;}if(!readPreRecoveryLayout()){try{localStorage.setItem(BEFORE_RECOVERY_KEY,JSON.stringify(project));}catch(_){showToast('Could not save current layout; export JSON first');return;}}snapshot();project=restoreFixedGeometry(clone(previous));selected=null;clearPlacement();afterChange('Recovered previous browser draft');showToast('Previous draft restored; pre-recovery layout saved');}
@@ -752,11 +759,6 @@
     return {next,hasEditable};
   }
   async function loadDashboardDefault(){
-    if(hasLocalDraft){
-      // Keep the browser draft, but populate device suggestions when HA is reachable.
-      try{updateEntityOptions(await dashboardRequest('GET'));}catch(_){/* manual entity entry still works */}
-      return;
-    }
     setDashboardBusy(true);
     const initialSerial=projectChangeSerial;
     setDashboardStatus('Loading the current Home Assistant layout…');
@@ -765,10 +767,28 @@
       updateEntityOptions(data);
       if(!data.revision)throw new Error('Dashboard revision is missing');
       const {next,hasEditable}=projectFromDashboard(data);
-      if(hasLocalDraft||projectChangeSerial!==initialSerial)return;
-      project=restoreFixedGeometry(clone(next));dashboardRevision=data.revision;selected=null;afterChange('Loaded current Home Assistant layout');fitView();
-      setDashboardStatus(hasEditable?'Current editable dashboard layout loaded':'Current dashboard controls loaded with the starting editable plan');
-    }catch(error){if(projectChangeSerial===initialSerial)setDashboardStatus(`Dashboard unavailable; starting plan loaded: ${error.message||'Connection failed'}`,true);}
+      dashboardRevision=data.revision;
+      // A slow dashboard read must never replace an in-progress local edit.
+      if(projectChangeSerial!==initialSerial||interaction||pendingTemplate||document.activeElement?.closest?.('#inspectorContent')){
+        setDashboardStatus('Browser edits kept. Import from dashboard when ready.');return;
+      }
+      const current=restoreFixedGeometry(clone(next));
+      const different=hasLocalDraft&&JSON.stringify(project)!==JSON.stringify(current);
+      if(different){
+        try{
+          localStorage.setItem(REPLACED_DRAFT_KEY,localStorage.getItem(STORAGE_KEY)||JSON.stringify(project));
+        }catch(_){
+          setDashboardStatus('Current dashboard found, but browser draft backup failed. Export your layout JSON before importing.',true);
+          return;
+        }
+      }
+      project=current;selected=null;afterChange('Loaded current Home Assistant layout');fitView();
+      const detail=hasEditable?'Current editable dashboard layout loaded':'Current dashboard controls loaded with the starting editable plan';
+      setDashboardStatus(different?detail+' · previous browser draft available to recover':detail);
+    }catch(error){
+      const kept=hasLocalDraft||projectChangeSerial!==initialSerial;
+      setDashboardStatus('Dashboard unavailable; '+(kept?'browser layout kept':'starting plan loaded')+': '+(error.message||'Connection failed'),true);
+    }
     finally{setDashboardBusy(false);}
   }
   async function importFromDashboard(){

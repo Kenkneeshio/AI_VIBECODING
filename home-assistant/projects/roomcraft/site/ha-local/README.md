@@ -1,6 +1,6 @@
 # Home Assistant LAN editor
 
-The official local editor is the **Layout Studio** view at `http://<HA-LAN-IP>:8123/second-floor/studio`. It uses the Home Assistant login in any browser on the same network. The cloud Site remains an alternate entry to the same `roomcraft_layout` dashboard data. Export in either editor, then import in the other to refresh its draft.
+The official local editor is the **Layout Studio** view at `http://<HA-LAN-IP>:8123/second-floor/studio`. It uses the Home Assistant login in any browser on the same network. The cloud Site remains an alternate entry to the same `roomcraft_layout` dashboard data. Both editors load the current dashboard layout on opening, preserving a different local browser draft for recovery. Use **Import from dashboard** to refresh an editor that is already open after someone else exports.
 
 ## Architecture
 

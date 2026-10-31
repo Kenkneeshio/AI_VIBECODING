@@ -20,7 +20,7 @@ This public-safe PNG was exported after the lighting and camera layout update. I
 
 ## 1. Open the editor and choose a view
 
-The Second Floor dashboard has three views: **Floor Plan**, **Layout Studio**, and **Live Home**. On a laptop or tablet connected to the home network, open `http://<HA-LAN-IP>:8123/second-floor/studio` and sign in to Home Assistant. The pencil-ruler icon in Floor Plan also navigates to Studio. The editor runs inside this Home Assistant view and uses your HA session; an administrator account is needed to publish a layout. A fresh browser loads the saved dashboard project by default. If that browser has a local draft, the draft opens first; use **Import from dashboard** to deliberately replace it with the current published layout.
+The Second Floor dashboard has three views: **Floor Plan**, **Layout Studio**, and **Live Home**. On a laptop or tablet connected to the home network, open `http://<HA-LAN-IP>:8123/second-floor/studio` and sign in to Home Assistant. The pencil-ruler icon in Floor Plan also navigates to Studio. The editor runs inside this Home Assistant view and uses your HA session; an administrator account is needed to publish a layout. On opening, the editor loads the current saved dashboard project. If a browser held a different local draft, the editor saves it for **Recover previous browser draft**. If Home Assistant cannot be reached, that local draft remains available.
 
 For the owner's HA profile, **Second Floor** is the default dashboard and the first sidebar item. Home Assistant stores that preference for the account across devices. Other accounts can choose their own default. The layout has been checked in a tablet-sized browser viewport; the target Apolosign Calendar tablet still needs a check with this Roomcraft release on its actual display.
 
@@ -28,9 +28,9 @@ For the owner's HA profile, **Second Floor** is the default dashboard and the fi
 
 This 960 × 600 browser preview shows the complete 696 × 465 plan card without page scrolling. It is a responsive check, not a photograph or verification of the target tablet.
 
-The owner-private cloud editor is an alternate route when available; use the Site URL supplied by the owner. It has its own sign-in. Both editors share the dashboard's saved `roomcraft_layout`; after exporting in one, import in the other to refresh its draft. Use Layout Studio on the home network as the normal authoring path.
+The owner-private cloud editor is an alternate route when available; use the Site URL supplied by the owner. It has its own sign-in. Both editors share the dashboard's saved `roomcraft_layout` and load it on opening. Use **Import from dashboard** to refresh without reloading the page after someone else publishes a change. Use Layout Studio on the home network as the normal authoring path.
 
-This manual describes the HA-hosted Studio and owner-private cloud editor version 14. The earlier own-tab Studio fallback completed a live import, export, and dashboard readback. The current lighting and camera release has its own readback recorded in the [changelog](../CHANGELOG.md).
+This manual describes the HA-hosted Studio and owner-private cloud editor version 16. Both editors load the current Home Assistant layout on opening; a different local browser draft remains recoverable. The own-tab Studio fallback and the current layout transfer have readback evidence in the [changelog](../CHANGELOG.md).
 
 If Chrome leaves the embedded editor blank, use **Open editor in a new tab** inside Layout Studio. Keep the Studio tab open while editing in the new tab: it supplies the authenticated dashboard connection through the opener. A direct visit to `/local/roomcraft/editor.html` has no such connection and cannot import or export to the dashboard.
 
@@ -110,7 +110,7 @@ The shipped drawer has **On plan**, **All entities**, search with registry avail
 
 - **Undo** and **Redo** step through the current editing session.
 - **Reset to starting plan** restores the initial furnished design; export JSON first if you want the current state later.
-- **Recover previous browser draft** appears when an older local draft is available. The editor also keeps a route back to the pre-recovery layout.
+- **Recover previous browser draft** appears when a different local draft was replaced by the current dashboard layout or when an older legacy draft is available. The editor also keeps a route back to the pre-recovery layout.
 - A dashboard backup is separate from browser local storage and the JSON file. Use all three appropriately when making major changes.
 
 ## Troubleshooting

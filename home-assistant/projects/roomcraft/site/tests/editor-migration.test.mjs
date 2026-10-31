@@ -7,7 +7,7 @@ const source = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8'
 const controlsSource = readFileSync(new URL('../public/object-controls.js', import.meta.url), 'utf8');
 const storageKey = 'roomcraft.second-floor.v2';
 
-function boot(savedProject) {
+function boot(savedProject, dashboardRequest) {
   const data = new Map([[storageKey, JSON.stringify(savedProject)]]);
   const listeners = new Map();
   const gradient = { addColorStop() {} };
@@ -47,7 +47,8 @@ function boot(savedProject) {
     naturalWidth = 0;
     addEventListener() {}
   }
-  const window = { addEventListener() {}, RoomcraftInventory: { templates: [], groups: [] } };
+  const window = { addEventListener() {}, RoomcraftInventory: { templates: [], groups: [] },
+    ...(dashboardRequest ? { RoomcraftDashboardBridge: { request: dashboardRequest } } : {}) };
   runInNewContext(controlsSource, { window });
   const localStorage = {
     getItem(key) { return data.get(key) ?? null; },
@@ -63,7 +64,8 @@ function boot(savedProject) {
   const event = (x, y) => ({ clientX: x + 14, clientY: y + 14, button: 0, pointerId: 1, preventDefault() {} });
   const pointer = (kind, x, y) => listeners.get(`planCanvas:${kind}`)(event(x, y));
   const read = () => JSON.parse(data.get(storageKey));
-  return { pointer, read, elements, dispatch: (id, kind, event) => listeners.get(`${id}:${kind}`)(event) };
+  return { pointer, read, elements, storage: data,
+    dispatch: (id, kind, event) => listeners.get(`${id}:${kind}`)(event) };
 }
 
 test('migrates a saved plan into movable lamp and room fixtures without duplicating them', () => {
@@ -228,4 +230,68 @@ test('resizing a linked hit area cannot exceed dashboard geometry limits', () =>
   assert.ok(zone.h <= 1024);
   assert.ok(zone.x >= 0 && zone.x <= 1536);
   assert.ok(zone.y >= 0 && zone.y <= 1024);
+});
+
+test('startup loads the live dashboard over a stale v2 draft and keeps it recoverable', async () => {
+  const local = { version: 2, editableReferenceVersion: 2, rooms: [], walls: [], hotspots: [],
+    items: [{ id: 'chair', type: 'chair', name: 'Chair', x: 500, y: 500, w: 48, h: 48, rotation: 0, entityId: '' }] };
+  const remote = { ...local, items: [{ ...local.items[0], x: 620 }] };
+  const editor = boot(local, async () => ({ revision: 'dashboard-1', project: remote, hotspots: [] }));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(editor.read().items.find(i => i.id === 'chair').x, 620);
+  assert.equal(JSON.parse(editor.storage.get('roomcraft.second-floor.dashboard-replaced-draft.v2')).items[0].x, 500);
+  assert.equal(editor.elements.get('recoverDraftButton').hidden, false);
+  editor.dispatch('recoverDraftButton', 'click', {});
+  assert.equal(editor.read().items.find(i => i.id === 'chair').x, 500);
+  editor.dispatch('returnPreRecoveryButton', 'click', {});
+  assert.equal(editor.read().items.find(i => i.id === 'chair').x, 620);
+});
+
+test('startup never replaces edits made while a dashboard read is in flight', async () => {
+  const local = { version: 2, editableReferenceVersion: 2, rooms: [], walls: [], hotspots: [],
+    items: [{ id: 'chair', type: 'chair', name: 'Chair', x: 500, y: 500, w: 48, h: 48, rotation: 0, entityId: '' }] };
+  let finish;
+  const pending = new Promise(resolve => { finish = resolve; });
+  const editor = boot(local, () => pending);
+  editor.pointer('pointerdown', 500, 500);
+  editor.pointer('pointermove', 540, 500);
+  editor.pointer('pointerup', 540, 500);
+  finish({ revision: 'dashboard-2', project: { ...local, items: [{ ...local.items[0], x: 620 }] }, hotspots: [] });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(editor.read().items.find(i => i.id === 'chair').x, 540);
+  assert.equal(editor.storage.has('roomcraft.second-floor.dashboard-replaced-draft.v2'), false);
+  assert.match(editor.elements.get('dashboardTransferStatus').textContent, /Browser edits kept/);
+});
+
+test('startup keeps an unfinished drag when the dashboard responds', async () => {
+  const local = { version: 2, editableReferenceVersion: 2, rooms: [], walls: [], hotspots: [],
+    items: [{ id: 'chair', type: 'chair', name: 'Chair', x: 500, y: 500, w: 48, h: 48, rotation: 0, entityId: '' }] };
+  let finish;
+  const pending = new Promise(resolve => { finish = resolve; });
+  const editor = boot(local, () => pending);
+  editor.pointer('pointerdown', 500, 500);
+  editor.pointer('pointermove', 540, 500);
+  finish({ revision: 'dashboard-3', project: { ...local, items: [{ ...local.items[0], x: 620 }] }, hotspots: [] });
+  await new Promise(resolve => setImmediate(resolve));
+  editor.pointer('pointerup', 540, 500);
+  assert.equal(editor.read().items.find(i => i.id === 'chair').x, 540);
+  assert.equal(editor.storage.has('roomcraft.second-floor.dashboard-replaced-draft.v2'), false);
+});
+
+test('matching browser and dashboard layouts do not create a redundant recovery copy', async () => {
+  const local = { version: 2, editableReferenceVersion: 2, rooms: [], walls: [], hotspots: [],
+    items: [{ id: 'chair', type: 'chair', name: 'Chair', x: 500, y: 500, w: 48, h: 48, rotation: 0, entityId: '' }] };
+  const editor = boot(local, async () => ({ revision: 'dashboard-4', project: local, hotspots: [] }));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(editor.read().items.find(i => i.id === 'chair').x, 500);
+  assert.equal(editor.storage.has('roomcraft.second-floor.dashboard-replaced-draft.v2'), false);
+});
+
+test('startup keeps a browser draft if Home Assistant is unreachable', async () => {
+  const local = { version: 2, editableReferenceVersion: 2, rooms: [], walls: [], hotspots: [],
+    items: [{ id: 'chair', type: 'chair', name: 'Chair', x: 500, y: 500, w: 48, h: 48, rotation: 0, entityId: '' }] };
+  const editor = boot(local, async () => { throw new Error('Offline'); });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(editor.read().items.find(i => i.id === 'chair').x, 500);
+  assert.match(editor.elements.get('dashboardTransferStatus').textContent, /browser layout kept: Offline/);
 });
