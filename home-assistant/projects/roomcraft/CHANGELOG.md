@@ -2,12 +2,19 @@
 
 All notable Roomcraft changes are recorded here. Deployment status is tracked separately from a source commit.
 
+## 2026-10-31 — Calendar tablet pairing and remote-access handoff
+
+- Paired the Home Assistant host with the **Apolosign Calendar** wall tablet using Android wireless debugging, connected on the separate current debugging port, and verified `adb devices -l` reported the correct model. The Windows workstation could not reach the pairing port directly in this session; the HA host is the paired ADB workstation.
+- Launched the installed Home Assistant Companion app to **Second Floor → Floor Plan**. A private 1920 × 1080 tablet screen capture showed the whole plan, including the new play area and authenticated porch-camera thumbnail. Touch targets, scene actions, camera playback over time, and behavior after reboot were not tested. The capture and live camera frame were not published.
+- Added the [tablet and remote access runbook](docs/tablet-access.md) for phone Codex Remote, private HA API/SSH access, ADB reconnection, and frontend recovery. Android pairing trust can persist, while an active ADB connection, current port, wireless-debugging state, desktop Remote availability, and tablet foreground app still require checks. No unattended boot recovery was installed or claimed.
+- Backed up the HA add-on's ADB identity into root-only persistent data and verified all three copied files. Set `core_ssh`'s supported `apks` option to `android-tools` through Supervisor and read back the unchanged remaining options and started state. Set Windows AC sleep to Never and verified it, leaving battery sleep at ten minutes. Added a verified user-level Startup shortcut for the installed Codex app. No add-on rebuild, Windows or tablet reboot, or automatic reconnect test was performed.
+
 ## 2026-10-31 — Photo-inspired living-room play area, Site v19
 
 - Added 16 searchable catalog variants across 11 illustrated designs inspired by the supplied living-room photo. Search **1977** or **photo** for the multicolor bear-panel play yard, six individual panel colors, gray leaf and brown checker mats, wooden play arch, colorful activity table, teddy floor chair, gray bolster, bunny plush, white mantel with dark tile hearth, and adjacent toy shelf. The new objects use the plan's raised top-down perspective; the original photo and its people are not deployed or published.
 - Placed eight independent play-area objects in front of the living-room sofa. Left the mantel and toy shelf in the catalog until the physical fireplace wall can be verified; the current plan's TV and windows do not justify a fixed placement. The mats remain beneath play objects, while a ceiling render pass keeps the existing fan visible above them.
 - Published owner-private Site v19 from Site source `5874e8976c0f0bc6dc86a9e9e9e69b13c4fb8c07` and installed matching editor assets in Home Assistant. Studio exported the updated plan. HA readback confirmed layout version 2, six rooms, 36 items including all eight new living-room objects, 10 unique object controls, unchanged fan motor/light scene targets, and the porch camera overlay. No device command was sent.
-- The new photo-object art smoke test, Site tests, JavaScript syntax, TypeScript, production build, and Git whitespace check passed. The drawn plan is a visual interpretation, not measured geometry or a pixel-identical recreation of the photo. Physical tablet fit and the fireplace wall still need an on-device and in-room check, respectively.
+- The new photo-object art smoke test, Site tests, JavaScript syntax, TypeScript, production build, and Git whitespace check passed. The drawn plan is a visual interpretation, not measured geometry or a pixel-identical recreation of the photo. The later same-day tablet display check is recorded above; the physical fireplace wall still needs an in-room check.
 
 ## 2026-10-31 — Engineering handoff consolidation
 

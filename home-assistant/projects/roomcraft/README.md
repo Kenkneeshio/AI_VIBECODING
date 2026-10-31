@@ -13,6 +13,7 @@ Roomcraft is the editable source for the illustrated **Second Floor** Home Assis
 | Take over engineering work and see the verified release state | [Engineering handoff](docs/engineering-handoff.md) |
 | Learn the editor and dashboard transfer | [Illustrated user manual](docs/user-manual.md) |
 | Set up or roll back an installation | [Deployment guide](docs/deployment.md) |
+| Recover calendar tablet and phone-to-desktop access | [Tablet and remote access runbook](docs/tablet-access.md) |
 | Change the renderer, bridge, or live data | [Architecture and team boundaries](docs/architecture.md) |
 | Inspect the editable JSON contract | [Layout format](docs/layout-format.md), [schema](layout.schema.json) |
 | Find a device, its area, or its audit availability | [Sanitized Home Assistant inventory](docs/ha-inventory/README.md) |
@@ -36,6 +37,7 @@ roomcraft/
 ├── docs/main-dashboard-map.md   Legacy dashboard section and entity map
 ├── docs/architecture.md  Data flow, extension points, team ownership
 ├── docs/deployment.md    Installation, verification, rollback
+├── docs/tablet-access.md Calendar tablet ADB and phone Remote recovery
 ├── docs/roadmap.md       Live-feature sequence and acceptance criteria
 ├── docs/goals.md         Product goals and rationale
 ├── docs/decisions.md     Dated technical decisions

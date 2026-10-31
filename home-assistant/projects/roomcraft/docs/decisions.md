@@ -1,5 +1,13 @@
 # Decision log
 
+## 2026-10-31 — Keep tablet recovery separate from Roomcraft and document private trust boundaries
+
+**Decision:** Pair the Apolosign Calendar to the Home Assistant host's ADB identity, use the HA Companion app for the Second Floor frontend, and document the reconnect path with placeholders in a public runbook. Keep ADB identity material, HA credentials, transient pairing codes, network endpoints, raw captures, and camera frames out of GitHub. Back up the HA add-on's ADB identity in root-only persistent add-on data. Treat ADB as a recovery channel; do not claim unattended tablet startup or automatic ADB reconnect until a controlled reboot test passes.
+
+**Reason:** The HA host reached the tablet's pairing port when the Windows workstation could not, and it had previously managed this tablet. Android pairing trust can survive a dropped TCP connection, but the current debugging port and wireless-debugging state can change. Phone Codex Remote independently needs an awake, online desktop. An explicit recovery chain is more durable than relying on a live chat or remembering a one-time code.
+
+**Consequence:** An authorized engineer can find the architecture and safe verification commands in [the tablet access runbook](tablet-access.md), then retrieve private access material from the owner or HA host. The Terminal & SSH add-on requests `android-tools` through its persistent `apks` option, but its rebuild behavior and ADB identity restoration are not yet verified. The tablet's full-plan display fit is verified. Touch behavior, boot-time app launch, and automatic reconnect remain acceptance gates.
+
 ## 2026-10-31 — Translate the living-room photo into independent plan objects
 
 **Decision:** Use the supplied photo as a visual reference for an illustrated catalog and place the eight clear play-area furnishings in the current living-room plan. Keep the modular fence colors, mantel, and toy shelf available for further edits. Do not place the mantel or shelf until the physical fireplace wall is verified. Draw each object in the plan's raised perspective, with floor mats below play equipment and ceiling fixtures above it.
