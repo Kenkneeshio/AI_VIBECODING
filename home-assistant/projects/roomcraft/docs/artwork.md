@@ -1,6 +1,6 @@
 # Artwork and graphics
 
-Roomcraft's 1536 × 1024 reference plan was supplied for this project as a PNG. The editor's shell, floor textures, furniture atlas, baby/home atlases, and object overlays were created or derived for the Roomcraft layout workflow. They are bundled under `site/public/assets/` so the hosted editor and detailed PNG export use the same graphics. The manual screenshots in `docs/images/` show the editor and Home Assistant plan at the time of this release.
+Roomcraft's 1536 × 1024 visual starting point was supplied for this project as a PNG. The bundled reference was refined with the requested sofa, window, stair, and floor corrections. The editor's shell, floor textures, furniture atlas, baby/home atlases, and object overlays were created or derived for the Roomcraft layout workflow. They are bundled under `site/public/assets/` so the hosted editor and detailed PNG export use the same graphics. The `docs/images/published-plan.png` graphic is the current exported plan; at this release it is byte-identical to the bundled reference. The other manual screenshots show the editor and Home Assistant at the time of this release.
 
 | File or group | Role |
 | --- | --- |

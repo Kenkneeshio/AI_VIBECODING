@@ -7,6 +7,7 @@ All notable Roomcraft changes are recorded here. Deployment status is tracked se
 ### Added
 
 - Illustrated manual with editor, dashboard, object-detail, and reference graphics.
+- Current Home Assistant published-plan render as a manual graphic.
 - Documented layout model, art pipeline, server bridge, team boundaries, release and rollback process.
 - Active Roomcraft project folder and synthetic examples for the public repository.
 - Goal, decision, and future-feature logs.

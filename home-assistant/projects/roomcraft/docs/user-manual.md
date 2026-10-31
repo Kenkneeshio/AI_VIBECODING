@@ -6,9 +6,13 @@ Roomcraft is the editor for the illustrated Second Floor dashboard. Use it to ma
 
 ## The plan and its perspective
 
-![Original furnished plan used as the visual reference](../site/public/assets/floorplan.png)
+![Bundled corrected furnished plan used as the visual reference](../site/public/assets/floorplan.png)
 
 The canvas is a top-down plan with lightly raised walls and furniture. The balcony and stair are outdoors at left. The stair begins at the lower-left landing and descends toward the top-left. Doorways between upstairs rooms remain on one floor level. Bedroom, study, baths, and living spaces have different finishes. The editor uses this image as a reference and separate illustrated assets to redraw edited geometry; an edited scene can differ from individual pixels in the reference PNG.
+
+![Current Roomcraft plan published to Home Assistant, with finished windows and room-specific flooring](images/published-plan.png)
+
+This is the currently published Roomcraft render. At this release it matches the bundled corrected reference exactly. It shows the corrected sofa orientation, brighter window frames, and separate floor textures while keeping the upstairs rooms on one level.
 
 ## 1. Open the editor and choose a view
 
