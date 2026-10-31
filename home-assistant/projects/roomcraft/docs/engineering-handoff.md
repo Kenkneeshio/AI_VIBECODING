@@ -10,13 +10,13 @@
 | Official editor | Home Assistant **Second Floor → Layout Studio** at `/second-floor/studio`, installed on one HA 2026.10 instance. The signed-in HA user's session supplies dashboard access through `custom:roomcraft-editor-card`. | HA-hosted card and static assets installed from `site/`. |
 | Optional cloud editor | Owner-private Site v19, published from Site source commit `5874e8976c0f0bc6dc86a9e9e9e69b13c4fb8c07`. It is an alternate editor for the same layout. | Site deployment and its owner-only server bridge. |
 | Saved layout and live plan | The Second Floor dashboard stores `roomcraft_layout` version 2 and a rendered plan image. The latest HA export/readback found **6 rooms, 36 items, and 10 unique object controls**, including eight new living-room play-area objects. The separate fan and fan-light scene targets and porch camera overlay remained present. | Home Assistant dashboard configuration, not browser storage or this public repository. |
-| Physical tablet | The plan fit a 960 × 600 browser viewport. | The Apolosign Calendar tablet still needs an actual display and touch check for this release. |
+| Physical tablet | The HA host paired and connected to the Apolosign Calendar over wireless ADB. An actual 1920 × 1080 tablet screen capture showed the full Second Floor plan and authenticated porch thumbnail in the HA Companion WebView. | The tablet screen was verified; touch, automatic launch/reconnect after reboot, and camera playback over time remain untested. See the [access runbook](tablet-access.md). |
 
 The default Home Assistant dashboard is an **owner profile preference**. It is not installed by this repository. The old Main Dashboard remains a reference for the curated control drawer; the `ishioho` project is a separate legacy prototype.
 
 ## First hour for a new engineer
 
-1. Read this page, the [architecture](architecture.md), [layout contract](layout-format.md), and [deployment/rollback guide](deployment.md). Use the [illustrated manual](user-manual.md) to understand the intended interactions.
+1. Read this page, the [architecture](architecture.md), [layout contract](layout-format.md), and [deployment/rollback guide](deployment.md). Use the [illustrated manual](user-manual.md) to understand the intended interactions and the [tablet access runbook](tablet-access.md) for the separate remote control chain.
 2. Work from `home-assistant/projects/roomcraft/site/`. Use Node.js 22.13 or newer and Python 3. Run `npm ci`, then the checks below. The public [synthetic layout](../examples/layout-v2.json) is safe for local development; the real dashboard JSON is private.
 3. For live work, obtain authorized HA/Site access and the private management adapter from the owner. Do not infer credentials or installation coordinates from the public inventory. Take a private dashboard backup before any write.
 4. Open `/second-floor/studio` through Home Assistant. It loads the current dashboard project on opening and preserves a different local draft for recovery. **Import from dashboard** refreshes an editor that is already open. If Chrome leaves the embedded editor blank, use **Open editor in a new tab** and keep Studio open; a direct `/local/roomcraft/editor.html` URL has no authenticated dashboard bridge.
@@ -61,7 +61,7 @@ npx tsc --noEmit
 npm run build
 ```
 
-On Windows, use `python` if `python3` is not installed. The photo-object release passed the new art smoke test, the Site test suite, JavaScript syntax, TypeScript, production build, and Git whitespace validation. HA export/readback confirmed 36 editable items, all eight new living-room objects, 10 unique object controls, preserved fan scene/light scene targets, and the porch camera. These checks do not prove physical device operation or tablet fit. For a runtime release, also verify dashboard import/export/readback, the count and placement of derived controls, preservation of weather/time/edit link and other views, camera unavailable behavior, browser resizing, and actual tablet touch. Use read-only inspection first; a scene run or device toggle is a real-world action.
+On Windows, use `python` if `python3` is not installed. The photo-object release passed the new art smoke test, the Site test suite, JavaScript syntax, TypeScript, production build, and Git whitespace validation. HA export/readback confirmed 36 editable items, all eight new living-room objects, 10 unique object controls, preserved fan scene/light scene targets, and the porch camera. A later actual-tablet screen capture confirmed full-plan fit, but no physical device action, touch behavior, or automatic reboot recovery. For a runtime release, also verify dashboard import/export/readback, the count and placement of derived controls, preservation of weather/time/edit link and other views, camera unavailable behavior, browser resizing, and actual tablet touch. Use read-only inspection first; a scene run or device toggle is a real-world action.
 
 ## Runtime release and recovery
 
@@ -74,7 +74,7 @@ The installer records a private backup. To roll back, restore that dashboard JSO
 | Priority | Work and acceptance gate |
 | --- | --- |
 | 1 | **Confirm the fan's physical room** and move both fan and center light targets together if living room is wrong. Keep the current placement labeled provisional until verified. |
-| 2 | **Check the Apolosign Calendar tablet in person** for full-plan fit, touch targets, Studio fallback, camera playback, and light/fan action labels. A browser-size preview is not this test. |
+| 2 | **Finish Apolosign Calendar tablet QA:** the actual display fit and porch thumbnail were visually checked over ADB. Test touch targets, Studio fallback, camera playback over time, light/fan action labels, and recovery after a controlled reboot. Use the [access runbook](tablet-access.md); do not assume ADB reconnects unattended. |
 | 3 | **Confirm the living-room fireplace wall** before placing the new mantel and side shelf. Compare the play-area arrangement at 100% against the room's usable floor space; the photo is a visual reference, not a survey. Then make remaining baked furniture/details independently editable. Use the [artwork guide](artwork.md). |
 | 4 | **Add live adapters only with verified sources** for animated devices, weather, clock, garage, and vacuum position. The vacuum needs map-to-plan calibration and stale-position handling; motion needs reduced-motion support. See the [roadmap](roadmap.md). |
 

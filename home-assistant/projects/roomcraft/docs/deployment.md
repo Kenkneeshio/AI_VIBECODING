@@ -2,6 +2,8 @@
 
 The official editor is served by Home Assistant itself. Its `studio` view hosts a Roomcraft custom card and the shared static editor. The owner-private cloud Site is an optional second transport. Source commits, Site publication, static asset installation, and dashboard changes are separate release steps.
 
+For the separately paired Apolosign Calendar wall tablet and phone Codex Remote recovery, use the [tablet and remote access runbook](tablet-access.md). Its ADB pairing and connection ports must be read from the tablet at the time of use.
+
 ## Prerequisites
 
 - Back up the Second Floor dashboard configuration and current plan image outside this repository.
@@ -47,11 +49,11 @@ Build and publish the `site/` source through its Site workflow with owner-privat
 | Exterior camera | Confirm `camera.porch_camera_profile_000` has a working HLS view and the floor thumbnail says **Live** only while it plays; do not substitute the separate Eufy event image. |
 | Privacy | No tokens, SSH keys, raw HA exports, current device values, camera access URLs, or private backups appear in `/local/roomcraft/` or GitHub. The public inventory under `docs/ha-inventory/` contains only reviewed metadata. |
 
-The current v18 release read back 28 editable items, 10 object controls, separate fan and light scene targets, the existing porch camera, and the saved plan image. The fan is placed provisionally over the living-room ceiling because Home Assistant has no assigned area for that device. Its physical room and the target tablet's actual display still require confirmation. No fan or light scene was activated during this verification. Earlier release evidence is retained in the [changelog](../CHANGELOG.md); a checklist row is an acceptance criterion, not an assertion that every device was exercised.
+The current v19 release read back 36 editable items, including eight photo-inspired play-area objects, 10 object controls, separate fan and light scene targets, the existing porch camera, and the saved plan image. The fan is placed provisionally over the living-room ceiling because Home Assistant has no assigned area for that device. Its physical room still requires confirmation. The Apolosign Calendar tablet's 1920 × 1080 screen was checked over paired ADB: the full plan and authenticated porch thumbnail were visible. Touch targets, scene actions, and playback over time were not tested. No fan or light scene was activated during this verification. Earlier release evidence is retained in the [changelog](../CHANGELOG.md); a checklist row is an acceptance criterion, not an assertion that every device was exercised.
 
-For the editor startup check, open a browser with a different saved draft and confirm the dashboard layout loads while **Recover previous browser draft** restores the earlier work. Check an editor with an in-progress drag, an editor whose Home Assistant connection fails, and an already open editor using **Import from dashboard**. The v18 source passed 25 Site tests, 16 HA card tests, five Python migration tests, TypeScript, and a production build; GitHub's Roomcraft workflow also passed. Browser responsive checks do not prove fit or touch behavior on the target tablet.
+For the editor startup check, open a browser with a different saved draft and confirm the dashboard layout loads while **Recover previous browser draft** restores the earlier work. Check an editor with an in-progress drag, an editor whose Home Assistant connection fails, and an already open editor using **Import from dashboard**. The v19 source passed 26 Site tests, TypeScript, a production build, and GitHub's Roomcraft workflow. A screen capture proves visual fit on the target tablet for this release; it does not prove touch behavior.
 
-The default-dashboard choice is a Home Assistant **user profile** preference, not part of the dashboard YAML or installer. In the current installation the owner's profile opens Second Floor by default across devices, and the sidebar lists it first. The 960 × 600 check used a browser viewport; verify the current Roomcraft release on the target Apolosign Calendar tablet's actual display before claiming on-device fit.
+The default-dashboard choice is a Home Assistant **user profile** preference, not part of the dashboard YAML or installer. In the current installation the owner's profile opens Second Floor by default across devices, and the sidebar lists it first. The 960 × 600 browser check and the later 1920 × 1080 Apolosign Calendar screen capture both showed the full plan. Test actual tablet touch interactions, auto-launch after reboot, and camera playback separately.
 
 ## Rollback
 
