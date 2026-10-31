@@ -15,12 +15,12 @@ The official editor is served by Home Assistant itself. Its `studio` view hosts 
 The public [HA local package guide](../site/ha-local/README.md) describes the card and installer. From the `site/` source directory, run the installer with private paths supplied locally:
 
 ```powershell
-python ha-local/install.py --host 192.168.68.96 --ssh-key <SSH-KEY-PATH> --management-root <PRIVATE-HA-MANAGEMENT-DIR> --backup-dir <PRIVATE-BACKUP-DIR>
+python ha-local/install.py --host <HA-LAN-IP> --ssh-key <SSH-KEY-PATH> --management-root <PRIVATE-HA-MANAGEMENT-DIR> --backup-dir <PRIVATE-BACKUP-DIR>
 ```
 
 The script copies `public/` into `/config/www/roomcraft/`, installs `roomcraft-card.js`, registers or updates its content-versioned Lovelace resource, backs up the dashboard, makes `studio` a panel with `custom:roomcraft-editor-card`, and points the plan edit icon to `/second-floor/studio`. It reads the dashboard and resource back to verify the write. It does not copy credentials or a live entity inventory into static assets. An asset-only refresh is available with `--assets-only`.
 
-The normal laptop and tablet URL on the home network is [Layout Studio](http://192.168.68.96:8123/second-floor/studio). Sign in to Home Assistant. Some Chrome sessions leave the embedded frame blank. In that case click **Open editor in a new tab** from Studio and keep the Studio tab open. The new tab uses its opener for authenticated import/export. Opening `/local/roomcraft/editor.html` directly from the address bar bypasses the authenticated card and cannot transfer a layout to the dashboard.
+The normal laptop and tablet URL on the home network is `http://<HA-LAN-IP>:8123/second-floor/studio`. Sign in to Home Assistant. Some Chrome sessions leave the embedded frame blank. In that case click **Open editor in a new tab** from Studio and keep the Studio tab open. The new tab uses its opener for authenticated import/export. Opening `/local/roomcraft/editor.html` directly from the address bar bypasses the authenticated card and cannot transfer a layout to the dashboard.
 
 After a card resource update, an existing Chrome tab may briefly show **Configuration error** while its frontend state is stale. Reload the affected tab first. If the error remains, verify that the `studio` view still uses `custom:roomcraft-editor-card`, that the versioned `/local/roomcraft/roomcraft-card.js` resource loads, and that the browser console shows no card registration or asset error. In the observed case, the live dashboard configuration and resource were valid and a reload cleared the error; its exact cause was not established. The card defensively skips repeated custom-element and card-metadata registration, and a repeat-evaluation test covers that behavior. If the card loads but its iframe stays blank, use the own-tab fallback above.
 

@@ -50,7 +50,7 @@ The official HA-hosted editor uses the current user's authenticated session to u
 
 ## Quick verification
 
-1. Open `http://192.168.68.96:8123/second-floor/studio` on a device on the home network and sign in to Home Assistant. Confirm the furnished plan loads.
+1. Open `http://<HA-LAN-IP>:8123/second-floor/studio` on a device on the home network and sign in to Home Assistant. Confirm the furnished plan loads.
 2. In **Floors**, apply a finish to a room; in **Wall**, draw an interior wall; in **Objects**, place furniture. Use **Undo** to restore the starting scene.
 3. Select **Import from dashboard** and confirm the controls appear at their Home Assistant positions.
 4. Export editable JSON as a private backup before any dashboard transfer.
