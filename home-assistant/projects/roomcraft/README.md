@@ -14,6 +14,8 @@ Roomcraft is the editable source for the illustrated **Second Floor** Home Assis
 | Set up or roll back an installation | [Deployment guide](docs/deployment.md) |
 | Change the renderer, bridge, or live data | [Architecture and team boundaries](docs/architecture.md) |
 | Inspect the editable JSON contract | [Layout format](docs/layout-format.md), [schema](layout.schema.json) |
+| Find a device, its area, or its audit availability | [Sanitized Home Assistant inventory](docs/ha-inventory/README.md) |
+| Use in-plan controls and the shipped entity drawer | [Controls and drawer guide](docs/ha-controls-and-menu.md), [Main Dashboard map](docs/main-dashboard-map.md) |
 | Update graphics | [Artwork guide](docs/artwork.md) |
 | Understand what works and what comes next | [Roadmap](docs/roadmap.md) |
 | Review changes and design reasons | [Changelog](CHANGELOG.md), [goals](docs/goals.md), [decision log](docs/decisions.md) |
@@ -28,6 +30,9 @@ roomcraft/
 ├── layout.schema.json     Version 2 layout contract
 ├── docs/images/          Manual graphics and visual reference
 ├── docs/user-manual.md   Illustrated user instructions
+├── docs/ha-inventory/   Dated, state-free HA metadata in JSON and area/domain Markdown
+├── docs/ha-controls-and-menu.md  Object controls and the entity drawer
+├── docs/main-dashboard-map.md   Legacy dashboard section and entity map
 ├── docs/architecture.md  Data flow, extension points, team ownership
 ├── docs/deployment.md    Installation, verification, rollback
 ├── docs/roadmap.md       Live-feature sequence and acceptance criteria
@@ -55,12 +60,13 @@ The official HA-hosted editor uses the current user's authenticated session to u
 3. Select **Import from dashboard** and confirm the controls appear at their Home Assistant positions.
 4. Export editable JSON as a private backup before any dashboard transfer.
 5. Select **Export to dashboard**, reload the Home Assistant floor-plan view, and confirm the new image and controls. Import again to verify the editable layout round-trips.
+6. Open the drawer: verify **On plan**, **All entities**, search, availability, and the six curated Main Dashboard groups. Confirm the three living-window blinds and the porch live-camera thumbnail are reachable from their objects.
 
 See the [full checklist](docs/deployment.md#release-verification) before considering a deployment complete.
 
 ## Security and scope
 
-The public examples use placeholder entity IDs. Keep real entity inventories, tokens, dashboard backups, camera URLs, and private map coordinates outside this repository. The documented LAN host address is a connection hint, never a credential. The HA-hosted card uses the signed-in user's session; the optional hosted API accepts requests only from the authenticated Site owner and keeps its Home Assistant token on the server.
+The public examples use placeholder entity IDs. The dated [sanitized inventory](docs/ha-inventory/README.md) intentionally records hardware metadata and audit availability so future teams can map controls; it omits changing values, personal/mobile identifiers, network addresses, camera media, and credentials. It is documentation, not the live dashboard configuration. Keep raw HA exports, tokens, dashboard backups, camera URLs, and private map coordinates outside this repository. The HA-hosted card uses the signed-in user's session; the optional hosted API accepts requests only from the authenticated Site owner and keeps its Home Assistant token on the server.
 
 The former `ishioho` dashboard remains available as a historical prototype in its own project folder. Its generated art and configuration are separate from Roomcraft's active second-floor editor.
 

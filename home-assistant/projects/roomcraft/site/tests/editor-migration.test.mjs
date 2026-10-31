@@ -4,6 +4,7 @@ import { runInNewContext } from 'node:vm';
 import { test } from 'node:test';
 
 const source = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
+const controlsSource = readFileSync(new URL('../public/object-controls.js', import.meta.url), 'utf8');
 const storageKey = 'roomcraft.second-floor.v2';
 
 function boot(savedProject) {
@@ -47,6 +48,7 @@ function boot(savedProject) {
     addEventListener() {}
   }
   const window = { addEventListener() {}, RoomcraftInventory: { templates: [], groups: [] } };
+  runInNewContext(controlsSource, { window });
   const localStorage = {
     getItem(key) { return data.get(key) ?? null; },
     setItem(key, value) { data.set(key, value); },
@@ -126,4 +128,104 @@ test('camera palette places an editable latest-event thumbnail', () => {
   assert.equal(camera.y, 390);
   assert.equal(camera.w, 170);
   assert.equal(camera.h, 110);
+});
+
+test('existing objects gain configurable dashboard button actions without a migration', () => {
+  const editor = boot({
+    version: 2, editableReferenceVersion: 2, rooms: [], walls: [], hotspots: [],
+    items: [{ id: 'chair-control', type: 'chair', name: 'Reading chair', x: 500, y: 500, w: 48, h: 48, rotation: 0, entityId: '' }]
+  });
+  editor.pointer('pointerdown', 500, 500);
+  editor.pointer('pointerup', 500, 500);
+  const inspector = editor.elements.get('inspectorContent');
+  assert.match(inspector.innerHTML, /DASHBOARD BUTTON/);
+  assert.match(inspector.innerHTML, /Device entity ID/);
+  assert.match(inspector.innerHTML, /Automatic for device/);
+  const change = (key, value) => editor.dispatch('inspectorContent', 'change', {
+    target: { closest: selector => selector === '[data-prop]' ? { dataset: { prop: key }, value } : null }
+  });
+  change('entityId', 'light.example_chair');
+  change('controlLabel', 'Reading light');
+  change('controlIcon', 'mdi:floor-lamp');
+  change('tapAction', 'more-info');
+  change('holdAction', 'none');
+  const chair = editor.read().items.find(i => i.id === 'chair-control');
+  assert.equal(chair.entityId, 'light.example_chair');
+  assert.equal(chair.controlLabel, 'Reading light');
+  assert.equal(chair.controlIcon, 'mdi:floor-lamp');
+  assert.equal(chair.tapAction, 'more-info');
+  assert.equal(chair.holdAction, 'none');
+  assert.match(editor.elements.get('hotspotList').innerHTML, /light.example_chair/);
+  change('controlIcon', 'https://example.com/icon.svg');
+  assert.equal(editor.read().items.find(i => i.id === 'chair-control').controlIcon, 'mdi:floor-lamp');
+  change('tapAction', 'auto');
+  assert.equal('tapAction' in editor.read().items.find(i => i.id === 'chair-control'), false);
+});
+
+test('invisible button areas can be placed over artwork and saved with a device action', () => {
+  const editor = boot({ version: 2, editableReferenceVersion: 2, rooms: [], walls: [], items: [], hotspots: [] });
+  editor.dispatch('objectsPanel', 'click', {
+    target: { closest: () => ({ dataset: { template: 'controlZone' } }) }
+  });
+  editor.pointer('pointerdown', 450, 200);
+  const zone = editor.read().items.find(i => i.type === 'controlZone');
+  assert.ok(zone);
+  assert.equal(zone.w, 120);
+  assert.equal(zone.h, 72);
+  assert.match(editor.elements.get('inspectorContent').innerHTML, /outline appears only while editing/);
+  editor.dispatch('inspectorContent', 'change', {
+    target: { closest: selector => selector === '[data-prop]' ? { dataset: { prop: 'entityId' }, value: 'cover.example_window' } : null }
+  });
+  assert.equal(editor.read().items.find(i => i.id === zone.id).entityId, 'cover.example_window');
+});
+
+test('linked objects stay within exportable canvas bounds while decorative items remain free', () => {
+  const editor = boot({
+    version: 2, editableReferenceVersion: 2, rooms: [], walls: [], hotspots: [],
+    items: [{ id: 'movable-button', type: 'chair', name: 'Device button', x: 500, y: 500, w: 100, h: 100,
+      rotation: 0, entityId: 'light.example_device' }]
+  });
+  editor.pointer('pointerdown', 500, 500);
+  editor.pointer('pointermove', -100, -100);
+  editor.pointer('pointerup', -100, -100);
+  let item = editor.read().items.find(i => i.id === 'movable-button');
+  assert.equal(item.x, 0);
+  assert.equal(item.y, 0);
+  const change = (key, value) => editor.dispatch('inspectorContent', 'change', {
+    target: { closest: selector => selector === '[data-prop]' ? { dataset: { prop: key }, value } : null }
+  });
+  change('x', '3000');
+  change('y', '-500');
+  change('w', '3000');
+  change('h', '3000');
+  item = editor.read().items.find(i => i.id === 'movable-button');
+  assert.deepEqual([item.x, item.y, item.w, item.h], [1536, 0, 1536, 1024]);
+  change('entityId', '');
+  change('x', '-300');
+  change('w', '3000');
+  item = editor.read().items.find(i => i.id === 'movable-button');
+  assert.equal(item.x, -300);
+  assert.equal(item.w, 3000);
+  change('entityId', 'light.example_device');
+  item = editor.read().items.find(i => i.id === 'movable-button');
+  assert.equal(item.x, 0);
+  assert.equal(item.w, 1536);
+});
+
+test('resizing a linked hit area cannot exceed dashboard geometry limits', () => {
+  const editor = boot({
+    version: 2, editableReferenceVersion: 2, rooms: [], walls: [], hotspots: [],
+    items: [{ id: 'resize-button', type: 'controlZone', name: 'Window button', x: 500, y: 500, w: 100, h: 100,
+      rotation: 0, entityId: 'cover.example_window' }]
+  });
+  editor.pointer('pointerdown', 500, 500);
+  editor.pointer('pointerup', 500, 500);
+  editor.pointer('pointerdown', 557, 557);
+  editor.pointer('pointermove', 3000, 3000);
+  editor.pointer('pointerup', 3000, 3000);
+  const zone = editor.read().items.find(i => i.id === 'resize-button');
+  assert.ok(zone.w <= 1536);
+  assert.ok(zone.h <= 1024);
+  assert.ok(zone.x >= 0 && zone.x <= 1536);
+  assert.ok(zone.y >= 0 && zone.y <= 1024);
 });

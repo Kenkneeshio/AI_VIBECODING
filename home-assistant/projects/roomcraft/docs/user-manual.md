@@ -22,11 +22,11 @@ This public-safe PNG was exported after the lighting and camera layout update. I
 
 The Second Floor dashboard has three views: **Floor Plan**, **Layout Studio**, and **Live Home**. On a laptop or tablet connected to the home network, open `http://<HA-LAN-IP>:8123/second-floor/studio` and sign in to Home Assistant. The pencil-ruler icon in Floor Plan also navigates to Studio. The editor runs inside this Home Assistant view and uses your HA session; an administrator account is needed to publish a layout. A fresh browser loads the saved dashboard project by default. If that browser has a local draft, the draft opens first; use **Import from dashboard** to deliberately replace it with the current published layout.
 
-For Ken's HA profile, **Second Floor** is the default dashboard and the first sidebar item. Home Assistant stores that preference for the account across devices. Other accounts can choose their own default. The layout has been checked in a tablet-sized browser viewport; the physical Fire tablet was offline during this release and still needs an on-device check.
+For the owner's HA profile, **Second Floor** is the default dashboard and the first sidebar item. Home Assistant stores that preference for the account across devices. Other accounts can choose their own default. The layout has been checked in a tablet-sized browser viewport; the target Apolosign Calendar tablet still needs a check with this Roomcraft release on its actual display.
 
 ![Home Assistant Floor Plan in a 960 by 600 browser viewport, with the full plan, device markers, weather, clock, and Studio edit icon visible](images/tablet-preview.png)
 
-This 960 × 600 browser preview shows the complete 696 × 465 plan card without page scrolling. It is a responsive check, not a photograph or verification of the physical Fire tablet.
+This 960 × 600 browser preview shows the complete 696 × 465 plan card without page scrolling. It is a responsive check, not a photograph or verification of the target tablet.
 
 The owner-private cloud editor is an alternate route when available; use the Site URL supplied by the owner. It has its own sign-in. Both editors share the dashboard's saved `roomcraft_layout`; after exporting in one, import in the other to refresh its draft. Use Layout Studio on the home network as the normal authoring path.
 
@@ -79,9 +79,13 @@ The default furnished scene includes the bedside lamp and room light fixtures as
 2. Enter the `camera.*` entity in **Camera entity ID**. For a latest-event still, enter an `image.*` entity in **Event image entity** and choose **Latest event image**.
 3. Choose **Live stream** only for a camera whose Home Assistant stream is working. Export the layout, then verify the frame in **Floor Plan** while signed in to Home Assistant. Click it to open native camera details.
 
+For this floor's exterior thumbnail, use `camera.porch_camera_profile_000` in **Live stream** mode; its Home Assistant HLS feed has been verified. The Eufy `camera.front_door` and `image.front_door_event_image` are a separate feed and should not be used for this floor thumbnail.
+
 The design canvas shows a stylized placeholder, not a private camera frame. The live dashboard fetches media through the current Home Assistant session. If the event image is missing or the stream is unavailable, the frame shows an unavailable message. A camera thumbnail does not wake a battery camera merely by being displayed. Camera URLs and tokens do not belong in the exported layout or public repository.
 
 Confirm a device's physical location in Home Assistant before placing a control. A friendly name does not prove the room. The editor stores control placement; Home Assistant performs actual device actions. A device that is unavailable or missing should be corrected in Home Assistant before use.
+
+The [control and compact-menu guide](ha-controls-and-menu.md) maps the known fixtures and explains which interactions belong on illustrated objects. Its [sanitized entity inventory](ha-inventory/README.md) is a dated metadata snapshot, grouped by Home Assistant area and domain. It omits changing device values and private identifiers. At the audit, the office bulb was unavailable, and no primary room light had been verified for either bathroom, the dressing nook, or the balcony; keep decorative fixtures unbound until the real entity is confirmed.
 
 ## 6. Save, import, and publish
 
@@ -98,7 +102,9 @@ The editor checks the dashboard revision before exporting. If another change hap
 
 The **Export** menu also provides a PNG and a manual Home Assistant YAML fallback. The YAML references a local image path; copy the PNG to that path before applying it manually.
 
-The **Floor Plan** view overlays working device markers, current weather, time, the edit icon, and any camera thumbnail published from the layout. Its centered layout keeps the entire 3:2 image visible in tested laptop and tablet-sized browser viewports. **Live Home** shows native Home Assistant weather, time, sun, garage, fan, vacuum status and map, second-floor controls, and the working garage camera feed. The latest-event image for the tested battery doorbell works as a Roomcraft thumbnail; its P2P live stream times out and is not labeled as live video. Other camera feeds must be verified individually. Live Home reads from Home Assistant; the Roomcraft editor controls the authored room layout. A robot icon drawn in Roomcraft is decorative until its vacuum-map coordinates have been calibrated to the floor-plan coordinates.
+The **Floor Plan** view overlays working device markers, current weather, time, the edit icon, and the live porch-camera thumbnail published from the layout. Its centered layout keeps the entire 3:2 image visible in tested laptop and tablet-sized browser viewports. **Live Home** shows native Home Assistant weather, time, sun, garage, fan, vacuum status and map, second-floor controls, and the working garage camera feed. The porch camera's HLS stream has been verified for this floor. The separate Eufy battery doorbell's P2P live stream timed out in testing; its event image should be labeled **Latest event** wherever that other feed is used. Other camera feeds must be verified individually. Live Home reads from Home Assistant; the Roomcraft editor controls the authored room layout. A robot icon drawn in Roomcraft is decorative until its vacuum-map coordinates have been calibrated to the floor-plan coordinates.
+
+The shipped drawer has **On plan**, **All entities**, search with registry availability, and six curated groups: Planning, Weather and Air Quality, Lighting, Security and Control, Energy, and Robot Vacuum. The [Main Dashboard map](main-dashboard-map.md) lists their source references. The Studio edit link remains on the plan; use **Live Home** for native detailed cards. The drawer still needs a fit and touch check on the target tablet's actual display.
 
 ## Undo and recovery
 
@@ -113,7 +119,7 @@ The **Floor Plan** view overlays working device markers, current weather, time, 
 | --- | --- |
 | Object will not place | Return to **Design**; for windows and wall fixtures, click close to a wall. |
 | A linked lamp or fan shows no live state | Check that its `light.*` or `fan.*` entity exists in Home Assistant, then import the current dashboard layout and export again. An unbound object stays decorative. |
-| Camera thumbnail shows unavailable | Check the camera and event-image entities in HA. Latest-event images must be available through HA's authenticated image proxy; a live preview needs an active, working stream. |
+| Camera thumbnail shows unavailable | For this floor, check `camera.porch_camera_profile_000` and its HLS stream in HA. A different latest-event image needs HA's authenticated image proxy; a live label requires a working stream. |
 | Floor looks misplaced | Select **Room**, inspect its corner handles, and keep the polygon within the room. |
 | A wall cannot move | The illustrated exterior shell is fixed. Select or draw an interior wall. |
 | Dashboard export says the dashboard changed | Import the dashboard again, compare changes, and retry. |

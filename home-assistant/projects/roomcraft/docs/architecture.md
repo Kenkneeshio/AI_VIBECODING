@@ -44,6 +44,8 @@ The editor owns item placement and binding IDs; Home Assistant owns live state a
 
 The plan's unrelated editor link, clock, weather, and other dashboard elements remain outside Roomcraft's managed state-icon/camera-element set. Both the HA card and the cloud bridge must use the same merge policy so an export from either editor preserves those overlays. A camera preview uses the current HA session to fetch an approved same-origin image-proxy URL; the event image state supplies an event timestamp. A live stream is shown only when Home Assistant already reports a working stream. Clicking the thumbnail opens native camera details. No camera token, proxy URL, or frame is written to public assets or the project JSON.
 
+The upstairs exterior thumbnail uses the verified ONVIF HLS source `camera.porch_camera_profile_000`. The Eufy front-door camera and event image are separate entities; the tested Eufy P2P stream timeout does not determine the porch feed's availability. Keep each camera's media and stale/unavailable handling scoped to its own binding.
+
 The two browser editors may each have a local draft. After publishing from one, import from the dashboard in the other before editing. The dashboard project, rather than a browser's local storage, is the shared source of truth. If the Studio iframe stays blank, its card opens the same editor in a new tab and accepts messages from that exact same-origin popup while Studio remains open; a direct static URL has no dashboard transport. The installed `/local/roomcraft/` assets are reachable by anyone who can reach the HA web server; do not put tokens, live entity inventories, private photos, or dashboard JSON in that static directory.
 
 ## Extension contracts
@@ -67,6 +69,8 @@ type LiveState = {
 ```
 
 Keep `EntityBinding` in private installation configuration or the private dashboard project. Public examples use fictional IDs. A renderer should receive normalized `LiveState` rather than reaching into Home Assistant globals. A command adapter should validate entity domain and availability, then call Home Assistant's native service or details action. No service action should run just because the map loaded.
+
+The [public HA inventory](ha-inventory/README.md) is a dated, state-free metadata snapshot for planning and team handoff. It lists sanitized entity IDs, domain, area, integration, and audit availability; it does not supply runtime values, authenticated media, object coordinates, credentials, or a deployable binding file. The shipped drawer exposes On plan, All entities, search, registry availability, and the six curated sections recorded in the [Main Dashboard map](main-dashboard-map.md). The [control guide](ha-controls-and-menu.md) separates verified room placements from candidates. Revalidate every binding against live Home Assistant before use.
 
 ### Robot location
 
