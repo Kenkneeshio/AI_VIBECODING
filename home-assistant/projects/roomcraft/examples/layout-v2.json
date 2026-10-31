@@ -42,6 +42,38 @@
       "entityId": "light.example_living_room"
     },
     {
+      "id": "example-fan",
+      "type": "fans-fan-light-white",
+      "name": "Example ceiling fan",
+      "x": 490,
+      "y": 340,
+      "w": 110,
+      "h": 110,
+      "rotation": 0,
+      "entityId": "switch.example_ceiling_fan",
+      "controlLabel": "Ceiling fan: tap on, hold off",
+      "controlIcon": "mdi:ceiling-fan",
+      "tapAction": "activate",
+      "tapEntityId": "scene.example_fan_on",
+      "holdAction": "activate",
+      "holdEntityId": "scene.example_fan_off"
+    },
+    {
+      "id": "example-fan-light-target",
+      "type": "controlZone",
+      "name": "Example fan light",
+      "x": 490,
+      "y": 340,
+      "w": 54,
+      "h": 54,
+      "rotation": 0,
+      "entityId": "scene.example_fan_light_toggle",
+      "controlLabel": "Fan light: tap to toggle",
+      "controlIcon": "mdi:lightbulb",
+      "tapAction": "activate",
+      "holdAction": "more-info"
+    },
+    {
       "id": "example-camera-preview",
       "type": "cameraThumbnail",
       "name": "Example entry camera",

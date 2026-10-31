@@ -1,5 +1,13 @@
 # Decision log
 
+## 2026-10-31 — Separate fan motor scenes from the fan-light action
+
+**Decision:** Use the fan artwork as a movable target that displays `switch.ceiling_fan` state, runs `scene.ceiling_fan_on_scene` on tap, and runs `scene.ceiling_fan_off` on hold. Use a separate movable center target for `scene.ceiling_fan_light_toggle`. The current living-room position is provisional until the physical room is confirmed.
+
+**Reason:** The old Main Dashboard uses distinct scenes for these commands. Home Assistant exposes no independent `light.*` state for the fan light, and its scene timestamp cannot truthfully indicate whether the light is on.
+
+**Consequence:** The center target says **Ready** or **Toggle light** rather than showing a fabricated on/off state. Move fan and center target together if its actual room differs. Keep scene activation, target-entity, and export-parity tests in both transports.
+
 ## 2026-10-31 — Use the verified porch feed for this floor
 
 **Decision:** Bind the exterior floor-plan thumbnail to `camera.porch_camera_profile_000` in live mode. Keep the Eufy `camera.front_door` and `image.front_door_event_image` as separate security inventory entries, not the exterior image for this floor.
@@ -22,7 +30,7 @@
 
 **Reason:** The plan should show where a device is. Repeating the full Main Dashboard over the drawing would obscure rooms and make touch targets harder to use. Some entities are unavailable or unassigned to an HA area; a name alone cannot prove physical placement.
 
-**Consequence:** Bind verified devices to objects; show unavailable states; leave unverified bathroom, dressing, balcony, and fan placements unresolved until confirmed. Preserve the old Main Dashboard as a reference and verify the new drawer on the target tablet.
+**Consequence:** Bind verified devices to objects; show unavailable states; leave unverified bathroom, dressing, and balcony placements unresolved. The fan is drawn provisionally in the living room, but its physical room still needs confirmation. Preserve the old Main Dashboard as a reference and verify the new drawer on the target tablet.
 
 ## 2026-10-31 — Derive fixture controls from illustrated objects
 

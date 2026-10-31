@@ -10,6 +10,7 @@ Roomcraft is the editable source for the illustrated **Second Floor** Home Assis
 
 | Need | Read |
 | --- | --- |
+| Take over engineering work and see the verified release state | [Engineering handoff](docs/engineering-handoff.md) |
 | Learn the editor and dashboard transfer | [Illustrated user manual](docs/user-manual.md) |
 | Set up or roll back an installation | [Deployment guide](docs/deployment.md) |
 | Change the renderer, bridge, or live data | [Architecture and team boundaries](docs/architecture.md) |
@@ -57,10 +58,10 @@ The official HA-hosted editor uses the current user's authenticated session to u
 
 1. Open `http://<HA-LAN-IP>:8123/second-floor/studio` on a device on the home network and sign in to Home Assistant. Confirm the furnished plan loads.
 2. In **Floors**, apply a finish to a room; in **Wall**, draw an interior wall; in **Objects**, place furniture. Use **Undo** to restore the starting scene.
-3. Select **Import from dashboard** and confirm the controls appear at their Home Assistant positions.
+3. Confirm the editor loaded the current dashboard layout; use **Import from dashboard** to refresh an already open editor. The v18 readback had 28 items and 10 object controls.
 4. Export editable JSON as a private backup before any dashboard transfer.
-5. Select **Export to dashboard**, reload the Home Assistant floor-plan view, and confirm the new image and controls. Import again to verify the editable layout round-trips.
-6. Open the drawer: verify **On plan**, **All entities**, search, availability, and the six curated Main Dashboard groups. Confirm the three living-window blinds and the porch live-camera thumbnail are reachable from their objects.
+5. For an intended release or an isolated test dashboard, select **Export to dashboard**, reload the floor-plan view, and confirm the new image and controls. Import again to verify the editable layout round-trips.
+6. Open the drawer: verify **On plan**, **All entities**, search, availability, and the six curated Main Dashboard groups. Confirm the three living-window blinds, separate fan-blade and center-light targets, and porch live-camera thumbnail are reachable from their objects. Inspect bindings without running scenes or toggling devices unless that physical test is planned.
 
 See the [full checklist](docs/deployment.md#release-verification) before considering a deployment complete.
 

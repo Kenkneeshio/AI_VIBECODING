@@ -26,7 +26,7 @@ After a card resource update, an existing Chrome tab may briefly show **Configur
 
 ## Optional cloud editor
 
-Build and publish the `site/` source through its Site workflow with owner-private access. Configure `HA_URL`, `HA_TOKEN`, and `OWNER_EMAIL` in the hosted runtime, never in source. The cloud editor has a separate owner sign-in. Both editors read and write the same `roomcraft_layout` in the Second Floor dashboard; after an export in one, import in the other before making another edit.
+Build and publish the `site/` source through its Site workflow with owner-private access. Configure `HA_URL`, `HA_TOKEN`, and `OWNER_EMAIL` in the hosted runtime, never in source. The cloud editor has a separate owner sign-in. Both editors read and write the same `roomcraft_layout` in the Second Floor dashboard. Opening either editor loads the latest saved layout; use **Import from dashboard** when the other editor is already open after an export.
 
 ## Release verification
 
@@ -37,18 +37,19 @@ Build and publish the `site/` source through its Site workflow with owner-privat
 | Layout default | The editor loads the current dashboard project on opening. A different browser draft is saved for recovery; if HA is unavailable, the local draft remains usable. **Import from dashboard** refreshes an already open editor. |
 | Art | Furnished default, recessed windows, added wall-mounted windows, furniture, baby items, movable bedside lamp, room fixtures, and floor textures render in Design mode and the detailed PNG. |
 | Editor | Select, drag, corner-resize (including Shift proportions), rotate, draw wall, reshape room, repaint floor/wall, undo/redo, and JSON import/export work. |
-| Dashboard transfer | Export updates the plan image, one control per bound fixture, managed camera overlays, and `roomcraft_layout`; import reads back the same project. Weather, time, edit link, `studio`, and `live` remain. |
+| Dashboard transfer | Export updates the plan image, object controls (including separate fan and light targets), managed camera overlays, and `roomcraft_layout`; import reads back the same project. Weather, time, edit link, `studio`, and `live` remain. |
 | Conflict handling | A stale editor revision is rejected after a separate dashboard edit; no newer change is silently replaced. |
 | Cloud parity | If the cloud Site is deployed, import its dashboard copy after an HA editor export; repeat in the other direction. |
 | Responsive view | Verify the entire plan and controls fit on actual laptop and tablet screen sizes without clipping or stretching. The current installation was checked at 960 × 600 CSS pixels (696 × 465 plan, no page scroll) and 2560 × 1271 (centered 1763-pixel card). |
 | Existing controls | Confirm light, switch, cover, fan, garage, vacuum, and camera behavior through Home Assistant before relying on their dashboard cards. An event still is not proof of a live stream. |
 | Current drawer | Confirm **On plan**, **All entities**, search, registry availability, and all six curated Main Dashboard groups. Check the three separate living-window blind controls. |
+| Fan and light | Confirm the fan artwork monitors `switch.ceiling_fan`, blade tap targets `scene.ceiling_fan_on_scene`, blade hold targets `scene.ceiling_fan_off`, and the separate center target runs `scene.ceiling_fan_light_toggle`. A scene target reports **Ready**, not an invented fan-light on/off state. Verify these bindings by readback without sending device commands during a layout release. |
 | Exterior camera | Confirm `camera.porch_camera_profile_000` has a working HLS view and the floor thumbnail says **Live** only while it plays; do not substitute the separate Eufy event image. |
 | Privacy | No tokens, SSH keys, raw HA exports, current device values, camera access URLs, or private backups appear in `/local/roomcraft/` or GitHub. The public inventory under `docs/ha-inventory/` contains only reviewed metadata. |
 
-The earlier 2026-10-31 release completed an HA Studio import/export/readback with the own-tab fallback: 6 rooms, 33 walls, 13 items, and 7 controls. Its first lighting/camera release read back 23 items, seven controls, one managed camera overlay, and a 1536 × 1024 PNG while retaining weather, clock, and Studio entry. That release displayed an Eufy latest-event still and opened native details, while the Eufy battery doorbell's P2P live stream timed out. The later floor migration uses the separate porch ONVIF camera, whose HLS stream was verified. Record the actual checks performed and screenshots in each release record; the target tablet still requires its own on-device check. A checklist row is an acceptance criterion, not an assertion that every device was exercised.
+The current v18 release read back 28 editable items, 10 object controls, separate fan and light scene targets, the existing porch camera, and the saved plan image. The fan is placed provisionally over the living-room ceiling because Home Assistant has no assigned area for that device. Its physical room and the target tablet's actual display still require confirmation. No fan or light scene was activated during this verification. Earlier release evidence is retained in the [changelog](../CHANGELOG.md); a checklist row is an acceptance criterion, not an assertion that every device was exercised.
 
-For the v17 editor startup check, open a browser with a different saved draft and confirm the dashboard layout loads while **Recover previous browser draft** restores the earlier work. Check an editor with an in-progress drag, an editor whose Home Assistant connection fails, and an already open editor using **Import from dashboard**. The public source passed 23 Site tests and 13 HA card tests for this sync; both published editors loaded the current layout in browser checks. The target tablet still needs an on-device check.
+For the editor startup check, open a browser with a different saved draft and confirm the dashboard layout loads while **Recover previous browser draft** restores the earlier work. Check an editor with an in-progress drag, an editor whose Home Assistant connection fails, and an already open editor using **Import from dashboard**. The v18 source passed 25 Site tests, 16 HA card tests, five Python migration tests, TypeScript, and a production build; GitHub's Roomcraft workflow also passed. Browser responsive checks do not prove fit or touch behavior on the target tablet.
 
 The default-dashboard choice is a Home Assistant **user profile** preference, not part of the dashboard YAML or installer. In the current installation the owner's profile opens Second Floor by default across devices, and the sidebar lists it first. The 960 × 600 check used a browser viewport; verify the current Roomcraft release on the target Apolosign Calendar tablet's actual display before claiming on-device fit.
 
@@ -63,6 +64,6 @@ An image may be uploaded before a dashboard save fails or conflicts. In that cas
 
 ## Development checks
 
-From `site/`, use Node.js 22.13 or newer: `npm ci`, `npm test`, `npx tsc --noEmit`, and `npm run build`. Run `node --test ha-local/roomcraft-card.test.mjs` for the HA card's merge and conflict behavior. The Site and HA transports have separate tests and should both pass when shared editor or layout code changes.
+From `site/`, use Node.js 22.13 or newer: `npm ci`, `npm test`, `node --test ha-local/roomcraft-card.test.mjs`, `python -m unittest discover -s ha-local -p 'test_*.py'`, `npx tsc --noEmit`, and `npm run build`. The Site and HA transports have separate tests and should both pass when shared editor or layout code changes.
 
 Do not commit `node_modules`, `dist`, `.next`, `.wrangler`, `.sites-runtime`, local environment files, generated archives, SSH keys, dashboard backups, or credentials.

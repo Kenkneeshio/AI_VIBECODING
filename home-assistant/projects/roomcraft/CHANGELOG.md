@@ -2,6 +2,12 @@
 
 All notable Roomcraft changes are recorded here. Deployment status is tracked separately from a source commit.
 
+## 2026-10-31 — Engineering handoff consolidation
+
+- Added one [engineering handoff](docs/engineering-handoff.md) with the verified v18 release snapshot, code and data boundaries, first-hour setup, checks, runtime release and rollback path, known limitations, and a prioritized work queue. No new implementation tickets were opened.
+- Corrected the layout schema, synthetic example, architecture, layout format, deployment, roadmap, decisions, and entry-point guides for item-derived controls, separate fan On/Off and light-toggle scene targets, dashboard-first loading, and the still-unverified physical tablet and fan room.
+- Documentation and schema contract only; no Home Assistant device command or runtime deployment is part of this update.
+
 ## 2026-10-31 — Ceiling fan and light scene controls
 
 - The editor and dashboard controls support a one-shot **Run** action for scenes, scripts, and buttons, plus separate tap and hold entity targets. The published fan artwork shows the `switch.ceiling_fan` state while tap runs `scene.ceiling_fan_on_scene` and hold runs `scene.ceiling_fan_off`; its separate 68 × 68 center area runs `scene.ceiling_fan_light_toggle`.

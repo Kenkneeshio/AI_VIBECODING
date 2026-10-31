@@ -75,14 +75,20 @@
       "required": ["id", "type", "name", "x", "y", "w", "h", "rotation"],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
-        "type": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1, "description": "Catalog type; controlZone is an invisible, movable hit area." },
         "name": { "type": "string" },
         "x": { "type": "number" },
         "y": { "type": "number" },
         "w": { "type": "number", "exclusiveMinimum": 0 },
         "h": { "type": "number", "exclusiveMinimum": 0 },
         "rotation": { "type": "number" },
-        "entityId": { "type": "string" },
+        "entityId": { "type": "string", "pattern": "^(?:|[a-z_]+\\.[a-z0-9_]+)$", "description": "State source and default action target; empty means decorative only." },
+        "controlLabel": { "type": "string", "maxLength": 80 },
+        "controlIcon": { "type": "string", "pattern": "^(?:|mdi:[a-z0-9-]+)$" },
+        "tapAction": { "$ref": "#/$defs/objectAction" },
+        "holdAction": { "$ref": "#/$defs/objectAction" },
+        "tapEntityId": { "$ref": "#/$defs/optionalEntityId", "description": "Optional action target different from entityId." },
+        "holdEntityId": { "$ref": "#/$defs/optionalEntityId", "description": "Optional action target different from entityId." },
         "imageEntityId": { "type": "string" },
         "previewMode": { "enum": ["event", "live", "offline"] }
       },
@@ -91,13 +97,20 @@
           "if": { "properties": { "type": { "const": "cameraThumbnail" } }, "required": ["type"] },
           "then": {
             "properties": {
-              "entityId": { "pattern": "^(?:|camera\\.[a-z0-9_]+)$" },
-              "imageEntityId": { "pattern": "^(?:|image\\.[a-z0-9_]+)$" }
+              "entityId": { "type": "string", "pattern": "^(?:|camera\\.[a-z0-9_]+)$" },
+              "imageEntityId": { "type": "string", "pattern": "^(?:|image\\.[a-z0-9_]+)$" }
             }
           }
         }
       ],
       "additionalProperties": true
+    },
+    "optionalEntityId": {
+      "type": "string",
+      "pattern": "^(?:|[a-z_]+\\.[a-z0-9_]+)$"
+    },
+    "objectAction": {
+      "enum": ["auto", "toggle", "activate", "more-info", "none"]
     },
     "hotspot": {
       "type": "object",
