@@ -1,0 +1,77 @@
+# Roomcraft engineering handoff
+
+**Read this first when taking over Second Floor work.** This page is the current release snapshot and the shortest path to a safe change. The linked guides hold the detailed contracts and history. It is one prioritized work queue, not a set of new tickets.
+
+## Current release snapshot (2026-10-31)
+
+| Surface | Verified state | Source of truth |
+| --- | --- | --- |
+| Public source | Roomcraft is under `home-assistant/projects/roomcraft/` in `Kenkneeshio/AI_VIBECODING`; ceiling fan/light code and manual graphic merged in [PR #7](https://github.com/Kenkneeshio/AI_VIBECODING/pull/7). The Roomcraft GitHub Actions run passed. | GitHub `main` for code and reviewed documentation. A GitHub commit does not deploy a runtime. |
+| Official editor | Home Assistant **Second Floor → Layout Studio** at `/second-floor/studio`, installed on one HA 2026.10 instance. The signed-in HA user's session supplies dashboard access through `custom:roomcraft-editor-card`. | HA-hosted card and static assets installed from `site/`. |
+| Optional cloud editor | Owner-private Site v18, published from Site source commit `f0193219ef9dd4f51ee0e1b4845337b4312fd8d2`. It is an alternate editor for the same layout. | Site deployment and its owner-only server bridge. |
+| Saved layout and live plan | The Second Floor dashboard stores `roomcraft_layout` version 2 and a rendered plan image. The latest export/readback found **28 items and 10 object controls**, including separate fan and fan-light targets; the porch camera overlay remained present. | Home Assistant dashboard configuration, not browser storage or this public repository. |
+| Physical tablet | The plan fit a 960 × 600 browser viewport. | The Apolosign Calendar tablet still needs an actual display and touch check for this release. |
+
+The default Home Assistant dashboard is an **owner profile preference**. It is not installed by this repository. The old Main Dashboard remains a reference for the curated control drawer; the `ishioho` project is a separate legacy prototype.
+
+## First hour for a new engineer
+
+1. Read this page, the [architecture](architecture.md), [layout contract](layout-format.md), and [deployment/rollback guide](deployment.md). Use the [illustrated manual](user-manual.md) to understand the intended interactions.
+2. Work from `home-assistant/projects/roomcraft/site/`. Use Node.js 22.13 or newer and Python 3. Run `npm ci`, then the checks below. The public [synthetic layout](../examples/layout-v2.json) is safe for local development; the real dashboard JSON is private.
+3. For live work, obtain authorized HA/Site access and the private management adapter from the owner. Do not infer credentials or installation coordinates from the public inventory. Take a private dashboard backup before any write.
+4. Open `/second-floor/studio` through Home Assistant. It loads the current dashboard project on opening and preserves a different local draft for recovery. **Import from dashboard** refreshes an editor that is already open. If Chrome leaves the embedded editor blank, use **Open editor in a new tab** and keep Studio open; a direct `/local/roomcraft/editor.html` URL has no authenticated dashboard bridge.
+5. Before changing a binding, confirm the physical device and current HA entity. The [sanitized inventory](ha-inventory/README.md) is a dated metadata snapshot, not a deployable config or live-state record.
+
+## Code and data boundaries
+
+| Change | Start in | Contract to preserve |
+| --- | --- | --- |
+| Canvas editing, objects, Inspector, browser draft | `site/public/editor.html`, `site/public/app.js`, `site/public/inventory.js`, `site/public/object-controls.js` | Stable item IDs; undo/redo; import/export without silently replacing an active edit. |
+| Perspective art, floors, windows, rendered PNG | `site/public/object-art.js`, `site/public/raster-renderer.js`, `site/public/assets/` | The 1536 × 1024 design coordinates, visual export parity, and a public-safe manual graphic. Some details are still baked into the reference PNG. |
+| Official HA transport and live overlays | `site/ha-local/roomcraft-card.js`, `site/public/ha-iframe-bridge.js`, `site/ha-local/install.py` | Exact-window/origin/request validation; current-user HA session; revision conflict and readback; unrelated plan elements and views retained. |
+| Optional cloud transport | `site/app/api/dashboard/route.ts`, `site/lib/dashboard-elements.ts` | Owner authorization; server-only HA token; the same object/camera merge behavior as the HA card. |
+| Layout model | `layout.schema.json`, `examples/layout-v2.json`, `docs/layout-format.md` | Version 2 `rooms`, `walls`, `items`, and legacy `hotspots`. Object controls are derived from bound items, including invisible `controlZone` items; a change to persisted field meaning needs a migration and round-trip tests in both transports. |
+
+The dashboard's saved `roomcraft_layout` is the shared editable project. An export renders a PNG, maps item bindings to Home Assistant picture elements, uploads the image, saves the layout, and reads the dashboard back. The `plan` image and controls, `studio` editor, and `live` native-card view must remain coherent. Browser drafts are recovery copies. Clock, weather, camera frames, device state, and robot position are runtime data; do not write them into layout geometry or public assets. See the [architecture guide](architecture.md) for the full data flow.
+
+### Current fan and camera behavior
+
+| Plan object | Binding/action | What the UI may claim |
+| --- | --- | --- |
+| Five-blade fan, provisionally in the living room | `switch.ceiling_fan` supplies state; tap runs `scene.ceiling_fan_on_scene`; hold runs `scene.ceiling_fan_off`. | Fan switch state is real. The physical room has no HA area assignment and still needs confirmation. |
+| Separate 68 × 68 center target | Tap runs `scene.ceiling_fan_light_toggle`. | Show **Ready** or **Toggle light**; no independent `light.*` state exists to prove on/off. Move this target with the fan if its room changes. |
+| Exterior camera thumbnail | `camera.porch_camera_profile_000` uses the verified porch HLS stream in an authenticated HA overlay. | Do not confuse it with the separate Eufy front-door event image. Neither live frames nor stream URLs belong in GitHub or the exported public plan graphic. |
+
+The object itself is the control target. The plan drawer adds **On plan**, **All entities**, search, registry availability, and six curated groups from the old Main Dashboard. The public [control guide](ha-controls-and-menu.md) records verified and candidate bindings.
+
+## Repeatable checks
+
+Run these from `site/`; GitHub Actions runs the same sequence for Roomcraft changes:
+
+```text
+npm ci
+npm test
+node --test ha-local/roomcraft-card.test.mjs
+python3 -m unittest discover -s ha-local -p 'test_*.py'
+npx tsc --noEmit
+npm run build
+```
+
+On Windows, use `python` if `python3` is not installed. The fan release passed 25 Site tests, 16 card tests, five migration tests, TypeScript, build, and the GitHub workflow. These checks do not prove physical device operation or tablet fit. For a runtime release, also verify dashboard import/export/readback, the count and placement of derived controls, preservation of weather/time/edit link and other views, camera unavailable behavior, browser resizing, and actual tablet touch. Use read-only inspection first; a scene run or device toggle is a real-world action.
+
+## Runtime release and recovery
+
+The [deployment guide](deployment.md) is the operational procedure. In order: review source and tests, save a private dashboard/image backup, publish the optional owner-private Site if its code changed, install/version HA assets and card using `python ha-local/install.py` with private host/key/adapter paths, export the intended layout from Studio, read back the HA dashboard, then check laptop and tablet. Keep the cloud and HA transports on compatible code. A GitHub merge alone changes neither installation.
+
+The installer records a private backup. To roll back, restore that dashboard JSON through Home Assistant `lovelace/config/save`, read back the result, restore a known-good asset/card version if needed, and roll back the Site deployment separately if it changed. Preserve unsaved browser work as private JSON first. Do not place backups, tokens, SSH keys, raw entity inventories, camera media, or live dashboard exports in this repository or `/local/roomcraft/`.
+
+## Remaining work, in order
+
+| Priority | Work and acceptance gate |
+| --- | --- |
+| 1 | **Confirm the fan's physical room** and move both fan and center light targets together if living room is wrong. Keep the current placement labeled provisional until verified. |
+| 2 | **Check the Apolosign Calendar tablet in person** for full-plan fit, touch targets, Studio fallback, camera playback, and light/fan action labels. A browser-size preview is not this test. |
+| 3 | **Strengthen authored art** by making remaining baked furniture/details independently editable and checking perspective and export at 100%. Use the [artwork guide](artwork.md). |
+| 4 | **Add live adapters only with verified sources** for animated devices, weather, clock, garage, and vacuum position. The vacuum needs map-to-plan calibration and stale-position handling; motion needs reduced-motion support. See the [roadmap](roadmap.md). |
+
+For each follow-on change, record the data source, offline behavior, accessible interaction, security boundary, tests, and rollback in the existing [changelog](../CHANGELOG.md) and [decision log](decisions.md). Keep the work queue here and in the roadmap until a team chooses how to track implementation; no new issue or ticket is required just to preserve this handoff.

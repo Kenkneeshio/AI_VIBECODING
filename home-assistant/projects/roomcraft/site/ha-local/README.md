@@ -35,12 +35,12 @@ The static files, custom card resource, and dashboard configuration persist acro
 ## Verification
 
 1. Open the local Studio URL in a fresh browser and sign into Home Assistant. Use its new-tab button if the embedded frame stays blank.
-2. Confirm the editor loads the current dashboard layout by default when there is no unsaved browser draft. Otherwise press **Import from dashboard**.
-3. Move a control area without changing any device state, export to the dashboard, and read back the plan and `roomcraft_layout` through the HA API. Move it back after the check.
-4. Import from dashboard in the cloud editor; confirm the same layout. Reverse the change and export again if it was only a probe.
-5. Check a narrow viewport and the plan's edit icon.
+2. Confirm the editor loads the current dashboard layout on opening and offers **Recover previous browser draft** if that browser held a different draft. If HA is unreachable, the local draft remains usable. **Import from dashboard** refreshes an editor that is already open.
+3. Move a control area without changing any device state, export to the dashboard, and read back the plan and `roomcraft_layout` through the HA API. Move it back after the check. The v18 baseline is 28 editable items and 10 object controls, including separate ceiling-fan blade and center-light targets; confirm their scene IDs by readback without activating them.
+4. Open the cloud editor and confirm it loads the same saved layout. Use **Import from dashboard** if it was already open. Reverse the change and export again if it was only a probe.
+5. Check a narrow browser viewport and the plan's edit icon. The target Apolosign Calendar tablet still needs an on-device fit and touch check; a resized desktop browser is not that check.
 
-Run `node --test ha-local/roomcraft-card.test.mjs` for the bridge, object control, camera, menu, and conflict checks. The Site's bridge tests remain independent. The manual YAML export also emits these custom element types and therefore requires the `/local/roomcraft/roomcraft-card.js` Lovelace module resource.
+Run `node --test ha-local/roomcraft-card.test.mjs` for the bridge, object control, camera, menu, and conflict checks, plus `python -m unittest discover -s ha-local -p 'test_*.py'` for the migration. The Site's bridge tests remain independent. The manual YAML export also emits these custom element types and therefore requires the `/local/roomcraft/roomcraft-card.js` Lovelace module resource.
 
 ## Rollback
 

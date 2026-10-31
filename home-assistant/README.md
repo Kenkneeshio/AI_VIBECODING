@@ -6,7 +6,7 @@ Custom software and reusable resources for Home Assistant, including projects in
 
 ![Current illustrated Roomcraft second-floor plan with recessed blue glazing](projects/roomcraft/docs/images/published-plan.png)
 
-The [Roomcraft project](projects/roomcraft/README.md) is the active Home Assistant floor-plan editor and dashboard source. Its [illustrated manual](projects/roomcraft/docs/user-manual.md) explains editing walls, floors, furniture, and Home Assistant controls. The Home Assistant **Layout Studio** view is the official editing entry.
+The [Roomcraft project](projects/roomcraft/README.md) is the active Home Assistant floor-plan editor and dashboard source. Engineers can start with the [current handoff](projects/roomcraft/docs/engineering-handoff.md); the [illustrated manual](projects/roomcraft/docs/user-manual.md) explains editing walls, floors, furniture, and Home Assistant controls. The Home Assistant **Layout Studio** view is the official editing entry.
 
 [View full-size current plan](projects/roomcraft/docs/images/published-plan.png). The older planning illustration and its prompts are retained in the [legacy archive](legacy/planning-illustration-2026-10-25/README.md).
 
