@@ -7,6 +7,7 @@ All notable Roomcraft changes are recorded here. Deployment status is tracked se
 - Made `roomcraft-editor-card` and its Home Assistant card metadata registration idempotent if the resource is evaluated more than once. A fourth VM regression test reruns the module and checks that only one card entry remains.
 - An affected Chrome Studio tab showed **Configuration error** although the live dashboard configuration and card resource read back correctly; reloading that tab cleared the error. A duplicate registration was a possible failure mode, not a confirmed cause of the observed error.
 - If a Studio tab shows the error after an update, reload it. If the embedded editor is blank, use **Open editor in a new tab** and keep Studio open for authenticated import/export.
+- The owner-private Site was deployed as version 13 from source commit `120e286440c234c6dea8b5ea2533d2b4d396311a`. Browser QA found no Configuration error after reloading the affected Studio tab; the own-tab editor displayed 7 controls and its Import/Export actions. The live project and plan image stayed unchanged.
 
 ## 2026-10-31 — Home Assistant Layout Studio
 

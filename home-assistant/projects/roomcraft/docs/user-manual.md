@@ -28,7 +28,7 @@ This 960 × 600 browser preview shows the complete 696 × 465 plan card without 
 
 The owner-private cloud editor is an alternate route when available; use the Site URL supplied by the owner. It has its own sign-in. Both editors share the dashboard's saved `roomcraft_layout`; after exporting in one, import in the other to refresh its draft. Use Layout Studio on the home network as the normal authoring path.
 
-This manual describes the HA-hosted Studio paired with owner-private cloud editor version 12. The own-tab Studio fallback completed a live import, export, and dashboard readback with 6 rooms, 33 walls, 13 items, and 7 controls.
+This manual describes the HA-hosted Studio paired with owner-private cloud editor version 13. The own-tab Studio fallback completed a live import, export, and dashboard readback with 6 rooms, 33 walls, 13 items, and 7 controls.
 
 If Chrome leaves the embedded editor blank, use **Open editor in a new tab** inside Layout Studio. Keep the Studio tab open while editing in the new tab: it supplies the authenticated dashboard connection through the opener. A direct visit to `/local/roomcraft/editor.html` has no such connection and cannot import or export to the dashboard.
 
