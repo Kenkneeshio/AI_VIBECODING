@@ -5,8 +5,11 @@ views:
     path: plan
     icon: mdi:floor-plan
     type: custom:grid-layout
+    # Keep the 3:2 plan and its percentage-positioned controls aligned. On a
+    # widescreen tablet, the view background fills the remaining side gutters.
+    background: "linear-gradient(180deg, #98c54d 0%, #a4c954 69%, #d6a36d 100%)"
     layout:
-      grid-template-columns: "minmax(0, 1fr) min(100%, calc((100dvh - 90px) * 1.5)) minmax(0, 1fr)"
+      grid-template-columns: "minmax(0, 1fr) min(100%, calc(100dvh * 1.5)) minmax(0, 1fr)"
       padding: "0"
       margin: "0"
     cards:
