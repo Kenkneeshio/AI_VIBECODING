@@ -7,12 +7,15 @@ flowchart LR
   E[Editor UI<br/>rooms, walls, floors, items] --> M[Versioned layout JSON]
   M --> R[Raster renderer<br/>PNG image]
   M --> C[Control mapper<br/>picture elements]
-  R --> B[Owner-only Site bridge]
-  C --> B
-  B --> H[(Home Assistant dashboard<br/>image + roomcraft_layout)]
+  R --> T{Dashboard transport}
+  C --> T
+  T --> A[HA same-origin custom card<br/>current HA user]
+  T --> B[Optional owner-only cloud Site bridge]
+  A --> H[(Home Assistant dashboard<br/>image + roomcraft_layout)]
+  B --> H
+  H -->|Import and revision| A
   H -->|Import and revision| B
-  B --> E
-  H --> L[Live view adapters<br/>time, weather, devices, vacuum]
+  H --> L[Live Home view<br/>time, weather, devices, vacuum map]
 ```
 
 ## Current contracts
@@ -21,13 +24,16 @@ flowchart LR
 | --- | --- | --- | --- |
 | Editor | `site/public/editor.html`, `app.js`, `styles.css`, `inventory.js` | User interactions, layout changes, local draft, JSON/YAML export | Direct access to server secrets |
 | Art | `site/public/object-art.js`, `raster-renderer.js`, `responsive-inspector.js`, `assets/` | Perspective objects, room surfaces, windows, PNG render | Device service calls |
-| Transport | `site/app/api/dashboard/route.ts` | Owner authorization, input validation, HA image upload, revision check, dashboard save/verify | Rendering UI, publishing credentials to client |
-| Home Assistant | Second Floor dashboard configuration | Authenticated device controls and displayed PNG | Becoming a second editable layout source |
+| HA transport | `site/ha-local/roomcraft-card.js`, `site/public/ha-iframe-bridge.js` | Same-origin editor messages, current-user HA API calls, PNG upload, revision check, dashboard save/verify | Sending an HA token into the iframe |
+| Cloud transport | `site/app/api/dashboard/route.ts` | Owner authorization, input validation, HA image upload, revision check, dashboard save/verify | Publishing the server token to client code |
+| Home Assistant | Second Floor `plan`, `studio`, and `live` views | Official editor entry, authenticated device controls, displayed PNG, live native cards | Storing transient telemetry in layout geometry |
 | Future live adapters | `integrations/` when introduced | Read-only subscriptions, entity bindings, calibrated robot position, safe service actions | Mutating layout geometry from telemetry |
 
-The layout model stores `version`, `rooms`, `walls`, `items`, and `hotspots`. Rooms hold polygons and floor surface IDs; walls are endpoint pairs; items hold type, position, dimensions, and rotation; hotspots hold entity ID, action, and percentage position. The Site currently uses layout version 2. **Any schema change requires a migration, a sample fixture, and a round-trip test.** The design canvas is 1536 × 1024. Percentage-positioned controls survive viewport resizing.
+The layout model stores `version`, `rooms`, `walls`, `items`, and `hotspots`. Rooms hold polygons and floor surface IDs; walls are endpoint pairs; items hold type, position, dimensions, and rotation; hotspots hold entity ID, action, and percentage position. Both editor transports use layout version 2. **Any schema change requires a migration, a sample fixture, and a round-trip test in both transports.** The design canvas is 1536 × 1024. Percentage-positioned controls survive viewport resizing.
 
-The dashboard bridge reads the `plan` view's `picture-elements` card and the top-level `roomcraft_layout`. On export it uploads a rendered PNG, updates the card image and controls, writes the editable project, then reads back to verify. It rejects an export when the dashboard revision changed since import. The `studio` editor view, `live` state view, and reserved plan controls (editor link, weather, time) must survive this transaction and stay out of editable hotspot data.
+Both dashboard transports read the `plan` view's `picture-elements` card and the top-level `roomcraft_layout`. On export each uploads a rendered PNG, updates the card image and editable state-icon controls, writes the project, then reads back to verify. Each rejects an export when the dashboard changed since import. The `studio` editor view, `live` state view, and reserved plan controls (editor link, weather, time) survive this transaction and stay out of editable hotspot data. The official `studio` card receives Home Assistant's `hass` object, validates the editor window, origin, and request IDs, and performs privileged operations itself. The static editor can request those operations only when framed or opened by that card.
+
+The two browser editors may each have a local draft. After publishing from one, import from the dashboard in the other before editing. The dashboard project, rather than a browser's local storage, is the shared source of truth. If the Studio iframe stays blank, its card opens the same editor in a new tab and accepts messages from that exact same-origin popup while Studio remains open; a direct static URL has no dashboard transport. The installed `/local/roomcraft/` assets are reachable by anyone who can reach the HA web server; do not put tokens, live entity inventories, private photos, or dashboard JSON in that static directory.
 
 ## Extension contracts
 
@@ -63,7 +69,7 @@ Maintain one scene coordinate system and fit it into phone, tablet, laptop, and 
 
 - **Editor team:** schema migrations, geometry, undo/redo, accessible selection and touch behavior.
 - **Art team:** asset provenance, perspective, windows, floors, object variants, export parity.
-- **HA team:** dashboard bridge, authenticated runtime adapters, device command safety, backups and rollback.
+- **HA team:** same-origin card and cloud bridge parity, authenticated runtime adapters, device command safety, backups and rollback.
 - **QA/documentation team:** visual snapshots at laptop/tablet sizes, JSON round-trip, release notes, user manual.
 
 Use separate pull requests for model changes, art changes, and Home Assistant runtime changes when practical. A model change should include a migration plan and editor/bridge tests; art changes should include before/after graphics; runtime changes should include disconnected and unavailable states. The [deployment guide](deployment.md) defines release order and rollback.

@@ -1,13 +1,19 @@
-# Synthetic illustration only. Adapt to your dashboard and private Site URL.
-# Keep the existing plan card and its actual Home Assistant controls.
+# Synthetic illustration only. Replace example entities and image through
+# private installation configuration. The HA installer configures Studio.
 views:
   - title: Floor Plan
     path: plan
     icon: mdi:floor-plan
-    type: panel
+    type: custom:grid-layout
+    layout:
+      grid-template-columns: "minmax(0, 1fr) min(100%, calc((100dvh - 90px) * 1.5)) minmax(0, 1fr)"
+      padding: "0"
+      margin: "0"
     cards:
       - type: picture-elements
         image: /local/roomcraft/example-plan.png
+        view_layout:
+          grid-column: "2"
         elements:
           - type: state-icon
             entity: light.example_living_room
@@ -16,17 +22,52 @@ views:
               top: 35%
             tap_action:
               action: toggle
+          - type: state-icon
+            entity: light.example_dining_room
+            style: { left: 30%, top: 60% }
+            tap_action: { action: toggle }
+          - type: state-icon
+            entity: switch.example_kitchen
+            style: { left: 50%, top: 62% }
+            tap_action: { action: toggle }
+          - type: state-icon
+            entity: light.example_study
+            style: { left: 61%, top: 34% }
+            tap_action: { action: toggle }
+          - type: state-icon
+            entity: light.example_bedroom
+            style: { left: 84%, top: 34% }
+            tap_action: { action: toggle }
+          - type: state-icon
+            entity: cover.example_sofa_blind
+            style: { left: 28%, top: 28% }
+            tap_action: { action: more-info }
+          - type: state-icon
+            entity: cover.example_tv_blind
+            style: { left: 47%, top: 28% }
+            tap_action: { action: more-info }
+          - type: state-label
+            entity: weather.example_home
+            style: { left: 68%, top: 9% }
+          - type: state-label
+            entity: sensor.example_time
+            style: { left: 83%, top: 9% }
+          - type: icon
+            icon: mdi:pencil-ruler
+            title: Edit layout in Roomcraft
+            style:
+              left: 94%
+              top: 9%
+            tap_action:
+              action: navigate
+              navigation_path: /second-floor/studio
   - title: Layout Studio
     path: studio
     icon: mdi:pencil-ruler
     type: panel
     cards:
-      - type: button
-        name: Open Roomcraft editor
-        icon: mdi:floor-plan
-        tap_action:
-          action: url
-          url_path: https://example.invalid/editor
+      - type: custom:roomcraft-editor-card
+        asset_version: example123
   - title: Live Home
     path: live
     icon: mdi:home-analytics
@@ -37,7 +78,24 @@ views:
         title: Home status
         entities:
           - sensor.example_time
+          - sun.sun
           - cover.example_garage
           - fan.example_fan
           - vacuum.example_robot
+      - type: entities
+        title: Second Floor controls
+        entities:
+          - light.example_living_room
+          - light.example_dining_room
+          - switch.example_kitchen
+          - light.example_study
+          - light.example_bedroom
+          - cover.example_sofa_blind
+          - cover.example_tv_blind
+      - type: picture-entity
+        entity: camera.example_robot_map
+        camera_view: auto
+      - type: picture-entity
+        entity: camera.example_garage
+        camera_view: auto
 

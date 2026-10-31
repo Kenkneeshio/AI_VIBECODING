@@ -1,6 +1,6 @@
 # Editable layout format
 
-The [JSON Schema](../layout.schema.json) describes Roomcraft layout version 2. The [synthetic example](../examples/layout-v2.json) shows the main fields without revealing any installed device inventory. It illustrates the contract; the real furnished starter includes many more rooms, walls, and objects.
+The [JSON Schema](../layout.schema.json) describes Roomcraft layout version 2 shared by the HA-hosted Studio and optional cloud editor. The [synthetic example](../examples/layout-v2.json) shows the main fields without revealing any installed device inventory. It illustrates the contract; the real furnished starter includes many more rooms, walls, and objects.
 
 | Field | Meaning |
 | --- | --- |

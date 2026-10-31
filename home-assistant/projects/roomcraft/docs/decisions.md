@@ -1,5 +1,29 @@
 # Decision log
 
+## 2026-10-31 — Make HA-hosted Studio the official editor
+
+**Decision:** Serve the shared Roomcraft editor from Home Assistant `/local/roomcraft/` inside a same-origin custom Lovelace card at `/second-floor/studio`. The card receives `hass`, validates iframe messages, and performs authenticated dashboard reads, image upload, and saves as the signed-in user. Keep the owner-private cloud Site as an alternate transport to the same saved layout.
+
+**Reason:** Laptop and tablet users already have a Home Assistant login. The previous external Site link required a separate sign-in and did not make the editor part of the HA frontend. The card keeps credentials out of the static iframe while making Layout Studio the durable, official authoring entry.
+
+**Consequence:** Publishing a layout requires HA administrator privileges. Static `/local/roomcraft/` assets must contain no credentials or private dashboard JSON. The HA card and Site bridge need parity tests for merge, revision conflict, and save verification; switching between editors requires a fresh import.
+
+## 2026-10-31 — Keep an authenticated new-tab fallback
+
+**Decision:** If the embedded Studio iframe fails to load, show **Open editor in a new tab**. The new tab requests dashboard operations through its same-origin Studio opener while that tab stays open; a direct static editor URL does not gain this bridge.
+
+**Reason:** Some Chrome sessions leave a freshly attached iframe blank. The editor can still run in a normal tab, and the HA card can retain authenticated import and export without sending credentials into the page.
+
+**Consequence:** The card validates the exact opened window and origin as well as request IDs. The user must keep Studio open during a new-tab editing session. The fallback needs its own import/export regression test and manual instructions.
+
+## 2026-10-31 — Use recessed source glazing for default windows
+
+**Decision:** Restore default window pixels from the empty illustrated shell, and draw newly placed windows as wall-aligned overlays with a visible cut, glazing, jambs, and sill.
+
+**Reason:** The furnished bitmap's replacement windows read as flat white rectangles. The shell already has recessed blue windows whose perspective matches the raised walls. Added windows need a related visual language and a reveal facing the selected wall side.
+
+**Consequence:** The renderer depends on the shell asset for default glazing. Exterior wall geometry remains fixed; added windows must be checked in Design view and the exported PNG because overlays cannot alter the source bitmap's structure.
+
 ## 2026-10-31 — One authoritative layout
 
 **Decision:** Store the editable Roomcraft project with the Second Floor Home Assistant dashboard as `roomcraft_layout`; render a PNG from the same project for the `picture-elements` card.
@@ -10,11 +34,11 @@
 
 ## 2026-10-31 — Owner-only server bridge
 
-**Decision:** Use a same-origin Site API route for Home Assistant transfer. Keep `HA_TOKEN` in the Site runtime, authorize the owner, and reject cross-origin writes.
+**Decision:** Keep a same-origin Site API route as the optional cloud transport. Keep `HA_TOKEN` in the Site runtime, authorize the owner, and reject cross-origin writes.
 
 **Reason:** A browser editor must not expose an administrator token. The authenticated server route can validate input, upload the image, and save the dashboard through Home Assistant APIs.
 
-**Consequence:** The private editor requires its own owner sign-in. Home Assistant's dashboard entry can link to it, but iframe embedding is not a required dependency.
+**Consequence:** The cloud editor requires its own owner sign-in. The official HA editor uses a separate same-origin Lovelace card and Home Assistant login.
 
 ## 2026-10-31 — Preserve the prior dashboard prototype
 

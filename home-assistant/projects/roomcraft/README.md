@@ -4,7 +4,7 @@ Roomcraft is the editable source for the illustrated **Second Floor** Home Assis
 
 ![Roomcraft editor with furnished second-floor plan](docs/images/editor-overview.png)
 
-**Status:** Active second-floor project. The hosted editor and dashboard transfer are in use on one Home Assistant 2026.10 installation. This repository is the public, sanitized source and manual. A GitHub commit alone does not deploy the Site or change Home Assistant.
+**Status:** Active second-floor project on one Home Assistant 2026.10 installation. The official editor is the same-origin **Layout Studio** dashboard view at `/second-floor/studio`, accessible with a Home Assistant login on the LAN. The owner-private cloud Site is an alternate editor that reads and writes the same `roomcraft_layout`. This repository is public source and documentation. A GitHub commit alone does not deploy either runtime.
 
 ## Start here
 
@@ -23,6 +23,7 @@ Roomcraft is the editable source for the illustrated **Second Floor** Home Assis
 ```text
 roomcraft/
 ├── site/                 Hosted editor and authenticated dashboard bridge
+│   └── ha-local/         Same-origin Home Assistant card, bridge tests, installer
 ├── examples/             Synthetic Home Assistant configuration examples
 ├── layout.schema.json     Version 2 layout contract
 ├── docs/images/          Manual graphics and visual reference
@@ -40,15 +41,16 @@ The image is a visual reference, not a dimensional survey. The layout coordinate
 ## Requirements
 
 - A Home Assistant dashboard with a `picture-elements` card in its floor-plan view.
-- An owner-private hosted Site for the editor and its same-origin dashboard API route.
-- Server-side `HA_URL`, `HA_TOKEN`, and `OWNER_EMAIL` runtime values. Never put these in client code or in GitHub.
-- A modern browser for canvas editing and PNG export. The Site source currently targets Node.js 22.13 or newer for its build.
+- Home Assistant 2026.10 with the Roomcraft custom card registered as a Lovelace module resource, and a signed-in Home Assistant user. An administrator is required to publish dashboard edits.
+- The installed `custom:grid-layout` view resource for the Floor Plan's centered, aspect-preserving tablet/desktop layout.
+- A modern browser for canvas editing and PNG export. The Site source targets Node.js 22.13 or newer for its build.
+- Optional owner-private cloud Site with server-side `HA_URL`, `HA_TOKEN`, and `OWNER_EMAIL`. Never put these values in client code or GitHub.
 
-The dashboard transfer sends an uploaded PNG and layout metadata to Home Assistant. It uses a dashboard revision check to avoid silently overwriting a newer dashboard edit. Manual PNG, YAML, and JSON exports remain available.
+The official HA-hosted editor uses the current user's authenticated session to upload a PNG and save layout metadata. Its iframe never receives a token. The optional cloud Site uses its owner-only server bridge. Both paths check the dashboard revision to avoid silently overwriting a newer edit. Manual PNG, YAML, and JSON exports remain available.
 
 ## Quick verification
 
-1. Open the Roomcraft editor and confirm the furnished plan loads.
+1. Open `http://192.168.68.96:8123/second-floor/studio` on a device on the home network and sign in to Home Assistant. Confirm the furnished plan loads.
 2. In **Floors**, apply a finish to a room; in **Wall**, draw an interior wall; in **Objects**, place furniture. Use **Undo** to restore the starting scene.
 3. Select **Import from dashboard** and confirm the controls appear at their Home Assistant positions.
 4. Export editable JSON as a private backup before any dashboard transfer.
@@ -58,7 +60,7 @@ See the [full checklist](docs/deployment.md#release-verification) before conside
 
 ## Security and scope
 
-The public examples use placeholder entity IDs. Keep real entity inventories, tokens, dashboard backups, camera URLs, local network addresses, and private map coordinates outside this repository. The hosted API accepts requests only from the authenticated Site owner and keeps the Home Assistant token on the server.
+The public examples use placeholder entity IDs. Keep real entity inventories, tokens, dashboard backups, camera URLs, and private map coordinates outside this repository. The documented LAN host address is a connection hint, never a credential. The HA-hosted card uses the signed-in user's session; the optional hosted API accepts requests only from the authenticated Site owner and keeps its Home Assistant token on the server.
 
 The former `ishioho` dashboard remains available as a historical prototype in its own project folder. Its generated art and configuration are separate from Roomcraft's active second-floor editor.
 

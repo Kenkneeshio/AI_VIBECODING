@@ -20,8 +20,8 @@
     lamp:{ box:[1412,446,62,69], shapes:[['e',4,1,54,58]] }
   };
   const prototype = {sofa:'i1',tv:'i2',table:'i3',desk:'i4',chair:'i5',bed:'i6',counter:'i7',tub:'i9',toilet:'i11',plant:'i13',lamp:'lamp'};
-  // The current Home Assistant artwork already contains these glazed openings.
-  // Keep their source pixels above floor and furniture repairs in Design view.
+  // Reapply the original recessed blue glazing from the empty illustrated shell
+  // above floor and furniture repairs in Design view, including moved cutouts.
   const exteriorWindows = [
     [461,201,76,26,0],[728,201,72,26,0],
     [866.5,201,65,26,0],[962.5,201,67,26,0],
@@ -225,46 +225,41 @@
     w=Math.max(32,w);h=Math.max(16,h);
     c.save();c.translate(x,y);c.rotate(rotation*Math.PI/180);
     const left=-w/2,top=-h/2;
-    // A small bevel, sill and cast shadow make the inserted window read as an
-    // opening through the illustrated wall rather than a blue rectangle.
-    c.shadowColor='rgba(13,29,35,.35)';c.shadowBlur=7;c.shadowOffsetX=2;c.shadowOffsetY=6;
-    c.fillStyle='#25353d';c.fillRect(left,top,w,h);
+    const gx=left+4,gy=top+4,gw=w-8,gh=h-10;
+    // The dark cut runs through the wall. Glazing sits inside it, with a
+    // narrow front reveal on the side facing the room. Rotation is chosen by
+    // the side of the wall used during placement, so the reveal follows it.
+    c.shadowColor='rgba(16,28,34,.35)';c.shadowBlur=5;c.shadowOffsetX=2;c.shadowOffsetY=5;
+    c.fillStyle='#0d1c28';c.fillRect(left,top,w,h);
     c.shadowColor='transparent';c.shadowBlur=0;c.shadowOffsetX=0;c.shadowOffsetY=0;
-    c.fillStyle='#172630';c.fillRect(left+1,top+1,w-2,h-2);
-    c.fillStyle='#e6f0ee';c.fillRect(left+2,top+2,w-4,h-5);
-    c.fillStyle='#9ab3b9';c.fillRect(left+4,top+3,w-8,h-7);
-    const gx=left+5,gy=top+4,gw=w-10,gh=h-9;
+    c.fillStyle='#344756';c.fillRect(left+1,top+1,w-2,h-2);
+    c.fillStyle='#0b263b';c.fillRect(gx-1,gy-1,gw+2,gh+2);
     const glass=c.createLinearGradient(0,gy,0,gy+gh);
-    glass.addColorStop(0,'#8bb9c6');
-    glass.addColorStop(.18,'#e6f7f3');
-    glass.addColorStop(.43,'#a8d3d8');
-    glass.addColorStop(.68,'#6ca2b5');
-    glass.addColorStop(1,'#acd2d7');
+    glass.addColorStop(0,'#ebfaff');glass.addColorStop(.12,'#86c9e7');
+    glass.addColorStop(.48,'#59b6dd');glass.addColorStop(.71,'#9ad8ea');
+    glass.addColorStop(1,'#4f8fb7');
     c.fillStyle=glass;c.fillRect(gx,gy,gw,gh);
     c.save();c.beginPath();c.rect(gx,gy,gw,gh);c.clip();
-    const panes=Math.max(2,Math.round(w/36));
+    const panes=Math.max(2,Math.round(w/40));
     for(let i=0;i<panes;i++){
       const px=gx+i*gw/panes,pw=gw/panes;
-      c.fillStyle=i%2?'rgba(21,75,93,.06)':'rgba(255,255,255,.04)';c.fillRect(px,gy,pw,gh);
-      const reflection=c.createLinearGradient(px,gy,px+pw,gy+gh);
-      reflection.addColorStop(0,'rgba(255,255,255,.42)');
-      reflection.addColorStop(.42,'rgba(255,255,255,.03)');
-      reflection.addColorStop(.62,'rgba(255,255,255,.28)');
+      const reflection=c.createLinearGradient(px,gy,px+pw*.65,gy+gh);
+      reflection.addColorStop(0,'rgba(255,255,255,.57)');
+      reflection.addColorStop(.35,'rgba(255,255,255,.04)');
+      reflection.addColorStop(.73,'rgba(255,255,255,.22)');
       reflection.addColorStop(1,'rgba(255,255,255,0)');
       c.fillStyle=reflection;c.fillRect(px,gy,pw,gh);
-      c.beginPath();c.moveTo(px+pw*.16,gy+1);c.lineTo(px+pw*.45,gy+1);
-      c.lineTo(px+pw*.31,gy+gh-1);c.lineTo(px+pw*.06,gy+gh-1);
-      c.closePath();c.fillStyle='rgba(255,255,255,.25)';c.fill();
-      if(i){c.fillStyle='#4e6b72';c.fillRect(px-1.5,gy,3,gh);c.fillStyle='#eef6f4';c.fillRect(px-.5,gy,1,gh);}
+      if(i){c.fillStyle='#376178';c.fillRect(px-1.1,gy,2.2,gh);c.fillStyle='#d9f5f9';c.fillRect(px+.5,gy,.7,gh);}
     }
-    c.fillStyle='rgba(255,255,255,.38)';c.fillRect(gx,gy+gh*.42,gw,1);
-    c.fillStyle='rgba(36,91,105,.20)';c.fillRect(gx,gy+gh*.62,gw,1);
+    c.fillStyle='rgba(255,255,255,.55)';c.fillRect(gx,gy+gh*.45,gw,1);
     c.restore();
-    c.fillStyle='rgba(255,255,255,.94)';c.fillRect(gx,gy,gw,1.3);
-    c.fillStyle='#57717c';c.fillRect(gx,gy+gh-1,gw,1.5);
-    c.fillStyle='#e8e3d6';c.fillRect(left+2,top+h-3,w-4,3);
-    c.fillStyle='#c0b7a8';c.fillRect(left+3,top+h,w-6,2);
-    c.fillStyle='rgba(255,255,255,.6)';c.fillRect(left+2,top+2,1,h-5);
+    // Thin metal jambs, upper cap and a projected inner sill echo the source
+    // art's slightly raised walls without turning the pane into a white box.
+    c.fillStyle='#e6ece8';c.fillRect(left+1,top+2,2,h-4);c.fillRect(left+w-3,top+2,2,h-4);
+    c.fillStyle='#bad7dc';c.fillRect(left+3,top+2,w-6,1.2);
+    c.fillStyle='#eef7f2';c.fillRect(left+3,top+h-5,w-6,2);
+    c.fillStyle='#aa9c87';c.fillRect(left+3,top+h-3,w-6,3);
+    c.fillStyle='rgba(65,47,34,.22)';c.fillRect(left+4,top+h,w-8,2);
     c.restore();
   }
   function repairItem(c,id,original,shell) {
@@ -345,14 +340,15 @@
       if(isFloorLayer(item)||!sameVisual(item,baseById.get(item.id)))continue;
       if(Math.abs(item.x-mat.x)<(item.w+mat.w)/2&&Math.abs(item.y-mat.y)<(item.h+mat.h)/2)drawItem(c,item,starter,original,shell,fallback);
     }
-    for(const item of changed.filter(i=>!isFloorLayer(i)))drawItem(c,item,starter,original,shell,fallback);
+    for(const item of changed.filter(i=>!isFloorLayer(i)&&i.type!=='window'))drawItem(c,item,starter,original,shell,fallback);
     for(const wall of project.walls){const base=starter.walls.find(w=>w.id===wall.id);if(!sameWall(wall,base))drawNewWall(c,wall);}
     for(const [x,y,w,h,rotation] of exteriorWindows){
       const vertical=Math.abs(rotation)%180===90;
       const sx=Math.round(x-(vertical?h:w)/2),sy=Math.round(y-(vertical?w:h)/2);
       const sw=vertical?h:w,sh=vertical?w:h;
-      c.drawImage(original,sx,sy,sw,sh,sx,sy,sw,sh);
+      c.drawImage(shell,sx,sy,sw,sh,sx,sy,sw,sh);
     }
+    for(const item of changed.filter(i=>i.type==='window'))drawItem(c,item,starter,original,shell,fallback);
     return true;
   }
   window.RoomcraftRasterRenderer={draw,drawItem,ready,prepareExport};
