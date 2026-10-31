@@ -35,16 +35,16 @@ Build and publish the `site/` source through its Site workflow with owner-privat
 | HA login | Studio opens in a fresh laptop browser with the HA login. The plan pencil-ruler icon navigates there. |
 | Own-tab fallback | If the embedded frame is blank, **Open editor in a new tab** loads the same editor and completes an import/export while Studio remains open. |
 | Layout default | A fresh browser loads the current dashboard project. An existing local draft can be explicitly replaced with **Import from dashboard**. |
-| Art | Furnished default, recessed windows, added wall-mounted windows, furniture, baby items, lamps, and floor textures render in Design mode and the detailed PNG. |
-| Editor | Select, drag, rotate, draw wall, reshape room, repaint floor/wall, undo/redo, and JSON import/export work. |
-| Dashboard transfer | Export updates the plan image, editable state-icon controls, and `roomcraft_layout`; import reads back the same project. Weather, time, edit link, `studio`, and `live` remain. |
+| Art | Furnished default, recessed windows, added wall-mounted windows, furniture, baby items, movable bedside lamp, room fixtures, and floor textures render in Design mode and the detailed PNG. |
+| Editor | Select, drag, corner-resize (including Shift proportions), rotate, draw wall, reshape room, repaint floor/wall, undo/redo, and JSON import/export work. |
+| Dashboard transfer | Export updates the plan image, one control per bound fixture, managed camera overlays, and `roomcraft_layout`; import reads back the same project. Weather, time, edit link, `studio`, and `live` remain. |
 | Conflict handling | A stale editor revision is rejected after a separate dashboard edit; no newer change is silently replaced. |
 | Cloud parity | If the cloud Site is deployed, import its dashboard copy after an HA editor export; repeat in the other direction. |
 | Responsive view | Verify the entire plan and controls fit on actual laptop and tablet screen sizes without clipping or stretching. The current installation was checked at 960 × 600 CSS pixels (696 × 465 plan, no page scroll) and 2560 × 1271 (centered 1763-pixel card). |
-| Existing controls | Confirm light, switch, cover, fan, garage, vacuum, and camera behavior through Home Assistant before relying on their dashboard cards. |
+| Existing controls | Confirm light, switch, cover, fan, garage, vacuum, and camera behavior through Home Assistant before relying on their dashboard cards. An event still is not proof of a live stream. |
 | Privacy | No tokens, SSH keys, live entity inventory, camera access URLs, or private backups appear in `/local/roomcraft/` or GitHub. |
 
-The 2026-10-31 release completed an HA Studio import/export/readback with the own-tab fallback. The saved project retained 6 rooms, 33 walls, 13 items, and 7 controls; the downloaded live PNG showed the corrected blue windows and furnishings. Record the actual checks performed and screenshots in each release record. A check listed here is an acceptance criterion, not an assertion that every device was exercised.
+The earlier 2026-10-31 release completed an HA Studio import/export/readback with the own-tab fallback: 6 rooms, 33 walls, 13 items, and 7 controls. The lighting/camera release read back 23 items, seven controls, one managed camera overlay, and a 1536 × 1024 PNG while retaining weather, clock, and Studio entry. The tested event still and native details action worked; the battery doorbell's P2P live stream timed out. Record the actual checks performed and screenshots in each release record. A check listed here is an acceptance criterion, not an assertion that every device was exercised.
 
 The default-dashboard choice is a Home Assistant **user profile** preference, not part of the dashboard YAML or installer. In the current installation Ken's profile opens Second Floor by default across his devices, and the sidebar lists it first. The physical Fire tablet was offline during the 960 × 600 responsive browser check; verify its actual WebView when it reconnects.
 

@@ -10,6 +10,9 @@ const PLAN_VIEW = 'plan';
 const MAX_PNG_BYTES = 10 * 1024 * 1024;
 const MAX_JSON_BYTES = 16 * 1024 * 1024;
 const EDITOR_URL = '/local/roomcraft/editor.html';
+const CAMERA_ELEMENT_TYPE = 'custom:roomcraft-camera-thumbnail';
+const PLAN_WIDTH = 1536;
+const PLAN_HEIGHT = 1024;
 
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -48,18 +51,53 @@ function editableHotspots(elements) {
     : [];
 }
 
-function updatePlanCard(config, image, hotspots) {
+function validCameraThumbnail(item) {
+  if (!isObject(item) || item.type !== 'cameraThumbnail') return false;
+  const entity = item.entityId ?? '';
+  const image = item.imageEntityId ?? '';
+  return typeof item.id === 'string' && item.id.length > 0 && item.id.length <= 128 &&
+    typeof entity === 'string' && (entity === '' || /^camera\.[a-z0-9_]+$/.test(entity)) &&
+    typeof image === 'string' && (image === '' || /^image\.[a-z0-9_]+$/.test(image)) &&
+    (item.previewMode === undefined || ['event', 'live', 'offline'].includes(item.previewMode)) &&
+    [item.x, item.y, item.w, item.h, item.rotation ?? 0].every(value => typeof value === 'number' && Number.isFinite(value)) &&
+    item.x >= 0 && item.x <= PLAN_WIDTH && item.y >= 0 && item.y <= PLAN_HEIGHT &&
+    item.w >= 40 && item.w <= PLAN_WIDTH && item.h >= 40 && item.h <= PLAN_HEIGHT;
+}
+
+function cameraThumbnailElements(items) {
+  const percent = (value, span) => `${Math.round(value / span * 10000) / 100}%`;
+  return items.filter(item => isObject(item) && item.type === 'cameraThumbnail').map(item => {
+    if (!validCameraThumbnail(item)) throw new Error('The layout has an invalid camera thumbnail.');
+    return {
+      type: CAMERA_ELEMENT_TYPE,
+      roomcraft_item_id: item.id,
+      title: typeof item.name === 'string' ? item.name.slice(0, 120) : 'Camera',
+      camera_entity: item.entityId || '',
+      image_entity: item.imageEntityId || '',
+      preview_mode: item.previewMode || 'event',
+      style: {
+        left: percent(item.x, PLAN_WIDTH), top: percent(item.y, PLAN_HEIGHT),
+        width: percent(item.w, PLAN_WIDTH), height: percent(item.h, PLAN_HEIGHT),
+        transform: `translate(-50%, -50%) rotate(${item.rotation || 0}deg)`,
+        'z-index': 3,
+      },
+    };
+  });
+}
+
+function updatePlanCard(config, image, hotspots, items = []) {
   const next = structuredClone(config);
   const card = findPlanCard(next);
   const retained = Array.isArray(card.elements)
-    ? card.elements.filter(element => isObject(element) && element.type !== 'state-icon')
+    ? card.elements.filter(element => isObject(element) && element.type !== 'state-icon' &&
+      !(element.type === CAMERA_ELEMENT_TYPE && typeof element.roomcraft_item_id === 'string'))
     : [];
   card.image = image;
   card.elements = [...hotspots.map(hotspot => {
     const element = { ...hotspot };
     delete element.id;
     return element;
-  }), ...retained];
+  }), ...cameraThumbnailElements(items), ...retained];
   return { next, card };
 }
 
@@ -78,6 +116,11 @@ function validateProject(project) {
         !/^[a-z_]+\.[a-z0-9_]+$/i.test(hotspot.entity || '') ||
         !isObject(hotspot.style)) {
       throw new Error('The layout has an invalid Home Assistant control.');
+    }
+  }
+  for (const item of project.items) {
+    if (isObject(item) && item.type === 'cameraThumbnail' && !validCameraThumbnail(item)) {
+      throw new Error('The layout has an invalid camera thumbnail.');
     }
   }
   return project;
@@ -307,7 +350,7 @@ class RoomcraftEditorCard extends HTMLElement {
       if (stableStringify(latest) !== expected) {
         throw new BridgeError(409, 'The dashboard changed during image upload. Import it again before exporting.');
       }
-      const { next } = updatePlanCard(latest, image, project.hotspots);
+      const { next } = updatePlanCard(latest, image, project.hotspots, project.items);
       next.roomcraft_layout = project;
       await this._hass.callWS({ type: 'lovelace/config/save', url_path: DASHBOARD, config: next });
       const verified = await this._getConfig();
@@ -322,8 +365,229 @@ class RoomcraftEditorCard extends HTMLElement {
   }
 }
 
+/**
+ * A picture-elements overlay. The still is fetched through the current HA
+ * session; no camera token or snapshot URL is stored in public Site assets.
+ * A battery doorbell is never woken by rendering this element. When HA itself
+ * reports an active stream, its native image element can show that stream.
+ */
+class RoomcraftCameraThumbnail extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this._requestSerial = 0;
+    this._imageKey = '';
+    this._pendingKey = '';
+    this._objectUrl = null;
+    this._liveElement = null;
+    this._lastFailure = 0;
+  }
+
+  setConfig(config) {
+    if (!isObject(config) || typeof config.camera_entity !== 'string' ||
+        (config.camera_entity && !/^camera\.[a-z0-9_]+$/.test(config.camera_entity)) ||
+        typeof config.image_entity !== 'string' ||
+        (config.image_entity && !/^image\.[a-z0-9_]+$/.test(config.image_entity))) {
+      throw new Error('The Roomcraft camera thumbnail has an invalid entity.');
+    }
+    this._config = config;
+    if (!this._frame) this._build();
+    this._name.textContent = typeof config.title === 'string' ? config.title : 'Camera';
+    this._frame.setAttribute('aria-label', `Open ${this._name.textContent} camera details`);
+    this._refresh();
+  }
+
+  set hass(value) {
+    this._hass = value;
+    this._refresh();
+  }
+
+  connectedCallback() { this._refresh(); }
+
+  disconnectedCallback() {
+    ++this._requestSerial;
+    this._revokeImage();
+  }
+
+  _build() {
+    const style = document.createElement('style');
+    style.textContent = ':host{display:block;box-sizing:border-box;min-width:40px;min-height:40px}.frame{box-sizing:border-box;display:block;position:relative;width:100%;height:100%;min-height:40px;overflow:hidden;padding:0;border:2px solid #e4ebdf;border-radius:9px;background:#182a2c;color:#fff;box-shadow:0 4px 15px #1118;cursor:pointer;font:inherit;text-align:left}.media,.still,.live{position:absolute;inset:0;width:100%;height:100%}.still{object-fit:cover}.live{display:block;overflow:hidden}.veil{position:absolute;inset:0;background:linear-gradient(#0008,transparent 36%,transparent 62%,#000a);pointer-events:none}.head,.foot{position:absolute;left:7px;right:7px;z-index:2;font:600 10px/1.2 system-ui,sans-serif;text-shadow:0 1px 3px #000}.head{top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.foot{bottom:6px}.message{position:absolute;inset:25px 7px 20px;display:flex;align-items:center;justify-content:center;text-align:center;color:#e1e9e3;font:500 10px/1.2 system-ui,sans-serif}.still[hidden],.message[hidden]{display:none}';
+    const frame = document.createElement('button');
+    frame.type = 'button';
+    frame.className = 'frame';
+    frame.addEventListener('click', () => {
+      const entityId = this._config?.camera_entity;
+      if (entityId) this.dispatchEvent(new CustomEvent('hass-more-info', {
+        bubbles: true, composed: true, detail: { entityId },
+      }));
+    });
+    const media = document.createElement('div');
+    media.className = 'media';
+    const still = document.createElement('img');
+    still.className = 'still';
+    still.alt = '';
+    still.hidden = true;
+    still.addEventListener('error', () => this._showUnavailable('Latest event unavailable'));
+    const veil = document.createElement('div');
+    veil.className = 'veil';
+    const name = document.createElement('div');
+    name.className = 'head';
+    const foot = document.createElement('div');
+    foot.className = 'foot';
+    const message = document.createElement('div');
+    message.className = 'message';
+    media.append(still);
+    frame.append(media, veil, name, foot, message);
+    this.shadowRoot.append(style, frame);
+    this._frame = frame;
+    this._media = media;
+    this._still = still;
+    this._name = name;
+    this._foot = foot;
+    this._message = message;
+  }
+
+  _revokeImage() {
+    if (this._objectUrl) URL.revokeObjectURL(this._objectUrl);
+    this._objectUrl = null;
+    this._imageKey = '';
+    this._pendingKey = '';
+  }
+
+  _showUnavailable(message, footer = 'LATEST EVENT') {
+    if (!this._frame) return;
+    this._still.hidden = true;
+    this._message.hidden = false;
+    this._message.textContent = message;
+    this._foot.textContent = footer;
+  }
+
+  _eventTime(state) {
+    // Image entity state is the event timestamp. last_updated could simply be
+    // an HA restart, so do not present it as the event time.
+    const timestamp = typeof state?.state === 'string' ? Date.parse(state.state) : NaN;
+    if (!Number.isFinite(timestamp)) return '';
+    return new Intl.DateTimeFormat(undefined, {
+      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+    }).format(new Date(timestamp));
+  }
+
+  _showLive() {
+    if (typeof customElements.get('hui-image-element') !== 'function') return false;
+    if (this._liveCameraId !== this._config.camera_entity) {
+      this._liveElement?.remove();
+      this._liveElement = null;
+    }
+    if (!this._liveElement) {
+      const element = document.createElement('hui-image-element');
+      if (typeof element.setConfig !== 'function') return false;
+      element.className = 'live';
+      try {
+        element.setConfig({
+          type: 'image', entity: this._config.camera_entity,
+          camera_image: this._config.camera_entity, camera_view: 'live',
+          tap_action: { action: 'none' }, hold_action: { action: 'none' },
+        });
+      } catch { return false; }
+      this._liveElement = element;
+      this._liveCameraId = this._config.camera_entity;
+    }
+    if (this._liveElement.parentNode !== this._media) this._media.append(this._liveElement);
+    this._liveElement.hass = this._hass;
+    this._still.hidden = true;
+    this._message.hidden = true;
+    this._foot.textContent = 'LIVE';
+    return true;
+  }
+
+  _refresh() {
+    if (!this._frame || !this._hass || !this._config) return;
+    const cameraId = this._config.camera_entity;
+    const imageId = this._config.image_entity;
+    const cameraState = this._hass.states?.[cameraId];
+    if (this._config.preview_mode !== 'offline' && cameraState?.state === 'streaming' && this._showLive()) {
+      ++this._requestSerial;
+      this._revokeImage();
+      return;
+    }
+    if (this._liveElement?.parentNode === this._media) this._liveElement.remove();
+    if (this._config.preview_mode === 'offline') {
+      ++this._requestSerial;
+      this._revokeImage();
+      this._showUnavailable('Camera preview off');
+      return;
+    }
+    if (!imageId) {
+      ++this._requestSerial;
+      this._revokeImage();
+      this._showUnavailable(cameraId ? 'Latest event image not assigned' : 'Assign a camera in Roomcraft');
+      return;
+    }
+    const eventState = this._hass.states?.[imageId];
+    const picture = eventState?.attributes?.entity_picture;
+    const eventTime = this._eventTime(eventState);
+    const footer = eventTime ? `LATEST EVENT · ${eventTime}` : 'LATEST EVENT';
+    this._foot.textContent = footer;
+    if (typeof picture !== 'string' || !picture) {
+      ++this._requestSerial;
+      this._revokeImage();
+      this._showUnavailable('Latest event unavailable', footer);
+      return;
+    }
+    let url;
+    try { url = new URL(picture, location.origin); }
+    catch { ++this._requestSerial; this._revokeImage(); this._showUnavailable('Latest event unavailable', footer); return; }
+    // Restrict authenticated requests to HA's own image endpoint. Never send
+    // the HA bearer token to a URL supplied by an arbitrary entity state.
+    if (url.origin !== location.origin || !url.pathname.startsWith('/api/image_proxy/')) {
+      ++this._requestSerial;
+      this._revokeImage();
+      this._showUnavailable('Latest event unavailable', footer);
+      return;
+    }
+    const key = `${imageId}|${picture}|${eventState.state}`;
+    if (this._imageKey === key && this._objectUrl) {
+      this._still.hidden = false;
+      this._message.hidden = true;
+      return;
+    }
+    if (this._pendingKey === key) return;
+    if (this._imageKey === key && Date.now() - this._lastFailure < 30000) return;
+    if (this._imageKey !== key) this._revokeImage();
+    this._imageKey = key;
+    this._pendingKey = key;
+    this._showUnavailable('Loading latest event…', footer);
+    const serial = ++this._requestSerial;
+    this._hass.fetchWithAuth(url.pathname + url.search)
+      .then(response => {
+        if (!response.ok) throw new Error(`Image request failed (${response.status}).`);
+        return response.blob();
+      })
+      .then(blob => {
+        if (!blob.type.startsWith('image/')) throw new Error('Image response was not an image.');
+        if (serial !== this._requestSerial) return;
+        this._revokeImage();
+        this._imageKey = key;
+        this._objectUrl = URL.createObjectURL(blob);
+        this._still.src = this._objectUrl;
+        this._still.hidden = false;
+        this._message.hidden = true;
+        this._foot.textContent = footer;
+      })
+      .catch(() => {
+        if (serial !== this._requestSerial) return;
+        this._pendingKey = '';
+        this._lastFailure = Date.now();
+        this._showUnavailable('Latest event unavailable', footer);
+      });
+  }
+}
+
 if (!customElements.get('roomcraft-editor-card')) {
   customElements.define('roomcraft-editor-card', RoomcraftEditorCard);
+}
+if (!customElements.get('roomcraft-camera-thumbnail')) {
+  customElements.define('roomcraft-camera-thumbnail', RoomcraftCameraThumbnail);
 }
 if (!Array.isArray(window.customCards)) window.customCards = [];
 if (!window.customCards.some(card => card.type === 'roomcraft-editor-card')) {

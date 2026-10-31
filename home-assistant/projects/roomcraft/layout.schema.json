@@ -6,6 +6,7 @@
   "required": ["version", "rooms", "walls", "items", "hotspots"],
   "properties": {
     "version": { "const": 2 },
+    "editableReferenceVersion": { "type": "integer", "minimum": 0 },
     "rooms": {
       "type": "array",
       "items": { "$ref": "#/$defs/room" },
@@ -81,8 +82,21 @@
         "w": { "type": "number", "exclusiveMinimum": 0 },
         "h": { "type": "number", "exclusiveMinimum": 0 },
         "rotation": { "type": "number" },
-        "entityId": { "type": "string" }
+        "entityId": { "type": "string" },
+        "imageEntityId": { "type": "string" },
+        "previewMode": { "enum": ["event", "live", "offline"] }
       },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "cameraThumbnail" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "entityId": { "pattern": "^(?:|camera\\.[a-z0-9_]+)$" },
+              "imageEntityId": { "pattern": "^(?:|image\\.[a-z0-9_]+)$" }
+            }
+          }
+        }
+      ],
       "additionalProperties": true
     },
     "hotspot": {

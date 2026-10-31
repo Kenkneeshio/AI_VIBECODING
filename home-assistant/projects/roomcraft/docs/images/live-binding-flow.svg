@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">Roomcraft live-object workflow</title>
+  <desc id="desc">A lamp and camera thumbnail are placed in the editor, linked to synthetic Home Assistant entities, exported, and then shown with live state on the dashboard.</desc>
+  <defs>
+    <linearGradient id="paper" x2="0" y2="1"><stop stop-color="#faf8f1"/><stop offset="1" stop-color="#eeefe7"/></linearGradient>
+    <linearGradient id="wood" x2="0" y2="1"><stop stop-color="#e8b77e"/><stop offset="1" stop-color="#d99b65"/></linearGradient>
+    <filter id="shade" x="-10%" y="-20%" width="120%" height="150%"><feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#263529" flood-opacity=".12"/></filter>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M1 1 7 4.5 1 8" fill="none" stroke="#78977d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  </defs>
+  <rect width="1200" height="360" rx="20" fill="url(#paper)"/>
+  <text x="28" y="37" font-family="Arial,sans-serif" font-size="12" font-weight="700" letter-spacing="2" fill="#68836e">ROOMCRAFT · LIVE OBJECTS</text>
+  <text x="28" y="64" font-family="Arial,sans-serif" font-size="22" font-weight="700" fill="#283b2d">From placed artwork to Home Assistant state</text>
+
+  <g filter="url(#shade)"><rect x="28" y="91" width="262" height="239" rx="15" fill="#fffef9"/><rect x="328" y="91" width="262" height="239" rx="15" fill="#fffef9"/><rect x="628" y="91" width="244" height="239" rx="15" fill="#fffef9"/><rect x="910" y="91" width="262" height="239" rx="15" fill="#fffef9"/></g>
+  <path d="M297 211h23M597 211h23M879 211h23" stroke="#78977d" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <text x="45" y="121" font-family="Arial,sans-serif" font-size="11" font-weight="700" letter-spacing="1.4" fill="#d57959">01 · PLACE</text>
+  <text x="45" y="147" font-family="Arial,sans-serif" font-size="17" font-weight="700" fill="#26382c">Illustrated objects</text>
+  <rect x="49" y="162" width="215" height="145" rx="7" fill="url(#wood)"/>
+  <path d="M49 185h215M49 212h215M49 239h215M49 266h215M49 293h215" stroke="#be8659" stroke-opacity=".42"/>
+  <path d="M49 162h215M49 162v145M264 162v145" stroke="#263640" stroke-width="10"/>
+  <circle cx="142" cy="218" r="24" fill="#f1d897" stroke="#fff6d5" stroke-width="5"/>
+  <circle cx="142" cy="218" r="6" fill="#fff9dc"/>
+  <rect x="195" y="252" width="51" height="35" rx="5" fill="#203944" stroke="#c6e1e0" stroke-width="3"/>
+  <circle cx="220" cy="267" r="8" fill="#8eb3bf"/>
+
+  <text x="345" y="121" font-family="Arial,sans-serif" font-size="11" font-weight="700" letter-spacing="1.4" fill="#d57959">02 · BIND</text>
+  <text x="345" y="147" font-family="Arial,sans-serif" font-size="17" font-weight="700" fill="#26382c">Inspector entity IDs</text>
+  <rect x="347" y="163" width="223" height="52" rx="8" fill="#f3f6ee" stroke="#dfe8d9"/>
+  <text x="357" y="180" font-family="Arial,sans-serif" font-size="10" font-weight="700" fill="#647b68">LAMP ENTITY</text>
+  <text x="357" y="199" font-family="monospace" font-size="13" fill="#274337">light.example_room</text>
+  <rect x="347" y="224" width="223" height="69" rx="8" fill="#f3f6ee" stroke="#dfe8d9"/>
+  <text x="357" y="241" font-family="Arial,sans-serif" font-size="10" font-weight="700" fill="#647b68">CAMERA + EVENT IMAGE</text>
+  <text x="357" y="260" font-family="monospace" font-size="12" fill="#274337">camera.example_entry</text>
+  <text x="357" y="278" font-family="monospace" font-size="12" fill="#274337">image.example_event</text>
+
+  <text x="645" y="121" font-family="Arial,sans-serif" font-size="11" font-weight="700" letter-spacing="1.4" fill="#d57959">03 · PUBLISH</text>
+  <text x="645" y="147" font-family="Arial,sans-serif" font-size="17" font-weight="700" fill="#26382c">Export to dashboard</text>
+  <rect x="652" y="170" width="196" height="113" rx="10" fill="#e8ede6" stroke="#d5ded3"/>
+  <rect x="663" y="180" width="174" height="75" rx="5" fill="#dbac79"/>
+  <path d="M663 181h174M663 181v74M837 181v74" stroke="#2b3840" stroke-width="7"/>
+  <circle cx="708" cy="214" r="12" fill="#f5e0a7"/>
+  <rect x="773" y="218" width="40" height="25" rx="4" fill="#35515a"/>
+  <path d="M683 270h133" stroke="#93aa96" stroke-width="5" stroke-linecap="round"/>
+  <text x="650" y="308" font-family="Arial,sans-serif" font-size="11" fill="#6b7a6d">Image + editable layout + controls</text>
+
+  <text x="927" y="121" font-family="Arial,sans-serif" font-size="11" font-weight="700" letter-spacing="1.4" fill="#d57959">04 · VIEW</text>
+  <text x="927" y="147" font-family="Arial,sans-serif" font-size="17" font-weight="700" fill="#26382c">Live Home Assistant</text>
+  <circle cx="954" cy="191" r="15" fill="#ffd379" stroke="#f0b85b" stroke-width="3"/>
+  <text x="978" y="196" font-family="Arial,sans-serif" font-size="13" font-weight="700" fill="#2e4535">Light on</text>
+  <rect x="928" y="219" width="220" height="76" rx="8" fill="#203844"/>
+  <rect x="935" y="226" width="206" height="62" rx="5" fill="#49717d"/>
+  <path d="M935 278q47-48 91-14t115-24v48H935Z" fill="#2d4c58" opacity=".75"/>
+  <text x="945" y="245" font-family="Arial,sans-serif" font-size="10" font-weight="700" fill="#fff">CAMERA PREVIEW</text>
+  <text x="945" y="277" font-family="Arial,sans-serif" font-size="11" font-weight="700" fill="#f1f7f1">LATEST EVENT</text>
+  <text x="927" y="315" font-family="Arial,sans-serif" font-size="11" fill="#6b7a6d">Media stays inside authenticated HA</text>
+</svg>

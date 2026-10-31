@@ -1,0 +1,32 @@
+name: Roomcraft
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/roomcraft.yml'
+      - 'home-assistant/projects/roomcraft/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/roomcraft.yml'
+      - 'home-assistant/projects/roomcraft/**'
+  workflow_dispatch:
+
+jobs:
+  editor-and-bridges:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: home-assistant/projects/roomcraft/site
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: home-assistant/projects/roomcraft/site/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: node --test ha-local/roomcraft-card.test.mjs
+      - run: npx tsc --noEmit
+      - run: npm run build
