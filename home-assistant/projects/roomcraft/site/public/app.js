@@ -12,7 +12,7 @@
   const viewport = document.getElementById('viewport');
   const stage = document.getElementById('canvasStage');
   const reference = new Image();
-  reference.src = 'assets/floorplan.png';
+  reference.src = 'assets/floorplan.png?v=corrected-windows-20261031';
   reference.addEventListener('load', () => draw());
   const emptyShell = new Image();
   emptyShell.src = 'assets/empty-shell.png';
@@ -304,7 +304,10 @@
     c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
     c.clearRect(0,0,W,H);
     if(mode==='reference'){
-      if(reference.complete&&reference.naturalWidth){c.drawImage(reference,0,0,W,H);}else{c.fillStyle='#e6ecda';c.fillRect(0,0,W,H);}
+      const raster=window.RoomcraftRasterRenderer;
+      if(!raster?.draw(c,STARTER,STARTER,{original:reference,shell:emptyShell,wallFree:wallFreeShell},o=>drawObject(c,o))){
+        if(reference.complete&&reference.naturalWidth){c.drawImage(reference,0,0,W,H);}else{c.fillStyle='#e6ecda';c.fillRect(0,0,W,H);}
+      }
       if(!clean){drawHotspots(c);drawSelection(c);}
     }else{
       const raster=window.RoomcraftRasterRenderer;
@@ -353,7 +356,16 @@
       if(!len)continue;
       const t=Math.max(0,Math.min(1,((p.x-w.x1)*vx+(p.y-w.y1)*vy)/len));
       const x=w.x1+t*vx,y=w.y1+t*vy,d=Math.hypot(p.x-x,p.y-y);
-      if(!nearest||d<nearest.distance)nearest={x,y,rotation:Math.round(Math.atan2(vy,vx)*180/Math.PI),distance:d};
+      if(!nearest||d<nearest.distance){
+        // The sill and reveal face the side of the wall the user clicked.
+        // This matters for vertical walls: a left-wall window must project
+        // into the room on its right, not out over the balcony on its left.
+        let side=vx*(p.y-y)-vy*(p.x-x);
+        if(Math.abs(side)<.01)side=vx*(H/2-y)-vy*(W/2-x);
+        let rotation=Math.atan2(vy,vx)*180/Math.PI+(side<0?180:0);
+        rotation=((rotation+540)%360)-180;
+        nearest={x,y,rotation:Math.round(rotation),distance:d};
+      }
     }
     return nearest&&nearest.distance<=75?nearest:null;
   }
@@ -537,6 +549,11 @@
     });
   }
   async function dashboardRequest(method,payload){
+    if(window.RoomcraftDashboardBridge?.request){
+      const data=await window.RoomcraftDashboardBridge.request(method,payload);
+      if(!data||typeof data!=='object')throw new Error('Dashboard response is empty');
+      return data;
+    }
     const response=await fetch('/api/dashboard',{method,cache:'no-store',headers:payload?{'Content-Type':'application/json'}:undefined,body:payload?JSON.stringify(payload):undefined,signal:AbortSignal.timeout(method==='GET'?12000:60000)});
     let data;try{data=await response.json();}catch(_){throw new Error(`Dashboard returned an unreadable response (${response.status})`);}
     if(!response.ok){const detail=typeof data?.message==='string'?data.message:typeof data?.error==='string'?data.error:`Dashboard request failed (${response.status})`;const error=new Error(detail);error.status=response.status;throw error;}

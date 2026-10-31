@@ -1,52 +1,62 @@
 # Deployment, verification, and rollback
 
-This guide separates three changes: publishing the hosted editor, configuring its Home Assistant connection, and adding the editor entry to the dashboard. Commit history is source history; it does not deploy either service.
+The official editor is served by Home Assistant itself. Its `studio` view hosts a Roomcraft custom card and the shared static editor. The owner-private cloud Site is an optional second transport. Source commits, Site publication, static asset installation, and dashboard changes are separate release steps.
 
 ## Prerequisites
 
-- Back up the existing Second Floor dashboard configuration and image. Keep those backups outside this public repository.
-- Confirm an administrator can edit the dashboard and upload a PNG through Home Assistant's API.
-- Confirm the hosted Site is **owner-private** and its runtime has `HA_URL`, `HA_TOKEN`, and `OWNER_EMAIL`. Use the Site's secret configuration; do not add values to a file or GitHub.
-- Confirm the dashboard contains a floor-plan view at `plan` with a `picture-elements` card. The current bridge targets that view.
-- Confirm the target Home Assistant and browser versions in the release note. The current installation is Home Assistant 2026.10; no general compatibility range is claimed.
+- Back up the Second Floor dashboard configuration and current plan image outside this repository.
+- Confirm Home Assistant serves `/config/www/` as `/local/`, allows a Lovelace JavaScript module resource, and has the `plan`, `studio`, and `live` views. The `plan` view needs a `picture-elements` card and an installed `custom:grid-layout` resource for the current centered fit.
+- Use an HA administrator account to install the resource and publish a layout. A signed-in non-admin may still open the Studio view, subject to Home Assistant permissions.
+- For scripted installation, use a workstation with Python, OpenSSH, a trusted SSH key, and a private `HomeAssistantManagement/ha_manage.py` adapter. Keep that adapter, key, and backups outside GitHub.
+- Record the HA and browser versions tested. This project has been exercised on one Home Assistant 2026.10 installation; no general compatibility range is claimed.
 
-## Install or update
+## Install the HA-hosted editor
 
-1. Build and publish the `site/` source through its configured Site deployment workflow. Keep its access setting owner-private. Preserve the runtime secrets separately from source.
-2. Open the editor as the Site owner. Verify that the reference and furnished Design mode load and that the dashboard connection status is available.
-3. Add **Layout Studio** (`studio`) to the Second Floor dashboard with workflow instructions, an **Open editor** URL action, and a **View live floor plan** link back to `plan`. Add **Live Home** (`live`) for native Home Assistant state cards. Keep the existing `plan` picture-elements card and its controls. The plan's pencil-ruler editor icon, weather label, and time label should be maintained by the dashboard bridge on later exports.
-4. In Roomcraft, use **Import from dashboard**. This brings in the current controls and, after the first export, the saved editable project.
-5. Export a local JSON backup of the design. Make a small visual edit, use **Export to dashboard**, and reload the floor-plan view. Then import again to confirm a round trip.
+The public [HA local package guide](../site/ha-local/README.md) describes the card and installer. From the `site/` source directory, run the installer with private paths supplied locally:
 
-The editor link is an external URL action. The owner-private Site may ask for a separate sign-in; do not assume a Home Assistant session grants Site access. Do not rely on iframe embedding until frame and cookie behavior has been tested on the intended tablet.
+```powershell
+python ha-local/install.py --host 192.168.68.96 --ssh-key <SSH-KEY-PATH> --management-root <PRIVATE-HA-MANAGEMENT-DIR> --backup-dir <PRIVATE-BACKUP-DIR>
+```
+
+The script copies `public/` into `/config/www/roomcraft/`, installs `roomcraft-card.js`, registers or updates its content-versioned Lovelace resource, backs up the dashboard, makes `studio` a panel with `custom:roomcraft-editor-card`, and points the plan edit icon to `/second-floor/studio`. It reads the dashboard and resource back to verify the write. It does not copy credentials or a live entity inventory into static assets. An asset-only refresh is available with `--assets-only`.
+
+The normal laptop and tablet URL on the home network is [Layout Studio](http://192.168.68.96:8123/second-floor/studio). Sign in to Home Assistant. Some Chrome sessions leave the embedded frame blank. In that case click **Open editor in a new tab** from Studio and keep the Studio tab open. The new tab uses its opener for authenticated import/export. Opening `/local/roomcraft/editor.html` directly from the address bar bypasses the authenticated card and cannot transfer a layout to the dashboard.
+
+## Optional cloud editor
+
+Build and publish the `site/` source through its Site workflow with owner-private access. Configure `HA_URL`, `HA_TOKEN`, and `OWNER_EMAIL` in the hosted runtime, never in source. The cloud editor has a separate owner sign-in. Both editors read and write the same `roomcraft_layout` in the Second Floor dashboard; after an export in one, import in the other before making another edit.
 
 ## Release verification
 
 | Check | Pass condition |
 | --- | --- |
-| Layout | Rooms, stairs, balcony, walls, and windows align with the reference. Upstairs doorways are level. |
-| Art | Furniture, baby items, lamps, and floor textures appear in the exported PNG at the intended perspective. |
-| Editor | Select, drag, rotate, draw wall, reshape room, repaint floor, undo/redo, JSON import/export all work. |
-| Dashboard transfer | Import reads current project/controls; export updates image, controls, and `roomcraft_layout`; a fresh import returns the same layout. |
-| Revision protection | A stale editor revision is rejected after a separate dashboard edit; no newer change is silently replaced. |
-| Existing controls | Confirm the known light and cover controls in Home Assistant's own entity details, then from the plan. |
-| HA views | Floor Plan (`plan`), Layout Studio (`studio`), and Live Home (`live`) load on laptop and tablet. The plan icon and Studio button open the editor. |
-| Privacy | No credentials, camera access URLs, private inventory, or dashboard backups appear in source, browser bundles, or GitHub. |
+| HA login | Studio opens in a fresh laptop browser with the HA login. The plan pencil-ruler icon navigates there. |
+| Own-tab fallback | If the embedded frame is blank, **Open editor in a new tab** loads the same editor and completes an import/export while Studio remains open. |
+| Layout default | A fresh browser loads the current dashboard project. An existing local draft can be explicitly replaced with **Import from dashboard**. |
+| Art | Furnished default, recessed windows, added wall-mounted windows, furniture, baby items, lamps, and floor textures render in Design mode and the detailed PNG. |
+| Editor | Select, drag, rotate, draw wall, reshape room, repaint floor/wall, undo/redo, and JSON import/export work. |
+| Dashboard transfer | Export updates the plan image, editable state-icon controls, and `roomcraft_layout`; import reads back the same project. Weather, time, edit link, `studio`, and `live` remain. |
+| Conflict handling | A stale editor revision is rejected after a separate dashboard edit; no newer change is silently replaced. |
+| Cloud parity | If the cloud Site is deployed, import its dashboard copy after an HA editor export; repeat in the other direction. |
+| Responsive view | Verify the entire plan and controls fit on actual laptop and tablet screen sizes without clipping or stretching. The current installation was checked at 960 × 600 CSS pixels (696 × 465 plan, no page scroll) and 2560 × 1271 (centered 1763-pixel card). |
+| Existing controls | Confirm light, switch, cover, fan, garage, vacuum, and camera behavior through Home Assistant before relying on their dashboard cards. |
+| Privacy | No tokens, SSH keys, live entity inventory, camera access URLs, or private backups appear in `/local/roomcraft/` or GitHub. |
 
-Record the actual test result and screenshot in the release pull request or deployment log; do not claim a check that was not run.
+The 2026-10-31 release completed an HA Studio import/export/readback with the own-tab fallback. The saved project retained 6 rooms, 33 walls, 13 items, and 7 controls; the downloaded live PNG showed the corrected blue windows and furnishings. Record the actual checks performed and screenshots in each release record. A check listed here is an acceptance criterion, not an assertion that every device was exercised.
+
+The default-dashboard choice is a Home Assistant **user profile** preference, not part of the dashboard YAML or installer. In the current installation Ken's profile opens Second Floor by default across his devices, and the sidebar lists it first. The physical Fire tablet was offline during the 960 × 600 responsive browser check; verify its actual WebView when it reconnects.
 
 ## Rollback
 
-1. Stop editing in the new Site version and export any unsaved layout JSON.
-2. Restore the previous Site version if the editor or transfer bridge is faulty.
-3. Restore the saved Home Assistant dashboard configuration and prior image if the dashboard changed. Keep the restored `plan` card and its controls together.
-4. Reload Home Assistant and verify the prior image and controls. Reopen the Site only after the connection matches the restored dashboard revision.
+1. Export any unsaved editable layout JSON from the browser.
+2. Restore the private dashboard backup recorded by `ha-local/install.py` through `lovelace/config/save` for `url_path="second-floor"`, then read it back and compare. This restores the prior Studio view, plan image, and controls together.
+3. If only the static editor files are faulty, reinstall a known working asset version and update the registered card resource URL. A resource left registered is inert when the restored dashboard does not use the card.
+4. Reload Home Assistant and verify the plan and controls. If the cloud Site was also changed, restore its previous deployment separately.
 
-The Site export bridge saves a newly uploaded image before it saves dashboard config. A failed or rejected config save can leave an unreferenced image in HA storage; it does not make that image the live plan. Clean up such images through a separate, reviewed storage task.
+An image may be uploaded before a dashboard save fails or conflicts. In that case the unreferenced image does not become the live plan; clean it up in a separate reviewed storage task.
 
-## Local development
+## Development checks
 
-The Site package requires Node.js 22.13 or newer. From `site/`, install dependencies, run the development server, and use its build script for a deployable artifact. Local preview auth and Home Assistant connectivity may differ from production; test the real owner-private deployment before calling a transfer complete. The Site's `.env.example` lists variable names only.
+From `site/`, use Node.js 22.13 or newer: `npm ci`, `npm test`, `npx tsc --noEmit`, and `npm run build`. Run `node --test ha-local/roomcraft-card.test.mjs` for the HA card's merge and conflict behavior. The Site and HA transports have separate tests and should both pass when shared editor or layout code changes.
 
-Do not commit `node_modules`, `dist`, `.next`, `.wrangler`, `.sites-runtime`, local environment files, generated archives, or credentials. The project copy includes `.gitignore` for those paths.
-
+Do not commit `node_modules`, `dist`, `.next`, `.wrangler`, `.sites-runtime`, local environment files, generated archives, SSH keys, dashboard backups, or credentials.

@@ -1,17 +1,33 @@
 # Artwork and graphics
 
-Roomcraft's 1536 × 1024 visual starting point was supplied for this project as a PNG. The bundled reference was refined with the requested sofa, window, stair, and floor corrections. The editor's shell, floor textures, furniture atlas, baby/home atlases, and object overlays were created or derived for the Roomcraft layout workflow. They are bundled under `site/public/assets/` so the hosted editor and detailed PNG export use the same graphics. The `docs/images/published-plan.png` graphic is the current exported plan; at this release it is byte-identical to the bundled reference. The other manual screenshots show the editor and Home Assistant at the time of this release.
+Roomcraft's 1536 × 1024 visual starting point was supplied for this project as a PNG and refined for the sofa, stair, floor, and window corrections. The current `floorplan.png` has recessed blue glazing. The [published-plan image](images/published-plan.png) is the latest PNG exported from Home Assistant Studio and read back from the live dashboard; its pixels show the same corrected scene, while its PNG bytes differ from the bundled reference because the renderer encoded it anew. The renderer also reapplies blue glazing pixels from `empty-shell.png` where edited rooms or objects disturb those baked-in windows. The editor's shell, floor textures, furniture atlas, baby/home atlases, and object overlays were created or derived for the Roomcraft layout workflow. They are bundled under `site/public/assets/` so the HA-hosted editor, optional cloud editor, and detailed PNG export use the same graphics. Earlier flat-window captures are in the [legacy screenshot archive](legacy/README.md).
 
 | File or group | Role |
 | --- | --- |
-| `floorplan.png` | Original furnished reference and visual target |
-| `empty-shell.png`, `wall-free-shell.png` | Underlay art used when the editable layout is drawn |
+| `floorplan.png` | Corrected furnished reference bundled with the editor; the live published export is shown separately in the manual |
+| `empty-shell.png`, `wall-free-shell.png` | Underlay art used when the editable layout is drawn; `empty-shell.png` restores default glazing around edited cutouts |
 | `illustrated-furniture-atlas.png` | Perspective furniture sprites |
 | `baby-and-home-atlas.png`, `baby-and-home-overhead-atlas.png` | Small-item artwork for baby, home, safety, and decor inventory |
 | `rug-sprite.png`, `bedroom-rug-sprite.png` | Floor object detail |
 | `terrazzo-tile.png`, `sage-tile.png` | Room finish textures |
 
 Preserve original source dimensions, transparency, and color alignment when replacing an asset. A new atlas should include a contact sheet or screenshot, a render comparison at 100% scale, and a note in the changelog. Check that a sprite's perspective, shadow direction, and wall attachment match the scene. Keep the reference PNG in source so future work can compare the rendered result without relying on an external attachment.
+
+## Wall-mounted window quality check
+
+Windows are architectural openings, so their frame and glazing must follow the direction and apparent thickness of the wall they attach to. For a change to window artwork or snapping, inspect all of the following in Design mode **and** in the downloaded detailed PNG:
+
+![Comparison of flat white window replacements above and recessed blue glazing below](images/window-perspective-comparison.png)
+
+In this comparison, the top crop shows the flat replacement windows and the lower crop shows the recessed shell glazing used by the corrected Design renderer.
+
+1. Place one window on a horizontal exterior wall and another on a vertical exterior wall. Their long edges should follow the wall rather than appear as floor objects.
+2. Check frame depth, reveal, sill, glazing reflections, and cast shadow at 100% scale. The light and dark sides should agree with nearby raised walls.
+3. Drag each window along its wall and around a corner. Rotation should update to the new wall; the object should stay centered on that wall and not float into the room or outdoors.
+4. Change the wall finish and a room floor finish. The window should remain legible and neither finish should paint over its frame or glass.
+5. Export a PNG and compare its window position and perspective to the editor at the same scale. Check both laptop and tablet canvas sizes for clipping or alignment shifts.
+
+The original furnished reference includes baked-in windows. Editable window objects are separate overlays; moving a wall or changing its finish does not cut a new structural opening into the reference bitmap. The exterior outline remains fixed to keep the supplied scene aligned.
 
 The public graphics show a fictionalized floor plan and are documentation/reference art. Do not add live camera frames, exact vacuum maps, household photos, or private access URLs to this folder.
 
