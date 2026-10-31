@@ -2,7 +2,7 @@
 
 A landscape Home Assistant dashboard with four illustrated themes: Pokémon, Pokédex, Animal Crossing, and a Stardew-inspired countryside view. Room pins open contextual controls, while a searchable directory exposes every current entity allowed by the dashboard configuration.
 
-**Status: tested prototype.** This is reusable frontend source with synthetic examples. It is not a copy of a live home's configuration, and a GitHub update does not deploy it.
+**Status: legacy tested prototype for the second-floor authoring workflow.** Its four-theme panel remains an independent, reproducible experiment. [Roomcraft](../roomcraft/README.md) is the active second-floor layout editor. This folder retains its source, artwork versions, and tests for reference; it is not a copy of a live home's configuration, and a GitHub update does not deploy it.
 
 The package uses standard browser JavaScript modules and CSS, JSON configuration, a [typed floor-plan model](floorplan-format.md), PNG runtime artwork, editable SVG artwork for earlier themes, and a licensed TTF font. There is no proprietary project file, build service, npm dependency, or Home Assistant add-on. It is a portable *file package*, but the bundled layout and example device IDs need adaptation for a different home.
 

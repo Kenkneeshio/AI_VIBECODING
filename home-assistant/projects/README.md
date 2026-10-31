@@ -16,7 +16,8 @@ Use lowercase names with hyphens.
 
 | Project | Purpose | Status |
 | --- | --- | --- |
-| [ishioho](ishioho/README.md) | Landscape Home Assistant control panel in four illustrated themes, with contextual popups and a searchable entity directory | Tested prototype; source, synthetic examples, and isolated checks |
+| [Roomcraft](roomcraft/README.md) | Active second-floor layout editor, illustrated plan, and Home Assistant dashboard transfer | Active on one installation; public source and manual |
+| [ishioho](ishioho/README.md) | Historical four-theme control panel with contextual popups and searchable entity directory | Legacy prototype for the second-floor authoring workflow; source and tests preserved |
 
 The repository contains reusable source and examples, not live home configuration. Publishing changes does not deploy a dashboard.
 

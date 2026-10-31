@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f2eb">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <title>Roomcraft — Second Floor Builder</title>
+  <meta name="description" content="A detailed illustrated room builder based on the second-floor home plan.">
+  <link rel="stylesheet" href="styles.css?v=roomcraft-integration-20261031b">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand" aria-label="Roomcraft home">
+        <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+        <span>ROOMCRAFT</span>
+      </div>
+      <div class="project-heading">
+        <span class="eyebrow">YOUR SPACE <span class="tiny-dot"></span> LEVEL 02</span>
+        <strong>Second-floor home</strong>
+      </div>
+      <div class="top-actions">
+        <span class="save-state" id="saveState"><span class="save-dot"></span> Saved locally</span>
+        <button class="icon-button" id="undoButton" type="button" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
+        <button class="icon-button" id="redoButton" type="button" title="Redo (Ctrl+Y)" aria-label="Redo">↷</button>
+        <div class="menu-wrap">
+          <button class="primary-button" id="exportButton" type="button" aria-haspopup="true" aria-controls="exportMenu" aria-expanded="false">Export <span aria-hidden="true">⌄</span></button>
+          <div class="dropdown" id="exportMenu" hidden>
+            <button type="button" data-export="png"><span>▧</span> Dashboard image PNG</button>
+            <button type="button" data-export="json"><span>{ }</span> Editable layout JSON</button>
+            <button type="button" data-export="yaml"><span>⌂</span> Home Assistant YAML</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="workbench">
+      <aside class="left-panel panel">
+        <div class="panel-header">
+          <p class="eyebrow">BUILD YOUR SPACE</p>
+          <h1>Make it yours<span>.</span></h1>
+          <p class="panel-intro">Build directly on the illustrated plan. Move furniture, change each room’s floor, and edit interior walls.</p>
+        </div>
+
+        <div class="reference-card">
+          <div class="reference-thumb"><img src="assets/floorplan.png" alt="The original furnished second-floor reference"></div>
+          <div class="reference-copy"><strong>Starting reference</strong><span>Original furnished image</span></div>
+          <button type="button" class="text-button" id="showReferenceButton">View</button>
+        </div>
+
+        <div class="panel-tabs" role="tablist" aria-label="Builder palette">
+          <button type="button" class="panel-tab active" data-panel="objects" role="tab" aria-selected="true">Objects</button>
+          <button type="button" class="panel-tab" data-panel="floors" role="tab" aria-selected="false">Floors</button>
+          <button type="button" class="panel-tab" data-panel="rooms" role="tab" aria-selected="false">Rooms</button>
+          <button type="button" class="panel-tab" data-panel="walls" role="tab" aria-selected="false">Walls</button>
+        </div>
+
+        <section class="panel-content" id="objectsPanel" aria-label="Objects palette">
+          <div class="section-heading"><span>ADD AN OBJECT</span><span class="heading-hint">Click, then place</span></div>
+          <div class="inventory-controls">
+            <label class="palette-search"><span aria-hidden="true">⌕</span><input id="objectSearch" type="search" placeholder="Search all objects…" aria-label="Search all objects"></label>
+            <label class="inventory-filter"><span>Category</span><select id="objectCategory" aria-label="Inventory category"></select></label>
+            <p class="inventory-count" id="inventoryCount" aria-live="polite"></p>
+          </div>
+          <div class="inventory-strip" id="inventoryStrip">
+            <div class="objects-catalog" id="objectsCatalog"></div>
+            <button type="button" class="secondary-button full-width" id="restoreFurnishingsButton">↺ Restore reference furniture</button>
+            <button type="button" class="secondary-button full-width" id="recoverDraftButton" hidden>↶ Recover previous browser draft</button>
+            <button type="button" class="secondary-button full-width" id="returnPreRecoveryButton" hidden>↩ Return to pre-recovery layout</button>
+            <details class="ha-controls"><summary id="hotspotSummary">Home Assistant controls</summary><div id="hotspotList" class="ha-control-list"></div></details>
+          </div>
+        </section>
+
+        <section class="panel-content" id="floorsPanel" aria-label="Floor finishes" hidden>
+          <p class="help-copy">Pick a finish, then click a room on the plan to paint its floor.</p>
+          <div id="surfacePalette" class="surface-list"></div>
+        </section>
+
+        <section class="panel-content" id="roomsPanel" aria-label="Rooms" hidden>
+          <p class="help-copy">Select a room to change its finish or drag its corner handles in Room mode.</p>
+          <div id="roomList" class="room-list"></div>
+          <button type="button" class="secondary-button full-width" id="newRoomButton">＋ Add room</button>
+        </section>
+
+        <section class="panel-content" id="wallsPanel" aria-label="Wall finishes" hidden>
+          <p class="help-copy">Choose a finish, then click any wall. Draw new walls with the Wall tool; select and drag an interior segment or endpoint to change its position. The illustrated exterior boundary keeps its original outline.</p>
+          <div id="wallPalette" class="surface-list"></div>
+        </section>
+
+        <div class="panel-footer">
+          <div class="dashboard-transfer-actions" aria-label="Home Assistant dashboard transfer">
+            <button type="button" class="dashboard-transfer-button" id="importDashboardButton">↓ Import from dashboard</button>
+            <button type="button" class="dashboard-transfer-button dashboard-transfer-button-primary" id="exportDashboardButton">↑ Export to dashboard</button>
+          </div>
+          <p class="dashboard-transfer-status" id="dashboardTransferStatus" role="status" aria-live="polite">Transfer your layout with Home Assistant.</p>
+          <div class="file-actions">
+            <button type="button" class="footer-link" id="importButton">↥ Import layout JSON</button>
+            <button type="button" class="footer-link" id="resetButton">↺ Reset to starting plan</button>
+          </div>
+        </div>
+      </aside>
+
+      <section class="center-panel" aria-label="Layout editor">
+        <div class="canvas-toolbar">
+          <div class="tool-group" role="toolbar" aria-label="Drawing tools">
+            <button type="button" class="tool active" data-tool="select" title="Select and move (V)" aria-label="Select and move"><span>↖</span><small>Select</small></button>
+            <button type="button" class="tool" data-tool="pan" title="Pan (H)" aria-label="Pan"><span>✋</span><small>Pan</small></button>
+            <button type="button" class="tool" data-tool="room" title="Edit rooms (R)" aria-label="Edit rooms"><span>▦</span><small>Room</small></button>
+            <button type="button" class="tool" data-tool="wall" title="Draw wall (W)" aria-label="Draw wall"><span>╱</span><small>Wall</small></button>
+            <button type="button" class="tool" data-tool="erase" title="Erase object or wall (E)" aria-label="Erase"><span>⌫</span><small>Erase</small></button>
+          </div>
+          <div class="toolbar-right">
+            <button type="button" class="view-button active" id="designModeButton">Design</button>
+            <button type="button" class="view-button" id="referenceModeButton">Reference</button>
+            <button type="button" class="view-button focus-button" id="focusCanvasButton" aria-pressed="false" title="Expand the artwork for a closer look">⤢ <span>Focus canvas</span></button>
+            <button type="button" class="inspector-toggle" id="inspectorToggle" aria-controls="propertiesInspector" aria-expanded="false" aria-label="Open inspector" title="Open inspector">☷ <span>Inspector</span></button>
+            <span class="toolbar-divider"></span>
+            <button type="button" class="zoom-button" id="zoomOutButton" aria-label="Zoom out">−</button>
+            <button type="button" class="zoom-value" id="zoomValue" title="Show the artwork at its actual 100% size" aria-label="Zoom to 100%">100%</button>
+            <button type="button" class="zoom-button" id="zoomInButton" aria-label="Zoom in">＋</button>
+            <button type="button" class="zoom-fit" id="fitButton">Fit</button>
+          </div>
+        </div>
+
+        <div class="viewport" id="viewport">
+          <div class="canvas-stage" id="canvasStage">
+            <canvas id="planCanvas" width="1536" height="1024" aria-label="Editable second-floor layout"></canvas>
+          </div>
+          <div class="canvas-corner-note"><span class="note-sun">✦</span><span>SECOND FLOOR<br><strong>DESIGN CANVAS</strong></span></div>
+          <div class="viewport-toast" id="viewportToast" role="status" aria-live="polite" hidden></div>
+          <div class="mini-help" id="miniHelp">Select an object to move it. Scroll to zoom, or hold Space to pan.</div>
+        </div>
+
+        <div class="statusbar"><span id="statusText">Ready to build</span><span>LOCAL PROJECT <i></i> 1536 × 1024 CANVAS</span></div>
+      </section>
+
+      <div class="inspector-scrim" id="inspectorScrim" hidden></div>
+      <aside class="right-panel panel" id="propertiesInspector" aria-label="Properties inspector">
+        <div class="inspector-heading"><div><p class="eyebrow">DETAILS & SETTINGS</p><h2>Inspector</h2></div><button type="button" class="inspector-close" id="inspectorClose" aria-label="Close inspector">×</button></div>
+        <div id="inspectorContent" class="inspector-content"></div>
+        <div class="right-bottom-card"><span class="sparkle">✧</span><div><strong>Dashboard transfer</strong><p>Edits save in this browser. Use the dashboard buttons to transfer a layout, or use JSON to move it between browsers.</p></div></div>
+      </aside>
+    </main>
+  </div>
+
+  <input id="importFile" type="file" accept=".json,application/json" hidden>
+  <dialog id="helpDialog" class="app-dialog">
+    <form method="dialog"><button class="dialog-close" aria-label="Close" value="cancel">×</button></form>
+    <p class="eyebrow">HOW IT WORKS</p><h2>A little room to play.</h2>
+    <p>Design begins with the furnished image originally used for your Home Assistant Second Floor dashboard. Unchanged areas keep its source pixels; movable objects use cutouts from that artwork. Reference shows the starting image.</p>
+    <ul><li><strong>Objects:</strong> search all 208 options or choose a category, then click the plan to place one. Select an object to change its color or finish in the Inspector.</li><li><strong>Artwork:</strong> choose Focus canvas to expand the plan; click the zoom percentage to inspect the art at actual size.</li><li><strong>Controls:</strong> select Home Assistant markers or names to move them and edit their entities.</li><li><strong>Floors and rooms:</strong> choose a finish, then click a room; drag room corners in Room mode.</li><li><strong>Walls:</strong> choose a finish and click any wall. Draw and move interior segments; exterior walls can be refinished while their illustrated outline stays fixed.</li><li><strong>Layouts:</strong> edits save in this browser. Import or export JSON to move an editable layout between browsers.</li><li><strong>Home Assistant:</strong> Import from dashboard loads its saved editable layout. Export to dashboard sends this design, image, and controls to your Second Floor dashboard. Transfers happen when you press a button. PNG and YAML downloads remain available for manual setup.</li></ul>
+    <button class="primary-button" value="cancel" onclick="this.closest('dialog').close()">Let's build</button>
+  </dialog>
+  <dialog id="confirmationDialog" class="app-dialog confirmation-dialog" aria-labelledby="confirmationTitle" aria-describedby="confirmationMessage">
+    <p class="eyebrow">ROOMCRAFT</p>
+    <h2 id="confirmationTitle">Confirm change</h2>
+    <p id="confirmationMessage"></p>
+    <div class="confirmation-actions">
+      <button type="button" class="secondary-button" id="confirmationCancel">Cancel</button>
+      <button type="button" class="primary-button" id="confirmationAccept">Continue</button>
+    </div>
+  </dialog>
+  <script src="inventory.js?v=dashboard-transfer-20261031" defer></script>
+  <script src="raster-renderer.js?v=roomcraft-integration-20261031" defer></script>
+  <script src="object-art.js?v=dashboard-transfer-20261031" defer></script>
+  <script src="app.js?v=roomcraft-integration-20261031b" defer></script>
+  <script src="responsive-inspector.js?v=dashboard-transfer-20261031" defer></script>
+</body>
+</html>
