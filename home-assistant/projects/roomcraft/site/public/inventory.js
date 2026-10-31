@@ -27,7 +27,8 @@
     forest:   ['Forest green','#668a63','#a3bb80','#e5e7bc','#355d45'],
     blush:    ['Blush','#dbb2a9','#f1d6cc','#fff1e4','#a67b79'],
     rainbow:  ['Multicolor','#e7ab9d','#9cc8bd','#edd18b','#6d7591'],
-    teddy:    ['Teddy brown','#a98263','#cfab84','#ead5ae','#654c3d']
+    teddy:    ['Teddy brown','#a98263','#cfab84','#ead5ae','#654c3d'],
+    slate:    ['Soft gray','#929491','#bdc0bd','#f1f0e9','#55595b']
   };
   const templates = [];
   const icons = {
@@ -66,10 +67,13 @@
   add('baby-toys','softToy','rings','stacking-rings','Large stacking rings',68,68,['rainbow','butter','mint','coral'],{atlas:'stackRings',tags:'baby stacker'});
   add('baby-toys','softToy','blocks','soft-blocks','Soft fabric blocks',88,70,['sage','sky','peach','lavender'],{tags:'large baby blocks'});
   add('baby-toys','softToy','plush','plush-bear','Plush bear',58,65,['teddy','cream','blush'],{atlas:'plushBear',tags:'baby stuffed animal'});
+  add('baby-toys','softToy','photoBunnyPlush','bunny-plush','Soft bunny plush',58,70,['cream'],{tags:'photo 1977 living room baby stuffed animal rabbit'});
   add('baby-toys','softToy','teether','teething-ring','Large teething ring',48,48,['mint','butter'],{tags:'baby silicone'});
 
   // Activity pieces can sit on top of a play mat or in a dedicated play zone.
   add('baby-activities','activityToy','playGym','play-gym','Floor play gym',160,126,['sage','peach','sky'],{atlas:'playGym',tags:'baby activity arch'});
+  add('baby-activities','activityToy','photoWoodArch','wooden-play-arch','Wooden hanging-toy play arch',140,100,['oak'],{tags:'photo 1977 living room baby gym natural wood dangling toys'});
+  add('baby-activities','activityToy','photoActivityTable','colorful-activity-table','Colorful activity table',118,90,['rainbow'],{tags:'photo 1977 living room baby sensory music table'});
   add('baby-activities','activityToy','activityCube','activity-cube','Activity cube',74,74,['oak','sky','mint'],{atlas:'activityCube',tags:'baby activity'});
   add('baby-activities','activityToy','activityBoard','activity-board','Large activity board',124,60,['oak','sage','sky'],{atlas:'activityBoard',tags:'baby sensory board'});
   add('baby-activities','activityToy','mirror','floor-mirror','Unbreakable play mirror',98,70,['cream','sage'],{tags:'baby floor mirror'});
@@ -79,6 +83,8 @@
 
   add('baby-mats','playMat','tummy','tummy-mat','Tummy-time mat',182,130,['sage','peach','sky','butter'],{tags:'baby soft floor mat'});
   add('baby-mats','playMat','foam','foam-mat','Large foam play mat',215,155,['rainbow','cream','mint','lavender','coral'],{atlas:'mat',tags:'baby floor padded'});
+  add('baby-mats','playMat','photoLeafMat','leaf-play-mat','Gray leaf play mat',240,170,['slate'],{tags:'photo 1977 living room baby quilted patterned padded mat'});
+  add('baby-mats','playMat','photoCheckerMat','checker-puzzle-mat','Brown checker puzzle mat',210,140,['cream'],{tags:'photo 1977 living room baby foam tile checkerboard'});
   add('baby-mats','playMat','puzzle','puzzle-mat','Interlocking play mat',205,155,['sage','sky','butter','peach'],{tags:'baby padded puzzle'});
   add('baby-mats','playMat','round','round-mat','Round quilted play mat',160,160,['cream','blush','mint'],{tags:'baby floor rug'});
 
@@ -87,6 +93,8 @@
   add('baby-safety','paddedPanel','quilted','quilted-wall','Quilted wall panel',146,30,['cream','sky','blush','sage'],{mount:'wall',tags:'color soft wall'});
   add('baby-safety','paddedPanel','folding','folding-wall','Folding play barrier',174,34,['sage','peach','lavender'],{tags:'baby color safety wall'});
   add('baby-safety','paddedPanel','playpen','playpen','Panel playpen',182,143,['cream','sage','sky'],{tags:'baby enclosure'});
+  add('baby-safety','paddedPanel','photoPlayYard','rainbow-play-yard','Multicolor bear-panel play yard',320,225,['rainbow'],{tags:'photo 1977 living room baby safety enclosure playpen fence'});
+  add('baby-safety','paddedPanel','photoBearPanel','bear-panel','Bear-face play yard panel',94,34,['blush','white','mint','butter','sky','lavender'],{tags:'photo 1977 living room baby colorful modular safety gate fence panel'});
   add('baby-safety','paddedPanel','gate','stair-gate','Hardware-mounted stair gate',112,29,['white','oak','charcoal'],{atlas:'babyGate',tags:'top of stairs second floor baby gate'});
   add('baby-safety','paddedPanel','guard','fireplace-guard','Fireplace barrier',158,35,['charcoal','cream'],{tags:'fireplace baby screen guard'});
 
@@ -98,11 +106,13 @@
   add('climbing','foamBlock','tunnel','foam-tunnel','Foam crawl tunnel',155,112,['sage','peach','lavender'],{tags:'soft play climbing'});
 
   add('fireplace','fireplace','mantel','fireplace-mantel','Fireplace mantel',180,64,['oak','walnut','white'],{atlas:'fireplace',tags:'hearth fireplace shelf'});
+  add('fireplace','fireplace','photoTiledMantel','white-tile-mantel','White mantel with dark tile hearth',180,95,['white'],{tags:'photo 1977 living room fireplace stone tile surround'});
   add('fireplace','fireplace','hearth','fireplace-hearth','Stone fireplace hearth',169,87,['cream','charcoal','terracotta'],{tags:'fireplace insert'});
   add('fireplace','fireplace','screen','fireplace-screen','Fireplace screen',172,31,['charcoal','brass'],{tags:'fireplace guard'});
   add('fireplace','shelf','floating','floating-shelf','Floating mantel shelf',162,40,['oak','walnut','white','charcoal'],{tags:'fireplace wall shelf'});
   add('fireplace','shelf','corner','corner-shelf','Corner display shelf',108,108,['oak','white'],{tags:'fireplace shelves'});
   add('fireplace','shelf','anchored','anchored-bookcase','Anchored book display shelf',87,152,['oak','white'],{tags:'anchored shelves bookcase'});
+  add('fireplace','shelf','photoToyShelf','toy-side-shelf','Fireplace side toy shelf',85,130,['oak'],{tags:'photo 1977 living room toy display shelving'});
 
   add('balcony','planterSet','rail','rail-planters','Balcony rail planter set',179,53,['forest','terracotta','white','charcoal'],{atlas:'balconyPlants',tags:'balcony flowers plant set'});
   add('balcony','planterSet','cluster','pot-cluster','Balcony pot cluster',137,100,['terracotta','cream','sage','charcoal'],{tags:'balcony plant set'});
@@ -127,6 +137,8 @@
   add('toy-storage','storage','cubby','low-cubby','Low toy cubby',136,67,['oak','white'],{tags:'baby toy storage shelf'});
 
   add('play-furniture','playFurniture','softPouf','soft-pouf','Soft play pouf',79,79,['sage','peach','lavender'],{tags:'baby soft seat'});
+  add('play-furniture','playFurniture','photoBearChair','bear-floor-chair','Teddy bear toddler floor chair',86,85,['teddy'],{tags:'photo 1977 living room baby bear armchair'});
+  add('play-furniture','playFurniture','photoBolster','gray-bolster','Long gray floor bolster',126,43,['slate'],{tags:'photo 1977 living room baby soft support pillow'});
   add('play-furniture','playFurniture','lowTable','low-play-table','Low play table',127,79,['oak','white'],{tags:'baby play furniture'});
   add('play-furniture','playFurniture','lowShelf','low-play-shelf','Low play shelf',129,52,['oak','white'],{tags:'baby play furniture'});
 

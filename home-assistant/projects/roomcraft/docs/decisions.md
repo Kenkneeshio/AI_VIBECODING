@@ -1,5 +1,13 @@
 # Decision log
 
+## 2026-10-31 — Translate the living-room photo into independent plan objects
+
+**Decision:** Use the supplied photo as a visual reference for an illustrated catalog and place the eight clear play-area furnishings in the current living-room plan. Keep the modular fence colors, mantel, and toy shelf available for further edits. Do not place the mantel or shelf until the physical fireplace wall is verified. Draw each object in the plan's raised perspective, with floor mats below play equipment and ceiling fixtures above it.
+
+**Reason:** The user needs to rearrange photo-inspired objects in the editor and see them on the dashboard. The photo does not provide measured floor-plan coordinates or prove which illustrated wall contains the fireplace. A fixed placement beside the existing TV or windows would assert a wall relationship that has not been established.
+
+**Consequence:** The eight placed objects remain independently movable and resizable. The layout is a provisional visual arrangement, not a dimensional survey or exact reconstruction. The original photo and its people stay outside public code, static assets, and the rendered dashboard plan. Any later fireplace placement should be confirmed in the room and documented as a separate layout decision.
+
 ## 2026-10-31 — Separate fan motor scenes from the fan-light action
 
 **Decision:** Use the fan artwork as a movable target that displays `switch.ceiling_fan` state, runs `scene.ceiling_fan_on_scene` on tap, and runs `scene.ceiling_fan_off` on hold. Use a separate movable center target for `scene.ceiling_fan_light_toggle`. The current living-room position is provisional until the physical room is confirmed.

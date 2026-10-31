@@ -16,7 +16,7 @@ The supplied reference is a single PNG, so some details are still baked into it:
 
 ![Public-safe Roomcraft plan capture with recessed windows, corrected sofa, movable room lighting, ceiling fan, and a camera placeholder without private media](images/published-plan.png)
 
-This public-safe PNG was exported after the ceiling fan update. It shows the corrected sofa orientation, recessed blue windows, distinct floor textures, nine movable light fixtures including the bedside lamp, the five-blade ceiling fan, and a drawn camera placeholder on the left. The actual event image is a separate authenticated Home Assistant overlay and is absent from this graphic. The upstairs rooms remain on one level. This is a release capture; later dashboard edits can change object positions. The [legacy screenshot archive](legacy/README.md) retains earlier flat-window captures for comparison.
+This public-safe PNG shows the corrected sofa orientation, recessed blue windows, distinct floor textures, nine movable light fixtures including the bedside lamp, the five-blade ceiling fan, and a drawn camera placeholder on the left. The actual camera feed is a separate authenticated Home Assistant overlay and is absent from this graphic. The upstairs rooms remain on one level. The photo-inspired baby play area sits in front of the sofa. This is a release capture; later dashboard edits can change object positions. The [legacy screenshot archive](legacy/README.md) retains earlier flat-window captures for comparison.
 
 ## 1. Open the editor and choose a view
 
@@ -30,7 +30,7 @@ This 960 × 600 browser preview shows the complete 696 × 465 plan card without 
 
 The owner-private cloud editor is an alternate route when available; use the Site URL supplied by the owner. It has its own sign-in. Both editors share the dashboard's saved `roomcraft_layout` and load it on opening. Use **Import from dashboard** to refresh without reloading the page after someone else publishes a change. Use Layout Studio on the home network as the normal authoring path.
 
-This manual describes the HA-hosted Studio and owner-private cloud editor version 18. Both editors load the current Home Assistant layout on opening; a different local browser draft remains recoverable. The own-tab Studio fallback and the current layout transfer have readback evidence in the [changelog](../CHANGELOG.md).
+This manual describes the HA-hosted Studio and owner-private cloud editor version 19. Both editors load the current Home Assistant layout on opening; a different local browser draft remains recoverable. The own-tab Studio fallback and layout transfer have readback evidence in the [changelog](../CHANGELOG.md).
 
 If Chrome leaves the embedded editor blank, use **Open editor in a new tab** inside Layout Studio. Keep the Studio tab open while editing in the new tab: it supplies the authenticated dashboard connection through the opener. A direct visit to `/local/roomcraft/editor.html` has no such connection and cannot import or export to the dashboard.
 
@@ -45,6 +45,12 @@ Windows and wall-mounted objects snap near walls. If the editor asks you to clic
 The [window artwork comparison](images/window-perspective-comparison.png) shows why the lower, recessed glazing is the Design view's target for the original openings.
 
 ![Furniture and small object detail in the illustrated perspective](images/object-detail.png)
+
+### Arrange the photo-inspired play area
+
+Search **1977** or **photo** in **Objects** to show 16 color and shape variants across 11 new designs. The multicolor bear-panel play yard, gray leaf mat, brown checker puzzle mat, wooden play arch, colorful activity table, teddy bear floor chair, gray bolster, and bunny plush are placed in the current living-room plan. They remain separate objects: choose **Select**, click one, drag it, or enter its position, dimensions, and angle in the Inspector. The mats sit underneath the raised play objects, and the ceiling fan remains visible over the play area in the rendered plan. Use **Undo** if a placement blocks a lamp or other control.
+
+The catalog also has individual bear-face fence panels in six colors, a white mantel with dark tile hearth, and a toy side shelf. Place these after confirming the actual living-room wall and fireplace position; the current plan's TV and windows do not establish that location. The objects are illustrated interpretations of the supplied photo in the plan's perspective, not a measured or exact recreation. The source photo and its people are not part of the catalog or dashboard graphic.
 
 ## 3. Change a floor finish
 

@@ -6,10 +6,10 @@
 
 | Surface | Verified state | Source of truth |
 | --- | --- | --- |
-| Public source | Roomcraft is under `home-assistant/projects/roomcraft/` in `Kenkneeshio/AI_VIBECODING`; ceiling fan/light code and manual graphic merged in [PR #7](https://github.com/Kenkneeshio/AI_VIBECODING/pull/7). The Roomcraft GitHub Actions run passed. | GitHub `main` for code and reviewed documentation. A GitHub commit does not deploy a runtime. |
+| Public source | Roomcraft is under `home-assistant/projects/roomcraft/` in `Kenkneeshio/AI_VIBECODING`; this release adds photo-inspired catalog art, a render smoke test, and updated manual graphics. | GitHub `main` for code and reviewed documentation. A GitHub commit does not deploy a runtime. |
 | Official editor | Home Assistant **Second Floor → Layout Studio** at `/second-floor/studio`, installed on one HA 2026.10 instance. The signed-in HA user's session supplies dashboard access through `custom:roomcraft-editor-card`. | HA-hosted card and static assets installed from `site/`. |
-| Optional cloud editor | Owner-private Site v18, published from Site source commit `f0193219ef9dd4f51ee0e1b4845337b4312fd8d2`. It is an alternate editor for the same layout. | Site deployment and its owner-only server bridge. |
-| Saved layout and live plan | The Second Floor dashboard stores `roomcraft_layout` version 2 and a rendered plan image. The latest export/readback found **28 items and 10 object controls**, including separate fan and fan-light targets; the porch camera overlay remained present. | Home Assistant dashboard configuration, not browser storage or this public repository. |
+| Optional cloud editor | Owner-private Site v19, published from Site source commit `5874e8976c0f0bc6dc86a9e9e9e69b13c4fb8c07`. It is an alternate editor for the same layout. | Site deployment and its owner-only server bridge. |
+| Saved layout and live plan | The Second Floor dashboard stores `roomcraft_layout` version 2 and a rendered plan image. The latest HA export/readback found **6 rooms, 36 items, and 10 unique object controls**, including eight new living-room play-area objects. The separate fan and fan-light scene targets and porch camera overlay remained present. | Home Assistant dashboard configuration, not browser storage or this public repository. |
 | Physical tablet | The plan fit a 960 × 600 browser viewport. | The Apolosign Calendar tablet still needs an actual display and touch check for this release. |
 
 The default Home Assistant dashboard is an **owner profile preference**. It is not installed by this repository. The old Main Dashboard remains a reference for the curated control drawer; the `ishioho` project is a separate legacy prototype.
@@ -34,6 +34,10 @@ The default Home Assistant dashboard is an **owner profile preference**. It is n
 
 The dashboard's saved `roomcraft_layout` is the shared editable project. An export renders a PNG, maps item bindings to Home Assistant picture elements, uploads the image, saves the layout, and reads the dashboard back. The `plan` image and controls, `studio` editor, and `live` native-card view must remain coherent. Browser drafts are recovery copies. Clock, weather, camera frames, device state, and robot position are runtime data; do not write them into layout geometry or public assets. See the [architecture guide](architecture.md) for the full data flow.
 
+### Photo-inspired living-room objects
+
+The catalog contains 16 variants across 11 designs searchable by **1977** or **photo**. Eight independent objects are placed in front of the sofa: multicolor play yard, gray leaf mat, brown checker mat, wooden play arch, activity table, teddy floor chair, gray bolster, and bunny plush. Their geometry can be moved and sized without changing the reference PNG. Individual bear-face fence panels in six colors, a white mantel with dark tile hearth, and a toy side shelf are catalog options. The mantel and shelf have **not** been placed because the real fireplace wall is unconfirmed and the current TV/windows would make an assumed placement misleading. The supplied photo is an art reference only; no source photo, person, or private room image belongs in the Site assets, HA static files, or GitHub. The ceiling artwork pass keeps the existing fan visible above the new furnishings regardless of item insertion order.
+
 ### Current fan and camera behavior
 
 | Plan object | Binding/action | What the UI may claim |
@@ -57,7 +61,7 @@ npx tsc --noEmit
 npm run build
 ```
 
-On Windows, use `python` if `python3` is not installed. The fan release passed 25 Site tests, 16 card tests, five migration tests, TypeScript, build, and the GitHub workflow. These checks do not prove physical device operation or tablet fit. For a runtime release, also verify dashboard import/export/readback, the count and placement of derived controls, preservation of weather/time/edit link and other views, camera unavailable behavior, browser resizing, and actual tablet touch. Use read-only inspection first; a scene run or device toggle is a real-world action.
+On Windows, use `python` if `python3` is not installed. The photo-object release passed the new art smoke test, the Site test suite, JavaScript syntax, TypeScript, production build, and Git whitespace validation. HA export/readback confirmed 36 editable items, all eight new living-room objects, 10 unique object controls, preserved fan scene/light scene targets, and the porch camera. These checks do not prove physical device operation or tablet fit. For a runtime release, also verify dashboard import/export/readback, the count and placement of derived controls, preservation of weather/time/edit link and other views, camera unavailable behavior, browser resizing, and actual tablet touch. Use read-only inspection first; a scene run or device toggle is a real-world action.
 
 ## Runtime release and recovery
 
@@ -71,7 +75,7 @@ The installer records a private backup. To roll back, restore that dashboard JSO
 | --- | --- |
 | 1 | **Confirm the fan's physical room** and move both fan and center light targets together if living room is wrong. Keep the current placement labeled provisional until verified. |
 | 2 | **Check the Apolosign Calendar tablet in person** for full-plan fit, touch targets, Studio fallback, camera playback, and light/fan action labels. A browser-size preview is not this test. |
-| 3 | **Strengthen authored art** by making remaining baked furniture/details independently editable and checking perspective and export at 100%. Use the [artwork guide](artwork.md). |
+| 3 | **Confirm the living-room fireplace wall** before placing the new mantel and side shelf. Compare the play-area arrangement at 100% against the room's usable floor space; the photo is a visual reference, not a survey. Then make remaining baked furniture/details independently editable. Use the [artwork guide](artwork.md). |
 | 4 | **Add live adapters only with verified sources** for animated devices, weather, clock, garage, and vacuum position. The vacuum needs map-to-plan calibration and stale-position handling; motion needs reduced-motion support. See the [roadmap](roadmap.md). |
 
 For each follow-on change, record the data source, offline behavior, accessible interaction, security boundary, tests, and rollback in the existing [changelog](../CHANGELOG.md) and [decision log](decisions.md). Keep the work queue here and in the roadmap until a team chooses how to track implementation; no new issue or ticket is required just to preserve this handoff.
