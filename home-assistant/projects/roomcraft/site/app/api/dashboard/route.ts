@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { editableDashboardHotspots, withUpdatedPlanCard } from "../../../lib/dashboard-elements";
+import { editableDashboardHotspots, validCameraThumbnail, withUpdatedPlanCard } from "../../../lib/dashboard-elements";
 
 const DASHBOARD_PATH = "second-floor";
 const VIEW_PATH = "plan";
@@ -136,6 +136,11 @@ function validateProject(value: unknown): LayoutProject {
     if (!isObject(hotspot) || typeof hotspot.entity !== "string" ||
         hotspot.type !== "state-icon" || !isObject(hotspot.style)) {
       throw new BridgeError(400, "invalid_project", "The layout has an invalid Home Assistant control.");
+    }
+  }
+  for (const item of value.items) {
+    if (isObject(item) && item.type === "cameraThumbnail" && !validCameraThumbnail(item)) {
+      throw new BridgeError(400, "invalid_project", "The layout has an invalid camera thumbnail.");
     }
   }
   return value as LayoutProject;
@@ -333,7 +338,7 @@ export async function POST(request: Request): Promise<Response> {
     if (await revisionOf(latest) !== body.revision) {
       throw new BridgeError(409, "dashboard_changed", "The Home Assistant dashboard changed. Import it again before exporting.");
     }
-    const { config: next, card } = withUpdatedPlanCard(latest, image, project.hotspots as JsonObject[]);
+    const { config: next, card } = withUpdatedPlanCard(latest, image, project.hotspots as JsonObject[], project.items);
     next.roomcraft_layout = project;
     await socket.call("lovelace/config/save", { url_path: DASHBOARD_PATH, config: next });
     const verified = await getConfig(socket);

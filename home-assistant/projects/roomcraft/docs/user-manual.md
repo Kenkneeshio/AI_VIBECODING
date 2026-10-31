@@ -12,13 +12,15 @@ The current HA-hosted Studio is shown above. The left palette chooses objects, f
 
 The canvas is a top-down plan with lightly raised walls and furniture. The balcony and stair are outdoors at left. The stair begins at the lower-left landing and descends toward the top-left. Doorways between upstairs rooms remain on one floor level. Bedroom, study, baths, and living spaces have different finishes. The editor uses this image as a reference and separate illustrated assets to redraw edited geometry; an edited scene can differ from individual pixels in the reference PNG.
 
-![Latest Home Assistant published Roomcraft plan with recessed blue windows, corrected sofa, and room-specific flooring](images/published-plan.png)
+The supplied reference is a single PNG, so some details are still baked into it: rugs, some nightstands and cabinetry, and sinks are not independent objects in the current layout. The prominent sofa, bed, table, desk, bedside lamp, new room fixtures, and newly placed catalog objects have editable placement. Check **Design** against **Reference** after a large move; baked details cannot be dragged independently.
 
-This image was downloaded from the live Home Assistant plan after a successful Studio export and readback. It shows the corrected sofa orientation, recessed blue windows, and separate floor textures while keeping the upstairs rooms on one level. The [legacy screenshot archive](legacy/README.md) retains the earlier flat-window view for comparison.
+![Public-safe Roomcraft plan capture with recessed windows, corrected sofa, movable room lighting, and a camera placeholder without private media](images/published-plan.png)
+
+This public-safe PNG was exported after the lighting and camera layout update. It shows the corrected sofa orientation, recessed blue windows, distinct floor textures, nine movable light fixtures including the bedside lamp, and a drawn camera placeholder on the left. The actual event image is a separate authenticated Home Assistant overlay and is absent from this graphic. The upstairs rooms remain on one level. This is a release capture; later dashboard edits can change object positions. The [legacy screenshot archive](legacy/README.md) retains earlier flat-window captures for comparison.
 
 ## 1. Open the editor and choose a view
 
-The Second Floor dashboard has three views: **Floor Plan**, **Layout Studio**, and **Live Home**. On a laptop or tablet connected to the home network, open [Layout Studio](http://192.168.68.96:8123/second-floor/studio) and sign in to Home Assistant. The pencil-ruler icon in Floor Plan also navigates to Studio. The editor runs inside this Home Assistant view and uses your HA session; an administrator account is needed to publish a layout. A fresh browser loads the saved dashboard project by default. If that browser has a local draft, the draft opens first; use **Import from dashboard** to deliberately replace it with the current published layout.
+The Second Floor dashboard has three views: **Floor Plan**, **Layout Studio**, and **Live Home**. On a laptop or tablet connected to the home network, open `http://<HA-LAN-IP>:8123/second-floor/studio` and sign in to Home Assistant. The pencil-ruler icon in Floor Plan also navigates to Studio. The editor runs inside this Home Assistant view and uses your HA session; an administrator account is needed to publish a layout. A fresh browser loads the saved dashboard project by default. If that browser has a local draft, the draft opens first; use **Import from dashboard** to deliberately replace it with the current published layout.
 
 For Ken's HA profile, **Second Floor** is the default dashboard and the first sidebar item. Home Assistant stores that preference for the account across devices. Other accounts can choose their own default. The layout has been checked in a tablet-sized browser viewport; the physical Fire tablet was offline during this release and still needs an on-device check.
 
@@ -28,7 +30,7 @@ This 960 × 600 browser preview shows the complete 696 × 465 plan card without 
 
 The owner-private cloud editor is an alternate route when available; use the Site URL supplied by the owner. It has its own sign-in. Both editors share the dashboard's saved `roomcraft_layout`; after exporting in one, import in the other to refresh its draft. Use Layout Studio on the home network as the normal authoring path.
 
-This manual describes the HA-hosted Studio paired with owner-private cloud editor version 13. The own-tab Studio fallback completed a live import, export, and dashboard readback with 6 rooms, 33 walls, 13 items, and 7 controls.
+This manual describes the HA-hosted Studio and owner-private cloud editor version 14. The earlier own-tab Studio fallback completed a live import, export, and dashboard readback. The current lighting and camera release has its own readback recorded in the [changelog](../CHANGELOG.md).
 
 If Chrome leaves the embedded editor blank, use **Open editor in a new tab** inside Layout Studio. Keep the Studio tab open while editing in the new tab: it supplies the authenticated dashboard connection through the opener. A direct visit to `/local/roomcraft/editor.html` has no such connection and cannot import or export to the dashboard.
 
@@ -36,7 +38,7 @@ Use **Design** to edit. Use **Reference** to compare against the original furnis
 
 ## 2. Work with furniture and objects
 
-Open **Objects**. Search the catalog or filter by category, select an item, then click its location on the plan. The catalog includes living and bedroom furniture, kitchen and bath objects, plants, rugs, lamps, windows, baby play items, safety pieces, climbing blocks, a fireplace shelf, ceiling fan, and robot vacuum art. Select a placed item to edit its name, size, position, angle, and appearance in the **Inspector**. The rotate and duplicate actions are there too.
+Open **Objects**. Search the catalog or filter by category, select an item, then click its location on the plan. The catalog includes living and bedroom furniture, kitchen and bath objects, plants, rugs, lamps, windows, baby play items, safety pieces, climbing blocks, a fireplace shelf, ceiling fan, robot vacuum art, and camera thumbnails. Select a placed item to edit its name, size, position, angle, and appearance in the **Inspector**. The rotate and duplicate actions are there too. Drag a selected object's corner handle to resize it; hold **Shift** to keep its proportions.
 
 Windows and wall-mounted objects snap near walls. If the editor asks you to click closer to a wall, move the pointer to the intended wall segment and try again. After placing a window, zoom to 100% and check that its long edge, frame depth, and shadow follow that wall. Drag it along the wall if it needs repositioning. Use **Select** to drag an item. Use **Erase** or the Inspector's remove action to delete it. **Restore reference furniture** adds missing original furnishings without replacing your other edits.
 
@@ -56,9 +58,28 @@ Choose **Wall** and drag from the start point to the end point. Hold **Shift** f
 
 After changing a wall, check its adjoining floor polygon and any nearby window or wall-mounted object. These are separate editable layers.
 
-## 5. Link an object or control to Home Assistant
+## 5. Link lights, fans, controls, and cameras to Home Assistant
 
-The plan's markers represent Home Assistant controls. Select a marker to change its title, entity ID, location percentage, tap action, or hold action. The Inspector accepts an entity ID in `domain.object_id` form, such as `light.example_living_room`. You can also select a placed object and set its optional **Entity ID** to include it as a control in the YAML export.
+![Four-step diagram: place illustrated objects, assign example entity IDs, export, and view live state in Home Assistant](images/live-binding-flow.svg)
+
+The plan's markers represent Home Assistant controls. Select a marker to change its title, entity ID, location percentage, tap action, or hold action. The Inspector accepts an entity ID in `domain.object_id` form, such as `light.example_living_room`.
+
+### Make a lamp or fan a live control
+
+1. Place a lamp, ceiling light, or fan in its actual room, then select it.
+2. In the Inspector, enter the matching Home Assistant **Entity ID**, for example `light.example_living_room` or `fan.example_ceiling_fan`. Leave it blank for a decorative object.
+3. Export to the dashboard and open **Floor Plan**. The control sits over the illustrated fixture. Home Assistant supplies its current on/off state and handles the tap action; the editor never stores that live state in the layout JSON.
+4. If a separate control marker already represents the same entity, review its position before publishing. The linked fixture takes the entity's placement in the exported plan so there is one control for that device.
+
+The default furnished scene includes the bedside lamp and room light fixtures as editable objects. They can be moved, resized, or removed without changing the original PNG. A fixture with no entity binding is artwork only.
+
+### Add a camera thumbnail
+
+1. In **Objects**, choose **Cameras & controls → Camera thumbnail** and place it where the preview belongs. Resize it by dragging a corner handle.
+2. Enter the `camera.*` entity in **Camera entity ID**. For a latest-event still, enter an `image.*` entity in **Event image entity** and choose **Latest event image**.
+3. Choose **Live stream** only for a camera whose Home Assistant stream is working. Export the layout, then verify the frame in **Floor Plan** while signed in to Home Assistant. Click it to open native camera details.
+
+The design canvas shows a stylized placeholder, not a private camera frame. The live dashboard fetches media through the current Home Assistant session. If the event image is missing or the stream is unavailable, the frame shows an unavailable message. A camera thumbnail does not wake a battery camera merely by being displayed. Camera URLs and tokens do not belong in the exported layout or public repository.
 
 Confirm a device's physical location in Home Assistant before placing a control. A friendly name does not prove the room. The editor stores control placement; Home Assistant performs actual device actions. A device that is unavailable or missing should be corrected in Home Assistant before use.
 
@@ -77,7 +98,7 @@ The editor checks the dashboard revision before exporting. If another change hap
 
 The **Export** menu also provides a PNG and a manual Home Assistant YAML fallback. The YAML references a local image path; copy the PNG to that path before applying it manually.
 
-The **Floor Plan** view overlays working device markers, current weather, time, and the edit icon on the published plan shown above. Its centered layout keeps the entire 3:2 image visible in tested laptop and tablet-sized browser viewports. **Live Home** shows native Home Assistant weather, time, sun, garage, fan, vacuum status and map, second-floor controls, and the working garage camera feed. Front-door and porch camera feeds currently fail through Home Assistant's image proxy and are left out until repaired. Live Home reads from Home Assistant; the Roomcraft editor controls the authored room layout. A robot icon drawn in Roomcraft is decorative until its vacuum-map coordinates have been calibrated to the floor-plan coordinates.
+The **Floor Plan** view overlays working device markers, current weather, time, the edit icon, and any camera thumbnail published from the layout. Its centered layout keeps the entire 3:2 image visible in tested laptop and tablet-sized browser viewports. **Live Home** shows native Home Assistant weather, time, sun, garage, fan, vacuum status and map, second-floor controls, and the working garage camera feed. The latest-event image for the tested battery doorbell works as a Roomcraft thumbnail; its P2P live stream times out and is not labeled as live video. Other camera feeds must be verified individually. Live Home reads from Home Assistant; the Roomcraft editor controls the authored room layout. A robot icon drawn in Roomcraft is decorative until its vacuum-map coordinates have been calibrated to the floor-plan coordinates.
 
 ## Undo and recovery
 
@@ -91,6 +112,8 @@ The **Floor Plan** view overlays working device markers, current weather, time, 
 | Symptom | Action |
 | --- | --- |
 | Object will not place | Return to **Design**; for windows and wall fixtures, click close to a wall. |
+| A linked lamp or fan shows no live state | Check that its `light.*` or `fan.*` entity exists in Home Assistant, then import the current dashboard layout and export again. An unbound object stays decorative. |
+| Camera thumbnail shows unavailable | Check the camera and event-image entities in HA. Latest-event images must be available through HA's authenticated image proxy; a live preview needs an active, working stream. |
 | Floor looks misplaced | Select **Room**, inspect its corner handles, and keep the polygon within the room. |
 | A wall cannot move | The illustrated exterior shell is fixed. Select or draw an interior wall. |
 | Dashboard export says the dashboard changed | Import the dashboard again, compare changes, and retry. |

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { editableDashboardHotspots, mergeDashboardElements, withUpdatedPlanCard } from '../lib/dashboard-elements.ts';
+import { editableDashboardHotspots, mergeDashboardElements, validCameraThumbnail, withUpdatedPlanCard } from '../lib/dashboard-elements.ts';
 
 test('dashboard export replaces editable controls and retains independent overlays', () => {
   const existing = [
@@ -42,4 +42,38 @@ test('plan export leaves the separate studio and live views untouched', () => {
   assert.deepEqual(config.views[1], studio);
   assert.deepEqual(config.views[2], live);
   assert.equal(dashboard.views[0].cards[0].image, '/old.png');
+});
+
+test('camera thumbnail replaces only its marked overlay and keeps independent elements', () => {
+  const oldCamera = { type: 'custom:roomcraft-camera-thumbnail', roomcraft_item_id: 'door', camera_entity: 'camera.old', style: { left: '1%' } };
+  const manualImage = { type: 'image', image: '/local/manual-camera.png', style: { left: '83%' } };
+  const unmarkedCustom = { type: 'custom:roomcraft-camera-thumbnail', camera_entity: 'camera.manual', style: { left: '85%' } };
+  const item = { id: 'door', type: 'cameraThumbnail', name: 'Entry camera', x: 260, y: 390, w: 170, h: 110,
+    rotation: 8, entityId: 'camera.entry', imageEntityId: 'image.entry_event', previewMode: 'event' };
+  const result = mergeDashboardElements([], [oldCamera, manualImage, unmarkedCustom], [item]);
+  assert.equal(result.length, 3);
+  assert.equal(result[0].roomcraft_item_id, 'door');
+  assert.equal(result[0].camera_entity, 'camera.entry');
+  assert.equal(result[0].image_entity, 'image.entry_event');
+  assert.equal(result[0].preview_mode, 'event');
+  assert.equal(result[0].style.left, '16.93%');
+  assert.equal(result[0].style.top, '38.09%');
+  assert.equal(result[0].style.width, '11.07%');
+  assert.equal(result[0].style.height, '10.74%');
+  assert.equal(result[0].style.transform, 'translate(-50%, -50%) rotate(8deg)');
+  assert.deepEqual(result.slice(1), [manualImage, unmarkedCustom]);
+  assert.equal(oldCamera.camera_entity, 'camera.old');
+  assert.deepEqual(mergeDashboardElements([], result, []).slice(0), [manualImage, unmarkedCustom]);
+});
+
+test('camera thumbnail validation rejects external or malformed entities and invalid geometry', () => {
+  const item = { id: 'cam', type: 'cameraThumbnail', x: 260, y: 390, w: 170, h: 110,
+    rotation: 0, entityId: 'camera.entry', imageEntityId: 'image.entry_event', previewMode: 'event' };
+  assert.equal(validCameraThumbnail(item), true);
+  for (const change of [
+    { entityId: 'https://outside.example/image' }, { entityId: 'camera.entry?token=secret' },
+    { imageEntityId: 'sensor.entry' }, { x: -1 }, { w: 0 }, { rotation: Infinity },
+  ]) {
+    assert.equal(validCameraThumbnail({ ...item, ...change }), false);
+  }
 });

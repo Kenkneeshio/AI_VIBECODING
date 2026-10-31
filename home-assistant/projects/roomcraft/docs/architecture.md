@@ -24,14 +24,25 @@ flowchart LR
 | --- | --- | --- | --- |
 | Editor | `site/public/editor.html`, `app.js`, `styles.css`, `inventory.js` | User interactions, layout changes, local draft, JSON/YAML export | Direct access to server secrets |
 | Art | `site/public/object-art.js`, `raster-renderer.js`, `responsive-inspector.js`, `assets/` | Perspective objects, room surfaces, windows, PNG render | Device service calls |
-| HA transport | `site/ha-local/roomcraft-card.js`, `site/public/ha-iframe-bridge.js` | Same-origin editor messages, current-user HA API calls, PNG upload, revision check, dashboard save/verify | Sending an HA token into the iframe |
-| Cloud transport | `site/app/api/dashboard/route.ts` | Owner authorization, input validation, HA image upload, revision check, dashboard save/verify | Publishing the server token to client code |
+| HA transport | `site/ha-local/roomcraft-card.js`, `site/public/ha-iframe-bridge.js` | Same-origin editor messages, current-user HA API calls, PNG upload, revision check, dashboard save/verify, authenticated camera preview overlay | Sending an HA token into the iframe |
+| Cloud transport | `site/app/api/dashboard/route.ts`, `site/lib/dashboard-elements.ts` | Owner authorization, input validation, HA image upload, revision check, dashboard save/verify, camera overlay configuration | Publishing the server token to client code |
 | Home Assistant | Second Floor `plan`, `studio`, and `live` views | Official editor entry, authenticated device controls, displayed PNG, live native cards | Storing transient telemetry in layout geometry |
 | Future live adapters | `integrations/` when introduced | Read-only subscriptions, entity bindings, calibrated robot position, safe service actions | Mutating layout geometry from telemetry |
 
 The layout model stores `version`, `rooms`, `walls`, `items`, and `hotspots`. Rooms hold polygons and floor surface IDs; walls are endpoint pairs; items hold type, position, dimensions, and rotation; hotspots hold entity ID, action, and percentage position. Both editor transports use layout version 2. **Any schema change requires a migration, a sample fixture, and a round-trip test in both transports.** The design canvas is 1536 × 1024. Percentage-positioned controls survive viewport resizing.
 
 Both dashboard transports read the `plan` view's `picture-elements` card and the top-level `roomcraft_layout`. On export each uploads a rendered PNG, updates the card image and editable state-icon controls, writes the project, then reads back to verify. Each rejects an export when the dashboard changed since import. The `studio` editor view, `live` state view, and reserved plan controls (editor link, weather, time) survive this transaction and stay out of editable hotspot data. The official `studio` card receives Home Assistant's `hass` object, validates the editor window, origin, and request IDs, and performs privileged operations itself. The static editor can request those operations only when framed or opened by that card.
+
+### Bound objects and dashboard overlays
+
+The editor owns item placement and binding IDs; Home Assistant owns live state and media. Export derives dashboard elements from bound items without copying telemetry into the authored layout:
+
+| Item | Authored fields | Dashboard output | Offline behavior |
+| --- | --- | --- | --- |
+| Lamp, ceiling light, fan | Item geometry and optional `entityId` | One state-icon at the item's percentage position, with native HA action and state color | Artwork remains; HA icon reflects unavailable state |
+| Camera thumbnail | Item geometry, optional `camera.*`/`image.*` IDs, preview mode | A `custom:roomcraft-camera-thumbnail` picture element tied to that item ID | Neutral message in the frame; no stale public still |
+
+The plan's unrelated editor link, clock, weather, and other dashboard elements remain outside Roomcraft's managed state-icon/camera-element set. Both the HA card and the cloud bridge must use the same merge policy so an export from either editor preserves those overlays. A camera preview uses the current HA session to fetch an approved same-origin image-proxy URL; the event image state supplies an event timestamp. A live stream is shown only when Home Assistant already reports a working stream. Clicking the thumbnail opens native camera details. No camera token, proxy URL, or frame is written to public assets or the project JSON.
 
 The two browser editors may each have a local draft. After publishing from one, import from the dashboard in the other before editing. The dashboard project, rather than a browser's local storage, is the shared source of truth. If the Studio iframe stays blank, its card opens the same editor in a new tab and accepts messages from that exact same-origin popup while Studio remains open; a direct static URL has no dashboard transport. The installed `/local/roomcraft/` assets are reachable by anyone who can reach the HA web server; do not put tokens, live entity inventories, private photos, or dashboard JSON in that static directory.
 

@@ -1,5 +1,21 @@
 # Decision log
 
+## 2026-10-31 — Derive fixture controls from illustrated objects
+
+**Decision:** Give editable lamp, ceiling-light, pendant, and fan objects optional Home Assistant entity bindings. Export derives one percentage-positioned state icon per bound entity and keeps its visual placement with the object. A fixture without a binding remains decorative.
+
+**Reason:** Independent control markers can drift away from the illustrated device when furniture is moved. A second icon for the same entity also makes the plan harder to read.
+
+**Consequence:** The editor must reconcile a saved project's linked entities with any controls added directly in Home Assistant. Live state stays in HA, outside the layout JSON; source examples use synthetic IDs. Tests cover duplicate suppression and round-trip behavior.
+
+## 2026-10-31 — Keep camera media inside authenticated Home Assistant
+
+**Decision:** Store only a camera thumbnail's geometry, `camera.*`/`image.*` references, and preview mode in the Roomcraft project. Derive its picture-element overlay on export. Fetch latest-event images through Home Assistant's same-origin proxy with the signed-in user's session; show a live view only when HA reports an already active stream.
+
+**Reason:** Camera tokens, transient proxy URLs, and frames must not enter the public Site assets or GitHub. An always-on preview could wake a battery doorbell or mislabel a stale event as live.
+
+**Consequence:** Missing event images display an unavailable state. The public manual uses a synthetic workflow graphic rather than a live frame. Both dashboard transports must replace Roomcraft-owned camera overlays while preserving unrelated elements.
+
 ## 2026-10-31 — Make card registration safe on repeated evaluation
 
 **Decision:** Check the custom-element registry and Home Assistant custom-card metadata before registering `roomcraft-editor-card`.

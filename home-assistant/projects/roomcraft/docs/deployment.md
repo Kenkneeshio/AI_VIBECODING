@@ -15,12 +15,12 @@ The official editor is served by Home Assistant itself. Its `studio` view hosts 
 The public [HA local package guide](../site/ha-local/README.md) describes the card and installer. From the `site/` source directory, run the installer with private paths supplied locally:
 
 ```powershell
-python ha-local/install.py --host 192.168.68.96 --ssh-key <SSH-KEY-PATH> --management-root <PRIVATE-HA-MANAGEMENT-DIR> --backup-dir <PRIVATE-BACKUP-DIR>
+python ha-local/install.py --host <HA-LAN-IP> --ssh-key <SSH-KEY-PATH> --management-root <PRIVATE-HA-MANAGEMENT-DIR> --backup-dir <PRIVATE-BACKUP-DIR>
 ```
 
 The script copies `public/` into `/config/www/roomcraft/`, installs `roomcraft-card.js`, registers or updates its content-versioned Lovelace resource, backs up the dashboard, makes `studio` a panel with `custom:roomcraft-editor-card`, and points the plan edit icon to `/second-floor/studio`. It reads the dashboard and resource back to verify the write. It does not copy credentials or a live entity inventory into static assets. An asset-only refresh is available with `--assets-only`.
 
-The normal laptop and tablet URL on the home network is [Layout Studio](http://192.168.68.96:8123/second-floor/studio). Sign in to Home Assistant. Some Chrome sessions leave the embedded frame blank. In that case click **Open editor in a new tab** from Studio and keep the Studio tab open. The new tab uses its opener for authenticated import/export. Opening `/local/roomcraft/editor.html` directly from the address bar bypasses the authenticated card and cannot transfer a layout to the dashboard.
+The normal laptop and tablet URL on the home network is `http://<HA-LAN-IP>:8123/second-floor/studio`. Sign in to Home Assistant. Some Chrome sessions leave the embedded frame blank. In that case click **Open editor in a new tab** from Studio and keep the Studio tab open. The new tab uses its opener for authenticated import/export. Opening `/local/roomcraft/editor.html` directly from the address bar bypasses the authenticated card and cannot transfer a layout to the dashboard.
 
 After a card resource update, an existing Chrome tab may briefly show **Configuration error** while its frontend state is stale. Reload the affected tab first. If the error remains, verify that the `studio` view still uses `custom:roomcraft-editor-card`, that the versioned `/local/roomcraft/roomcraft-card.js` resource loads, and that the browser console shows no card registration or asset error. In the observed case, the live dashboard configuration and resource were valid and a reload cleared the error; its exact cause was not established. The card defensively skips repeated custom-element and card-metadata registration, and a repeat-evaluation test covers that behavior. If the card loads but its iframe stays blank, use the own-tab fallback above.
 
@@ -35,16 +35,16 @@ Build and publish the `site/` source through its Site workflow with owner-privat
 | HA login | Studio opens in a fresh laptop browser with the HA login. The plan pencil-ruler icon navigates there. |
 | Own-tab fallback | If the embedded frame is blank, **Open editor in a new tab** loads the same editor and completes an import/export while Studio remains open. |
 | Layout default | A fresh browser loads the current dashboard project. An existing local draft can be explicitly replaced with **Import from dashboard**. |
-| Art | Furnished default, recessed windows, added wall-mounted windows, furniture, baby items, lamps, and floor textures render in Design mode and the detailed PNG. |
-| Editor | Select, drag, rotate, draw wall, reshape room, repaint floor/wall, undo/redo, and JSON import/export work. |
-| Dashboard transfer | Export updates the plan image, editable state-icon controls, and `roomcraft_layout`; import reads back the same project. Weather, time, edit link, `studio`, and `live` remain. |
+| Art | Furnished default, recessed windows, added wall-mounted windows, furniture, baby items, movable bedside lamp, room fixtures, and floor textures render in Design mode and the detailed PNG. |
+| Editor | Select, drag, corner-resize (including Shift proportions), rotate, draw wall, reshape room, repaint floor/wall, undo/redo, and JSON import/export work. |
+| Dashboard transfer | Export updates the plan image, one control per bound fixture, managed camera overlays, and `roomcraft_layout`; import reads back the same project. Weather, time, edit link, `studio`, and `live` remain. |
 | Conflict handling | A stale editor revision is rejected after a separate dashboard edit; no newer change is silently replaced. |
 | Cloud parity | If the cloud Site is deployed, import its dashboard copy after an HA editor export; repeat in the other direction. |
 | Responsive view | Verify the entire plan and controls fit on actual laptop and tablet screen sizes without clipping or stretching. The current installation was checked at 960 × 600 CSS pixels (696 × 465 plan, no page scroll) and 2560 × 1271 (centered 1763-pixel card). |
-| Existing controls | Confirm light, switch, cover, fan, garage, vacuum, and camera behavior through Home Assistant before relying on their dashboard cards. |
+| Existing controls | Confirm light, switch, cover, fan, garage, vacuum, and camera behavior through Home Assistant before relying on their dashboard cards. An event still is not proof of a live stream. |
 | Privacy | No tokens, SSH keys, live entity inventory, camera access URLs, or private backups appear in `/local/roomcraft/` or GitHub. |
 
-The 2026-10-31 release completed an HA Studio import/export/readback with the own-tab fallback. The saved project retained 6 rooms, 33 walls, 13 items, and 7 controls; the downloaded live PNG showed the corrected blue windows and furnishings. Record the actual checks performed and screenshots in each release record. A check listed here is an acceptance criterion, not an assertion that every device was exercised.
+The earlier 2026-10-31 release completed an HA Studio import/export/readback with the own-tab fallback: 6 rooms, 33 walls, 13 items, and 7 controls. The lighting/camera release read back 23 items, seven controls, one managed camera overlay, and a 1536 × 1024 PNG while retaining weather, clock, and Studio entry. The tested event still and native details action worked; the battery doorbell's P2P live stream timed out. Record the actual checks performed and screenshots in each release record. A check listed here is an acceptance criterion, not an assertion that every device was exercised.
 
 The default-dashboard choice is a Home Assistant **user profile** preference, not part of the dashboard YAML or installer. In the current installation Ken's profile opens Second Floor by default across his devices, and the sidebar lists it first. The physical Fire tablet was offline during the 960 × 600 responsive browser check; verify its actual WebView when it reconnects.
 

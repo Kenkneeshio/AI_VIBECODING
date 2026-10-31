@@ -62,6 +62,7 @@
     { type: 'floorLamp', label: 'Floor lamp', icon: '◉', w: 54, h: 92, group: 'lighting' },
     { type: 'tableLamp', label: 'Table lamp', icon: '◌', w: 48, h: 52, group: 'lighting' },
     { type: 'wallSconce', label: 'Wall sconce', icon: '◖', w: 34, h: 48, group: 'lighting' },
+    { type: 'cameraThumbnail', label: 'Camera thumbnail', icon: '▣', w: 170, h: 110, group: 'security' },
     { type: 'plant', label: 'Flowers', icon: '✿', w: 44, h: 44, group: 'decor' },
     { type: 'floorPlant', label: 'Floor plant', icon: '❀', w: 72, h: 72, group: 'decor' },
     { type: 'artwork', label: 'Wall art', icon: '▧', w: 94, h: 56, group: 'decor' },
@@ -73,7 +74,7 @@
     ...(window.RoomcraftInventory?.groups || []),
     ['living', 'Living & dining'], ['bedroom', 'Bedroom & storage'],
     ['utility', 'Kitchen & bath'], ['lighting', 'Lights & lamps'],
-    ['decor', 'Decor'], ['build', 'Build']
+    ['decor', 'Decor'], ['build', 'Build'], ['security', 'Cameras & controls']
   ];
   const templateByType = Object.fromEntries(templates.map(t => [t.type, t]));
 
@@ -83,7 +84,9 @@
   const point = (x, y) => ({ x, y });
   const room = (id, name, surface, points, label) => ({ id, name, surface, points: points.map(p => point(...p)), label: point(...label) });
   const wall = (id, x1, y1, x2, y2) => ({ id, x1, y1, x2, y2 });
-  const item = (id, type, name, x, y, w, h, rotation = 0) => ({ id, type, name, x, y, w, h, rotation, entityId: '' });
+  const item = (id, type, name, x, y, w, h, rotation = 0) => ({ id, type, name, x, y, w, h, rotation, entityId: '', ...(type==='cameraThumbnail'?{previewMode:'event',imageEntityId:''}:{}) });
+  const validEntityId = value => /^[a-z_]+\.[a-z0-9_]+$/i.test(value||'');
+  const isFixtureControl = o => templateByType[o.type]?.group==='lighting'||templateByType[o.type]?.artFamily==='ceilingFan';
   const hotspotStyle = (left, top) => ({ left: `${left}%`, top: `${top}%`, background: 'rgba(24, 29, 35, 0.82)', 'border-radius': '50%', padding: '8px', '--paper-item-icon-color': '#f9f5e8', '--paper-item-icon-active-color': '#ffcc66' });
   const hotspot = (id, entity, title, left, top, tap, hold = null) => ({ id, type: 'state-icon', entity, title, tap_action: { action: tap }, ...(hold ? { hold_action: { action: hold } } : {}), style: hotspotStyle(left, top) });
   // Live entity IDs are imported from Home Assistant, never committed to source.
@@ -91,6 +94,7 @@
 
   const STARTER = {
     version: 2,
+    editableReferenceVersion: 1,
     rooms: [
       room('great', 'Living · dining · kitchen', 'oak', [[302,800],[302,651],[248,590],[158,590],[158,468],[342,468],[400,408],[400,193],[788,193],[788,485],[1134,485],[1134,550],[1485,550],[1485,800]], [361,537]),
       room('study', 'Study', 'walnut', [[799,193],[1066,193],[1066,485],[799,485]], [824,225]),
@@ -109,10 +113,23 @@
       item('i4','desk','Study desk',924,278,196,85),item('i5','chair','Desk chair',975,322,47,47),item('i6','bed','Queen bed',1331,373,213,194),
       item('i7','counter','Kitchen counter',667,675,56,234),item('i8','counter','Kitchen island',825,675,59,235),
       item('i9','tub','Bathtub',902,728,60,130),item('i10','tub','Bathtub',1148,728,60,130),item('i11','toilet','Toilet',1056,745,45,58),
-      item('i12','toilet','Toilet',1148,611,45,58),item('i13','plant','Table flowers',460,654,32,32)
+      item('i12','toilet','Toilet',1148,611,45,58),item('i13','plant','Table flowers',460,654,32,32),
+      item('i14','lamp','Bedroom bedside lamp',1443,476,48,60)
     ],
     hotspots: DEFAULT_HOTSPOTS
   };
+  // These fixtures are drawn by the editor. They do not exist in the supplied
+  // PNG, so they stay separate from STARTER's image-backed furniture.
+  const DEFAULT_ROOM_FIXTURES = [
+    item('fixture-living','ceilingLight','Living ceiling light',660,330,58,58),
+    item('fixture-dining','pendantLight','Dining pendant light',445,540,70,70),
+    item('fixture-kitchen','ceilingLight','Kitchen ceiling light',744,610,58,58),
+    item('fixture-study','ceilingLight','Study ceiling light',1008,410,58,58),
+    item('fixture-bedroom','ceilingLight','Bedroom ceiling light',1185,510,58,58),
+    item('fixture-bath-one','ceilingLight','Bath 01 ceiling light',970,686,58,58),
+    item('fixture-bath-two','ceilingLight','Bath 02 ceiling light',1260,700,58,58),
+    item('fixture-closet','ceilingLight','Dressing nook ceiling light',1438,640,48,48)
+  ];
   const fixedRoomIds = new Set(STARTER.rooms.map(r => r.id));
   const fixedExteriorWallIds = new Set(['w1','w2','w3','w4','w5','w6','w7','w8','w9','w10','w11','w12']);
   const isFixedExteriorWall = w => !!w && fixedExteriorWallIds.has(w.id);
@@ -121,17 +138,21 @@
   function loadProject() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return clone(STARTER);
+      if (!raw) return restoreFixedGeometry(clone(STARTER));
       const parsed = JSON.parse(raw);
       if (validProject(parsed)) {hasLocalDraft=true;return restoreFixedGeometry(parsed);}
     } catch (_) { /* use starter */ }
-    return clone(STARTER);
+    return restoreFixedGeometry(clone(STARTER));
   }
   function validProject(p) {
     return p && Array.isArray(p.rooms) && Array.isArray(p.walls) && Array.isArray(p.items)
       && p.rooms.every(r => typeof r.id === 'string' && !!surfaceById[r.surface] && Array.isArray(r.points) && r.points.length >= 3 && r.points.every(q => Number.isFinite(q.x) && Number.isFinite(q.y)))
       && p.walls.every(w => typeof w.id === 'string' && (!w.finish || !!wallFinishById[w.finish]) && [w.x1,w.y1,w.x2,w.y2].every(Number.isFinite))
-      && p.items.every(i => typeof i.id === 'string' && templateByType[i.type] && [i.x,i.y,i.w,i.h,i.rotation].every(Number.isFinite))
+      && p.items.every(i => typeof i.id === 'string' && templateByType[i.type] && [i.x,i.y,i.w,i.h,i.rotation].every(Number.isFinite)
+        && (i.type!=='cameraThumbnail'||(i.x>=0&&i.x<=W&&i.y>=0&&i.y<=H&&i.w>=40&&i.h>=40&&i.w<=W&&i.h<=H
+          && (!i.previewMode||['event','live','offline'].includes(i.previewMode))
+          && (!i.entityId||/^camera\.[a-z0-9_]+$/i.test(i.entityId))
+          && (!i.imageEntityId||/^image\.[a-z0-9_]+$/i.test(i.imageEntityId)))))
       && (!('hotspots' in p) || (Array.isArray(p.hotspots) && p.hotspots.every(h => {
         const percent=v=>typeof v==='string'&&/^\d{1,3}(?:\.\d+)?%$/.test(v)&&parseFloat(v)<=100;
         return h&&typeof h.id==='string'&&h.type==='state-icon'&&/^[a-z_]+\.[a-z0-9_]+$/i.test(h.entity)&&typeof h.title==='string'
@@ -145,6 +166,21 @@
     for(const r of STARTER.rooms)if(fixedRoomIds.has(r.id)&&!rooms.has(r.id))p.rooms.push(clone(r));
     for(const w of STARTER.walls)if(fixedExteriorWallIds.has(w.id)){if(walls.has(w.id)){const current=walls.get(w.id);current.x1=w.x1;current.y1=w.y1;current.x2=w.x2;current.y2=w.y2;}else p.walls.push(clone(w));}
     if(!Array.isArray(p.hotspots))p.hotspots=clone(DEFAULT_HOTSPOTS);
+    // Older saved layouts predate the movable lamp. Migrate once, and remember
+    // the migration so removing the lamp later remains an intentional edit.
+    if((p.editableReferenceVersion||0)<1){
+      const lamp=STARTER.items.find(i=>i.id==='i14');
+      const nearbyLamp=p.items.some(i=>i.id==='i14'||(i.type==='lamp'&&Math.hypot(i.x-lamp.x,i.y-lamp.y)<45));
+      if(!nearbyLamp)p.items.push(clone(lamp));
+      p.editableReferenceVersion=1;
+    }
+    if(p.editableReferenceVersion<2){
+      for(const fixture of DEFAULT_ROOM_FIXTURES){
+        const present=p.items.some(i=>i.id===fixture.id||(i.type===fixture.type&&Math.hypot(i.x-fixture.x,i.y-fixture.y)<30));
+        if(!present)p.items.push(clone(fixture));
+      }
+      p.editableReferenceVersion=2;
+    }
     p.version=2;
     return p;
   }
@@ -272,6 +308,13 @@
       c.fillStyle='#9b7755';c.beginPath();c.arc(0,0,Math.min(w,h)*.42,0,Math.PI*2);c.fill();c.shadowColor='transparent';for(let a=0;a<8;a++){const angle=a*Math.PI/4;c.fillStyle=a%2?'#7ba470':'#4d8056';c.beginPath();c.ellipse(Math.cos(angle)*w*.2,Math.sin(angle)*h*.2,w*.13,h*.22,angle,0,Math.PI*2);c.fill();}
     }else if(o.type==='lamp'){
       c.fillStyle='#d2b987';c.beginPath();c.arc(0,0,Math.min(w,h)*.46,0,Math.PI*2);c.fill();c.shadowColor='transparent';c.fillStyle='#fff8d9';c.beginPath();c.arc(0,0,Math.min(w,h)*.34,0,Math.PI*2);c.fill();
+    }else if(o.type==='cameraThumbnail'){
+      c.fillStyle='#17262d';round(c,x,y,w,h,10);c.fill();c.shadowColor='transparent';
+      const glass=c.createLinearGradient(x,y,x+w,y+h);glass.addColorStop(0,'#3c5c69');glass.addColorStop(1,'#15262c');c.fillStyle=glass;round(c,x+5,y+5,w-10,h-10,7);c.fill();
+      c.strokeStyle='rgba(202,227,226,.54)';c.lineWidth=1.5;c.stroke();
+      c.fillStyle='#e5f2e9';c.beginPath();c.arc(0,-5,Math.min(w,h)*.17,0,Math.PI*2);c.fill();
+      c.fillStyle='#263f49';c.beginPath();c.arc(0,-5,Math.min(w,h)*.09,0,Math.PI*2);c.fill();
+      c.textAlign='center';c.fillStyle='#f4f3e6';c.font=`700 ${Math.max(10,Math.min(15,h*.12))}px system-ui, sans-serif`;c.fillText(o.previewMode==='live'?'LIVE CAMERA':o.previewMode==='offline'?'CAMERA OFFLINE':'LATEST EVENT',0,h*.34);
     }
     c.restore();
   }
@@ -280,7 +323,7 @@
     c.save();c.strokeStyle='#ed6b51';c.fillStyle='#fffdf4';c.lineWidth=3;c.setLineDash([8,6]);
     if(selected.kind==='item'){
       const o=project.items.find(o=>o.id===selected.id);if(!o){c.restore();return;}
-      c.translate(o.x,o.y);c.rotate(o.rotation*Math.PI/180);c.strokeRect(-o.w/2-7,-o.h/2-7,o.w+14,o.h+14);c.setLineDash([]);for(const [dx,dy] of [[-1,-1],[1,-1],[1,1],[-1,1]]){c.beginPath();c.arc(dx*(o.w/2+7),dy*(o.h/2+7),6,0,Math.PI*2);c.fill();c.stroke();}
+      c.translate(o.x,o.y);c.rotate(o.rotation*Math.PI/180);c.strokeRect(-o.w/2-7,-o.h/2-7,o.w+14,o.h+14);c.setLineDash([]);for(const [dx,dy] of [[-1,-1],[1,-1],[1,1],[-1,1]]){c.beginPath();c.arc(dx*(o.w/2+7),dy*(o.h/2+7),Math.min(12,Math.max(6,7/currentView.scale)),0,Math.PI*2);c.fill();c.stroke();}
     }else if(selected.kind==='hotspot'){
       const h=project.hotspots.find(h=>h.id===selected.id);if(h){const p=hotspotPoint(h);c.setLineDash([]);c.lineWidth=3;c.beginPath();c.arc(p.x,p.y,29,0,Math.PI*2);c.stroke();}
     }else if(selected.kind==='wall'){
@@ -293,7 +336,8 @@
   function hotspotPoint(h){return point(W*parseFloat(h.style.left)/100,H*parseFloat(h.style.top)/100);}
   function drawHotspots(c){
     c.save();c.textAlign='center';c.textBaseline='middle';
-    for(const h of project.hotspots){const p=hotspotPoint(h),isCover=h.entity.startsWith('cover.');
+    const linkedEntities=new Set(project.items.map(o=>o.entityId).filter(Boolean));
+    for(const h of project.hotspots){if(linkedEntities.has(h.entity))continue;const p=hotspotPoint(h),isCover=h.entity.startsWith('cover.');
       c.fillStyle='rgba(24, 29, 35, 0.82)';c.beginPath();c.arc(p.x,p.y,24,0,Math.PI*2);c.fill();
       c.fillStyle=isCover?'#b895e5':'#ffcb73';c.font='bold 21px system-ui, sans-serif';c.fillText(isCover?'▥':'✦',p.x,p.y+1);
     }
@@ -345,8 +389,20 @@
   const snap = n => Math.round(n/10)*10;
   function pointInPolygon(pt,points){let inside=false;for(let i=0,j=points.length-1;i<points.length;j=i++){const a=points[i],b=points[j];if(((a.y>pt.y)!==(b.y>pt.y))&&(pt.x<(b.x-a.x)*(pt.y-a.y)/(b.y-a.y)+a.x))inside=!inside;}return inside;}
   function hitRoom(p){for(let i=project.rooms.length-1;i>=0;i--){if(pointInPolygon(p,project.rooms[i].points))return project.rooms[i];}return null;}
-  function hitItem(p){for(let i=project.items.length-1;i>=0;i--){const o=project.items[i],r=-o.rotation*Math.PI/180,dx=p.x-o.x,dy=p.y-o.y,lx=dx*Math.cos(r)-dy*Math.sin(r),ly=dx*Math.sin(r)+dy*Math.cos(r);if(Math.abs(lx)<=o.w/2+5&&Math.abs(ly)<=o.h/2+5)return o;}return null;}
-  function hitHotspot(p){for(let i=project.hotspots.length-1;i>=0;i--){const h=project.hotspots[i],q=hotspotPoint(h);if(Math.hypot(p.x-q.x,p.y-q.y)<=Math.max(25,12/currentView.scale))return h;}return null;}
+  function itemLocalPoint(p,o){const r=-o.rotation*Math.PI/180,dx=p.x-o.x,dy=p.y-o.y;return point(dx*Math.cos(r)-dy*Math.sin(r),dx*Math.sin(r)+dy*Math.cos(r));}
+  function hitItem(p,includeTouchTarget=true){
+    // Prefer the visible footprint. Only use a larger touch target when no
+    // object was directly hit, so a small lamp cannot steal its neighbor.
+    for(const expanded of includeTouchTarget?[false,true]:[false])for(let i=project.items.length-1;i>=0;i--){
+      const o=project.items[i],q=itemLocalPoint(p,o);
+      const halfW=expanded?Math.max(o.w/2+5,22/currentView.scale):o.w/2+4;
+      const halfH=expanded?Math.max(o.h/2+5,22/currentView.scale):o.h/2+4;
+      if(Math.abs(q.x)<=halfW&&Math.abs(q.y)<=halfH)return o;
+    }
+    return null;
+  }
+  function hitSelectedItemHandle(p){if(selected?.kind!=='item')return null;const o=project.items.find(i=>i.id===selected.id);if(!o)return null;const q=itemLocalPoint(p,o),reach=Math.max(11,11/currentView.scale);for(const [sx,sy] of [[-1,-1],[1,-1],[1,1],[-1,1]])if(Math.hypot(q.x-sx*(o.w/2+7),q.y-sy*(o.h/2+7))<=reach)return {item:o,sx,sy};return null;}
+  function hitHotspot(p){const linkedEntities=new Set(project.items.map(o=>o.entityId).filter(Boolean));for(let i=project.hotspots.length-1;i>=0;i--){const h=project.hotspots[i];if(linkedEntities.has(h.entity))continue;const q=hotspotPoint(h);if(Math.hypot(p.x-q.x,p.y-q.y)<=Math.max(25,12/currentView.scale))return h;}return null;}
   function segmentDistance(p,w){const vx=w.x2-w.x1,vy=w.y2-w.y1;const len=vx*vx+vy*vy;const t=len?Math.max(0,Math.min(1,((p.x-w.x1)*vx+(p.y-w.y1)*vy)/len)):0;return Math.hypot(p.x-(w.x1+t*vx),p.y-(w.y1+t*vy));}
   function hitWall(p){let found=null,dist=14/currentView.scale;for(const w of project.walls){const d=segmentDistance(p,w);if(d<dist){dist=d;found=w;}}return found;}
   function nearestWallPlacement(p){
@@ -377,18 +433,20 @@
   function onPointerDown(e){if(viewMode==='reference'){if(tool!=='pan'&&!spaceHeld&&e.button!==1){showToast('Switch to Design to edit the plan');return;}}
     e.preventDefault();canvas.setPointerCapture(e.pointerId);const p=worldPoint(e),s=screenPoint(e);currentPointer=p;
     if(tool==='pan'||spaceHeld||e.button===1){interaction={kind:'pan',start:s,tx:currentView.tx,ty:currentView.ty};viewport.classList.add('dragging');return;}
-    if(pendingTemplate){const t=templateByType[pendingTemplate],wallMounted=t.type==='window'||t.mount==='wall';const mount=wallMounted?nearestWallPlacement(p):null;if(wallMounted&&!mount){showToast('Click near a wall to mount this object');return;}snapshot();const o=item(uid('i'),t.type,t.label,Math.round(mount?.x??p.x),Math.round(mount?.y??p.y),t.w,t.h,mount?.rotation??0);project.items.push(o);select('item',o.id);clearPlacement();afterChange(`Placed ${o.name}`);return;}
+    if(pendingTemplate){const t=templateByType[pendingTemplate],wallMounted=t.type==='window'||t.mount==='wall';const mount=wallMounted?nearestWallPlacement(p):null;if(wallMounted&&!mount){showToast('Click near a wall to mount this object');return;}snapshot();const o=item(uid('i'),t.type,t.label,Math.round(mount?.x??p.x),Math.round(mount?.y??p.y),t.w,t.h,mount?.rotation??0);if(o.type==='cameraThumbnail'){o.x=Math.max(0,Math.min(W,o.x));o.y=Math.max(0,Math.min(H,o.y));}project.items.push(o);select('item',o.id);clearPlacement();afterChange(`Placed ${o.name}`);return;}
     if(pendingSurface){const r=hitRoom(p);if(r){snapshot();r.surface=pendingSurface;select('room',r.id);afterChange(`Applied ${surfaceById[pendingSurface].name} to ${r.name}`);showToast(`${r.name} floor updated`);}else showToast('Click inside a room to paint it');return;}
     if(pendingWallFinish){const w=hitWall(p);if(w){if((w.finish||'graphite')!==pendingWallFinish){snapshot();w.finish=pendingWallFinish;select('wall',w.id);afterChange(`Applied ${wallFinishById[pendingWallFinish].name} wall finish`);showToast('Wall finish updated');}else select('wall',w.id);}else showToast('Click a wall to paint it');return;}
-    if(tool==='erase'){const h=hitHotspot(p),o=hitItem(p),w=hitWall(p);if(h){snapshot();project.hotspots=project.hotspots.filter(q=>q.id!==h.id);selected=null;afterChange(`Removed ${h.title} control`);}else if(o){snapshot();project.items=project.items.filter(q=>q.id!==o.id);selected=null;afterChange(`Removed ${o.name}`);}else if(isFixedExteriorWall(w)){showToast('The illustrated exterior shell stays fixed');}else if(w){snapshot();project.walls=project.walls.filter(q=>q.id!==w.id);selected=null;afterChange('Removed wall');}else showToast('Click an object, control, or interior wall to erase it');return;}
+    if(tool==='erase'){const h=hitHotspot(p),o=hitItem(p,false),near=hitItem(p),w=hitWall(p);if(o||(!h&&near)){const target=o||near;snapshot();project.items=project.items.filter(q=>q.id!==target.id);selected=null;afterChange(`Removed ${target.name}`);}else if(h){snapshot();project.hotspots=project.hotspots.filter(q=>q.id!==h.id);selected=null;afterChange(`Removed ${h.title} control`);}else if(isFixedExteriorWall(w)){showToast('The illustrated exterior shell stays fixed');}else if(w){snapshot();project.walls=project.walls.filter(q=>q.id!==w.id);selected=null;afterChange('Removed wall');}else showToast('Click an object, control, or interior wall to erase it');return;}
     if(tool==='wall'){interaction={kind:'wall-draw',start:point(snap(p.x),snap(p.y)),end:point(snap(p.x),snap(p.y))};draw();return;}
     if(tool==='room'){const vertex=hitRoomVertex(p);if(vertex>=0){interaction={kind:'room-vertex',id:selected.id,index:vertex,snapshot:false};return;}const r=hitRoom(p);if(r){select('room',r.id);setStatus(`Selected ${r.name} · drag a corner to reshape`);}else{selected=null;renderInspector();draw();}return;}
+    const handle=hitSelectedItemHandle(p);if(handle){const o=handle.item,a=o.rotation*Math.PI/180,lx=-handle.sx*o.w/2,ly=-handle.sy*o.h/2;interaction={kind:'item-resize',id:o.id,start:p,w:o.w,h:o.h,rotation:o.rotation,anchor:point(o.x+lx*Math.cos(a)-ly*Math.sin(a),o.y+lx*Math.sin(a)+ly*Math.cos(a)),sx:handle.sx,sy:handle.sy,snapshot:false};setStatus(`Resize ${o.name} · hold Shift to keep its proportions`);return;}
+    const o=hitItem(p,false);if(o){select('item',o.id);interaction={kind:'item-move',id:o.id,start:p,x:o.x,y:o.y,snapshot:false};setStatus(`Selected ${o.name}`);return;}
     const h=hitHotspot(p);if(h){const q=hotspotPoint(h);select('hotspot',h.id);interaction={kind:'hotspot-move',id:h.id,start:p,x:q.x,y:q.y,snapshot:false};setStatus(`Selected ${h.title} control`);return;}
-    const o=hitItem(p);if(o){select('item',o.id);interaction={kind:'item-move',id:o.id,start:p,x:o.x,y:o.y,snapshot:false};setStatus(`Selected ${o.name}`);return;}
+    const near=hitItem(p);if(near){select('item',near.id);interaction={kind:'item-move',id:near.id,start:p,x:near.x,y:near.y,snapshot:false};setStatus(`Selected ${near.name}`);return;}
     const w=hitWall(p);if(w){select('wall',w.id);if(isFixedExteriorWall(w)){showToast('The illustrated exterior shell stays fixed');return;}interaction={kind:'wall-move',id:w.id,start:p,initial:clone(w),endpoint:hitWallEndpoint(p,w),snapshot:false};setStatus('Selected wall');return;}
     const r=hitRoom(p);if(r){select('room',r.id);setStatus(`Selected ${r.name}`);}else{selected=null;renderInspector();draw();}
   }
-  function onPointerMove(e){const p=worldPoint(e),s=screenPoint(e);currentPointer=p;if(!interaction){if(pendingTemplate)draw();return;}
+  function onPointerMove(e){const p=worldPoint(e),s=screenPoint(e);currentPointer=p;if(!interaction){if(pendingTemplate)draw();if(tool==='select'&&!pendingTemplate)canvas.style.cursor=hitSelectedItemHandle(p)?'nwse-resize':hitItem(p)?'grab':hitHotspot(p)?'pointer':'';return;}
     if(interaction.kind==='pan'){currentView.tx=interaction.tx+s.x-interaction.start.x;currentView.ty=interaction.ty+s.y-interaction.start.y;applyView();return;}
     if(interaction.kind==='wall-draw'){let x=snap(p.x),y=snap(p.y);if(e.shiftKey){if(Math.abs(x-interaction.start.x)>Math.abs(y-interaction.start.y))y=interaction.start.y;else x=interaction.start.x;}interaction.end=point(x,y);draw();return;}
     if(interaction.kind==='item-move'){const o=project.items.find(o=>o.id===interaction.id);if(!o)return;const dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;
@@ -400,12 +458,13 @@
         if(interaction.snapshot){o.x=nx;o.y=ny;o.rotation=mount.rotation;draw();}
         return;
       }
-      if(Math.hypot(dx,dy)>2&&!interaction.snapshot){snapshot();interaction.snapshot=true;}if(interaction.snapshot){o.x=Math.round(interaction.x+dx);o.y=Math.round(interaction.y+dy);draw();}return;}
+      if(Math.hypot(dx,dy)>2&&!interaction.snapshot){snapshot();interaction.snapshot=true;}if(interaction.snapshot){o.x=Math.round(interaction.x+dx);o.y=Math.round(interaction.y+dy);if(o.type==='cameraThumbnail'){o.x=Math.max(0,Math.min(W,o.x));o.y=Math.max(0,Math.min(H,o.y));}draw();}return;}
+    if(interaction.kind==='item-resize'){const o=project.items.find(o=>o.id===interaction.id);if(!o)return;const a=interaction.rotation*Math.PI/180,dx=p.x-interaction.start.x,dy=p.y-interaction.start.y,localX=dx*Math.cos(a)+dy*Math.sin(a),localY=-dx*Math.sin(a)+dy*Math.cos(a),min=o.type==='cameraThumbnail'?40:24;let nextW=Math.max(min,Math.round(interaction.w+interaction.sx*localX)),nextH=Math.max(min,Math.round(interaction.h+interaction.sy*localY));if(e.shiftKey){const scale=Math.max(nextW/interaction.w,nextH/interaction.h);nextW=Math.max(min,Math.round(interaction.w*scale));nextH=Math.max(min,Math.round(interaction.h*scale));}if(o.type==='cameraThumbnail'){nextW=Math.min(W,nextW);nextH=Math.min(H,nextH);}const lx=interaction.sx*nextW/2,ly=interaction.sy*nextH/2,nx=Math.round(interaction.anchor.x+lx*Math.cos(a)-ly*Math.sin(a)),ny=Math.round(interaction.anchor.y+lx*Math.sin(a)+ly*Math.cos(a));if(!interaction.snapshot&&(nextW!==o.w||nextH!==o.h||nx!==o.x||ny!==o.y)){snapshot();interaction.snapshot=true;}if(interaction.snapshot){o.w=nextW;o.h=nextH;o.x=o.type==='cameraThumbnail'?Math.max(0,Math.min(W,nx)):nx;o.y=o.type==='cameraThumbnail'?Math.max(0,Math.min(H,ny)):ny;draw();}return;}
     if(interaction.kind==='hotspot-move'){const h=project.hotspots.find(h=>h.id===interaction.id);if(!h)return;const dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;if(Math.hypot(dx,dy)>2&&!interaction.snapshot){snapshot();interaction.snapshot=true;}if(interaction.snapshot){h.style.left=`${Math.max(0,Math.min(100,(interaction.x+dx)/W*100)).toFixed(2)}%`;h.style.top=`${Math.max(0,Math.min(100,(interaction.y+dy)/H*100)).toFixed(2)}%`;draw();}return;}
     if(interaction.kind==='room-vertex'){const r=project.rooms.find(r=>r.id===interaction.id);if(!r)return;if(!interaction.snapshot){snapshot();interaction.snapshot=true;}r.points[interaction.index]=point(Math.round(p.x),Math.round(p.y));draw();return;}
     if(interaction.kind==='wall-move'){const w=project.walls.find(w=>w.id===interaction.id);if(!w)return;const dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;if(Math.hypot(dx,dy)>2&&!interaction.snapshot){snapshot();interaction.snapshot=true;}if(interaction.snapshot){const a=interaction.initial;if(interaction.endpoint===1){w.x1=Math.round(a.x1+dx);w.y1=Math.round(a.y1+dy);}else if(interaction.endpoint===2){w.x2=Math.round(a.x2+dx);w.y2=Math.round(a.y2+dy);}else{w.x1=Math.round(a.x1+dx);w.y1=Math.round(a.y1+dy);w.x2=Math.round(a.x2+dx);w.y2=Math.round(a.y2+dy);}draw();}return;}
   }
-  function onPointerUp(e){if(!interaction)return;const kind=interaction.kind;if(kind==='wall-draw'){const {start,end}=interaction;if(Math.hypot(end.x-start.x,end.y-start.y)>12){snapshot();const w=wall(uid('w'),start.x,start.y,end.x,end.y);w.finish='graphite';project.walls.push(w);select('wall',w.id);afterChange('Drew wall');}}else if(interaction.snapshot){afterChange(kind==='room-vertex'?'Reshaped room':kind==='wall-move'?'Moved wall':kind==='hotspot-move'?'Moved Home Assistant control':'Moved object');}interaction=null;viewport.classList.remove('dragging');draw();}
+  function onPointerUp(e){if(!interaction)return;const kind=interaction.kind;if(kind==='wall-draw'){const {start,end}=interaction;if(Math.hypot(end.x-start.x,end.y-start.y)>12){snapshot();const w=wall(uid('w'),start.x,start.y,end.x,end.y);w.finish='graphite';project.walls.push(w);select('wall',w.id);afterChange('Drew wall');}}else if(interaction.snapshot){afterChange(kind==='room-vertex'?'Reshaped room':kind==='wall-move'?'Moved wall':kind==='hotspot-move'?'Moved Home Assistant control':kind==='item-resize'?'Resized object':'Moved object');}interaction=null;viewport.classList.remove('dragging');draw();}
 
   function htmlEscape(s){return String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
   function renderCategoryOptions(){
@@ -458,8 +517,11 @@
   function renderWallPalette(){document.getElementById('wallPalette').innerHTML=wallFinishes.map(f=>`<button type="button" class="wall-finish-item surface-item ${pendingWallFinish===f.id?'active':''}" data-wall-finish="${f.id}"><span class="swatch" style="background:${f.color}"></span><span><strong>${htmlEscape(f.name)}</strong><small>${htmlEscape(f.note)}</small></span></button>`).join('');}
   function renderRoomList(){document.getElementById('roomList').innerHTML=project.rooms.map(r=>{const s=surfaceById[r.surface]||surfaceById.oak;return `<button type="button" class="room-item ${selected?.kind==='room'&&selected.id===r.id?'active':''}" data-room="${htmlEscape(r.id)}"><span class="room-color" style="background:${s.color}"></span><span><strong>${htmlEscape(r.name)}</strong><small>${htmlEscape(s.name)}</small></span></button>`;}).join('');}
   function renderHotspotList(){
-    document.getElementById('hotspotSummary').textContent=`Home Assistant controls · ${project.hotspots.length}`;
-    document.getElementById('hotspotList').innerHTML=project.hotspots.map(h=>`<button type="button" class="ha-control-item ${selected?.kind==='hotspot'&&selected.id===h.id?'active':''}" data-hotspot="${htmlEscape(h.id)}"><strong>${htmlEscape(h.title)}</strong><small>${htmlEscape(h.entity)}</small></button>`).join('')||'<p class="help-copy">No controls in this layout.</p>';
+    const linked=project.items.filter(o=>o.type!=='cameraThumbnail'&&validEntityId(o.entityId));
+    const linkedEntities=new Set(linked.map(o=>o.entityId));
+    const independent=project.hotspots.filter(h=>!linkedEntities.has(h.entity));
+    document.getElementById('hotspotSummary').textContent=`Home Assistant controls · ${independent.length+linked.length}`;
+    document.getElementById('hotspotList').innerHTML=linked.map(o=>`<button type="button" class="ha-control-item ${selected?.kind==='item'&&selected.id===o.id?'active':''}" data-control-item="${htmlEscape(o.id)}"><strong>${htmlEscape(o.name)}</strong><small>${htmlEscape(o.entityId)} · object control</small></button>`).concat(independent.map(h=>`<button type="button" class="ha-control-item ${selected?.kind==='hotspot'&&selected.id===h.id?'active':''}" data-hotspot="${htmlEscape(h.id)}"><strong>${htmlEscape(h.title)}</strong><small>${htmlEscape(h.entity)}</small></button>`)).join('')||'<p class="help-copy">No controls in this layout.</p>';
   }
   function readPreviousDraft(){try{const raw=localStorage.getItem(LEGACY_STORAGE_KEY);if(!raw)return null;const parsed=JSON.parse(raw);return validProject(parsed)?parsed:null;}catch(_){return null;}}
   function readPreRecoveryLayout(){try{const raw=localStorage.getItem(BEFORE_RECOVERY_KEY);if(!raw)return null;const parsed=JSON.parse(raw);return validProject(parsed)?parsed:null;}catch(_){return null;}}
@@ -476,7 +538,7 @@
     return `<div class="field"><label for="prop-catalog-variant">Color / finish</label><select id="prop-catalog-variant" data-variant>${variants.map(v=>`<option value="${htmlEscape(v.type)}" ${v.type===type?'selected':''}>${htmlEscape(v.label.split(' · ').at(-1))}</option>`).join('')}</select></div>`;
   }
   function renderInspector(){const root=document.getElementById('inspectorContent');if(!selected){root.innerHTML=`<div class="empty-inspector"><div class="empty-art">⌂</div><h3>A blank canvas for ideas.</h3><p>Select an object, control, room, or wall to see its settings. The starting furnished image is one click away in Reference view.</p><button class="secondary-button" id="openHelpButton" type="button" style="margin-top:19px">How to use the builder</button></div>`;return;}
-    if(selected.kind==='item'){const o=project.items.find(o=>o.id===selected.id);if(!o){selected=null;renderInspector();return;}const t=templateByType[o.type];root.innerHTML=`<div class="inspector-block"><p class="inspector-label">SELECTED OBJECT</p><div class="selection-title"><span class="selection-icon">${t.icon}</span><div><h3>${htmlEscape(o.name)}</h3><p>${htmlEscape(t.label)}</p></div></div></div><div class="inspector-block"><p class="inspector-label">APPEARANCE & POSITION</p>${field('Name','name',o.name)}${variantField(t,o.type)}<div class="field-grid">${field('X position','x',o.x,'number')}${field('Y position','y',o.y,'number')}${field('Width','w',o.w,'number')}${field('Depth','h',o.h,'number')}</div>${field('Rotation (degrees)','rotation',o.rotation,'number')}<div class="inspector-actions"><button type="button" class="secondary-button" data-action="rotate">↻ Rotate 90°</button><button type="button" class="secondary-button" data-action="duplicate">▣ Duplicate</button></div></div><div class="inspector-block"><p class="inspector-label">HOME ASSISTANT LINK</p>${field('Entity ID','entityId',o.entityId||'')}<p class="field-hint">Optional. Example: light.living_room. Linked objects become hotspots in the HA YAML export.</p></div><button type="button" class="danger-button" data-action="delete">Remove object</button>`;return;}
+    if(selected.kind==='item'){const o=project.items.find(o=>o.id===selected.id);if(!o){selected=null;renderInspector();return;}const t=templateByType[o.type];const cameraFields=o.type==='cameraThumbnail'?`<div class="field"><label for="prop-previewMode">Preview mode</label><select id="prop-previewMode" data-prop="previewMode"><option value="event" ${(o.previewMode||'event')==='event'?'selected':''}>Latest event image</option><option value="live" ${o.previewMode==='live'?'selected':''}>Live stream</option></select></div>${field('Event image entity','imageEntityId',o.imageEntityId||'')}<p class="field-hint">The latest event image is a snapshot. Choose Live stream only when the camera feed is working.</p>`:'';const linkHint=o.type==='cameraThumbnail'?'Enter a camera entity. The dashboard shows its feed or latest event image in this frame.':'Optional. A linked light or fan becomes the control itself on the dashboard, with a state-colored icon over its artwork.';root.innerHTML=`<div class="inspector-block"><p class="inspector-label">SELECTED OBJECT</p><div class="selection-title"><span class="selection-icon">${t.icon}</span><div><h3>${htmlEscape(o.name)}</h3><p>${htmlEscape(t.label)}</p></div></div></div><div class="inspector-block"><p class="inspector-label">APPEARANCE & POSITION</p>${field('Name','name',o.name)}${variantField(t,o.type)}<div class="field-grid">${field('X position','x',o.x,'number')}${field('Y position','y',o.y,'number')}${field('Width','w',o.w,'number')}${field('Depth','h',o.h,'number')}</div>${field('Rotation (degrees)','rotation',o.rotation,'number')}<p class="field-hint">Drag this object to move it; drag a corner handle to resize. Hold Shift while resizing to keep proportions.</p><div class="inspector-actions"><button type="button" class="secondary-button" data-action="rotate">↻ Rotate 90°</button><button type="button" class="secondary-button" data-action="duplicate">▣ Duplicate</button></div></div><div class="inspector-block"><p class="inspector-label">HOME ASSISTANT LINK</p>${field(o.type==='cameraThumbnail'?'Camera entity ID':'Entity ID','entityId',o.entityId||'')}${cameraFields}<p class="field-hint">${linkHint}</p></div><button type="button" class="danger-button" data-action="delete">Remove object</button>`;return;}
     if(selected.kind==='hotspot'){const h=project.hotspots.find(h=>h.id===selected.id);if(!h){selected=null;renderInspector();return;}const x=parseFloat(h.style.left),y=parseFloat(h.style.top);root.innerHTML=`<div class="inspector-block"><p class="inspector-label">HOME ASSISTANT CONTROL</p><div class="selection-title"><span class="selection-icon">${h.entity.startsWith('cover.')?'▥':'✦'}</span><div><h3>${htmlEscape(h.title)}</h3><p>${htmlEscape(h.entity)}</p></div></div></div><div class="inspector-block"><p class="inspector-label">CONTROL & POSITION</p>${hotspotField('Title','title',h.title)}${hotspotField('Entity ID','entity',h.entity)}<div class="field-grid">${hotspotField('Left (%)','left',x,'number')}${hotspotField('Top (%)','top',y,'number')}</div><div class="field"><label for="hotspot-tap">Tap action</label><select id="hotspot-tap" data-hotspot-prop="tap"><option value="toggle" ${h.tap_action?.action==='toggle'?'selected':''}>Toggle</option><option value="more-info" ${h.tap_action?.action==='more-info'?'selected':''}>More info</option></select></div><div class="field"><label for="hotspot-hold">Hold action</label><select id="hotspot-hold" data-hotspot-prop="hold"><option value="none" ${!h.hold_action?'selected':''}>None</option><option value="more-info" ${h.hold_action?.action==='more-info'?'selected':''}>More info</option></select></div><p class="field-hint">Drag the marker on the plan or edit its percentage position here. It is included in Home Assistant YAML and editable JSON.</p></div><button type="button" class="danger-button" data-action="delete">Remove control</button>`;return;}
     if(selected.kind==='room'){const r=project.rooms.find(r=>r.id===selected.id);if(!r){selected=null;renderInspector();return;}root.innerHTML=`<div class="inspector-block"><p class="inspector-label">SELECTED ROOM</p><div class="selection-title"><span class="selection-icon">▦</span><div><h3>${htmlEscape(r.name)}</h3><p>${r.points.length} editable corners</p></div></div></div><div class="inspector-block"><p class="inspector-label">ROOM SETTINGS</p>${field('Room name','name',r.name)}<div class="field"><label for="prop-surface">Floor finish</label><select id="prop-surface" data-prop="surface">${surfaces.map(s=>`<option value="${s.id}" ${s.id===r.surface?'selected':''}>${htmlEscape(s.name)}</option>`).join('')}</select></div><p class="field-hint">Choose Room in the toolbar, then drag a corner handle to reshape this floor area.</p></div>${fixedRoomIds.has(r.id)?'<p class="field-hint">The original illustrated rooms stay in place. You can reshape and repaint them; added rooms can be removed.</p>':'<button type="button" class="danger-button" data-action="delete">Remove room</button>'}`;return;}
     const w=project.walls.find(w=>w.id===selected.id);if(!w){selected=null;renderInspector();return;}if(isFixedExteriorWall(w)){root.innerHTML=`<div class="inspector-block"><p class="inspector-label">ILLUSTRATED SHELL</p><h3>Exterior wall finish</h3><p class="field-hint">Change this wall’s finish here. Its outline remains fixed because the supplied artwork contains the exterior shell.</p><div class="field"><label for="prop-finish">Finish</label><select id="prop-finish" data-prop="finish">${wallFinishes.map(f=>`<option value="${f.id}" ${(w.finish||'graphite')===f.id?'selected':''}>${htmlEscape(f.name)}</option>`).join('')}</select></div></div>`;return;}root.innerHTML=`<div class="inspector-block"><p class="inspector-label">SELECTED WALL</p><div class="selection-title"><span class="selection-icon">╱</span><div><h3>Wall segment</h3><p>${Math.round(Math.hypot(w.x2-w.x1,w.y2-w.y1))} px long</p></div></div></div><div class="inspector-block"><p class="inspector-label">WALL FINISH</p><div class="field"><label for="prop-finish">Finish</label><select id="prop-finish" data-prop="finish">${wallFinishes.map(f=>`<option value="${f.id}" ${(w.finish||'graphite')===f.id?'selected':''}>${htmlEscape(f.name)}</option>`).join('')}</select></div></div><div class="inspector-block"><p class="inspector-label">END POINTS</p><div class="field-grid">${field('Start X','x1',w.x1,'number')}${field('Start Y','y1',w.y1,'number')}${field('End X','x2',w.x2,'number')}${field('End Y','y2',w.y2,'number')}</div><p class="field-hint">Drag a wall or its endpoint on the plan to move it. Draw new walls with the Wall tool.</p></div><button type="button" class="danger-button" data-action="delete">Remove wall</button>`;
@@ -485,7 +547,36 @@
   function setViewMode(mode){viewMode=mode;document.getElementById('designModeButton').classList.toggle('active',mode==='design');document.getElementById('referenceModeButton').classList.toggle('active',mode==='reference');if(mode==='reference'){clearPlacement();setStatus('Starting furnished reference · controls are marked');}else setStatus('Editable design layer · rooms, walls, objects, and controls can be changed');draw();}
   function setPanel(panel){document.querySelectorAll('.panel-tab').forEach(b=>{const active=b.dataset.panel===panel;b.classList.toggle('active',active);b.setAttribute('aria-selected',String(active));});for(const name of ['objects','floors','rooms','walls'])document.getElementById(`${name}Panel`).hidden=name!==panel;}
 
-  function updateProperty(key,value){if(!selected)return;let target;if(selected.kind==='item')target=project.items.find(i=>i.id===selected.id);else if(selected.kind==='wall')target=project.walls.find(w=>w.id===selected.id);else target=project.rooms.find(r=>r.id===selected.id);if(!target)return;if(selected.kind==='wall'&&key==='finish'){if(!wallFinishById[value]||(target.finish||'graphite')===value)return;snapshot();target.finish=value;afterChange(`Applied ${wallFinishById[value].name} wall finish`);return;}if(selected.kind==='wall'&&isFixedExteriorWall(target))return;if(!(key in target))return;let v=value;if(typeof target[key]==='number'){v=Number(value);if(!Number.isFinite(v))return;if(key==='w'||key==='h')v=Math.max(12,v);}if(target[key]===v)return;snapshot();target[key]=v;afterChange(`Updated ${key}`);}
+  function updateProperty(key,value){
+    if(!selected)return;
+    let target;
+    if(selected.kind==='item')target=project.items.find(i=>i.id===selected.id);
+    else if(selected.kind==='wall')target=project.walls.find(w=>w.id===selected.id);
+    else target=project.rooms.find(r=>r.id===selected.id);
+    if(!target)return;
+    if(selected.kind==='wall'&&key==='finish'){
+      if(!wallFinishById[value]||(target.finish||'graphite')===value)return;
+      snapshot();target.finish=value;afterChange(`Applied ${wallFinishById[value].name} wall finish`);return;
+    }
+    if(selected.kind==='wall'&&isFixedExteriorWall(target))return;
+    if(selected.kind==='item'&&target.type==='cameraThumbnail'&&key==='imageEntityId'&&!(key in target))target.imageEntityId='';
+    if(!(key in target))return;
+    if(key==='previewMode'&&!['event','live','offline'].includes(value))return;
+    if(key==='entityId'&&value&&!validEntityId(value)){showToast('Use an entity ID like light.living_room');renderInspector();return;}
+    if(target.type==='cameraThumbnail'&&key==='entityId'&&value&&!/^camera\.[a-z0-9_]+$/i.test(value)){showToast('Use a camera entity ID');renderInspector();return;}
+    if(target.type==='cameraThumbnail'&&key==='imageEntityId'&&value&&!/^image\.[a-z0-9_]+$/i.test(value)){showToast('Use an image entity ID');renderInspector();return;}
+    let v=value;
+    if(typeof target[key]==='number'){
+      v=Number(value);if(!Number.isFinite(v))return;
+      if(key==='w'||key==='h')v=Math.max(target.type==='cameraThumbnail'?40:12,v);
+      if(target.type==='cameraThumbnail'&&key==='w')v=Math.min(W,v);
+      if(target.type==='cameraThumbnail'&&key==='h')v=Math.min(H,v);
+      if(target.type==='cameraThumbnail'&&key==='x')v=Math.max(0,Math.min(W,v));
+      if(target.type==='cameraThumbnail'&&key==='y')v=Math.max(0,Math.min(H,v));
+    }
+    if(target[key]===v)return;
+    snapshot();target[key]=v;afterChange(`Updated ${key}`);
+  }
   function updateVariant(type){
     if(selected?.kind!=='item'||!templateByType[type])return;
     const o=project.items.find(i=>i.id===selected.id);
@@ -498,7 +589,7 @@
     const current=key==='left'||key==='top'?h.style[key]:key==='tap'?h.tap_action?.action:key==='hold'?h.hold_action?.action||'none':h[key];if(next===current)return;snapshot();if(key==='left'||key==='top')h.style[key]=next;else if(key==='tap')h.tap_action={action:next};else if(key==='hold'){if(next==='none')delete h.hold_action;else h.hold_action={action:next};}else h[key]=next;afterChange(`Updated ${h.title} control`);
   }
   function deleteSelected(){if(!selected)return;if(selected.kind==='room'&&fixedRoomIds.has(selected.id)){showToast('Original illustrated rooms stay in the plan');return;}if(selected.kind==='wall'&&fixedExteriorWallIds.has(selected.id)){showToast('The illustrated exterior shell stays fixed');return;}snapshot();if(selected.kind==='item')project.items=project.items.filter(i=>i.id!==selected.id);else if(selected.kind==='hotspot')project.hotspots=project.hotspots.filter(h=>h.id!==selected.id);else if(selected.kind==='wall')project.walls=project.walls.filter(w=>w.id!==selected.id);else project.rooms=project.rooms.filter(r=>r.id!==selected.id);selected=null;afterChange('Removed selection');}
-  function duplicateSelected(){if(selected?.kind!=='item')return;const o=project.items.find(i=>i.id===selected.id);if(!o)return;snapshot();const n=clone(o);n.id=uid('i');n.x+=26;n.y+=26;n.name=`${o.name} copy`;project.items.push(n);select('item',n.id);afterChange('Duplicated object');}
+  function duplicateSelected(){if(selected?.kind!=='item')return;const o=project.items.find(i=>i.id===selected.id);if(!o)return;snapshot();const n=clone(o);n.id=uid('i');n.x+=26;n.y+=26;if(n.type==='cameraThumbnail'){n.x=Math.min(W,n.x);n.y=Math.min(H,n.y);}n.name=`${o.name} copy`;project.items.push(n);select('item',n.id);afterChange('Duplicated object');}
   function rotateSelected(){if(selected?.kind!=='item')return;const o=project.items.find(i=>i.id===selected.id);if(!o)return;snapshot();o.rotation=(o.rotation+90)%360;afterChange('Rotated object');}
   function addRoom(){snapshot();const r=room(uid('r'),'New room','terrazzo',[[570,420],[790,420],[790,580],[570,580]],[580,440]);project.rooms.push(r);setTool('room');select('room',r.id);setPanel('rooms');afterChange('Added editable room');showToast('Drag the corner handles to reshape your room');}
   function missingReferenceItems(){const present=new Set(project.items.map(i=>i.id));return STARTER.items.filter(i=>!present.has(i.id));}
@@ -512,11 +603,15 @@
   }
   async function exportPng(){try{showToast('Preparing detailed artwork…');const out=await renderDetailedPng();out.toBlob(blob=>{if(blob){download('roomcraft-second-floor.png','image/png',blob);showToast('Detailed PNG plan downloaded');}},'image/png');}catch(_){showToast('Could not load a detailed image asset for export');}}
   function dashboardControls(layout){
-    const controls=layout.hotspots.map(clone),byEntity=new Map(controls.map(h=>[h.entity,h]));
-    for(const o of layout.items){if(!/^[a-z_]+\.[a-z0-9_]+$/i.test(o.entityId||''))continue;
-      let h=byEntity.get(o.entityId);const left=+(o.x/W*100).toFixed(2),top=+(o.y/H*100).toFixed(2);
-      if(!h){const domain=o.entityId.split('.')[0],tap=['light','switch','fan','input_boolean'].includes(domain)?'toggle':'more-info';h=hotspot(`linked-${o.id}`,o.entityId,o.name,left,top,tap,'more-info');controls.push(h);byEntity.set(o.entityId,h);}
-      h.style.left=`${left}%`;h.style.top=`${top}%`;
+    const linked=layout.items.filter(o=>o.type!=='cameraThumbnail'&&validEntityId(o.entityId));
+    const linkedEntities=new Set(linked.map(o=>o.entityId));
+    const controls=layout.hotspots.filter(h=>!linkedEntities.has(h.entity)).map(clone),byEntity=new Set(controls.map(h=>h.entity));
+    for(const o of linked){if(byEntity.has(o.entityId))continue;
+      const domain=o.entityId.split('.')[0],tap=['light','switch','fan','input_boolean'].includes(domain)?'toggle':'more-info';
+      const left=+(o.x/W*100).toFixed(2),top=+(o.y/H*100).toFixed(2);
+      const h=hotspot(`linked-${o.id}`,o.entityId,o.name,left,top,tap,'more-info');
+      if(isFixtureControl(o))h.style={...h.style,background:'transparent',padding:'12px','box-shadow':'none','--mdc-icon-size':'23px','--paper-item-icon-color':'#f6e8bd','--paper-item-icon-active-color':'#ffd46b',filter:'drop-shadow(0 1px 2px rgba(30,25,21,.8))'};
+      controls.push(h);byEntity.add(o.entityId);
     }
     return controls;
   }
@@ -567,7 +662,8 @@
     // editor may have changed those markers since the Roomcraft JSON was saved.
     if(Array.isArray(data.hotspots)){
       const previousIds=new Map((Array.isArray(next.hotspots)?next.hotspots:[]).map(h=>[h.entity,h.id]));
-      next={...next,hotspots:data.hotspots.map(h=>({...h,id:previousIds.get(h.entity)||h.id}))};
+      const linkedEntities=new Set((next.items||[]).filter(o=>o.type!=='cameraThumbnail'&&validEntityId(o.entityId)).map(o=>o.entityId));
+      next={...next,hotspots:data.hotspots.filter(h=>!linkedEntities.has(h.entity)).map(h=>({...h,id:previousIds.get(h.entity)||h.id}))};
     }
     if(!validProject(next))throw new Error('Dashboard layout or controls are not compatible with this editor');
     return {next,hasEditable};
@@ -637,7 +733,7 @@
     document.getElementById('restoreFurnishingsButton').addEventListener('click',restoreReferenceItems);
     document.getElementById('recoverDraftButton').addEventListener('click',recoverPreviousDraft);
     document.getElementById('returnPreRecoveryButton').addEventListener('click',returnPreRecoveryLayout);
-    document.getElementById('hotspotList').addEventListener('click',e=>{const b=e.target.closest('[data-hotspot]');if(!b)return;setViewMode('design');setTool('select');select('hotspot',b.dataset.hotspot);setStatus('Drag this Home Assistant control or edit it in the Inspector');});
+    document.getElementById('hotspotList').addEventListener('click',e=>{const linked=e.target.closest('[data-control-item]');if(linked){setViewMode('design');setTool('select');select('item',linked.dataset.controlItem);setStatus('Drag this linked object or edit its entity in the Inspector');return;}const b=e.target.closest('[data-hotspot]');if(!b)return;setViewMode('design');setTool('select');select('hotspot',b.dataset.hotspot);setStatus('Drag this Home Assistant control or edit it in the Inspector');});
     document.getElementById('surfacePalette').addEventListener('click',e=>{const b=e.target.closest('[data-surface]');if(!b)return;setViewMode('design');setTool('room');pendingSurface=b.dataset.surface;renderSurfacePalette();showToast(`Click a room to paint ${surfaceById[pendingSurface].name}`);});
     document.getElementById('wallPalette').addEventListener('click',e=>{const b=e.target.closest('[data-wall-finish]');if(!b)return;setViewMode('design');setTool('select');pendingWallFinish=b.dataset.wallFinish;renderWallPalette();showToast(`Click a wall to paint ${wallFinishById[pendingWallFinish].name}`);});
     document.getElementById('roomList').addEventListener('click',e=>{const b=e.target.closest('[data-room]');if(!b)return;setViewMode('design');setTool('room');select('room',b.dataset.room);});
@@ -661,7 +757,7 @@
     menu.addEventListener('click',e=>{const b=e.target.closest('[data-export]');if(!b)return;showMenu(false);if(b.dataset.export==='png')exportPng();if(b.dataset.export==='json')exportJson();if(b.dataset.export==='yaml')exportHaYaml();});
     document.addEventListener('pointerdown',e=>{if(!e.target.closest('.menu-wrap'))showMenu(false);});
     document.getElementById('importButton').addEventListener('click',()=>document.getElementById('importFile').click());document.getElementById('importFile').addEventListener('change',e=>{importProject(e.target.files[0]);e.target.value='';});
-    document.getElementById('resetButton').addEventListener('click',async()=>{if(!await askConfirmation('Reset layout','Load the starting furnished plan? Your current layout can be exported as JSON first, and this change is undoable in this session.','Reset layout'))return;snapshot();project=clone(STARTER);selected=null;afterChange('Loaded starting furnished plan');fitView();});
+    document.getElementById('resetButton').addEventListener('click',async()=>{if(!await askConfirmation('Reset layout','Load the starting furnished plan? Your current layout can be exported as JSON first, and this change is undoable in this session.','Reset layout'))return;snapshot();project=restoreFixedGeometry(clone(STARTER));selected=null;afterChange('Loaded starting furnished plan');fitView();});
     window.addEventListener('keydown',e=>{if(dashboardTransferBusy)return;const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo();return;}if(e.key===' '){e.preventDefault();spaceHeld=true;return;}if(e.key==='Escape'){const canceled=interaction;interaction=null;viewport.classList.remove('dragging');if(canceled?.snapshot&&history.length){project=history.pop();future=[];afterChange('Canceled drag');}clearPlacement();selected=null;renderInspector();updateHistoryButtons();draw();return;}if((e.key==='Delete'||e.key==='Backspace')&&selected){e.preventDefault();deleteSelected();return;}const shortcuts={v:'select',h:'pan',r:'room',w:'wall',e:'erase'};const shortcut=shortcuts[e.key.toLowerCase()];if(shortcut){setViewMode('design');setTool(shortcut);}});
     window.addEventListener('keyup',e=>{if(e.key===' ')spaceHeld=false;});
     window.addEventListener('resize',fitView);

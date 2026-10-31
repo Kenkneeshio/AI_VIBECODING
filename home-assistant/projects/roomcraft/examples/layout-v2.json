@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "editableReferenceVersion": 2,
   "rooms": [
     {
       "id": "example-room",
@@ -28,14 +29,38 @@
       "h": 108,
       "rotation": 0,
       "entityId": ""
+    },
+    {
+      "id": "example-ceiling-light",
+      "type": "ceilingLight",
+      "name": "Example ceiling light",
+      "x": 610,
+      "y": 290,
+      "w": 58,
+      "h": 58,
+      "rotation": 0,
+      "entityId": "light.example_living_room"
+    },
+    {
+      "id": "example-camera-preview",
+      "type": "cameraThumbnail",
+      "name": "Example entry camera",
+      "x": 650,
+      "y": 425,
+      "w": 150,
+      "h": 100,
+      "rotation": 0,
+      "entityId": "camera.example_entry",
+      "imageEntityId": "image.example_entry_event",
+      "previewMode": "event"
     }
   ],
   "hotspots": [
     {
-      "id": "example-light-control",
+      "id": "example-shade-control",
       "type": "state-icon",
-      "entity": "light.example_living_room",
-      "title": "Example room light",
+      "entity": "cover.example_shade",
+      "title": "Example shade",
       "style": { "left": "36%", "top": "34%" },
       "tap_action": { "action": "more-info" }
     }

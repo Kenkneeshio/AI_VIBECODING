@@ -2,6 +2,27 @@
 
 All notable Roomcraft changes are recorded here. Deployment status is tracked separately from a source commit.
 
+## 2026-10-31 — Movable lighting and authenticated camera thumbnail
+
+### Added
+
+- The bedside lamp is an editable item. Eight room ceiling or pendant fixtures are movable, resizable objects; their optional entity binding produces a state-colored Home Assistant control at the object's position. Existing saved plans migrate once through `editableReferenceVersion`, and a lamp deliberately removed afterward stays removed.
+- The catalog now includes a camera thumbnail. The Inspector accepts a `camera.*` entity, optional `image.*` latest-event entity, and preview mode. The design canvas uses a drawn placeholder; the HA plan derives a `custom:roomcraft-camera-thumbnail` element from the saved item's geometry.
+- The HA element fetches same-origin event images with the signed-in HA session, labels the event time, opens native camera details on tap, and reports unavailable media. It uses a native live view only when HA already reports an active stream. The cloud and LAN bridges replace only Roomcraft-managed camera overlays and retain unrelated plan elements and dashboard views.
+- Corner handles resize selected objects, with Shift preserving proportions. A public synthetic binding diagram, schema/example updates, and a Roomcraft-only GitHub CI workflow support future team changes.
+
+### Verified
+
+- The LAN Studio export succeeded and HA readback confirmed 23 items, seven controls, one managed camera overlay, and a 1536 × 1024 uploaded PNG. Weather, clock, and the Studio edit link remained on the plan. The latest-event still displayed with its timestamp, and tapping it opened native camera details.
+- The owner-private cloud Site was published as version 14 from source commit `220c3c96ee9a791616a2065b2125abca55c76b4c`; dashboard import was verified there. A matching public-safe rendered plan PNG with a drawn camera placeholder is included in this manual.
+- Editor tests, LAN card tests, JavaScript syntax checks, the Site build, and the synthetic layout schema/example check passed. The public manual uses fictional entity IDs and a drawn camera frame; no live frame or installed entity inventory was added to GitHub.
+
+### Limits
+
+- The tested battery doorbell's P2P live stream times out, so its verified dashboard thumbnail is labeled **Latest event**. It does not claim to be live video.
+- Rugs, some nightstands and cabinetry, and sinks remain baked into the supplied single PNG. The prominent furniture, bedside lamp, room fixtures, and new catalog objects have editable placement. The illustrated exterior outline remains fixed.
+- The physical Fire tablet was offline during this release; a browser-sized preview does not replace an on-device test. The optional cloud Site and HA-hosted editor are separate deployment targets.
+
 ## 2026-10-31 — Studio frontend reload guard
 
 - Made `roomcraft-editor-card` and its Home Assistant card metadata registration idempotent if the resource is evaluated more than once. A fourth VM regression test reruns the module and checks that only one card entry remains.

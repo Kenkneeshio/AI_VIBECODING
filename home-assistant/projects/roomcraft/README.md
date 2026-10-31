@@ -1,6 +1,6 @@
 # Roomcraft
 
-Roomcraft is the editable source for the illustrated **Second Floor** Home Assistant floor plan. The editor keeps rooms, walls, floor finishes, furniture, decorative objects, and Home Assistant control positions in one versioned layout. Its export bridge renders the dashboard image and saves the editable layout alongside the Home Assistant card. The dashboard is the viewing and control surface; Roomcraft is the authoring surface.
+Roomcraft is the editable source for the illustrated **Second Floor** Home Assistant floor plan. The editor keeps rooms, walls, floor finishes, furniture, decorative objects, and Home Assistant control positions in one versioned layout. Lamps and fans can carry entity bindings, and camera thumbnail objects can reserve authenticated preview space on the plan. Its export bridge renders the dashboard image and saves the editable layout alongside the Home Assistant card. The dashboard is the viewing and control surface; Roomcraft is the authoring surface.
 
 ![Roomcraft editor with furnished second-floor plan](docs/images/editor-overview.png)
 
@@ -50,7 +50,7 @@ The official HA-hosted editor uses the current user's authenticated session to u
 
 ## Quick verification
 
-1. Open `http://192.168.68.96:8123/second-floor/studio` on a device on the home network and sign in to Home Assistant. Confirm the furnished plan loads.
+1. Open `http://<HA-LAN-IP>:8123/second-floor/studio` on a device on the home network and sign in to Home Assistant. Confirm the furnished plan loads.
 2. In **Floors**, apply a finish to a room; in **Wall**, draw an interior wall; in **Objects**, place furniture. Use **Undo** to restore the starting scene.
 3. Select **Import from dashboard** and confirm the controls appear at their Home Assistant positions.
 4. Export editable JSON as a private backup before any dashboard transfer.

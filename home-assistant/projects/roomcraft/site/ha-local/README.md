@@ -8,7 +8,11 @@ The official local editor is the **Layout Studio** view at `http://<HA-LAN-IP>:8
 - `roomcraft-card.js` is registered as a Lovelace module resource and is the only card in the dashboard's `studio` panel view. Home Assistant supplies the card with the signed-in user's `hass` object. The card embeds the editor and provides **Open editor in a new tab** for browsers that leave the embedded frame blank.
 - The embedded editor exchanges request/response messages with its parent card. The new-tab editor uses its `window.opener` instead. The card checks the exact iframe or opened window, origin, request ID, and method before answering.
 - The card reads and saves the dashboard through Home Assistant's authenticated WebSocket commands. It uploads the rendered PNG with `hass.fetchWithAuth` using the current user's session; it never sends the token to the iframe. Publishing requires an HA administrator. A stored snapshot is checked before and after image upload, and the saved dashboard is read back.
-- Only the `plan` picture card's image, state-icon controls, and top-level `roomcraft_layout` are changed by export. Weather, clock, edit link, and unrelated dashboard views are retained.
+- Export changes the `plan` picture card's image, Roomcraft-managed state-icon and camera elements, and top-level `roomcraft_layout`. Weather, clock, edit link, and unrelated dashboard views are retained.
+
+Bound lamp/light/fan objects derive a single state-icon control at the object's position. Camera thumbnail items derive `custom:roomcraft-camera-thumbnail` picture elements. The card replaces only elements it owns (`state-icon` controls and camera elements with a Roomcraft item ID); it retains the edit icon, clock, weather, and other independent overlays. These two derived element sets must stay in parity with the optional cloud bridge.
+
+The camera element uses the signed-in HA session for same-origin event-image proxy requests. It never puts a bearer token in the editor frame or writes a camera URL into static assets. A missing event image shows a neutral unavailable state. A live view is attempted only when Home Assistant already reports an active stream; rendering a thumbnail does not start a battery camera. Clicking the frame opens native camera details.
 
 The static editor files at `/local/roomcraft/` are public to anyone who can reach Home Assistant. This includes the bundled illustrative floor-plan image, which is already present in the public project repository. The current editable dashboard JSON and live HA entity bindings are **not** copied there. Uploaded plan images use Home Assistant's image library with unguessable IDs; Home Assistant serves an image to anyone with its exact image URL, as it does for the existing plan. Do not put secrets or private layouts in `public/`.
 
@@ -37,6 +41,7 @@ The static files, custom card resource, and dashboard configuration persist acro
 3. Change a reversible item, export to the dashboard, and read back the plan and `roomcraft_layout` through the HA API.
 4. Import from dashboard in the cloud editor; confirm the same layout. Reverse the change and export again if it was only a probe.
 5. Check a narrow viewport and the plan's edit icon.
+6. For a bound fixture, confirm that its state icon follows the drawn object and that a prior duplicate control is gone. For a camera thumbnail, confirm the latest-event still or unavailable message, then click through to native details. Never use a private camera frame as a public test fixture.
 
 Run `node --test ha-local/roomcraft-card.test.mjs` for the bridge's merge and conflict checks. The Site's existing bridge tests remain independent.
 

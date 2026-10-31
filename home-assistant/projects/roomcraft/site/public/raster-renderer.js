@@ -17,7 +17,8 @@
     i11:{ box:[1017,680,76,119], shapes:[['r',4,3,68,112,16]] },
     i12:{ box:[1109,583,79,60], shapes:[['r',5,3,69,54,16]] },
     i13:{ box:[435,624,51,56], shapes:[['e',3,3,45,50]] },
-    lamp:{ box:[1412,446,62,69], shapes:[['e',4,1,54,58]] }
+    i14: { box:[1419,446,48,60], shapes:[['e',3,2,39,41],['e',13,34,22,22]] },
+    lamp:{ box:[1419,446,48,60], shapes:[['e',3,2,39,41],['e',13,34,22,22]] }
   };
   const prototype = {sofa:'i1',tv:'i2',table:'i3',desk:'i4',chair:'i5',bed:'i6',counter:'i7',tub:'i9',toilet:'i11',plant:'i13',lamp:'lamp'};
   // Reapply the original recessed blue glazing from the empty illustrated shell
@@ -128,7 +129,7 @@
   }
   function sourceSprite(id,original,shell,repair=false) {
     ensureCache(original,shell);const map=repair?repairs:sprites;
-    if(!map.has(id))map.set(id,cutout(id,repair?shell:original,repair,repair?null:shell));
+    if(!map.has(id))map.set(id,cutout(id,repair?shell:original,repair,repair||id==='i14'?null:shell));
     return map.get(id);
   }
   function sameVisual(a,b){return !!a&&!!b&&a.type===b.type&&a.x===b.x&&a.y===b.y&&a.w===b.w&&a.h===b.h&&a.rotation===b.rotation;}
@@ -263,6 +264,15 @@
     c.restore();
   }
   function repairItem(c,id,original,shell) {
+    if(id==='i14'&&ready(original)){
+      // The lamp sits on a baked bedside table. Removing its pixels from the
+      // empty shell would also punch a hole through the table. Clone a clean
+      // strip of the same tabletop under the tight lamp silhouette instead.
+      const spec=specs.i14,[x,y,w,h]=spec.box,patch=makeCanvas(w,h),p=patch.getContext('2d');
+      p.drawImage(original,1461,449,11,55,0,0,w,h);
+      p.globalCompositeOperation='destination-in';p.filter='blur(2px)';p.drawImage(maskFor(spec),0,0);
+      c.drawImage(patch,x,y);return;
+    }
     const spec=specs[id], patch=sourceSprite(id,original,shell,true);if(!spec||!patch)return;
     c.drawImage(patch,spec.box[0],spec.box[1]);
   }

@@ -1,6 +1,6 @@
 # Artwork and graphics
 
-Roomcraft's 1536 × 1024 visual starting point was supplied for this project as a PNG and refined for the sofa, stair, floor, and window corrections. The current `floorplan.png` has recessed blue glazing. The [published-plan image](images/published-plan.png) is the latest PNG exported from Home Assistant Studio and read back from the live dashboard; its pixels show the same corrected scene, while its PNG bytes differ from the bundled reference because the renderer encoded it anew. The renderer also reapplies blue glazing pixels from `empty-shell.png` where edited rooms or objects disturb those baked-in windows. The editor's shell, floor textures, furniture atlas, baby/home atlases, and object overlays were created or derived for the Roomcraft layout workflow. They are bundled under `site/public/assets/` so the HA-hosted editor, optional cloud editor, and detailed PNG export use the same graphics. Earlier flat-window captures are in the [legacy screenshot archive](legacy/README.md).
+Roomcraft's 1536 × 1024 visual starting point was supplied for this project as a PNG and refined for the sofa, stair, floor, and window corrections. The bundled `floorplan.png` has recessed blue glazing. The [published-plan image](images/published-plan.png) is a public-safe release capture: it shows movable room fixtures, the bedside lamp, and a drawn camera placeholder. Its pixels differ from the bundled reference because the renderer encoded the editable scene anew. The real camera image is a separate authenticated dashboard overlay, never baked into this public illustration. The renderer also reapplies blue glazing pixels from `empty-shell.png` where edited rooms or objects disturb those baked-in windows. The editor's shell, floor textures, furniture atlas, baby/home atlases, and object overlays were created or derived for the Roomcraft layout workflow. They are bundled under `site/public/assets/` so the HA-hosted editor, optional cloud editor, and detailed PNG export use the same graphics. Earlier flat-window captures are in the [legacy screenshot archive](legacy/README.md).
 
 | File or group | Role |
 | --- | --- |
@@ -30,4 +30,6 @@ In this comparison, the top crop shows the flat replacement windows and the lowe
 The original furnished reference includes baked-in windows. Editable window objects are separate overlays; moving a wall or changing its finish does not cut a new structural opening into the reference bitmap. The exterior outline remains fixed to keep the supplied scene aligned.
 
 The public graphics show a fictionalized floor plan and are documentation/reference art. Do not add live camera frames, exact vacuum maps, household photos, or private access URLs to this folder.
+
+The [live-binding workflow diagram](images/live-binding-flow.svg) is a vector manual graphic with fictional `example_*` entity IDs and a drawn camera placeholder. It contains no device image, stream URL, or installed entity inventory.
 
