@@ -344,6 +344,7 @@
     if(!sameVisual(starter.items.find(i=>i.id==='i6'),currentById.get('i6')))drawBedroomRug(c);
     const changed=project.items.filter(item=>!sameVisual(item,baseById.get(item.id)));
     const isFloorLayer=item=>item.type==='rug'||['playMat','floorMat'].includes(window.RoomcraftInventory?.byType?.[item.type]?.artFamily);
+    const isCeilingLayer=item=>item.type==='ceilingLight'||item.type==='pendantLight'||window.RoomcraftInventory?.byType?.[item.type]?.artFamily==='ceilingFan';
     const floorItems=changed.filter(isFloorLayer);
     for(const item of floorItems)drawItem(c,item,starter,original,shell,fallback);
     // Mats sit beneath furniture: redraw unchanged source items they overlap.
@@ -351,7 +352,9 @@
       if(isFloorLayer(item)||!sameVisual(item,baseById.get(item.id)))continue;
       if(Math.abs(item.x-mat.x)<(item.w+mat.w)/2&&Math.abs(item.y-mat.y)<(item.h+mat.h)/2)drawItem(c,item,starter,original,shell,fallback);
     }
-    for(const item of changed.filter(i=>!isFloorLayer(i)&&i.type!=='window'))drawItem(c,item,starter,original,shell,fallback);
+    for(const item of changed.filter(i=>!isFloorLayer(i)&&!isCeilingLayer(i)&&i.type!=='window'))drawItem(c,item,starter,original,shell,fallback);
+    // Ceiling fixtures remain visible above movable furniture, independent of insertion order.
+    for(const item of changed.filter(isCeilingLayer))drawItem(c,item,starter,original,shell,fallback);
     for(const wall of project.walls){const base=starter.walls.find(w=>w.id===wall.id);if(!sameWall(wall,base))drawNewWall(c,wall);}
     for(const [x,y,w,h,rotation] of exteriorWindows){
       const vertical=Math.abs(rotation)%180===90;

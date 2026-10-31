@@ -2,6 +2,13 @@
 
 All notable Roomcraft changes are recorded here. Deployment status is tracked separately from a source commit.
 
+## 2026-10-31 — Photo-inspired living-room play area, Site v19
+
+- Added 16 searchable catalog variants across 11 illustrated designs inspired by the supplied living-room photo. Search **1977** or **photo** for the multicolor bear-panel play yard, six individual panel colors, gray leaf and brown checker mats, wooden play arch, colorful activity table, teddy floor chair, gray bolster, bunny plush, white mantel with dark tile hearth, and adjacent toy shelf. The new objects use the plan's raised top-down perspective; the original photo and its people are not deployed or published.
+- Placed eight independent play-area objects in front of the living-room sofa. Left the mantel and toy shelf in the catalog until the physical fireplace wall can be verified; the current plan's TV and windows do not justify a fixed placement. The mats remain beneath play objects, while a ceiling render pass keeps the existing fan visible above them.
+- Published owner-private Site v19 from Site source `5874e8976c0f0bc6dc86a9e9e9e69b13c4fb8c07` and installed matching editor assets in Home Assistant. Studio exported the updated plan. HA readback confirmed layout version 2, six rooms, 36 items including all eight new living-room objects, 10 unique object controls, unchanged fan motor/light scene targets, and the porch camera overlay. No device command was sent.
+- The new photo-object art smoke test, Site tests, JavaScript syntax, TypeScript, production build, and Git whitespace check passed. The drawn plan is a visual interpretation, not measured geometry or a pixel-identical recreation of the photo. Physical tablet fit and the fireplace wall still need an on-device and in-room check, respectively.
+
 ## 2026-10-31 — Engineering handoff consolidation
 
 - Added one [engineering handoff](docs/engineering-handoff.md) with the verified v18 release snapshot, code and data boundaries, first-hour setup, checks, runtime release and rollback path, known limitations, and a prioritized work queue. No new implementation tickets were opened.
