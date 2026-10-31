@@ -5,9 +5,17 @@ import test from 'node:test';
 
 const code = fs.readFileSync(new URL('./roomcraft-card.js', import.meta.url), 'utf8');
 let Card;
+const registered = new Map();
 const context = {
   HTMLElement: class { attachShadow() { return {}; } },
-  customElements: { define(_name, value) { Card = value; } },
+  customElements: {
+    get(name) { return registered.get(name); },
+    define(name, value) {
+      if (registered.has(name)) throw new Error(`Element already registered: ${name}`);
+      registered.set(name, value);
+      Card = value;
+    },
+  },
   window: { customCards: [] },
   location: { origin: 'http://ha.example.test' },
   document: {},
@@ -22,6 +30,12 @@ const context = {
   Map,
 };
 vm.runInNewContext(code, context);
+
+test('resource registration is safe when Home Assistant imports another version', () => {
+  assert.doesNotThrow(() => vm.runInNewContext(code, { ...context }));
+  assert.equal(registered.get('roomcraft-editor-card'), Card);
+  assert.equal(context.window.customCards.filter(card => card.type === 'roomcraft-editor-card').length, 1);
+});
 
 function dashboard() {
   return {

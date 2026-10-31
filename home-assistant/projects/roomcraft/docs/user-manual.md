@@ -28,7 +28,7 @@ This 960 × 600 browser preview shows the complete 696 × 465 plan card without 
 
 The owner-private cloud editor is an alternate route when available; use the Site URL supplied by the owner. It has its own sign-in. Both editors share the dashboard's saved `roomcraft_layout`; after exporting in one, import in the other to refresh its draft. Use Layout Studio on the home network as the normal authoring path.
 
-This manual describes the HA-hosted Studio paired with owner-private cloud editor version 12. The own-tab Studio fallback completed a live import, export, and dashboard readback with 6 rooms, 33 walls, 13 items, and 7 controls.
+This manual describes the HA-hosted Studio paired with owner-private cloud editor version 13. The own-tab Studio fallback completed a live import, export, and dashboard readback with 6 rooms, 33 walls, 13 items, and 7 controls.
 
 If Chrome leaves the embedded editor blank, use **Open editor in a new tab** inside Layout Studio. Keep the Studio tab open while editing in the new tab: it supplies the authenticated dashboard connection through the opener. A direct visit to `/local/roomcraft/editor.html` has no such connection and cannot import or export to the dashboard.
 
@@ -95,6 +95,7 @@ The **Floor Plan** view overlays working device markers, current weather, time, 
 | A wall cannot move | The illustrated exterior shell is fixed. Select or draw an interior wall. |
 | Dashboard export says the dashboard changed | Import the dashboard again, compare changes, and retry. |
 | Dashboard image updates but browser shows the prior image | Reload the Home Assistant view; its browser may still hold the earlier image. |
+| Layout Studio shows **Configuration error** after a card update | Reload the affected Home Assistant tab. If the error persists, check the registered Roomcraft card resource and dashboard configuration using the [deployment guide](deployment.md). The cause of the observed transient error was not confirmed. |
 | HA-hosted Studio opens but the editor is blank | Click **Open editor in a new tab** in Studio and keep the Studio tab open. The new tab can still import and export through its authenticated opener. |
 | HA-hosted Studio opens but transfer is unavailable | Confirm you opened `/second-floor/studio` while signed in to Home Assistant, or used its own-tab button while keeping Studio open. Direct `/local/roomcraft/editor.html` lacks the dashboard bridge. Publishing needs an administrator account. See the [deployment guide](deployment.md). |
 | Cloud editor transfer is unavailable | Confirm the owner-private Site sign-in and its server-side Home Assistant connection. |

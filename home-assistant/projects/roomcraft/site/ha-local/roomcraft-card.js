@@ -322,7 +322,11 @@ class RoomcraftEditorCard extends HTMLElement {
   }
 }
 
-customElements.define('roomcraft-editor-card', RoomcraftEditorCard);
-window.customCards = window.customCards || [];
-window.customCards.push({ type: 'roomcraft-editor-card', name: 'Roomcraft Editor',
-  description: 'Edit and publish the Second Floor layout using Home Assistant authentication.' });
+if (!customElements.get('roomcraft-editor-card')) {
+  customElements.define('roomcraft-editor-card', RoomcraftEditorCard);
+}
+if (!Array.isArray(window.customCards)) window.customCards = [];
+if (!window.customCards.some(card => card.type === 'roomcraft-editor-card')) {
+  window.customCards.push({ type: 'roomcraft-editor-card', name: 'Roomcraft Editor',
+    description: 'Edit and publish the Second Floor layout using Home Assistant authentication.' });
+}

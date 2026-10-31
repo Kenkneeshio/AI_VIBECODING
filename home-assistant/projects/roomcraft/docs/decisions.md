@@ -1,5 +1,13 @@
 # Decision log
 
+## 2026-10-31 — Make card registration safe on repeated evaluation
+
+**Decision:** Check the custom-element registry and Home Assistant custom-card metadata before registering `roomcraft-editor-card`.
+
+**Reason:** Home Assistant can evaluate a refreshed card resource in a tab that already loaded an earlier copy. The reported **Configuration error** cleared on tab reload, but its precise cause was not confirmed. Idempotent registration removes one plausible failure mode without changing the dashboard layout or editor project.
+
+**Consequence:** Keep a repeat-evaluation regression test. Troubleshooting still starts with reloading the affected Studio tab and checking the resource/configuration readback if the error persists; a blank iframe uses the existing own-tab fallback.
+
 ## 2026-10-31 — Make HA-hosted Studio the official editor
 
 **Decision:** Serve the shared Roomcraft editor from Home Assistant `/local/roomcraft/` inside a same-origin custom Lovelace card at `/second-floor/studio`. The card receives `hass`, validates iframe messages, and performs authenticated dashboard reads, image upload, and saves as the signed-in user. Keep the owner-private cloud Site as an alternate transport to the same saved layout.
