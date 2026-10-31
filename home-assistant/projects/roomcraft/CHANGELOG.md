@@ -2,6 +2,36 @@
 
 All notable Roomcraft changes are recorded here. Deployment status is tracked separately from a source commit.
 
+## 2026-10-31 — Dashboard-first editor startup, Site v17
+
+- Aligned the public HA-hosted editor source with the owner-private Site v17 startup behavior. Both editor transports now request the current `roomcraft_layout` when opened, even if that browser has a local draft. **Import from dashboard** remains the manual refresh action for an editor that is already open.
+- A different local draft is saved for **Recover previous browser draft** before the dashboard layout replaces it. If Home Assistant is unreachable, the local draft remains usable. A slow dashboard response does not overwrite a drag, an in-progress edit, or an active Inspector edit.
+- Synced `ha-local/README.md`, `public/app.js`, `public/editor.html`, and `tests/editor-migration.test.mjs` from the Site source. The user manual and deployment checklist explain the changed startup behavior.
+- Published Site v17 from source commit `825c13d0f583ba504e22c80181123843c0d49c19` and reinstalled the LAN editor with a new cache version, a private HA backup, and configuration readback. Browser checks showed both editors loading the current layout with eight control objects; the LAN editor offered **Recover previous browser draft** for its older copy. Some Chrome sessions still need Studio's **Open editor in a new tab** fallback.
+- Verification: 23 Site tests, 13 Home Assistant card tests, four migration tests, TypeScript, editor JavaScript syntax, and production build passed. The target Apolosign tablet still needs its own on-device fit and touch check.
+
+## 2026-10-31 — Interactive plan and complete entity drawer
+
+- Published the owner-private Roomcraft Site as version 15 from source commit `52a7394a4ef03068780574ab1969608793b8f45d`. The hosted editor imported the current Home Assistant layout after its previous browser draft was backed up locally.
+- Updated the Home Assistant Studio resource and migrated the Floor Plan with two private configuration backups and verified readback. Eight object overlays now cover five existing fixture bindings and three windows; the exterior camera remains at its prior position and uses the verified live porch source. Seven duplicate floating icons were removed.
+- The plan drawer opens with nine on-plan entities and can search all 1,760 registered entities, including disabled records. Its six curated groups carry 64 relevant references from the old Main Dashboard; the unrelated feeder is excluded from Robot Vacuum.
+- The object itself is the control target. The editor now offers entity lookup, label, icon, tap and hold actions, movable invisible target areas, and a manual YAML export that retains the custom controls. The kitchen switch is labeled for its counter-light circuit.
+- Browser verification showed a playing 1920-pixel porch stream and the sofa-window target opening native blind tilt controls. No device state was changed for verification. The owner-private Site, Home Assistant card, and public source were tested with 18 Site tests, 13 card tests, four migration tests, TypeScript, and a production build. The target Apolosign tablet still needs an on-device fit and touch check after its remote developer connection is restored.
+
+## 2026-10-31 — Correct porch feed and shipped drawer documentation
+
+- Updated the floor binding guide and sanitized inventory recommendations to use the verified live HLS source `camera.porch_camera_profile_000` for the upstairs exterior thumbnail. The Eufy front-door camera and latest-event image remain separate inventory entries; the earlier Eufy P2P timeout does not apply to the porch feed.
+- Documented all three living-window blind zones, including the small-sofa blind.
+- Described the shipped drawer: **On plan**, **All entities**, search, registry availability, and six curated old Main Dashboard sections. The target tablet still needs an on-device fit and touch check.
+- Documentation correction only; no Home Assistant or editor code is changed by this commit.
+
+## 2026-10-31 — HA inventory and dashboard handoff documentation
+
+- Added a reviewed, state-free HA metadata snapshot with 1,760 entity rows in JSON and area/domain Markdown. Personal/mobile identifiers, network details, current values, camera media, and credentials are omitted or masked.
+- Mapped all 65 direct references in the existing Main Dashboard's six sections, including eight unavailable references and one with no live state at audit time. Template-generated references need a separate review.
+- Documented verified and candidate room-to-object bindings, missing room lights, object-level interaction rules, and a proposed compact dashboard menu. Updated the user manual, privacy rules, goals, decision log, and target-tablet terminology.
+- This change updates public documentation only. It does not deploy a Home Assistant dashboard, bind devices, or prove fit on the target tablet.
+
 ## 2026-10-31 — Movable lighting and authenticated camera thumbnail
 
 ### Added
@@ -21,7 +51,7 @@ All notable Roomcraft changes are recorded here. Deployment status is tracked se
 
 - The tested battery doorbell's P2P live stream times out, so its verified dashboard thumbnail is labeled **Latest event**. It does not claim to be live video.
 - Rugs, some nightstands and cabinetry, and sinks remain baked into the supplied single PNG. The prominent furniture, bedside lamp, room fixtures, and new catalog objects have editable placement. The illustrated exterior outline remains fixed.
-- The physical Fire tablet was offline during this release; a browser-sized preview does not replace an on-device test. The optional cloud Site and HA-hosted editor are separate deployment targets.
+- The target Apolosign Calendar tablet was not checked with this Roomcraft release; a browser-sized preview does not replace an on-device test. The optional cloud Site and HA-hosted editor are separate deployment targets.
 
 ## 2026-10-31 — Studio frontend reload guard
 
@@ -40,16 +70,16 @@ All notable Roomcraft changes are recorded here. Deployment status is tracked se
 - `ha-local/install.py` copies public assets, registers a versioned Lovelace module resource, backs up the dashboard, updates Studio and its plan edit icon, and verifies the saved state. Focused HA card tests cover element preservation and conflict handling.
 - The owner-private cloud Site remains an alternate editor for the same saved `roomcraft_layout`; importing after a cross-editor export refreshes a local draft.
 - The Floor Plan uses a centered `custom:grid-layout` column so the 3:2 image fits the available viewport height on tablet and desktop without clipping; the prior `card_mod` fit workaround was removed.
-- The Second Floor dashboard was set as the default for Ken's Home Assistant profile and moved to the first sidebar position. That profile preference applies across Ken's devices; it is not a setting installed by this repository.
+- The Second Floor dashboard was set as the default for the owner's Home Assistant profile and moved to the first sidebar position. That profile preference applies across the owner's devices; it is not a setting installed by this repository.
 
 ### Deployment scope
 
 - The HA-hosted editor and cloud Site share layout version 2. Home Assistant native Live Home cards continue to own current device, weather, vacuum-map, and working garage-camera state.
 - The optional owner-private cloud Site was published as version 12 from source commit `425449a3517d72ff4be264c5b05fdf7eee22a910`. The HA-hosted editor uses the matching shared public source plus its own Lovelace card and installer.
 - Static `/local/roomcraft/` files contain no HA token or live dashboard JSON. Direct `editor.html` access does not provide dashboard transfer.
-- Responsive browser checks passed at 960 × 600 CSS pixels and 2560 × 1271. The physical Fire tablet was offline, so its actual WebView remains unverified.
+- Responsive browser checks passed at 960 × 600 CSS pixels and 2560 × 1271. The target Apolosign Calendar tablet's actual WebView was not checked with this Roomcraft release.
 - A Studio import/export/readback completed through the new-tab fallback. The live project retained 6 rooms, 33 walls, 13 items, and 7 controls; its newly exported PNG and the current HA Studio screenshot are included in the illustrated manual. The prior editor screenshot is archived.
-- A 960 × 600 HA browser preview of the complete Floor Plan was added to the manual. The physical Fire tablet remains unverified while offline.
+- A 960 × 600 HA browser preview of the complete Floor Plan was added to the manual. The target tablet remains unverified for this release.
 
 ## 2026-10-31 — Window perspective correction
 

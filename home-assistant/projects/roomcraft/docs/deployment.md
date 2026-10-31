@@ -34,7 +34,7 @@ Build and publish the `site/` source through its Site workflow with owner-privat
 | --- | --- |
 | HA login | Studio opens in a fresh laptop browser with the HA login. The plan pencil-ruler icon navigates there. |
 | Own-tab fallback | If the embedded frame is blank, **Open editor in a new tab** loads the same editor and completes an import/export while Studio remains open. |
-| Layout default | A fresh browser loads the current dashboard project. An existing local draft can be explicitly replaced with **Import from dashboard**. |
+| Layout default | The editor loads the current dashboard project on opening. A different browser draft is saved for recovery; if HA is unavailable, the local draft remains usable. **Import from dashboard** refreshes an already open editor. |
 | Art | Furnished default, recessed windows, added wall-mounted windows, furniture, baby items, movable bedside lamp, room fixtures, and floor textures render in Design mode and the detailed PNG. |
 | Editor | Select, drag, corner-resize (including Shift proportions), rotate, draw wall, reshape room, repaint floor/wall, undo/redo, and JSON import/export work. |
 | Dashboard transfer | Export updates the plan image, one control per bound fixture, managed camera overlays, and `roomcraft_layout`; import reads back the same project. Weather, time, edit link, `studio`, and `live` remain. |
@@ -42,11 +42,15 @@ Build and publish the `site/` source through its Site workflow with owner-privat
 | Cloud parity | If the cloud Site is deployed, import its dashboard copy after an HA editor export; repeat in the other direction. |
 | Responsive view | Verify the entire plan and controls fit on actual laptop and tablet screen sizes without clipping or stretching. The current installation was checked at 960 × 600 CSS pixels (696 × 465 plan, no page scroll) and 2560 × 1271 (centered 1763-pixel card). |
 | Existing controls | Confirm light, switch, cover, fan, garage, vacuum, and camera behavior through Home Assistant before relying on their dashboard cards. An event still is not proof of a live stream. |
-| Privacy | No tokens, SSH keys, live entity inventory, camera access URLs, or private backups appear in `/local/roomcraft/` or GitHub. |
+| Current drawer | Confirm **On plan**, **All entities**, search, registry availability, and all six curated Main Dashboard groups. Check the three separate living-window blind controls. |
+| Exterior camera | Confirm `camera.porch_camera_profile_000` has a working HLS view and the floor thumbnail says **Live** only while it plays; do not substitute the separate Eufy event image. |
+| Privacy | No tokens, SSH keys, raw HA exports, current device values, camera access URLs, or private backups appear in `/local/roomcraft/` or GitHub. The public inventory under `docs/ha-inventory/` contains only reviewed metadata. |
 
-The earlier 2026-10-31 release completed an HA Studio import/export/readback with the own-tab fallback: 6 rooms, 33 walls, 13 items, and 7 controls. The lighting/camera release read back 23 items, seven controls, one managed camera overlay, and a 1536 × 1024 PNG while retaining weather, clock, and Studio entry. The tested event still and native details action worked; the battery doorbell's P2P live stream timed out. Record the actual checks performed and screenshots in each release record. A check listed here is an acceptance criterion, not an assertion that every device was exercised.
+The earlier 2026-10-31 release completed an HA Studio import/export/readback with the own-tab fallback: 6 rooms, 33 walls, 13 items, and 7 controls. Its first lighting/camera release read back 23 items, seven controls, one managed camera overlay, and a 1536 × 1024 PNG while retaining weather, clock, and Studio entry. That release displayed an Eufy latest-event still and opened native details, while the Eufy battery doorbell's P2P live stream timed out. The later floor migration uses the separate porch ONVIF camera, whose HLS stream was verified. Record the actual checks performed and screenshots in each release record; the target tablet still requires its own on-device check. A checklist row is an acceptance criterion, not an assertion that every device was exercised.
 
-The default-dashboard choice is a Home Assistant **user profile** preference, not part of the dashboard YAML or installer. In the current installation Ken's profile opens Second Floor by default across his devices, and the sidebar lists it first. The physical Fire tablet was offline during the 960 × 600 responsive browser check; verify its actual WebView when it reconnects.
+For the v17 editor startup check, open a browser with a different saved draft and confirm the dashboard layout loads while **Recover previous browser draft** restores the earlier work. Check an editor with an in-progress drag, an editor whose Home Assistant connection fails, and an already open editor using **Import from dashboard**. The public source passed 23 Site tests and 13 HA card tests for this sync; both published editors loaded the current layout in browser checks. The target tablet still needs an on-device check.
+
+The default-dashboard choice is a Home Assistant **user profile** preference, not part of the dashboard YAML or installer. In the current installation the owner's profile opens Second Floor by default across devices, and the sidebar lists it first. The 960 × 600 check used a browser viewport; verify the current Roomcraft release on the target Apolosign Calendar tablet's actual display before claiming on-device fit.
 
 ## Rollback
 

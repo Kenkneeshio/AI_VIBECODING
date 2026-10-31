@@ -7,6 +7,7 @@
   const STORAGE_KEY = 'roomcraft.second-floor.v2';
   const LEGACY_STORAGE_KEY = 'roomcraft.second-floor.v1';
   const BEFORE_RECOVERY_KEY = 'roomcraft.second-floor.before-recovery.v2';
+  const REPLACED_DRAFT_KEY = 'roomcraft.second-floor.dashboard-replaced-draft.v2';
   const canvas = document.getElementById('planCanvas');
   const ctx = canvas.getContext('2d');
   const viewport = document.getElementById('viewport');
@@ -63,6 +64,7 @@
     { type: 'tableLamp', label: 'Table lamp', icon: '◌', w: 48, h: 52, group: 'lighting' },
     { type: 'wallSconce', label: 'Wall sconce', icon: '◖', w: 34, h: 48, group: 'lighting' },
     { type: 'cameraThumbnail', label: 'Camera thumbnail', icon: '▣', w: 170, h: 110, group: 'security' },
+    { type: 'controlZone', label: 'Invisible button area', icon: '▧', w: 120, h: 72, group: 'security' },
     { type: 'plant', label: 'Flowers', icon: '✿', w: 44, h: 44, group: 'decor' },
     { type: 'floorPlant', label: 'Floor plant', icon: '❀', w: 72, h: 72, group: 'decor' },
     { type: 'artwork', label: 'Wall art', icon: '▧', w: 94, h: 56, group: 'decor' },
@@ -86,6 +88,11 @@
   const wall = (id, x1, y1, x2, y2) => ({ id, x1, y1, x2, y2 });
   const item = (id, type, name, x, y, w, h, rotation = 0) => ({ id, type, name, x, y, w, h, rotation, entityId: '', ...(type==='cameraThumbnail'?{previewMode:'event',imageEntityId:''}:{}) });
   const validEntityId = value => /^[a-z_]+\.[a-z0-9_]+$/i.test(value||'');
+  function clampLinkedItem(o){
+    if(o.type==='cameraThumbnail'||!validEntityId(o.entityId))return;
+    o.x=Math.max(0,Math.min(W,o.x));o.y=Math.max(0,Math.min(H,o.y));
+    o.w=Math.max(12,Math.min(W,o.w));o.h=Math.max(12,Math.min(H,o.h));
+  }
   const isFixtureControl = o => templateByType[o.type]?.group==='lighting'||templateByType[o.type]?.artFamily==='ceilingFan';
   const hotspotStyle = (left, top) => ({ left: `${left}%`, top: `${top}%`, background: 'rgba(24, 29, 35, 0.82)', 'border-radius': '50%', padding: '8px', '--paper-item-icon-color': '#f9f5e8', '--paper-item-icon-active-color': '#ffcc66' });
   const hotspot = (id, entity, title, left, top, tap, hold = null) => ({ id, type: 'state-icon', entity, title, tap_action: { action: tap }, ...(hold ? { hold_action: { action: hold } } : {}), style: hotspotStyle(left, top) });
@@ -149,6 +156,7 @@
       && p.rooms.every(r => typeof r.id === 'string' && !!surfaceById[r.surface] && Array.isArray(r.points) && r.points.length >= 3 && r.points.every(q => Number.isFinite(q.x) && Number.isFinite(q.y)))
       && p.walls.every(w => typeof w.id === 'string' && (!w.finish || !!wallFinishById[w.finish]) && [w.x1,w.y1,w.x2,w.y2].every(Number.isFinite))
       && p.items.every(i => typeof i.id === 'string' && templateByType[i.type] && [i.x,i.y,i.w,i.h,i.rotation].every(Number.isFinite)
+        && (window.RoomcraftObjectControls?.validBinding(i) ?? true)
         && (i.type!=='cameraThumbnail'||(i.x>=0&&i.x<=W&&i.y>=0&&i.y<=H&&i.w>=40&&i.h>=40&&i.w<=W&&i.h<=H
           && (!i.previewMode||['event','live','offline'].includes(i.previewMode))
           && (!i.entityId||/^camera\.[a-z0-9_]+$/i.test(i.entityId))
@@ -181,6 +189,7 @@
       }
       p.editableReferenceVersion=2;
     }
+    for(const o of p.items)clampLinkedItem(o);
     p.version=2;
     return p;
   }
@@ -201,6 +210,14 @@
   let dashboardRevision = null;
   let dashboardTransferBusy = false;
   let projectChangeSerial = 0;
+  let entityOptions = [];
+
+  function updateEntityOptions(data) {
+    entityOptions = window.RoomcraftObjectControls.normalizeEntityOptions(data?.entityOptions);
+    // A dashboard read can finish while someone is typing into the inspector.
+    // Keep their in-progress value and show the new suggestions on next selection.
+    if(selected?.kind==='item'&&!document.activeElement?.closest?.('#inspectorContent'))renderInspector();
+  }
 
   function saveSoon() {
     const label = document.getElementById('saveState');
@@ -277,6 +294,7 @@
     c.save();c.lineCap='square';c.strokeStyle=finish.color;c.lineWidth=20;c.beginPath();c.moveTo(w.x1,w.y1);c.lineTo(w.x2,w.y2);c.stroke();c.strokeStyle='rgba(255,255,255,.28)';c.lineWidth=3;c.beginPath();c.moveTo(w.x1,w.y1);c.lineTo(w.x2,w.y2);c.stroke();c.restore();
   }
   function drawObject(c,o) {
+    if(o.type==='controlZone')return;
     if(window.RoomcraftObjectArt?.draw(c,o)) return;
     c.save();c.translate(o.x,o.y);c.rotate(o.rotation*Math.PI/180);
     const x=-o.w/2,y=-o.h/2,w=o.w,h=o.h;
@@ -343,6 +361,17 @@
     }
     c.restore();
   }
+  function drawControlZones(c){
+    c.save();c.textAlign='center';c.textBaseline='middle';
+    for(const o of project.items){if(o.type!=='controlZone')continue;
+      c.save();c.translate(o.x,o.y);c.rotate(o.rotation*Math.PI/180);
+      c.fillStyle='rgba(35, 122, 138, .14)';c.strokeStyle='#237a8a';c.lineWidth=2;c.setLineDash([8,5]);
+      c.fillRect(-o.w/2,-o.h/2,o.w,o.h);c.strokeRect(-o.w/2,-o.h/2,o.w,o.h);c.setLineDash([]);
+      c.fillStyle='#14505e';c.font='700 12px system-ui, sans-serif';
+      c.fillText(o.controlLabel||o.name,0,0,Math.max(24,o.w-12));c.restore();
+    }
+    c.restore();
+  }
   function draw(target=ctx,clean=false,forcedMode=null) {
     const c=target; const mode=forcedMode||viewMode;
     c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
@@ -358,7 +387,27 @@
       if(!raster?.draw(c,project,STARTER,{original:reference,shell:emptyShell,wallFree:wallFreeShell},o=>drawObject(c,o))){
         drawBackdrop(c);drawRooms(c);for(const o of project.items)drawObject(c,o);for(const w of project.walls)drawWall(c,w);
       }
-      if(!clean){drawHotspots(c);drawSelection(c);if(interaction?.kind==='wall-draw'){c.save();c.strokeStyle='#ed7255';c.lineWidth=9;c.setLineDash([12,7]);c.beginPath();c.moveTo(interaction.start.x,interaction.start.y);c.lineTo(interaction.end.x,interaction.end.y);c.stroke();c.restore();}if(pendingTemplate&&currentPointer){const t=templateByType[pendingTemplate],wallMounted=t.type==='window'||t.mount==='wall',mount=wallMounted?nearestWallPlacement(currentPointer):null;if(!wallMounted||mount){const ghost=item('ghost',t.type,t.label,mount?.x??currentPointer.x,mount?.y??currentPointer.y,t.w,t.h,mount?.rotation??0);c.save();c.globalAlpha=.58;if(raster?.ready(reference))raster.drawItem(c,ghost,STARTER,reference,emptyShell,()=>drawObject(c,ghost));else drawObject(c,ghost);c.restore();}}}
+      if(!clean){
+        drawControlZones(c);drawHotspots(c);drawSelection(c);
+        if(interaction?.kind==='wall-draw'){
+          c.save();c.strokeStyle='#ed7255';c.lineWidth=9;c.setLineDash([12,7]);
+          c.beginPath();c.moveTo(interaction.start.x,interaction.start.y);c.lineTo(interaction.end.x,interaction.end.y);c.stroke();c.restore();
+        }
+        if(pendingTemplate&&currentPointer){
+          const t=templateByType[pendingTemplate],wallMounted=t.type==='window'||t.mount==='wall';
+          const mount=wallMounted?nearestWallPlacement(currentPointer):null;
+          if(!wallMounted||mount){
+            const ghost=item('ghost',t.type,t.label,mount?.x??currentPointer.x,mount?.y??currentPointer.y,t.w,t.h,mount?.rotation??0);
+            c.save();c.globalAlpha=.58;
+            if(t.type==='controlZone'){
+              c.strokeStyle='#237a8a';c.lineWidth=2;c.setLineDash([8,5]);
+              c.strokeRect(ghost.x-ghost.w/2,ghost.y-ghost.h/2,ghost.w,ghost.h);c.setLineDash([]);
+            }else if(raster?.ready(reference))raster.drawItem(c,ghost,STARTER,reference,emptyShell,()=>drawObject(c,ghost));
+            else drawObject(c,ghost);
+            c.restore();
+          }
+        }
+      }
     }
   }
 
@@ -455,11 +504,31 @@
         if(!mount)return;
         const nx=Math.round(mount.x),ny=Math.round(mount.y);
         if(!interaction.snapshot&&(nx!==o.x||ny!==o.y||mount.rotation!==o.rotation)){snapshot();interaction.snapshot=true;}
-        if(interaction.snapshot){o.x=nx;o.y=ny;o.rotation=mount.rotation;draw();}
+        if(interaction.snapshot){o.x=nx;o.y=ny;o.rotation=mount.rotation;clampLinkedItem(o);draw();}
         return;
       }
-      if(Math.hypot(dx,dy)>2&&!interaction.snapshot){snapshot();interaction.snapshot=true;}if(interaction.snapshot){o.x=Math.round(interaction.x+dx);o.y=Math.round(interaction.y+dy);if(o.type==='cameraThumbnail'){o.x=Math.max(0,Math.min(W,o.x));o.y=Math.max(0,Math.min(H,o.y));}draw();}return;}
-    if(interaction.kind==='item-resize'){const o=project.items.find(o=>o.id===interaction.id);if(!o)return;const a=interaction.rotation*Math.PI/180,dx=p.x-interaction.start.x,dy=p.y-interaction.start.y,localX=dx*Math.cos(a)+dy*Math.sin(a),localY=-dx*Math.sin(a)+dy*Math.cos(a),min=o.type==='cameraThumbnail'?40:24;let nextW=Math.max(min,Math.round(interaction.w+interaction.sx*localX)),nextH=Math.max(min,Math.round(interaction.h+interaction.sy*localY));if(e.shiftKey){const scale=Math.max(nextW/interaction.w,nextH/interaction.h);nextW=Math.max(min,Math.round(interaction.w*scale));nextH=Math.max(min,Math.round(interaction.h*scale));}if(o.type==='cameraThumbnail'){nextW=Math.min(W,nextW);nextH=Math.min(H,nextH);}const lx=interaction.sx*nextW/2,ly=interaction.sy*nextH/2,nx=Math.round(interaction.anchor.x+lx*Math.cos(a)-ly*Math.sin(a)),ny=Math.round(interaction.anchor.y+lx*Math.sin(a)+ly*Math.cos(a));if(!interaction.snapshot&&(nextW!==o.w||nextH!==o.h||nx!==o.x||ny!==o.y)){snapshot();interaction.snapshot=true;}if(interaction.snapshot){o.w=nextW;o.h=nextH;o.x=o.type==='cameraThumbnail'?Math.max(0,Math.min(W,nx)):nx;o.y=o.type==='cameraThumbnail'?Math.max(0,Math.min(H,ny)):ny;draw();}return;}
+      if(Math.hypot(dx,dy)>2&&!interaction.snapshot){snapshot();interaction.snapshot=true;}if(interaction.snapshot){o.x=Math.round(interaction.x+dx);o.y=Math.round(interaction.y+dy);if(o.type==='cameraThumbnail'){o.x=Math.max(0,Math.min(W,o.x));o.y=Math.max(0,Math.min(H,o.y));}clampLinkedItem(o);draw();}return;}
+    if(interaction.kind==='item-resize'){
+      const o=project.items.find(o=>o.id===interaction.id);if(!o)return;
+      const a=interaction.rotation*Math.PI/180,dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;
+      const localX=dx*Math.cos(a)+dy*Math.sin(a),localY=-dx*Math.sin(a)+dy*Math.cos(a);
+      const min=o.type==='cameraThumbnail'?40:24;
+      let nextW=Math.max(min,Math.round(interaction.w+interaction.sx*localX));
+      let nextH=Math.max(min,Math.round(interaction.h+interaction.sy*localY));
+      if(e.shiftKey){
+        const scale=Math.max(nextW/interaction.w,nextH/interaction.h);
+        nextW=Math.max(min,Math.round(interaction.w*scale));nextH=Math.max(min,Math.round(interaction.h*scale));
+      }
+      if(o.type==='cameraThumbnail'||validEntityId(o.entityId)){nextW=Math.min(W,nextW);nextH=Math.min(H,nextH);}
+      const lx=interaction.sx*nextW/2,ly=interaction.sy*nextH/2;
+      const nx=Math.round(interaction.anchor.x+lx*Math.cos(a)-ly*Math.sin(a));
+      const ny=Math.round(interaction.anchor.y+lx*Math.sin(a)+ly*Math.cos(a));
+      const bound=o.type==='cameraThumbnail'||validEntityId(o.entityId);
+      const nextX=bound?Math.max(0,Math.min(W,nx)):nx,nextY=bound?Math.max(0,Math.min(H,ny)):ny;
+      if(!interaction.snapshot&&(nextW!==o.w||nextH!==o.h||nextX!==o.x||nextY!==o.y)){snapshot();interaction.snapshot=true;}
+      if(interaction.snapshot){o.w=nextW;o.h=nextH;o.x=nextX;o.y=nextY;draw();}
+      return;
+    }
     if(interaction.kind==='hotspot-move'){const h=project.hotspots.find(h=>h.id===interaction.id);if(!h)return;const dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;if(Math.hypot(dx,dy)>2&&!interaction.snapshot){snapshot();interaction.snapshot=true;}if(interaction.snapshot){h.style.left=`${Math.max(0,Math.min(100,(interaction.x+dx)/W*100)).toFixed(2)}%`;h.style.top=`${Math.max(0,Math.min(100,(interaction.y+dy)/H*100)).toFixed(2)}%`;draw();}return;}
     if(interaction.kind==='room-vertex'){const r=project.rooms.find(r=>r.id===interaction.id);if(!r)return;if(!interaction.snapshot){snapshot();interaction.snapshot=true;}r.points[interaction.index]=point(Math.round(p.x),Math.round(p.y));draw();return;}
     if(interaction.kind==='wall-move'){const w=project.walls.find(w=>w.id===interaction.id);if(!w)return;const dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;if(Math.hypot(dx,dy)>2&&!interaction.snapshot){snapshot();interaction.snapshot=true;}if(interaction.snapshot){const a=interaction.initial;if(interaction.endpoint===1){w.x1=Math.round(a.x1+dx);w.y1=Math.round(a.y1+dy);}else if(interaction.endpoint===2){w.x2=Math.round(a.x2+dx);w.y2=Math.round(a.y2+dy);}else{w.x1=Math.round(a.x1+dx);w.y1=Math.round(a.y1+dy);w.x2=Math.round(a.x2+dx);w.y2=Math.round(a.y2+dy);}draw();}return;}
@@ -508,7 +577,12 @@
     const p=canvas.getContext('2d');p.setTransform(1,0,0,1,0,0);p.clearRect(0,0,canvas.width,canvas.height);p.imageSmoothingQuality='high';
     const scale=Math.min(88/t.w,44/t.h,1.8);p.scale(2,2);p.translate(50,27);p.scale(scale,scale);
     const preview=item('preview',t.type,t.label,0,0,t.w,t.h);
-    if(raster?.ready(reference))raster.drawItem(p,preview,STARTER,reference,emptyShell,()=>drawObject(p,preview));
+    if(t.type==='controlZone'){
+      p.strokeStyle='#237a8a';p.lineWidth=2;p.setLineDash([8,5]);
+      p.strokeRect(-t.w/2,-t.h/2,t.w,t.h);p.setLineDash([]);
+      p.fillStyle='#14505e';p.font='700 14px system-ui, sans-serif';p.textAlign='center';p.textBaseline='middle';
+      p.fillText('TAP AREA',0,0,Math.max(24,t.w-10));
+    }else if(raster?.ready(reference))raster.drawItem(p,preview,STARTER,reference,emptyShell,()=>drawObject(p,preview));
     else drawObject(p,preview);
     canvas.dataset.painted='true';
   }
@@ -523,7 +597,13 @@
     document.getElementById('hotspotSummary').textContent=`Home Assistant controls · ${independent.length+linked.length}`;
     document.getElementById('hotspotList').innerHTML=linked.map(o=>`<button type="button" class="ha-control-item ${selected?.kind==='item'&&selected.id===o.id?'active':''}" data-control-item="${htmlEscape(o.id)}"><strong>${htmlEscape(o.name)}</strong><small>${htmlEscape(o.entityId)} · object control</small></button>`).concat(independent.map(h=>`<button type="button" class="ha-control-item ${selected?.kind==='hotspot'&&selected.id===h.id?'active':''}" data-hotspot="${htmlEscape(h.id)}"><strong>${htmlEscape(h.title)}</strong><small>${htmlEscape(h.entity)}</small></button>`)).join('')||'<p class="help-copy">No controls in this layout.</p>';
   }
-  function readPreviousDraft(){try{const raw=localStorage.getItem(LEGACY_STORAGE_KEY);if(!raw)return null;const parsed=JSON.parse(raw);return validProject(parsed)?parsed:null;}catch(_){return null;}}
+  function readPreviousDraft(){
+    for(const key of [REPLACED_DRAFT_KEY,LEGACY_STORAGE_KEY]){
+      try{const raw=localStorage.getItem(key);if(!raw)continue;const parsed=JSON.parse(raw);if(validProject(parsed))return parsed;}
+      catch(_){/* try the other saved draft */}
+    }
+    return null;
+  }
   function readPreRecoveryLayout(){try{const raw=localStorage.getItem(BEFORE_RECOVERY_KEY);if(!raw)return null;const parsed=JSON.parse(raw);return validProject(parsed)?parsed:null;}catch(_){return null;}}
   function updateRecoveryButton(){const b=document.getElementById('recoverDraftButton');if(b)b.hidden=!readPreviousDraft();const back=document.getElementById('returnPreRecoveryButton');if(back)back.hidden=!readPreRecoveryLayout();}
   function recoverPreviousDraft(){const previous=readPreviousDraft();if(!previous){showToast('No previous browser draft found');return;}if(!readPreRecoveryLayout()){try{localStorage.setItem(BEFORE_RECOVERY_KEY,JSON.stringify(project));}catch(_){showToast('Could not save current layout; export JSON first');return;}}snapshot();project=restoreFixedGeometry(clone(previous));selected=null;clearPlacement();afterChange('Recovered previous browser draft');showToast('Previous draft restored; pre-recovery layout saved');}
@@ -538,7 +618,7 @@
     return `<div class="field"><label for="prop-catalog-variant">Color / finish</label><select id="prop-catalog-variant" data-variant>${variants.map(v=>`<option value="${htmlEscape(v.type)}" ${v.type===type?'selected':''}>${htmlEscape(v.label.split(' · ').at(-1))}</option>`).join('')}</select></div>`;
   }
   function renderInspector(){const root=document.getElementById('inspectorContent');if(!selected){root.innerHTML=`<div class="empty-inspector"><div class="empty-art">⌂</div><h3>A blank canvas for ideas.</h3><p>Select an object, control, room, or wall to see its settings. The starting furnished image is one click away in Reference view.</p><button class="secondary-button" id="openHelpButton" type="button" style="margin-top:19px">How to use the builder</button></div>`;return;}
-    if(selected.kind==='item'){const o=project.items.find(o=>o.id===selected.id);if(!o){selected=null;renderInspector();return;}const t=templateByType[o.type];const cameraFields=o.type==='cameraThumbnail'?`<div class="field"><label for="prop-previewMode">Preview mode</label><select id="prop-previewMode" data-prop="previewMode"><option value="event" ${(o.previewMode||'event')==='event'?'selected':''}>Latest event image</option><option value="live" ${o.previewMode==='live'?'selected':''}>Live stream</option></select></div>${field('Event image entity','imageEntityId',o.imageEntityId||'')}<p class="field-hint">The latest event image is a snapshot. Choose Live stream only when the camera feed is working.</p>`:'';const linkHint=o.type==='cameraThumbnail'?'Enter a camera entity. The dashboard shows its feed or latest event image in this frame.':'Optional. A linked light or fan becomes the control itself on the dashboard, with a state-colored icon over its artwork.';root.innerHTML=`<div class="inspector-block"><p class="inspector-label">SELECTED OBJECT</p><div class="selection-title"><span class="selection-icon">${t.icon}</span><div><h3>${htmlEscape(o.name)}</h3><p>${htmlEscape(t.label)}</p></div></div></div><div class="inspector-block"><p class="inspector-label">APPEARANCE & POSITION</p>${field('Name','name',o.name)}${variantField(t,o.type)}<div class="field-grid">${field('X position','x',o.x,'number')}${field('Y position','y',o.y,'number')}${field('Width','w',o.w,'number')}${field('Depth','h',o.h,'number')}</div>${field('Rotation (degrees)','rotation',o.rotation,'number')}<p class="field-hint">Drag this object to move it; drag a corner handle to resize. Hold Shift while resizing to keep proportions.</p><div class="inspector-actions"><button type="button" class="secondary-button" data-action="rotate">↻ Rotate 90°</button><button type="button" class="secondary-button" data-action="duplicate">▣ Duplicate</button></div></div><div class="inspector-block"><p class="inspector-label">HOME ASSISTANT LINK</p>${field(o.type==='cameraThumbnail'?'Camera entity ID':'Entity ID','entityId',o.entityId||'')}${cameraFields}<p class="field-hint">${linkHint}</p></div><button type="button" class="danger-button" data-action="delete">Remove object</button>`;return;}
+    if(selected.kind==='item'){const o=project.items.find(o=>o.id===selected.id);if(!o){selected=null;renderInspector();return;}const t=templateByType[o.type];root.innerHTML=window.RoomcraftObjectControls.renderInspector(o,t,field,variantField,htmlEscape,entityOptions);return;}
     if(selected.kind==='hotspot'){const h=project.hotspots.find(h=>h.id===selected.id);if(!h){selected=null;renderInspector();return;}const x=parseFloat(h.style.left),y=parseFloat(h.style.top);root.innerHTML=`<div class="inspector-block"><p class="inspector-label">HOME ASSISTANT CONTROL</p><div class="selection-title"><span class="selection-icon">${h.entity.startsWith('cover.')?'▥':'✦'}</span><div><h3>${htmlEscape(h.title)}</h3><p>${htmlEscape(h.entity)}</p></div></div></div><div class="inspector-block"><p class="inspector-label">CONTROL & POSITION</p>${hotspotField('Title','title',h.title)}${hotspotField('Entity ID','entity',h.entity)}<div class="field-grid">${hotspotField('Left (%)','left',x,'number')}${hotspotField('Top (%)','top',y,'number')}</div><div class="field"><label for="hotspot-tap">Tap action</label><select id="hotspot-tap" data-hotspot-prop="tap"><option value="toggle" ${h.tap_action?.action==='toggle'?'selected':''}>Toggle</option><option value="more-info" ${h.tap_action?.action==='more-info'?'selected':''}>More info</option></select></div><div class="field"><label for="hotspot-hold">Hold action</label><select id="hotspot-hold" data-hotspot-prop="hold"><option value="none" ${!h.hold_action?'selected':''}>None</option><option value="more-info" ${h.hold_action?.action==='more-info'?'selected':''}>More info</option></select></div><p class="field-hint">Drag the marker on the plan or edit its percentage position here. It is included in Home Assistant YAML and editable JSON.</p></div><button type="button" class="danger-button" data-action="delete">Remove control</button>`;return;}
     if(selected.kind==='room'){const r=project.rooms.find(r=>r.id===selected.id);if(!r){selected=null;renderInspector();return;}root.innerHTML=`<div class="inspector-block"><p class="inspector-label">SELECTED ROOM</p><div class="selection-title"><span class="selection-icon">▦</span><div><h3>${htmlEscape(r.name)}</h3><p>${r.points.length} editable corners</p></div></div></div><div class="inspector-block"><p class="inspector-label">ROOM SETTINGS</p>${field('Room name','name',r.name)}<div class="field"><label for="prop-surface">Floor finish</label><select id="prop-surface" data-prop="surface">${surfaces.map(s=>`<option value="${s.id}" ${s.id===r.surface?'selected':''}>${htmlEscape(s.name)}</option>`).join('')}</select></div><p class="field-hint">Choose Room in the toolbar, then drag a corner handle to reshape this floor area.</p></div>${fixedRoomIds.has(r.id)?'<p class="field-hint">The original illustrated rooms stay in place. You can reshape and repaint them; added rooms can be removed.</p>':'<button type="button" class="danger-button" data-action="delete">Remove room</button>'}`;return;}
     const w=project.walls.find(w=>w.id===selected.id);if(!w){selected=null;renderInspector();return;}if(isFixedExteriorWall(w)){root.innerHTML=`<div class="inspector-block"><p class="inspector-label">ILLUSTRATED SHELL</p><h3>Exterior wall finish</h3><p class="field-hint">Change this wall’s finish here. Its outline remains fixed because the supplied artwork contains the exterior shell.</p><div class="field"><label for="prop-finish">Finish</label><select id="prop-finish" data-prop="finish">${wallFinishes.map(f=>`<option value="${f.id}" ${(w.finish||'graphite')===f.id?'selected':''}>${htmlEscape(f.name)}</option>`).join('')}</select></div></div>`;return;}root.innerHTML=`<div class="inspector-block"><p class="inspector-label">SELECTED WALL</p><div class="selection-title"><span class="selection-icon">╱</span><div><h3>Wall segment</h3><p>${Math.round(Math.hypot(w.x2-w.x1,w.y2-w.y1))} px long</p></div></div></div><div class="inspector-block"><p class="inspector-label">WALL FINISH</p><div class="field"><label for="prop-finish">Finish</label><select id="prop-finish" data-prop="finish">${wallFinishes.map(f=>`<option value="${f.id}" ${(w.finish||'graphite')===f.id?'selected':''}>${htmlEscape(f.name)}</option>`).join('')}</select></div></div><div class="inspector-block"><p class="inspector-label">END POINTS</p><div class="field-grid">${field('Start X','x1',w.x1,'number')}${field('Start Y','y1',w.y1,'number')}${field('End X','x2',w.x2,'number')}${field('End Y','y2',w.y2,'number')}</div><p class="field-hint">Drag a wall or its endpoint on the plan to move it. Draw new walls with the Wall tool.</p></div><button type="button" class="danger-button" data-action="delete">Remove wall</button>`;
@@ -559,6 +639,15 @@
       snapshot();target.finish=value;afterChange(`Applied ${wallFinishById[value].name} wall finish`);return;
     }
     if(selected.kind==='wall'&&isFixedExteriorWall(target))return;
+    if(selected.kind==='item'&&window.RoomcraftObjectControls.isBindingKey(key)){
+      if(target.type==='cameraThumbnail')return;
+      const update=window.RoomcraftObjectControls.propertyUpdate(key,value);
+      if(!update.valid){showToast(key==='controlIcon'?'Use an icon like mdi:lightbulb':'Choose a valid button setting');renderInspector();return;}
+      if(target[key]===update.value||(!target[key]&&update.value===undefined))return;
+      snapshot();
+      if(update.value===undefined)delete target[key];else target[key]=update.value;
+      afterChange('Updated dashboard button');return;
+    }
     if(selected.kind==='item'&&target.type==='cameraThumbnail'&&key==='imageEntityId'&&!(key in target))target.imageEntityId='';
     if(!(key in target))return;
     if(key==='previewMode'&&!['event','live','offline'].includes(value))return;
@@ -569,13 +658,16 @@
     if(typeof target[key]==='number'){
       v=Number(value);if(!Number.isFinite(v))return;
       if(key==='w'||key==='h')v=Math.max(target.type==='cameraThumbnail'?40:12,v);
-      if(target.type==='cameraThumbnail'&&key==='w')v=Math.min(W,v);
-      if(target.type==='cameraThumbnail'&&key==='h')v=Math.min(H,v);
-      if(target.type==='cameraThumbnail'&&key==='x')v=Math.max(0,Math.min(W,v));
-      if(target.type==='cameraThumbnail'&&key==='y')v=Math.max(0,Math.min(H,v));
+      const bound=selected.kind==='item'&&(target.type==='cameraThumbnail'||validEntityId(target.entityId));
+      if(bound&&key==='w')v=Math.min(W,v);
+      if(bound&&key==='h')v=Math.min(H,v);
+      if(bound&&key==='x')v=Math.max(0,Math.min(W,v));
+      if(bound&&key==='y')v=Math.max(0,Math.min(H,v));
     }
     if(target[key]===v)return;
-    snapshot();target[key]=v;afterChange(`Updated ${key}`);
+    snapshot();target[key]=v;
+    if(selected.kind==='item')clampLinkedItem(target);
+    afterChange(`Updated ${key}`);
   }
   function updateVariant(type){
     if(selected?.kind!=='item'||!templateByType[type])return;
@@ -589,7 +681,7 @@
     const current=key==='left'||key==='top'?h.style[key]:key==='tap'?h.tap_action?.action:key==='hold'?h.hold_action?.action||'none':h[key];if(next===current)return;snapshot();if(key==='left'||key==='top')h.style[key]=next;else if(key==='tap')h.tap_action={action:next};else if(key==='hold'){if(next==='none')delete h.hold_action;else h.hold_action={action:next};}else h[key]=next;afterChange(`Updated ${h.title} control`);
   }
   function deleteSelected(){if(!selected)return;if(selected.kind==='room'&&fixedRoomIds.has(selected.id)){showToast('Original illustrated rooms stay in the plan');return;}if(selected.kind==='wall'&&fixedExteriorWallIds.has(selected.id)){showToast('The illustrated exterior shell stays fixed');return;}snapshot();if(selected.kind==='item')project.items=project.items.filter(i=>i.id!==selected.id);else if(selected.kind==='hotspot')project.hotspots=project.hotspots.filter(h=>h.id!==selected.id);else if(selected.kind==='wall')project.walls=project.walls.filter(w=>w.id!==selected.id);else project.rooms=project.rooms.filter(r=>r.id!==selected.id);selected=null;afterChange('Removed selection');}
-  function duplicateSelected(){if(selected?.kind!=='item')return;const o=project.items.find(i=>i.id===selected.id);if(!o)return;snapshot();const n=clone(o);n.id=uid('i');n.x+=26;n.y+=26;if(n.type==='cameraThumbnail'){n.x=Math.min(W,n.x);n.y=Math.min(H,n.y);}n.name=`${o.name} copy`;project.items.push(n);select('item',n.id);afterChange('Duplicated object');}
+  function duplicateSelected(){if(selected?.kind!=='item')return;const o=project.items.find(i=>i.id===selected.id);if(!o)return;snapshot();const n=clone(o);n.id=uid('i');n.x+=26;n.y+=26;if(n.type==='cameraThumbnail'){n.x=Math.min(W,n.x);n.y=Math.min(H,n.y);}clampLinkedItem(n);n.name=`${o.name} copy`;project.items.push(n);select('item',n.id);afterChange('Duplicated object');}
   function rotateSelected(){if(selected?.kind!=='item')return;const o=project.items.find(i=>i.id===selected.id);if(!o)return;snapshot();o.rotation=(o.rotation+90)%360;afterChange('Rotated object');}
   function addRoom(){snapshot();const r=room(uid('r'),'New room','terrazzo',[[570,420],[790,420],[790,580],[570,580]],[580,440]);project.rooms.push(r);setTool('room');select('room',r.id);setPanel('rooms');afterChange('Added editable room');showToast('Drag the corner handles to reshape your room');}
   function missingReferenceItems(){const present=new Set(project.items.map(i=>i.id));return STARTER.items.filter(i=>!present.has(i.id));}
@@ -616,11 +708,9 @@
     return controls;
   }
   function exportHaYaml(){
-    const controls=dashboardControls(project);
-    const yaml=['# Roomcraft manual fallback for the Second Floor dashboard','# For direct transfer, use the Import from dashboard and Export to dashboard buttons.','# For manual setup, export the PNG, copy it to /config/www/second-floor/roomcraft-second-floor.png, then apply this YAML.','title: Second Floor','views:','  - title: Floor Plan','    path: plan','    icon: mdi:floor-plan','    type: panel','    cards:','      - type: picture-elements','        image: /local/second-floor/roomcraft-second-floor.png','        elements:'];
-    if(!controls.length)yaml.push('          []');
-    for(const h of controls){yaml.push('          - type: state-icon',`            entity: ${JSON.stringify(h.entity)}`,`            title: ${JSON.stringify(h.title)}`,'            tap_action:',`              action: ${JSON.stringify(h.tap_action?.action||'more-info')}`);if(h.hold_action)yaml.push('            hold_action:',`              action: ${JSON.stringify(h.hold_action.action)}`);yaml.push('            style:');for(const [key,value] of Object.entries(h.style))yaml.push(`              ${JSON.stringify(key)}: ${JSON.stringify(String(value))}`);}
-    download('roomcraft-home-assistant.yaml','text/yaml',yaml.join('\n')+'\n');showToast(`${controls.length} Home Assistant control${controls.length===1?'':'s'} exported with current dashboard layout`);
+    const yaml=window.RoomcraftObjectControls.manualYaml(project);
+    download('roomcraft-home-assistant.yaml','text/yaml',yaml);
+    showToast('Home Assistant YAML with object buttons and menu downloaded');
   }
   function importProject(file){if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(String(reader.result));if(!validProject(parsed))throw new Error('Invalid project format');snapshot();project=restoreFixedGeometry(parsed);selected=null;afterChange('Imported project');showToast('Project imported');fitView();}catch(err){showToast('Could not import this project JSON');}};reader.readAsText(file);}
 
@@ -669,18 +759,36 @@
     return {next,hasEditable};
   }
   async function loadDashboardDefault(){
-    if(hasLocalDraft)return;
     setDashboardBusy(true);
     const initialSerial=projectChangeSerial;
     setDashboardStatus('Loading the current Home Assistant layout…');
     try{
       const data=await dashboardRequest('GET');
+      updateEntityOptions(data);
       if(!data.revision)throw new Error('Dashboard revision is missing');
       const {next,hasEditable}=projectFromDashboard(data);
-      if(hasLocalDraft||projectChangeSerial!==initialSerial)return;
-      project=restoreFixedGeometry(clone(next));dashboardRevision=data.revision;selected=null;afterChange('Loaded current Home Assistant layout');fitView();
-      setDashboardStatus(hasEditable?'Current editable dashboard layout loaded':'Current dashboard controls loaded with the starting editable plan');
-    }catch(error){if(projectChangeSerial===initialSerial)setDashboardStatus(`Dashboard unavailable; starting plan loaded: ${error.message||'Connection failed'}`,true);}
+      dashboardRevision=data.revision;
+      // A slow dashboard read must never replace an in-progress local edit.
+      if(projectChangeSerial!==initialSerial||interaction||pendingTemplate||document.activeElement?.closest?.('#inspectorContent')){
+        setDashboardStatus('Browser edits kept. Import from dashboard when ready.');return;
+      }
+      const current=restoreFixedGeometry(clone(next));
+      const different=hasLocalDraft&&JSON.stringify(project)!==JSON.stringify(current);
+      if(different){
+        try{
+          localStorage.setItem(REPLACED_DRAFT_KEY,localStorage.getItem(STORAGE_KEY)||JSON.stringify(project));
+        }catch(_){
+          setDashboardStatus('Current dashboard found, but browser draft backup failed. Export your layout JSON before importing.',true);
+          return;
+        }
+      }
+      project=current;selected=null;afterChange('Loaded current Home Assistant layout');fitView();
+      const detail=hasEditable?'Current editable dashboard layout loaded':'Current dashboard controls loaded with the starting editable plan';
+      setDashboardStatus(different?detail+' · previous browser draft available to recover':detail);
+    }catch(error){
+      const kept=hasLocalDraft||projectChangeSerial!==initialSerial;
+      setDashboardStatus('Dashboard unavailable; '+(kept?'browser layout kept':'starting plan loaded')+': '+(error.message||'Connection failed'),true);
+    }
     finally{setDashboardBusy(false);}
   }
   async function importFromDashboard(){
@@ -688,6 +796,7 @@
     setDashboardBusy(true);setDashboardStatus('Reading the Home Assistant dashboard…');
     try{
       const data=await dashboardRequest('GET');
+      updateEntityOptions(data);
       if(!data.revision)throw new Error('Dashboard revision is missing');
       const {next,hasEditable}=projectFromDashboard(data);
       const detail=hasEditable?'its saved editable Roomcraft layout':'its current controls and the starting editable plan';

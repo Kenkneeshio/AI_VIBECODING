@@ -11,8 +11,11 @@ const MAX_PNG_BYTES = 10 * 1024 * 1024;
 const MAX_JSON_BYTES = 16 * 1024 * 1024;
 const EDITOR_URL = '/local/roomcraft/editor.html';
 const CAMERA_ELEMENT_TYPE = 'custom:roomcraft-camera-thumbnail';
+const OBJECT_ELEMENT_TYPE = 'custom:roomcraft-object-control';
+const MENU_ELEMENT_TYPE = 'custom:roomcraft-entity-menu';
 const PLAN_WIDTH = 1536;
 const PLAN_HEIGHT = 1024;
+const CONTROL_ACTIONS = ['auto', 'toggle', 'more-info', 'none'];
 
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -85,19 +88,77 @@ function cameraThumbnailElements(items) {
   });
 }
 
+function validObjectControl(item) {
+  if (!isObject(item) || item.type === 'cameraThumbnail') return false;
+  return typeof item.id === 'string' && item.id.length > 0 && item.id.length <= 128 &&
+    typeof item.entityId === 'string' && /^[a-z_]+\.[a-z0-9_]+$/.test(item.entityId) &&
+    (item.controlLabel === undefined || typeof item.controlLabel === 'string' && item.controlLabel.length <= 80) &&
+    (item.controlIcon === undefined || item.controlIcon === '' || typeof item.controlIcon === 'string' && /^mdi:[a-z0-9-]+$/.test(item.controlIcon)) &&
+    (item.tapAction === undefined || CONTROL_ACTIONS.includes(item.tapAction)) &&
+    (item.holdAction === undefined || CONTROL_ACTIONS.includes(item.holdAction)) &&
+    [item.x, item.y, item.w, item.h, item.rotation ?? 0].every(value => typeof value === 'number' && Number.isFinite(value)) &&
+    item.x >= 0 && item.x <= PLAN_WIDTH && item.y >= 0 && item.y <= PLAN_HEIGHT &&
+    item.w >= 12 && item.w <= PLAN_WIDTH && item.h >= 12 && item.h <= PLAN_HEIGHT;
+}
+
+function objectControlElements(items) {
+  const percent = (value, span) => `${Math.round(value / span * 10000) / 100}%`;
+  return items.filter(item => isObject(item) && item.type !== 'cameraThumbnail' && item.entityId).map(item => {
+    if (!validObjectControl(item)) throw new Error('The layout has an invalid object control.');
+    return {
+      type: OBJECT_ELEMENT_TYPE,
+      roomcraft_item_id: item.id,
+      entity: item.entityId,
+      title: item.controlLabel || item.name || item.entityId,
+      control_icon: item.controlIcon || '',
+      control_zone: item.type === 'controlZone',
+      roomcraft_tap_action: item.tapAction || 'auto',
+      roomcraft_hold_action: item.holdAction || 'auto',
+      style: {
+        left: percent(item.x, PLAN_WIDTH), top: percent(item.y, PLAN_HEIGHT),
+        width: percent(item.w, PLAN_WIDTH), height: percent(item.h, PLAN_HEIGHT),
+        transform: `translate(-50%, -50%) rotate(${item.rotation || 0}deg)`,
+        'z-index': 4,
+      },
+    };
+  });
+}
+
+function entityMenuElement(items = [], existing = []) {
+  const previous = existing.find(element => isObject(element) &&
+    element.type === MENU_ELEMENT_TYPE && element.roomcraft_menu === true);
+  const sections = Array.isArray(previous?.sections) ? previous.sections.slice(0, 12)
+    .filter(section => isObject(section) && typeof section.title === 'string' &&
+      section.title.length <= 60 && Array.isArray(section.entities))
+    .map(section => ({ title: section.title, entities: section.entities.filter(entity =>
+      typeof entity === 'string' && /^[a-z_]+\.[a-z0-9_]+$/.test(entity)).slice(0, 200) })) : [];
+  const boundObjects = items.filter(item => isObject(item) &&
+    typeof item.entityId === 'string' && /^[a-z_]+\.[a-z0-9_]+$/.test(item.entityId))
+    .map(item => ({ entity_id: item.entityId,
+      label: item.controlLabel || item.name || item.entityId,
+      icon: item.controlIcon || '' }));
+  return { type: MENU_ELEMENT_TYPE, roomcraft_menu: true, title: 'Devices and sensors',
+    sections, bound_objects: boundObjects,
+    style: { left: '5.2%', top: '8.8%', 'z-index': 12 } };
+}
+
 function updatePlanCard(config, image, hotspots, items = []) {
   const next = structuredClone(config);
   const card = findPlanCard(next);
+  const objects = objectControlElements(items);
+  const linkedEntities = new Set(objects.map(element => element.entity));
   const retained = Array.isArray(card.elements)
     ? card.elements.filter(element => isObject(element) && element.type !== 'state-icon' &&
-      !(element.type === CAMERA_ELEMENT_TYPE && typeof element.roomcraft_item_id === 'string'))
+      !((element.type === CAMERA_ELEMENT_TYPE || element.type === OBJECT_ELEMENT_TYPE) &&
+        typeof element.roomcraft_item_id === 'string') &&
+      !(element.type === MENU_ELEMENT_TYPE && element.roomcraft_menu === true))
     : [];
   card.image = image;
-  card.elements = [...hotspots.map(hotspot => {
+  card.elements = [...hotspots.filter(hotspot => !linkedEntities.has(hotspot.entity)).map(hotspot => {
     const element = { ...hotspot };
     delete element.id;
     return element;
-  }), ...cameraThumbnailElements(items), ...retained];
+  }), ...objects, ...cameraThumbnailElements(items), entityMenuElement(items, card.elements || []), ...retained];
   return { next, card };
 }
 
@@ -121,6 +182,9 @@ function validateProject(project) {
   for (const item of project.items) {
     if (isObject(item) && item.type === 'cameraThumbnail' && !validCameraThumbnail(item)) {
       throw new Error('The layout has an invalid camera thumbnail.');
+    }
+    if (isObject(item) && item.type !== 'cameraThumbnail' && item.entityId && !validObjectControl(item)) {
+      throw new Error('The layout has an invalid object control.');
     }
   }
   return project;
@@ -301,10 +365,18 @@ class RoomcraftEditorCard extends HTMLElement {
     const card = findPlanCard(config);
     const imageUrl = typeof card.image === 'string'
       ? new URL(card.image, location.origin).href : null;
+    const entityOptions = Object.entries(this._hass?.states || {}).map(([entity_id, state]) => ({
+      entity_id,
+      name: typeof state.attributes?.friendly_name === 'string'
+        ? state.attributes.friendly_name.slice(0, 120) : entity_id,
+      domain: entity_id.split('.')[0],
+      area: this._hass?.areas?.[this._hass?.entities?.[entity_id]?.area_id]?.name || '',
+    }));
     return {
       project: isObject(config.roomcraft_layout) ? config.roomcraft_layout : null,
       imageUrl,
       hotspots: editableHotspots(card.elements),
+      entityOptions,
       source: `${location.origin}/${DASHBOARD}/${PLAN_VIEW}`,
       revision,
     };
@@ -362,6 +434,383 @@ class RoomcraftEditorCard extends HTMLElement {
     } finally {
       this._writeBusy = false;
     }
+  }
+}
+
+/** The artwork stays untouched: the object's own footprint is its hit target. */
+class RoomcraftObjectControl extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this._holdTimer = null;
+    this._held = false;
+    this._moved = false;
+  }
+
+  setConfig(config) {
+    if (!isObject(config) || typeof config.entity !== 'string' ||
+        !/^[a-z_]+\.[a-z0-9_]+$/.test(config.entity) ||
+        !CONTROL_ACTIONS.includes(config.roomcraft_tap_action || 'auto') ||
+        !CONTROL_ACTIONS.includes(config.roomcraft_hold_action || 'auto')) {
+      throw new Error('The Roomcraft object has an invalid device binding.');
+    }
+    this._config = config;
+    if (!this._button) this._build();
+    this._refresh();
+  }
+
+  set hass(value) { this._hass = value; this._refresh(); }
+  disconnectedCallback() { clearTimeout(this._holdTimer); }
+
+  _build() {
+    const style = document.createElement('style');
+    style.textContent = ':host{display:block;box-sizing:border-box;min-width:32px;min-height:32px}.target{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;border-radius:12px;background:transparent;cursor:pointer;touch-action:manipulation}.target:hover,.target:focus-visible{outline:2px solid #7ee8d2;outline-offset:1px;background:#42bba81c}.target[data-state="on"]:not([data-zone="true"])::after{content:"";position:absolute;inset:15%;border-radius:50%;box-shadow:0 0 16px 6px #ffe79a75;pointer-events:none}.target[data-state="unavailable"]{cursor:help}.target[data-state="unavailable"]:focus-visible{outline-color:#f8c36b}.hint{display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;color:#ecfff7;filter:drop-shadow(0 1px 3px #102a2a)}.target:hover .hint,.target:focus-visible .hint{display:block}';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'target';
+    button.addEventListener('pointerdown', event => {
+      if (event.button !== undefined && event.button !== 0) return;
+      clearTimeout(this._holdTimer);
+      this._held = false;
+      this._moved = false;
+      this._pointerStart = [event.clientX, event.clientY];
+      this._holdTimer = setTimeout(() => {
+        if (this._moved) return;
+        this._held = true;
+        this._activate('hold');
+      }, 550);
+    });
+    button.addEventListener('pointermove', event => {
+      if (!this._pointerStart) return;
+      if (Math.hypot(event.clientX - this._pointerStart[0], event.clientY - this._pointerStart[1]) > 8) {
+        this._moved = true;
+        clearTimeout(this._holdTimer);
+      }
+    });
+    const stopHold = () => { clearTimeout(this._holdTimer); this._pointerStart = null; };
+    button.addEventListener('pointerup', stopHold);
+    button.addEventListener('pointercancel', stopHold);
+    button.addEventListener('click', () => {
+      if (this._held || this._moved) { this._held = false; this._moved = false; return; }
+      this._activate('tap');
+    });
+    button.addEventListener('contextmenu', event => {
+      event.preventDefault();
+      clearTimeout(this._holdTimer);
+      if (this._held) { this._held = false; return; }
+      this._activate('hold');
+    });
+    const icon = document.createElement('ha-icon');
+    icon.className = 'hint';
+    button.append(icon);
+    this.shadowRoot.append(style, button);
+    this._button = button;
+    this._icon = icon;
+  }
+
+  _refresh() {
+    if (!this._button || !this._config) return;
+    const state = this._hass?.states?.[this._config.entity];
+    const value = state?.state || 'unavailable';
+    const active = ['on', 'open', 'playing', 'cleaning', 'heat', 'cool', 'heating', 'cooling'].includes(value);
+    this._button.setAttribute('data-state', value === 'unavailable' || value === 'unknown' ? 'unavailable' : active ? 'on' : 'off');
+    this._button.setAttribute('data-zone', String(this._config.control_zone === true));
+    this._icon.icon = this._config.control_icon || state?.attributes?.icon || 'mdi:gesture-tap';
+    const label = this._config.title || state?.attributes?.friendly_name || this._config.entity;
+    const tap = this._actionFor('tap');
+    const hold = this._actionFor('hold');
+    const describe = (action, gesture) => action === 'toggle' ? `${gesture} to toggle` :
+      action === 'more-info' ? `${gesture} for details` : `${gesture} disabled`;
+    this._button.setAttribute('aria-label', `${label}: ${value}. ${describe(tap, 'Tap')}; ${describe(hold, 'hold')}.`);
+    this._button.title = `${label} · ${value}`;
+  }
+
+  _actionFor(kind) {
+    const domain = (this._config?.entity || '').split('.')[0];
+    let action = this._config[kind === 'hold' ? 'roomcraft_hold_action' : 'roomcraft_tap_action'] || 'auto';
+    if (action === 'auto') action = kind === 'hold' ? 'more-info' :
+      ['light', 'switch', 'fan', 'input_boolean'].includes(domain) ? 'toggle' : 'more-info';
+    return action;
+  }
+
+  _activate(kind) {
+    const entityId = this._config?.entity;
+    if (!entityId || !this._hass) return;
+    let action = this._actionFor(kind);
+    if (action === 'none') return;
+    if (action === 'toggle' && ['unavailable', 'unknown'].includes(this._hass.states?.[entityId]?.state)) {
+      action = 'more-info';
+    }
+    if (action === 'toggle') {
+      try {
+        Promise.resolve(this._hass.callService('homeassistant', 'toggle', { entity_id: entityId }))
+          .catch(() => this._showDetails(entityId));
+      } catch { this._showDetails(entityId); }
+    } else {
+      this._showDetails(entityId);
+    }
+  }
+
+  _showDetails(entityId) {
+    this.dispatchEvent(new CustomEvent('hass-more-info', {
+      bubbles: true, composed: true, detail: { entityId },
+    }));
+  }
+}
+
+/** A single doorway into every HA entity; the plan itself stays uncluttered. */
+class RoomcraftEntityMenu extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this._section = 'on-plan';
+    this._limit = 80;
+    this._registry = [];
+    this._devices = [];
+    this._areas = [];
+    this._onKeyDown = event => { if (event.key === 'Escape') this._close(); };
+  }
+
+  setConfig(config) {
+    if (!isObject(config)) throw new Error('Invalid Roomcraft entity menu.');
+    this._config = config;
+    if (!this._launch) this._build();
+  }
+
+  set hass(value) {
+    this._hass = value;
+    if (this._portal) this._renderRows();
+  }
+
+  disconnectedCallback() { this._close(); }
+
+  _build() {
+    const style = document.createElement('style');
+    style.textContent = ':host{display:block}.launch{width:43px;height:43px;display:grid;place-items:center;border:1px solid #d8e3d5;border-radius:12px;background:#183336ed;color:#f5f7ee;box-shadow:0 3px 12px #14242180;cursor:pointer;font:700 24px/1 system-ui}.launch:focus-visible{outline:3px solid #81dfcc;outline-offset:2px}';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'launch';
+    button.textContent = '☰';
+    button.title = 'Devices and sensors';
+    button.setAttribute('aria-label', 'Open devices and sensors menu');
+    button.addEventListener('click', () => this._open());
+    this.shadowRoot.append(style, button);
+    this._launch = button;
+  }
+
+  _close() {
+    document.removeEventListener('keydown', this._onKeyDown);
+    this._portal?.remove();
+    this._portal = null;
+  }
+
+  _open() {
+    if (this._portal) return;
+    this._limit = 80;
+    const portal = document.createElement('div');
+    const root = portal.attachShadow({ mode: 'open' });
+    const style = document.createElement('style');
+    style.textContent = ':host{position:fixed;inset:0;z-index:10000;display:block;font:14px/1.4 system-ui,sans-serif;color:#ecf4ee}.scrim{position:absolute;inset:0;background:#071517b8}.drawer{position:absolute;top:0;bottom:0;left:0;width:min(620px,100vw);box-sizing:border-box;display:flex;flex-direction:column;background:#142a2c;box-shadow:12px 0 32px #0008}.head{padding:16px 18px 8px;border-bottom:1px solid #ffffff24}.title{display:flex;align-items:center;justify-content:space-between;gap:10px}.title strong{font-size:19px}.close{border:1px solid #a9cbc250;background:#294447;color:white;border-radius:9px;min-width:38px;min-height:38px;cursor:pointer}.links{display:flex;gap:12px;flex-wrap:wrap;margin:9px 0 12px}.links a{color:#ace5d5;text-decoration:none;font-weight:600}.search{box-sizing:border-box;width:100%;min-height:43px;border:1px solid #8ab3a9;border-radius:9px;background:#f4f9f6;color:#153032;padding:8px 11px;font:inherit}.sections{display:flex;gap:7px;overflow-x:auto;padding:10px 18px;border-bottom:1px solid #ffffff20}.section{flex:none;border:1px solid #799a90;border-radius:999px;background:transparent;color:#deebe5;padding:7px 11px;cursor:pointer;font:inherit}.section[aria-pressed="true"]{background:#bfe9d8;color:#15352d;border-color:#bfe9d8;font-weight:700}.summary{padding:8px 18px;color:#a9c9c0;font-size:12px}.rows{overflow:auto;flex:1;padding:0 12px 14px}.row{display:flex;align-items:center;gap:8px;margin:5px 0;border:1px solid #ffffff22;border-radius:10px;background:#203b3d}.detail{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:9px 11px;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer;font:inherit}.row-icon{flex:none;width:20px;height:20px;margin-left:8px;color:#bfe9d8}.name{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.meta{color:#a9c5bd;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}.state{flex:none;font-size:11px;color:#cde8df;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.toggle{flex:none;min-width:42px;min-height:38px;margin-right:5px;border:1px solid #87bcb0;border-radius:8px;background:#31594d;color:white;cursor:pointer}.toggle[disabled]{opacity:.45;cursor:default}.more{display:block;width:100%;margin:8px 0;padding:10px;border:1px solid #87bcb0;border-radius:8px;background:#31594d;color:white;cursor:pointer}.empty{padding:28px 10px;text-align:center;color:#b8d1c8}@media(max-width:540px){.head{padding:11px 12px 6px}.sections{padding:8px 12px}.rows{padding:0 8px 10px}.state{max-width:74px}}';
+    const scrim = document.createElement('div');
+    scrim.className = 'scrim';
+    scrim.addEventListener('click', () => this._close());
+    const drawer = document.createElement('section');
+    drawer.className = 'drawer';
+    drawer.setAttribute('role', 'dialog');
+    drawer.setAttribute('aria-modal', 'true');
+    drawer.setAttribute('aria-label', 'Devices and sensors');
+    const head = document.createElement('header');
+    head.className = 'head';
+    const title = document.createElement('div');
+    title.className = 'title';
+    const heading = document.createElement('strong');
+    heading.textContent = 'Home controls';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'close';
+    close.textContent = '×';
+    close.setAttribute('aria-label', 'Close devices and sensors');
+    close.addEventListener('click', () => this._close());
+    title.append(heading, close);
+    const links = document.createElement('nav');
+    links.className = 'links';
+    for (const [label, href] of [
+      ['Live Home', '/second-floor/live'], ['Layout Studio', '/second-floor/studio'],
+      ['Main Dashboard', '/dashboard-dashboard/0'],
+    ]) {
+      const link = document.createElement('a');
+      link.href = href;
+      link.textContent = label;
+      links.append(link);
+    }
+    const search = document.createElement('input');
+    search.type = 'search';
+    search.className = 'search';
+    search.placeholder = 'Search every entity, room, or device';
+    search.setAttribute('aria-label', 'Search devices and sensors');
+    search.addEventListener('input', () => { this._limit = 80; this._renderRows(); });
+    head.append(title, links, search);
+    const sections = document.createElement('div');
+    sections.className = 'sections';
+    const summary = document.createElement('div');
+    summary.className = 'summary';
+    const rows = document.createElement('div');
+    rows.className = 'rows';
+    drawer.append(head, sections, summary, rows);
+    root.append(style, scrim, drawer);
+    document.body.append(portal);
+    document.addEventListener('keydown', this._onKeyDown);
+    this._portal = portal;
+    this._sections = sections;
+    this._summary = summary;
+    this._rows = rows;
+    this._search = search;
+    this._renderSections();
+    this._renderRows();
+    search.focus();
+    this._loadRegistry();
+  }
+
+  async _loadRegistry() {
+    if (typeof this._hass?.callWS !== 'function') return;
+    const requests = ['config/entity_registry/list', 'config/device_registry/list', 'config/area_registry/list'];
+    const results = await Promise.allSettled(requests.map(type => this._hass.callWS({ type })));
+    if (!this._portal) return;
+    [this._registry, this._devices, this._areas] = results.map(result =>
+      result.status === 'fulfilled' && Array.isArray(result.value) ? result.value : []);
+    this._renderRows();
+  }
+
+  _renderSections() {
+    if (!this._sections) return;
+    this._sections.replaceChildren();
+    const choices = [['on-plan', 'On plan'], ['all', 'All entities'],
+      ...(Array.isArray(this._config?.sections) ? this._config.sections
+        .filter(section => isObject(section) && typeof section.title === 'string' && Array.isArray(section.entities))
+        .map(section => [section.title, section.title]) : [])];
+    for (const [key, label] of choices) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'section';
+      button.textContent = label;
+      button.setAttribute('aria-pressed', String(this._section === key));
+      button.addEventListener('click', () => {
+        this._section = key;
+        this._limit = 80;
+        this._renderSections();
+        this._renderRows();
+      });
+      this._sections.append(button);
+    }
+  }
+
+  _catalog() {
+    const states = this._hass?.states || {};
+    const byId = new Map();
+    for (const [entityId, state] of Object.entries(states)) {
+      byId.set(entityId, { entityId, name: state.attributes?.friendly_name || entityId,
+        state: state.state, disabled: false, area: '', domain: entityId.split('.')[0] });
+    }
+    const areas = new Map(this._areas.map(area => [area.area_id, area.name]));
+    const devices = new Map(this._devices.map(device => [device.id, device]));
+    for (const entity of this._registry) {
+      if (typeof entity.entity_id !== 'string') continue;
+      const record = byId.get(entity.entity_id) || { entityId: entity.entity_id,
+        name: entity.entity_id, state: 'disabled', disabled: true,
+        area: '', domain: entity.entity_id.split('.')[0] };
+      record.name = entity.name || entity.original_name || record.name;
+      record.disabled = Boolean(entity.disabled_by) || !byId.has(entity.entity_id);
+      record.area = areas.get(entity.area_id || devices.get(entity.device_id)?.area_id) || '';
+      byId.set(entity.entity_id, record);
+    }
+    const bound = new Map((Array.isArray(this._config?.bound_objects) ? this._config.bound_objects : [])
+      .filter(item => isObject(item) && typeof item.entity_id === 'string')
+      .map(item => [item.entity_id, item]));
+    for (const record of byId.values()) {
+      const item = bound.get(record.entityId);
+      if (item) record.name = item.label || record.name;
+      record.onPlan = Boolean(item);
+      record.icon = item?.icon || '';
+    }
+    return [...byId.values()];
+  }
+
+  _renderRows() {
+    if (!this._portal || !this._rows) return;
+    const search = this._search.value.trim().toLocaleLowerCase();
+    const featured = Array.isArray(this._config?.sections)
+      ? this._config.sections.find(section => isObject(section) && section.title === this._section) : null;
+    const featuredIds = new Set(Array.isArray(featured?.entities) ? featured.entities : []);
+    const matches = this._catalog().filter(item => {
+      if (search) return `${item.name} ${item.entityId} ${item.area} ${item.domain}`.toLocaleLowerCase().includes(search);
+      if (this._section === 'on-plan') return item.onPlan;
+      if (this._section === 'all') return true;
+      return featuredIds.has(item.entityId);
+    }).sort((a, b) => (a.area || 'zz').localeCompare(b.area || 'zz') ||
+      a.domain.localeCompare(b.domain) || a.name.localeCompare(b.name));
+    this._summary.textContent = `${matches.length} entities · ${this._registry.length ? 'including disabled registrations' : 'live states'}`;
+    this._rows.replaceChildren();
+    for (const item of matches.slice(0, this._limit)) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      if (item.icon) {
+        const icon = document.createElement('ha-icon');
+        icon.className = 'row-icon';
+        icon.icon = item.icon;
+        row.append(icon);
+      }
+      const detail = document.createElement('button');
+      detail.type = 'button';
+      detail.className = 'detail';
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = item.name;
+      const meta = document.createElement('span');
+      meta.className = 'meta';
+      meta.textContent = `${item.area ? item.area + ' · ' : ''}${item.entityId}`;
+      detail.append(name, meta);
+      detail.addEventListener('click', () => { this._close(); this._showDetails(item.entityId); });
+      const status = document.createElement('span');
+      status.className = 'state';
+      status.textContent = item.disabled ? 'Disabled' : item.state || 'Unknown';
+      row.append(detail, status);
+      if (['light', 'switch', 'fan', 'input_boolean'].includes(item.domain)) {
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'toggle';
+        toggle.textContent = '⏻';
+        toggle.title = `Toggle ${item.name}`;
+        toggle.setAttribute('aria-label', `Toggle ${item.name}`);
+        toggle.disabled = item.disabled || ['unavailable', 'unknown'].includes(item.state);
+        toggle.addEventListener('click', () => {
+          try {
+            Promise.resolve(this._hass.callService('homeassistant', 'toggle', { entity_id: item.entityId }))
+              .catch(() => this._showDetails(item.entityId));
+          } catch { this._showDetails(item.entityId); }
+        });
+        row.append(toggle);
+      }
+      this._rows.append(row);
+    }
+    if (!matches.length) {
+      const empty = document.createElement('p');
+      empty.className = 'empty';
+      empty.textContent = search ? 'No matching devices or sensors.' : 'No controls in this group yet.';
+      this._rows.append(empty);
+    } else if (matches.length > this._limit) {
+      const more = document.createElement('button');
+      more.type = 'button';
+      more.className = 'more';
+      more.textContent = `Show more (${matches.length - this._limit} remaining)`;
+      more.addEventListener('click', () => { this._limit += 80; this._renderRows(); });
+      this._rows.append(more);
+    }
+  }
+
+  _showDetails(entityId) {
+    this.dispatchEvent(new CustomEvent('hass-more-info', {
+      bubbles: true, composed: true, detail: { entityId },
+    }));
   }
 }
 
@@ -505,12 +954,19 @@ class RoomcraftCameraThumbnail extends HTMLElement {
     const cameraId = this._config.camera_entity;
     const imageId = this._config.image_entity;
     const cameraState = this._hass.states?.[cameraId];
-    if (this._config.preview_mode !== 'offline' && cameraState?.state === 'streaming' && this._showLive()) {
+    const wantsLive = this._config.preview_mode === 'live';
+    if (cameraId && (wantsLive || cameraState?.state === 'streaming') && this._showLive()) {
       ++this._requestSerial;
       this._revokeImage();
       return;
     }
     if (this._liveElement?.parentNode === this._media) this._liveElement.remove();
+    if (wantsLive) {
+      ++this._requestSerial;
+      this._revokeImage();
+      this._showUnavailable('Live view unavailable', 'LIVE');
+      return;
+    }
     if (this._config.preview_mode === 'offline') {
       ++this._requestSerial;
       this._revokeImage();
@@ -588,6 +1044,12 @@ if (!customElements.get('roomcraft-editor-card')) {
 }
 if (!customElements.get('roomcraft-camera-thumbnail')) {
   customElements.define('roomcraft-camera-thumbnail', RoomcraftCameraThumbnail);
+}
+if (!customElements.get('roomcraft-object-control')) {
+  customElements.define('roomcraft-object-control', RoomcraftObjectControl);
+}
+if (!customElements.get('roomcraft-entity-menu')) {
+  customElements.define('roomcraft-entity-menu', RoomcraftEntityMenu);
 }
 if (!Array.isArray(window.customCards)) window.customCards = [];
 if (!window.customCards.some(card => card.type === 'roomcraft-editor-card')) {

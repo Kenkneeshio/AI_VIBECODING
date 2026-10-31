@@ -1,5 +1,29 @@
 # Decision log
 
+## 2026-10-31 — Use the verified porch feed for this floor
+
+**Decision:** Bind the exterior floor-plan thumbnail to `camera.porch_camera_profile_000` in live mode. Keep the Eufy `camera.front_door` and `image.front_door_event_image` as separate security inventory entries, not the exterior image for this floor.
+
+**Reason:** The porch ONVIF HLS stream has been verified, while the Eufy doorbell's P2P live command timed out. Reusing the Eufy latest-event still for the upstairs exterior made the floor appear to have the wrong view and mislabeled a static image as the intended live feed.
+
+**Consequence:** The object retains editable placement and an authenticated native HA stream. A broken stream must show unavailable rather than substituting the unrelated event still. Never add a stream URL or frame to public assets.
+
+## 2026-10-31 — Publish a reviewed HA metadata inventory
+
+**Decision:** Record a dated, read-only Home Assistant entity snapshot as public JSON and area/domain Markdown. Mask mobile and personal identifiers, network identifiers, credentials, media URLs, and current device values. Keep the exact dashboard project and private audit source outside GitHub.
+
+**Reason:** Future teams need to discover working controls, disabled entities, and room assignment gaps without repeating a large manual registry search or exposing the home's live state. The prior Main Dashboard contains useful device groups but also stale references.
+
+**Consequence:** Treat the inventory as documentation, not deployable configuration. Recheck each entity in Home Assistant before binding it to furniture or a fixture. Review every future inventory diff for privacy and changing availability.
+
+## 2026-10-31 — Keep direct object actions and detailed menu separate
+
+**Decision:** Put the first interaction on the illustrated lamp, light, window, fan, vacuum, or camera. The shipped drawer provides **On plan**, **All entities**, search, registry availability, and the six curated Main Dashboard groups: Planning, Weather and Air Quality, Lighting, Security and Control, Energy, and Robot Vacuum. The Studio edit link remains separate.
+
+**Reason:** The plan should show where a device is. Repeating the full Main Dashboard over the drawing would obscure rooms and make touch targets harder to use. Some entities are unavailable or unassigned to an HA area; a name alone cannot prove physical placement.
+
+**Consequence:** Bind verified devices to objects; show unavailable states; leave unverified bathroom, dressing, balcony, and fan placements unresolved until confirmed. Preserve the old Main Dashboard as a reference and verify the new drawer on the target tablet.
+
 ## 2026-10-31 — Derive fixture controls from illustrated objects
 
 **Decision:** Give editable lamp, ceiling-light, pendant, and fan objects optional Home Assistant entity bindings. Export derives one percentage-positioned state icon per bound entity and keeps its visual placement with the object. A fixture without a binding remains decorative.

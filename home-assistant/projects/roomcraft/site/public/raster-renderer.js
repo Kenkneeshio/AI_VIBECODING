@@ -277,6 +277,7 @@
     c.drawImage(patch,spec.box[0],spec.box[1]);
   }
   function drawItem(c,item,starter,original,shell,fallback) {
+    if(item.type==='controlZone')return;
     if(item.type==='window'){
       drawGlazedWindow(c,item.x,item.y,item.w,item.h,item.rotation||0);
       return;

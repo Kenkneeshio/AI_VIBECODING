@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { editableDashboardHotspots, mergeDashboardElements, validCameraThumbnail, withUpdatedPlanCard } from '../lib/dashboard-elements.ts';
+import { editableDashboardHotspots, mergeDashboardElements, validCameraThumbnail, validObjectControl, withUpdatedPlanCard } from '../lib/dashboard-elements.ts';
 
 test('dashboard export replaces editable controls and retains independent overlays', () => {
   const existing = [
@@ -12,10 +12,10 @@ test('dashboard export replaces editable controls and retains independent overla
   const next = mergeDashboardElements([
     { id: 'internal-1', type: 'state-icon', entity: 'light.new_lamp', style: { left: '30%', top: '30%' } },
   ], existing);
-  assert.deepEqual(next.map((element) => element.type), ['state-icon', 'icon', 'state-label', 'conditional']);
+  assert.deepEqual(next.map((element) => element.type), ['state-icon', 'custom:roomcraft-entity-menu', 'icon', 'state-label', 'conditional']);
   assert.equal(next[0].entity, 'light.new_lamp');
   assert.equal('id' in next[0], false);
-  assert.equal(next[1].tap_action.url_path, 'https://example.com/editor');
+  assert.equal(next[2].tap_action.url_path, 'https://example.com/editor');
   assert.deepEqual(editableDashboardHotspots(next).map((element) => element.entity), ['light.new_lamp']);
   assert.equal(existing[0].entity, 'light.old_lamp');
 });
@@ -37,7 +37,7 @@ test('plan export leaves the separate studio and live views untouched', () => {
     { id: 'editable', type: 'state-icon', entity: 'light.new' },
   ]);
   assert.equal(card.image, '/new.png');
-  assert.deepEqual(card.elements.map((element) => element.type), ['state-icon', 'icon']);
+  assert.deepEqual(card.elements.map((element) => element.type), ['state-icon', 'custom:roomcraft-entity-menu', 'icon']);
   assert.equal(card.elements[0].entity, 'light.new');
   assert.deepEqual(config.views[1], studio);
   assert.deepEqual(config.views[2], live);
@@ -51,7 +51,7 @@ test('camera thumbnail replaces only its marked overlay and keeps independent el
   const item = { id: 'door', type: 'cameraThumbnail', name: 'Entry camera', x: 260, y: 390, w: 170, h: 110,
     rotation: 8, entityId: 'camera.entry', imageEntityId: 'image.entry_event', previewMode: 'event' };
   const result = mergeDashboardElements([], [oldCamera, manualImage, unmarkedCustom], [item]);
-  assert.equal(result.length, 3);
+  assert.equal(result.length, 4);
   assert.equal(result[0].roomcraft_item_id, 'door');
   assert.equal(result[0].camera_entity, 'camera.entry');
   assert.equal(result[0].image_entity, 'image.entry_event');
@@ -61,9 +61,34 @@ test('camera thumbnail replaces only its marked overlay and keeps independent el
   assert.equal(result[0].style.width, '11.07%');
   assert.equal(result[0].style.height, '10.74%');
   assert.equal(result[0].style.transform, 'translate(-50%, -50%) rotate(8deg)');
-  assert.deepEqual(result.slice(1), [manualImage, unmarkedCustom]);
+  assert.equal(result[1].type, 'custom:roomcraft-entity-menu');
+  assert.deepEqual(result.slice(2), [manualImage, unmarkedCustom]);
   assert.equal(oldCamera.camera_entity, 'camera.old');
-  assert.deepEqual(mergeDashboardElements([], result, []).slice(0), [manualImage, unmarkedCustom]);
+  assert.deepEqual(mergeDashboardElements([], result, []).slice(1), [manualImage, unmarkedCustom]);
+});
+
+test('linked artwork replaces a duplicate icon and preserves curated menu sections', () => {
+  const item = { id: 'lamp', type: 'lamp', name: 'Bedside lamp', x: 1200, y: 400, w: 52, h: 60,
+    entityId: 'light.bedroom', controlLabel: 'Bedside light', controlIcon: 'mdi:lamp',
+    tapAction: 'toggle', holdAction: 'more-info' };
+  assert.equal(validObjectControl(item), true);
+  const existing = [
+    { type: 'state-icon', entity: 'light.bedroom' },
+    { type: 'custom:roomcraft-object-control', roomcraft_item_id: 'lamp', entity: 'light.old' },
+    { type: 'custom:roomcraft-entity-menu', roomcraft_menu: true,
+      sections: [{ title: 'Lighting', entities: ['light.bedroom'] }] },
+  ];
+  const result = mergeDashboardElements([{ id: 'legacy', type: 'state-icon', entity: 'light.bedroom' }], existing, [item]);
+  assert.deepEqual(result.map(element => element.type),
+    ['custom:roomcraft-object-control', 'custom:roomcraft-entity-menu']);
+  assert.equal(result[0].entity, 'light.bedroom');
+  assert.equal(result[0].roomcraft_tap_action, 'toggle');
+  assert.equal(result[0].roomcraft_hold_action, 'more-info');
+  assert.equal(result[0].control_icon, 'mdi:lamp');
+  assert.equal(result[0].control_zone, false);
+  assert.equal(result[0].style.left, '78.13%');
+  assert.deepEqual(result[1].sections, [{ title: 'Lighting', entities: ['light.bedroom'] }]);
+  assert.deepEqual(result[1].bound_objects, [{ entity_id: 'light.bedroom', label: 'Bedside light', icon: 'mdi:lamp' }]);
 });
 
 test('camera thumbnail validation rejects external or malformed entities and invalid geometry', () => {

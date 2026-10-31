@@ -6,11 +6,16 @@ import test from 'node:test';
 const code = fs.readFileSync(new URL('./roomcraft-card.js', import.meta.url), 'utf8');
 let Card;
 let Camera;
+let ObjectControl;
+let EntityMenu;
 const registered = new Map();
 class FakeNode {
-  constructor(tag = 'node') { this.tag = tag; this.children = []; this.style = {}; this.hidden = false; this.attributes = {}; this.listeners = {}; }
+  constructor(tag = 'node') { this.tag = tag; this.children = []; this.style = {}; this.hidden = false; this.attributes = {}; this.listeners = {}; this.value = ''; }
   append(...nodes) { for (const node of nodes) { node.parentNode = this; this.children.push(node); } }
+  replaceChildren(...nodes) { this.children = []; this.append(...nodes); }
   remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(node => node !== this); this.parentNode = null; }
+  attachShadow() { this.shadowRoot = new FakeNode('shadow'); return this.shadowRoot; }
+  focus() { this.focused = true; }
   setAttribute(name, value) { this.attributes[name] = value; }
   addEventListener(name, listener) { this.listeners[name] = listener; }
   dispatchEvent(event) { this.lastEvent = event; return true; }
@@ -24,11 +29,14 @@ const context = {
       registered.set(name, value);
       if (name === 'roomcraft-editor-card') Card = value;
       if (name === 'roomcraft-camera-thumbnail') Camera = value;
+      if (name === 'roomcraft-object-control') ObjectControl = value;
+      if (name === 'roomcraft-entity-menu') EntityMenu = value;
     },
   },
   window: { customCards: [] },
   location: { origin: 'http://ha.example.test' },
-  document: { createElement: tag => new FakeNode(tag) },
+  document: { createElement: tag => new FakeNode(tag), body: new FakeNode('body'),
+    addEventListener() {}, removeEventListener() {} },
   structuredClone,
   JSON,
   Uint8Array,
@@ -46,6 +54,8 @@ test('resource registration is safe when Home Assistant imports another version'
   assert.doesNotThrow(() => vm.runInNewContext(code, { ...context }));
   assert.equal(registered.get('roomcraft-editor-card'), Card);
   assert.equal(registered.get('roomcraft-camera-thumbnail'), Camera);
+  assert.equal(registered.get('roomcraft-object-control'), ObjectControl);
+  assert.equal(registered.get('roomcraft-entity-menu'), EntityMenu);
   assert.equal(context.window.customCards.filter(card => card.type === 'roomcraft-editor-card').length, 1);
 });
 
@@ -195,6 +205,66 @@ test('camera element uses HA native live view only for a reported active stream'
   }
 });
 
+test('camera element honors an explicitly selected live feed while HA reports idle', () => {
+  class NativeImage extends FakeNode { setConfig(value) { this.config = value; } }
+  const createElement = context.document.createElement;
+  context.document.createElement = tag => tag === 'hui-image-element' ? new NativeImage(tag) : createElement(tag);
+  registered.set('hui-image-element', NativeImage);
+  try {
+    const camera = new Camera();
+    camera.setConfig({ type: 'custom:roomcraft-camera-thumbnail', title: 'Porch',
+      camera_entity: 'camera.porch_camera_profile_000', image_entity: '', preview_mode: 'live' });
+    camera.hass = { states: { 'camera.porch_camera_profile_000': { state: 'idle' } } };
+    assert.equal(camera._foot.textContent, 'LIVE');
+    assert.equal(camera._liveElement.config.camera_view, 'live');
+    assert.equal(camera._liveElement.config.camera_image, 'camera.porch_camera_profile_000');
+  } finally {
+    registered.delete('hui-image-element');
+    context.document.createElement = createElement;
+  }
+});
+
+test('the object artwork is the light control, with details on hold', async () => {
+  const object = new ObjectControl();
+  object.setConfig({ type: 'custom:roomcraft-object-control', roomcraft_item_id: 'lamp',
+    entity: 'light.bedroom', title: 'Bedside lamp', roomcraft_tap_action: 'auto',
+    roomcraft_hold_action: 'auto', control_icon: 'mdi:lamp' });
+  const calls = [];
+  object.hass = { states: { 'light.bedroom': { state: 'on' } },
+    callService: (...args) => { calls.push(args); return Promise.resolve(); } };
+  assert.equal(object._button.attributes['data-state'], 'on');
+  assert.equal(object._icon.icon, 'mdi:lamp');
+  assert.equal(object._button.attributes['data-zone'], 'false');
+  assert.match(object._button.attributes['aria-label'], /Tap to toggle; hold for details/);
+  object._activate('tap');
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0])), ['homeassistant', 'toggle', { entity_id: 'light.bedroom' }]);
+  object._activate('hold');
+  assert.equal(object.lastEvent.detail.entityId, 'light.bedroom');
+  object.setConfig({ type: 'custom:roomcraft-object-control', roomcraft_item_id: 'window',
+    entity: 'cover.blind', title: 'Blind', control_zone: true,
+    roomcraft_tap_action: 'none', roomcraft_hold_action: 'toggle' });
+  assert.equal(object._button.attributes['data-zone'], 'true');
+  assert.match(object._button.attributes['aria-label'], /Tap disabled; hold to toggle/);
+});
+
+test('the entity menu includes live and disabled registry entities', () => {
+  const menu = new EntityMenu();
+  menu.setConfig({ type: 'custom:roomcraft-entity-menu', roomcraft_menu: true,
+    bound_objects: [{ entity_id: 'light.bedroom', label: 'Bedside lamp', icon: 'mdi:lamp' }],
+    sections: [{ title: 'Security', entities: ['binary_sensor.door'] }] });
+  menu.hass = { states: { 'light.bedroom': { state: 'on', attributes: { friendly_name: 'Bedroom light' } } } };
+  menu._registry = [{ entity_id: 'binary_sensor.door', original_name: 'Door', disabled_by: 'integration' }];
+  const catalog = menu._catalog();
+  assert.equal(catalog.length, 2);
+  assert.equal(catalog.find(item => item.entityId === 'light.bedroom').name, 'Bedside lamp');
+  assert.equal(catalog.find(item => item.entityId === 'light.bedroom').onPlan, true);
+  assert.equal(catalog.find(item => item.entityId === 'binary_sensor.door').disabled, true);
+  menu._open();
+  assert.equal(menu._rows.children.length, 1);
+  assert.equal(menu._summary.textContent, '1 entities · including disabled registrations');
+  menu._close();
+});
+
 function dashboard() {
   return {
     title: 'Second Floor',
@@ -247,9 +317,10 @@ test('LAN bridge imports, exports, and retains unrelated HA elements/views', asy
   const exported = await card._writeDashboard({ project, revision: imported.revision, pngDataUrl: pngDataUrl() });
   assert.equal(uploaded, true);
   assert.equal(exported.project.hotspots.length, 1);
-  assert.equal(saved.views[0].cards[0].elements.length, 2);
+  assert.equal(saved.views[0].cards[0].elements.length, 3);
   assert.equal(saved.views[0].cards[0].elements[0].style.left, '42%');
-  assert.equal(saved.views[0].cards[0].elements[1].entity, 'sensor.time');
+  assert.equal(saved.views[0].cards[0].elements[1].type, 'custom:roomcraft-entity-menu');
+  assert.equal(saved.views[0].cards[0].elements[2].entity, 'sensor.time');
   assert.equal(saved.views[1].cards[0].title, 'Live');
   assert.match(saved.views[0].cards[0].image, /^\/api\/image\/serve\/a{32}\/original$/);
 });

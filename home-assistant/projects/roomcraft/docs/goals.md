@@ -7,10 +7,12 @@
 | Match the furnished reference's perspective and detail | The PNG is the approved visual starting point | Furnished default, wall/window art, object atlas, and visual comparison in the user manual |
 | Make windows read as openings in raised walls | Flat white rectangles break the scene's perspective | Default blue recesses return; added windows have inset glass, wall-side reveal, and a matching export |
 | Make lamps and room fixtures editable and state-aware | Controls should remain anchored to the illustrated device as layouts change | Movable bedside lamp and room fixtures with optional bindings; export derives one state-colored HA control per linked entity |
-| Put camera previews on the layout without exposing home media | A designer needs to place a preview, while camera images and access remain private | Editable camera thumbnail with `camera.*`/`image.*` bindings; HA-hosted overlay uses the signed-in session and has unavailable state |
+| Put camera previews on the layout without exposing home media | A designer needs to place a preview, while camera images and access remain private | Editable camera thumbnail with `camera.*`/`image.*` bindings; the floor's porch HLS feed is verified and stays behind the signed-in HA session |
 | Allow future layout changes without developer intervention | Furniture, walls, and finishes will change over time | Editor can change interior wall geometry, any wall finish, room floor finish, and objects; portable JSON works without source edits |
 | Keep teams able to continue the work | Multiple disciplines will add real-time features | Documented model, renderer, bridge, runtime boundaries, tests, changelog, and decisions |
-| Keep private home data private | Dashboard state and camera streams can disclose a home | Synthetic public examples; credentials and live media remain server-side or in HA |
+| Give future developers a complete device discovery map | Control names, availability, and HA area assignments are scattered across a large installation | Sanitized JSON covers every registered/live entity; area/domain pages and the old Main Dashboard map make the snapshot browsable |
+| Keep the plan readable while preserving full home control | Detailed energy, climate, planning, and cleaning cards cannot all fit over a room drawing | Object-level actions plus a shipped drawer with On plan, All entities, search, registry availability, and six curated groups; target-tablet verification remains open |
+| Keep private home data private | Dashboard state and camera streams can disclose a home | Synthetic examples and a state-free public metadata snapshot; credentials, live media, personal identifiers, and raw exports remain private |
 
 Update this table when a goal changes. Capture *why* a change was made in [the decision log](decisions.md) and *what* shipped in [the changelog](../CHANGELOG.md).
 
