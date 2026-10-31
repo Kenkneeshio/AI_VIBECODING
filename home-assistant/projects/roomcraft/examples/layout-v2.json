@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "rooms": [
+    {
+      "id": "example-room",
+      "name": "Example room",
+      "surface": "oak",
+      "points": [
+        { "x": 400, "y": 200 },
+        { "x": 700, "y": 200 },
+        { "x": 700, "y": 500 },
+        { "x": 400, "y": 500 }
+      ],
+      "label": { "x": 420, "y": 220 }
+    }
+  ],
+  "walls": [
+    { "id": "example-wall", "x1": 400, "y1": 200, "x2": 700, "y2": 200, "finish": "plaster" }
+  ],
+  "items": [
+    {
+      "id": "example-table",
+      "type": "table",
+      "name": "Dining table",
+      "x": 550,
+      "y": 350,
+      "w": 165,
+      "h": 108,
+      "rotation": 0,
+      "entityId": ""
+    }
+  ],
+  "hotspots": [
+    {
+      "id": "example-light-control",
+      "type": "state-icon",
+      "entity": "light.example_living_room",
+      "title": "Example room light",
+      "style": { "left": "36%", "top": "34%" },
+      "tap_action": { "action": "more-info" }
+    }
+  ]
+}

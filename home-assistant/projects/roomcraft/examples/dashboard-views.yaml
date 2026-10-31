@@ -1,0 +1,43 @@
+# Synthetic illustration only. Adapt to your dashboard and private Site URL.
+# Keep the existing plan card and its actual Home Assistant controls.
+views:
+  - title: Floor Plan
+    path: plan
+    icon: mdi:floor-plan
+    type: panel
+    cards:
+      - type: picture-elements
+        image: /local/roomcraft/example-plan.png
+        elements:
+          - type: state-icon
+            entity: light.example_living_room
+            style:
+              left: 40%
+              top: 35%
+            tap_action:
+              action: toggle
+  - title: Layout Studio
+    path: studio
+    icon: mdi:pencil-ruler
+    type: panel
+    cards:
+      - type: button
+        name: Open Roomcraft editor
+        icon: mdi:floor-plan
+        tap_action:
+          action: url
+          url_path: https://example.invalid/editor
+  - title: Live Home
+    path: live
+    icon: mdi:home-analytics
+    cards:
+      - type: weather-forecast
+        entity: weather.example_home
+      - type: entities
+        title: Home status
+        entities:
+          - sensor.example_time
+          - cover.example_garage
+          - fan.example_fan
+          - vacuum.example_robot
+

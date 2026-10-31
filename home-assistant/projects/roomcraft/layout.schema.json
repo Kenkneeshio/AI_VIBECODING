@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/roomcraft/layout-v2.schema.json",
+  "title": "Roomcraft editable layout version 2",
+  "type": "object",
+  "required": ["version", "rooms", "walls", "items", "hotspots"],
+  "properties": {
+    "version": { "const": 2 },
+    "rooms": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/room" },
+      "maxItems": 2000
+    },
+    "walls": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/wall" },
+      "maxItems": 2000
+    },
+    "items": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/item" },
+      "maxItems": 2000
+    },
+    "hotspots": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/hotspot" },
+      "maxItems": 100
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "point": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "room": {
+      "type": "object",
+      "required": ["id", "name", "surface", "points"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "surface": {
+          "enum": ["oak", "walnut", "ash", "ivory", "blue", "terrazzo", "sage"]
+        },
+        "points": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/point" },
+          "minItems": 3
+        },
+        "label": { "$ref": "#/$defs/point" }
+      },
+      "additionalProperties": true
+    },
+    "wall": {
+      "type": "object",
+      "required": ["id", "x1", "y1", "x2", "y2"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "x1": { "type": "number" },
+        "y1": { "type": "number" },
+        "x2": { "type": "number" },
+        "y2": { "type": "number" },
+        "finish": { "enum": ["graphite", "plaster", "sage", "walnut"] }
+      },
+      "additionalProperties": true
+    },
+    "item": {
+      "type": "object",
+      "required": ["id", "type", "name", "x", "y", "w", "h", "rotation"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "w": { "type": "number", "exclusiveMinimum": 0 },
+        "h": { "type": "number", "exclusiveMinimum": 0 },
+        "rotation": { "type": "number" },
+        "entityId": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "hotspot": {
+      "type": "object",
+      "required": ["id", "type", "entity", "title", "style", "tap_action"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "const": "state-icon" },
+        "entity": { "type": "string", "pattern": "^[a-z_]+\\.[a-z0-9_]+$" },
+        "title": { "type": "string" },
+        "style": {
+          "type": "object",
+          "required": ["left", "top"],
+          "properties": {
+            "left": { "$ref": "#/$defs/percent" },
+            "top": { "$ref": "#/$defs/percent" }
+          },
+          "additionalProperties": true
+        },
+        "tap_action": { "$ref": "#/$defs/action" },
+        "hold_action": { "$ref": "#/$defs/action" }
+      },
+      "additionalProperties": true
+    },
+    "percent": {
+      "type": "string",
+      "pattern": "^(?:100(?:\\.0+)?|[0-9]{1,2}(?:\\.[0-9]+)?)%$"
+    },
+    "action": {
+      "type": "object",
+      "required": ["action"],
+      "properties": { "action": { "enum": ["toggle", "more-info"] } },
+      "additionalProperties": true
+    }
+  }
+}

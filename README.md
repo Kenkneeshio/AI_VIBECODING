@@ -8,7 +8,7 @@ Maintained by [Kenkneeshio](https://github.com/Kenkneeshio).
 
 | Section | Purpose | Status |
 | --- | --- | --- |
-| [Home Assistant](home-assistant/README.md) | Custom integrations, apps/add-ons, dashboard cards, automations, scripts, and assets | [ishioho dashboard](home-assistant/projects/ishioho/README.md) — tested prototype |
+| [Home Assistant](home-assistant/README.md) | Custom integrations, apps/add-ons, dashboard cards, automations, scripts, and assets | [Roomcraft](home-assistant/projects/roomcraft/README.md) — active second-floor layout editor; [ishioho](home-assistant/projects/ishioho/README.md) — legacy prototype |
 
 Additional project areas can be added as new ideas take shape.
 
@@ -32,6 +32,7 @@ AI_VIBECODING/
     ├── README.md
     ├── projects/
     │   ├── README.md
+    │   ├── roomcraft/
     │   └── ishioho/
     ├── assets/README.md
     ├── docs/deployment.md
@@ -40,7 +41,7 @@ AI_VIBECODING/
 
 ## Current status
 
-The [ishioho dashboard](home-assistant/projects/ishioho/README.md) includes four illustrated Home Assistant views, contextual controls, a searchable entity directory, camera popups, weather and moon display, and a robot tracker. Its public package contains standard-format source and artwork, synthetic examples, and isolated checks. It is a tested prototype with documented installation-specific assumptions. Committing here does not deploy anything to Home Assistant.
+[Roomcraft](home-assistant/projects/roomcraft/README.md) is the active second-floor layout authoring project. Its [illustrated manual](home-assistant/projects/roomcraft/docs/user-manual.md) covers walls, floors, furniture, and Home Assistant transfer. The older [ishioho dashboard](home-assistant/projects/ishioho/README.md) remains as a tested four-theme prototype with its source and history preserved. Committing here does not deploy either project to Home Assistant.
 
 ## Public repository
 
