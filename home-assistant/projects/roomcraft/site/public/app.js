@@ -1,7 +1,9 @@
 (() => {
   'use strict';
 
-  const W = 1536, H = 1024;
+  // Keep the editable house at its original coordinates. The 16:9 view shows
+  // the full source width and trims only outdoor space above and below it.
+  const W = 1536, H = 1024, VIEW_W = 1536, VIEW_H = 864, CROP_X = 0, CROP_Y = 80;
   // v2 starts from the furnished image currently used by Home Assistant.
   // Keep v1 untouched so an older browser draft can be recovered explicitly.
   const STORAGE_KEY = 'roomcraft.second-floor.v2';
@@ -375,7 +377,9 @@
   function draw(target=ctx,clean=false,forcedMode=null) {
     const c=target; const mode=forcedMode||viewMode;
     c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
-    c.clearRect(0,0,W,H);
+    c.clearRect(0,0,VIEW_W,VIEW_H);
+    c.save();
+    c.translate(-CROP_X,-CROP_Y);
     if(mode==='reference'){
       const raster=window.RoomcraftRasterRenderer;
       if(!raster?.draw(c,STARTER,STARTER,{original:reference,shell:emptyShell,wallFree:wallFreeShell},o=>drawObject(c,o))){
@@ -409,6 +413,7 @@
         }
       }
     }
+    c.restore();
   }
 
   function setFocusCanvas(next) {
@@ -425,16 +430,16 @@
   }
   function fitView() {
     const rect=viewport.getBoundingClientRect();
-    currentView.scale=Math.min((rect.width-28)/W,(rect.height-28)/H);
+    currentView.scale=Math.min((rect.width-28)/VIEW_W,(rect.height-28)/VIEW_H);
     currentView.scale=Math.max(.18,currentView.scale);
-    currentView.tx=(rect.width-W*currentView.scale)/2;
-    currentView.ty=(rect.height-H*currentView.scale)/2;
+    currentView.tx=(rect.width-VIEW_W*currentView.scale)/2;
+    currentView.ty=(rect.height-VIEW_H*currentView.scale)/2;
     applyView();
   }
   function applyView(){stage.style.transform=`translate(${currentView.tx}px,${currentView.ty}px) scale(${currentView.scale})`;document.getElementById('zoomValue').textContent=`${Math.round(currentView.scale*100)}%`;}
   function zoomAt(factor,x,y){const old=currentView.scale;const next=Math.max(.2,Math.min(3.5,old*factor));const wx=(x-currentView.tx)/old,wy=(y-currentView.ty)/old;currentView.scale=next;currentView.tx=x-wx*next;currentView.ty=y-wy*next;applyView();}
   function screenPoint(e){const r=viewport.getBoundingClientRect();return point(e.clientX-r.left,e.clientY-r.top);}
-  function worldPoint(e){const p=screenPoint(e);return point((p.x-currentView.tx)/currentView.scale,(p.y-currentView.ty)/currentView.scale);}
+  function worldPoint(e){const p=screenPoint(e);return point((p.x-currentView.tx)/currentView.scale+CROP_X,(p.y-currentView.ty)/currentView.scale+CROP_Y);}
   const snap = n => Math.round(n/10)*10;
   function pointInPolygon(pt,points){let inside=false;for(let i=0,j=points.length-1;i<points.length;j=i++){const a=points[i],b=points[j];if(((a.y>pt.y)!==(b.y>pt.y))&&(pt.x<(b.x-a.x)*(pt.y-a.y)/(b.y-a.y)+a.x))inside=!inside;}return inside;}
   function hitRoom(p){for(let i=project.rooms.length-1;i>=0;i--){if(pointInPolygon(p,project.rooms[i].points))return project.rooms[i];}return null;}
@@ -691,7 +696,7 @@
   function exportJson(){download('roomcraft-editable-layout.json','application/json',JSON.stringify(project,null,2));showToast('Editable layout JSON downloaded');}
   async function renderDetailedPng(){
     await Promise.all([window.RoomcraftRasterRenderer?.prepareExport(project,STARTER,{original:reference,shell:emptyShell,wallFree:wallFreeShell}),window.RoomcraftObjectArt?.prepareExport?.()]);
-    const out=document.createElement('canvas');out.width=W;out.height=H;draw(out.getContext('2d'),true,'design');return out;
+    const out=document.createElement('canvas');out.width=VIEW_W;out.height=VIEW_H;draw(out.getContext('2d'),true,'design');return out;
   }
   async function exportPng(){try{showToast('Preparing detailed artwork…');const out=await renderDetailedPng();out.toBlob(blob=>{if(blob){download('roomcraft-second-floor.png','image/png',blob);showToast('Detailed PNG plan downloaded');}},'image/png');}catch(_){showToast('Could not load a detailed image asset for export');}}
   function dashboardControls(layout){

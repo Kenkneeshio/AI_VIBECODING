@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { editableDashboardHotspots, mergeDashboardElements, validCameraThumbnail, validObjectControl, withUpdatedPlanCard } from '../lib/dashboard-elements.ts';
+import { ROOMCRAFT_SCENE, editableDashboardHotspots, mergeDashboardElements, validCameraThumbnail, validObjectControl, withUpdatedPlanCard } from '../lib/dashboard-elements.ts';
 
 test('dashboard export replaces editable controls and retains independent overlays', () => {
   const existing = [
@@ -14,9 +14,13 @@ test('dashboard export replaces editable controls and retains independent overla
   ], existing);
   assert.deepEqual(next.map((element) => element.type), ['state-icon', 'custom:roomcraft-entity-menu', 'icon', 'state-label', 'conditional']);
   assert.equal(next[0].entity, 'light.new_lamp');
+  assert.equal(next[0].style.left, '30%');
+  assert.equal(next[0].style.top, '26.3%');
   assert.equal('id' in next[0], false);
   assert.equal(next[2].tap_action.url_path, 'https://example.com/editor');
   assert.deepEqual(editableDashboardHotspots(next).map((element) => element.entity), ['light.new_lamp']);
+  assert.equal(editableDashboardHotspots(next, ROOMCRAFT_SCENE)[0].style.left, '30%');
+  assert.equal(editableDashboardHotspots(next, ROOMCRAFT_SCENE)[0].style.top, '30%');
   assert.equal(existing[0].entity, 'light.old_lamp');
 });
 
@@ -37,11 +41,47 @@ test('plan export leaves the separate studio and live views untouched', () => {
     { id: 'editable', type: 'state-icon', entity: 'light.new' },
   ]);
   assert.equal(card.image, '/new.png');
+  assert.equal(card.roomcraft_scene, ROOMCRAFT_SCENE);
   assert.deepEqual(card.elements.map((element) => element.type), ['state-icon', 'custom:roomcraft-entity-menu', 'icon']);
   assert.equal(card.elements[0].entity, 'light.new');
   assert.deepEqual(config.views[1], studio);
   assert.deepEqual(config.views[2], live);
   assert.equal(dashboard.views[0].cards[0].image, '/old.png');
+});
+
+test('new full-width crop migrates reserved header chrome and preserves later edits', () => {
+  const header = [
+    { type: 'state-label', entity: 'weather.example_home', style: { left: '68%', top: '9%' } },
+    { type: 'state-label', entity: 'sensor.time', style: { left: '83%', top: '9%' } },
+    { type: 'icon', icon: 'mdi:pencil-ruler', tap_action: { action: 'navigate', navigation_path: '/second-floor/studio' }, style: { left: '94%', top: '9%' } },
+    { type: 'state-label', entity: 'sensor.other', style: { left: '50%', top: '9%' } },
+  ];
+  const old = { views: [{ path: 'plan', cards: [{ type: 'picture-elements', image: '/old.png', elements: header }] }] };
+  const first = withUpdatedPlanCard(old, '/new.png', []).config;
+  const firstElements = first.views[0].cards[0].elements;
+  assert.deepEqual(firstElements.slice(1).map(element => element.style.top), ['5.3%', '5.3%', '5.3%', '9%']);
+  firstElements[1].style.top = '7%';
+  const second = withUpdatedPlanCard(first, '/newer.png', []).config;
+  assert.equal(second.views[0].cards[0].elements[1].style.top, '7%');
+});
+
+test('previous cropped scene imports with its old bounds and migrates its reserved header', () => {
+  const oldHotspot = { type: 'state-icon', entity: 'light.study', style: { left: '42.47%', top: '39.11%' } };
+  const previous = { views: [{ path: 'plan', cards: [{ type: 'picture-elements',
+    roomcraft_scene: 'wall-to-wall-v1', image: '/old.png', elements: [
+      oldHotspot,
+      { type: 'state-label', entity: 'sensor.time', style: { left: '83%', top: '3.6%' } },
+      { type: 'state-label', entity: 'sensor.other', style: { left: '50%', top: '3.6%' } },
+    ] }] }] };
+  const imported = editableDashboardHotspots(previous.views[0].cards[0].elements, 'wall-to-wall-v1');
+  assert.equal(imported[0].style.left, '42%');
+  assert.equal(imported[0].style.top, '41%');
+  const { card } = withUpdatedPlanCard(previous, '/new.png', imported);
+  assert.equal(card.roomcraft_scene, ROOMCRAFT_SCENE);
+  assert.equal(card.elements[0].style.left, '42%');
+  assert.equal(card.elements[0].style.top, '39.33%');
+  assert.equal(card.elements[2].style.top, '5.3%');
+  assert.equal(card.elements[3].style.top, '3.6%');
 });
 
 test('camera thumbnail replaces only its marked overlay and keeps independent elements', () => {
@@ -57,9 +97,9 @@ test('camera thumbnail replaces only its marked overlay and keeps independent el
   assert.equal(result[0].image_entity, 'image.entry_event');
   assert.equal(result[0].preview_mode, 'event');
   assert.equal(result[0].style.left, '16.93%');
-  assert.equal(result[0].style.top, '38.09%');
+  assert.equal(result[0].style.top, '35.88%');
   assert.equal(result[0].style.width, '11.07%');
-  assert.equal(result[0].style.height, '10.74%');
+  assert.equal(result[0].style.height, '12.73%');
   assert.equal(result[0].style.transform, 'translate(-50%, -50%) rotate(8deg)');
   assert.equal(result[1].type, 'custom:roomcraft-entity-menu');
   assert.deepEqual(result.slice(2), [manualImage, unmarkedCustom]);

@@ -2,6 +2,18 @@
 
 All notable Roomcraft changes are recorded here. Deployment status is tracked separately from a source commit.
 
+## 2026-10-31 — Full-width tablet scene
+
+- Kept the full 1536-pixel width of the existing home artwork after the owner noticed the earlier 16:9 export clipped its sides. The new 1536 × 864 presentation uses source x0–1536 and y80–944. The editable project remains 1536 × 1024; room, wall, furniture, and control coordinates are unchanged.
+- Updated the editor preview, PNG export, HA-hosted bridge, optional cloud bridge, manual YAML, and example dashboard to use the new image bounds. The picture card now records `roomcraft_scene: full-width-v1`. Import still reverses the previous `wall-to-wall-v1` mapping and reads unmarked 3:2 cards in their original coordinates. Menu, weather, time, and edit shortcut migrate to the visible top band at 5.3%.
+- Owner-private Site v21 was deployed from source commit `7510357c7f1214b9b1a38c70f0ef677eb655ee0e`. HA export/readback confirmed the `full-width-v1` card, 1536 × 864 PNG, 16:9 plan grid, 10 linked controls, visible live camera, and top weather/time/edit chrome at 5.3%. A private 1920 × 1080 Apolosign capture showed the original left and right sides—including the staircase and right exterior wall—fully visible, with no side gutters. The previous 1472 × 828 result below is historical. Physical touch alignment and a cloud-to-HA round trip remain separate checks; no live camera frame was published.
+
+## 2026-10-31 — Earlier wall-to-wall tablet crop (superseded)
+
+- Changed the dashboard render to a 1472 × 828 crop of the existing 1536 × 1024 scene (project x20–1492, y96–924). This exact 16:9 presentation brings the house's outer walls near the screen edges without moving or resizing any authored room, wall, or furnishing in the editable project.
+- Updated the editor preview and both dashboard transports to map object controls, independent markers, and the camera thumbnail into the cropped picture. The `picture-elements` card records `roomcraft_scene: wall-to-wall-v1`; imports invert that mapping only for marked cards, so existing 3:2 dashboards remain readable. Menu, weather, time, and editor shortcut retain safe viewport positions near the top; the camera frame must be positioned within the visible lower exterior before export.
+- Added image-dimension validation and mapping tests. The matching HA-hosted editor exported the cropped image; dashboard readback confirmed the `wall-to-wall-v1` marker, 10 object controls, the moved lower-left camera frame, and top chrome at 3.6%. A private 1920 × 1080 Apolosign capture showed the plan filling the screen nearly edge to edge, with no side gutters and the live porch thumbnail visible. The earlier height-fitted 3:2 result below remains historical. Physical touch alignment and a cloud-to-HA round trip remain separate checks; no live camera frame was published.
+
 ## 2026-10-31 — Calendar tablet full-height plan and Home app recovery
 
 - Updated the installed Second Floor `plan` view's grid width from `min(100%, calc((100dvh - 90px) * 1.5))` to `min(100%, calc(100dvh * 1.5))` and filled the view background with a matching green-to-tan gradient. On a private 1920 × 1080 tablet capture after pressing Home, the 3:2 plan occupied about 1612 × 1074 pixels (x154–1765, y5–1078). The narrow side gutters use the gradient instead of black. Weather, time, menu, edit link, and the authenticated porch camera remained visible. All 15 plan picture elements matched the pre-change backup; other dashboard views were unchanged. No HA scene or device command was sent. The private camera frame and capture were not published.

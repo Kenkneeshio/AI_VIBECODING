@@ -15,6 +15,14 @@ const OBJECT_ELEMENT_TYPE = 'custom:roomcraft-object-control';
 const MENU_ELEMENT_TYPE = 'custom:roomcraft-entity-menu';
 const PLAN_WIDTH = 1536;
 const PLAN_HEIGHT = 1024;
+const SCENE_WIDTH = 1536;
+const SCENE_HEIGHT = 864;
+const SCENE_LEFT = 0;
+const SCENE_TOP = 80;
+const ROOMCRAFT_SCENE = 'full-width-v1';
+const PREVIOUS_SCENE = 'wall-to-wall-v1';
+const PREVIOUS_SCENE_BOUNDS = { width: 1472, height: 828, left: 20, top: 96 };
+const HEADER_TOP = '5.3%';
 const CONTROL_ACTIONS = ['auto', 'toggle', 'activate', 'more-info', 'none'];
 const ACTIVATION_SERVICES = new Map([['scene', 'turn_on'], ['script', 'turn_on'], ['button', 'press']]);
 
@@ -48,10 +56,54 @@ function findPlanCard(config) {
   return card;
 }
 
-function editableHotspots(elements) {
+function percent(value, span) { return `${Math.round(value / span * 10000) / 100}%`; }
+
+function stylePercent(value) {
+  if (typeof value !== 'string' || !/^-?\d{1,3}(?:\.\d+)?%$/.test(value)) return null;
+  const number = Number.parseFloat(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function sceneHotspot(hotspot) {
+  const element = structuredClone(hotspot);
+  if (isObject(element.style)) {
+    const left = stylePercent(element.style.left);
+    if (left !== null) element.style.left = percent(PLAN_WIDTH * left / 100 - SCENE_LEFT, SCENE_WIDTH);
+    const width = stylePercent(element.style.width);
+    if (width !== null) element.style.width = percent(PLAN_WIDTH * width / 100, SCENE_WIDTH);
+    const top = stylePercent(element.style.top);
+    if (top !== null) element.style.top = percent(PLAN_HEIGHT * top / 100 - SCENE_TOP, SCENE_HEIGHT);
+    const height = stylePercent(element.style.height);
+    if (height !== null) element.style.height = percent(PLAN_HEIGHT * height / 100, SCENE_HEIGHT);
+  }
+  return element;
+}
+
+function projectHotspot(element, scene) {
+  const hotspot = structuredClone(element);
+  const bounds = scene === PREVIOUS_SCENE ? PREVIOUS_SCENE_BOUNDS :
+    { width: SCENE_WIDTH, height: SCENE_HEIGHT, left: SCENE_LEFT, top: SCENE_TOP };
+  if (isObject(hotspot.style)) {
+    const left = stylePercent(hotspot.style.left);
+    if (left !== null) hotspot.style.left = percent(bounds.width * left / 100 + bounds.left, PLAN_WIDTH);
+    const width = stylePercent(hotspot.style.width);
+    if (width !== null) hotspot.style.width = percent(bounds.width * width / 100, PLAN_WIDTH);
+    const top = stylePercent(hotspot.style.top);
+    if (top !== null) hotspot.style.top = percent(bounds.height * top / 100 + bounds.top, PLAN_HEIGHT);
+    const height = stylePercent(hotspot.style.height);
+    if (height !== null) hotspot.style.height = percent(bounds.height * height / 100, PLAN_HEIGHT);
+  }
+  return hotspot;
+}
+
+function editableHotspots(elements, scene = null) {
   return Array.isArray(elements)
     ? elements.filter(element => isObject(element) && element.type === 'state-icon')
-      .map((element, index) => ({ ...element, id: typeof element.id === 'string' ? element.id : `ha-dashboard-${index + 1}` }))
+      .map((element, index) => ({
+        ...((scene === ROOMCRAFT_SCENE || scene === PREVIOUS_SCENE)
+          ? projectHotspot(element, scene) : structuredClone(element)),
+        id: typeof element.id === 'string' ? element.id : `ha-dashboard-${index + 1}`,
+      }))
     : [];
 }
 
@@ -69,7 +121,6 @@ function validCameraThumbnail(item) {
 }
 
 function cameraThumbnailElements(items) {
-  const percent = (value, span) => `${Math.round(value / span * 10000) / 100}%`;
   return items.filter(item => isObject(item) && item.type === 'cameraThumbnail').map(item => {
     if (!validCameraThumbnail(item)) throw new Error('The layout has an invalid camera thumbnail.');
     return {
@@ -80,8 +131,8 @@ function cameraThumbnailElements(items) {
       image_entity: item.imageEntityId || '',
       preview_mode: item.previewMode || 'event',
       style: {
-        left: percent(item.x, PLAN_WIDTH), top: percent(item.y, PLAN_HEIGHT),
-        width: percent(item.w, PLAN_WIDTH), height: percent(item.h, PLAN_HEIGHT),
+        left: percent(item.x - SCENE_LEFT, SCENE_WIDTH), top: percent(item.y - SCENE_TOP, SCENE_HEIGHT),
+        width: percent(item.w, SCENE_WIDTH), height: percent(item.h, SCENE_HEIGHT),
         transform: `translate(-50%, -50%) rotate(${item.rotation || 0}deg)`,
         'z-index': 3,
       },
@@ -107,7 +158,6 @@ function validObjectControl(item) {
 }
 
 function objectControlElements(items) {
-  const percent = (value, span) => `${Math.round(value / span * 10000) / 100}%`;
   return items.filter(item => isObject(item) && item.type !== 'cameraThumbnail' && item.entityId).map(item => {
     if (!validObjectControl(item)) throw new Error('The layout has an invalid object control.');
     return {
@@ -122,8 +172,8 @@ function objectControlElements(items) {
       ...(item.tapEntityId ? { roomcraft_tap_entity: item.tapEntityId } : {}),
       ...(item.holdEntityId ? { roomcraft_hold_entity: item.holdEntityId } : {}),
       style: {
-        left: percent(item.x, PLAN_WIDTH), top: percent(item.y, PLAN_HEIGHT),
-        width: percent(item.w, PLAN_WIDTH), height: percent(item.h, PLAN_HEIGHT),
+        left: percent(item.x - SCENE_LEFT, SCENE_WIDTH), top: percent(item.y - SCENE_TOP, SCENE_HEIGHT),
+        width: percent(item.w, SCENE_WIDTH), height: percent(item.h, SCENE_HEIGHT),
         transform: `translate(-50%, -50%) rotate(${item.rotation || 0}deg)`,
         'z-index': 4,
       },
@@ -146,12 +196,26 @@ function entityMenuElement(items = [], existing = []) {
       icon: item.controlIcon || '' }));
   return { type: MENU_ELEMENT_TYPE, roomcraft_menu: true, title: 'Devices and sensors',
     sections, bound_objects: boundObjects,
-    style: { left: '5.2%', top: '8.8%', 'z-index': 12 } };
+    style: { left: '5.2%', top: HEADER_TOP, 'z-index': 12 } };
+}
+
+function migrateHeaderChrome(element, previousScene) {
+  const result = structuredClone(element);
+  const previousTop = previousScene === PREVIOUS_SCENE ? '3.6%' : '9%';
+  if (!isObject(result.style) || result.style.top !== previousTop) return result;
+  const stateLabel = result.type === 'state-label' && typeof result.entity === 'string' &&
+    (result.entity === 'sensor.time' || result.entity.startsWith('weather.'));
+  const action = isObject(result.tap_action) ? result.tap_action : {};
+  const editorLink = result.type === 'icon' && result.icon === 'mdi:pencil-ruler' &&
+    action.navigation_path === '/second-floor/studio';
+  if (stateLabel || editorLink) result.style.top = HEADER_TOP;
+  return result;
 }
 
 function updatePlanCard(config, image, hotspots, items = []) {
   const next = structuredClone(config);
   const card = findPlanCard(next);
+  const previousScene = card.roomcraft_scene;
   const objects = objectControlElements(items);
   const linkedEntities = new Set(objects.map(element => element.entity));
   const retained = Array.isArray(card.elements)
@@ -161,11 +225,14 @@ function updatePlanCard(config, image, hotspots, items = []) {
       !(element.type === MENU_ELEMENT_TYPE && element.roomcraft_menu === true))
     : [];
   card.image = image;
+  card.roomcraft_scene = ROOMCRAFT_SCENE;
   card.elements = [...hotspots.filter(hotspot => !linkedEntities.has(hotspot.entity)).map(hotspot => {
-    const element = { ...hotspot };
+    const element = sceneHotspot(hotspot);
     delete element.id;
     return element;
-  }), ...objects, ...cameraThumbnailElements(items), entityMenuElement(items, card.elements || []), ...retained];
+  }), ...objects, ...cameraThumbnailElements(items), entityMenuElement(items, card.elements || []),
+    ...retained.map(element => previousScene !== ROOMCRAFT_SCENE
+      ? migrateHeaderChrome(element, previousScene) : structuredClone(element))];
   return { next, card };
 }
 
@@ -220,8 +287,8 @@ function decodePng(dataUrl) {
   }
   const size = offset => ((bytes[offset] << 24) | (bytes[offset + 1] << 16) |
     (bytes[offset + 2] << 8) | bytes[offset + 3]) >>> 0;
-  if (size(16) !== 1536 || size(20) !== 1024) {
-    throw new Error('The plan PNG must be 1536 × 1024 pixels.');
+  if (size(16) !== SCENE_WIDTH || size(20) !== SCENE_HEIGHT) {
+    throw new Error('The plan PNG must be 1536 × 864 pixels.');
   }
   return bytes;
 }
@@ -382,7 +449,7 @@ class RoomcraftEditorCard extends HTMLElement {
     return {
       project: isObject(config.roomcraft_layout) ? config.roomcraft_layout : null,
       imageUrl,
-      hotspots: editableHotspots(card.elements),
+      hotspots: editableHotspots(card.elements, card.roomcraft_scene),
       entityOptions,
       source: `${location.origin}/${DASHBOARD}/${PLAN_VIEW}`,
       revision,
