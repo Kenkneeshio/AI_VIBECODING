@@ -2,12 +2,13 @@
 
 All notable Roomcraft changes are recorded here. Deployment status is tracked separately from a source commit.
 
-## 2026-10-31 — Dashboard-first editor startup, Site v16
+## 2026-10-31 — Dashboard-first editor startup, Site v17
 
-- Aligned the public HA-hosted editor source with the owner-private Site v16 startup behavior. Both editor transports now request the current `roomcraft_layout` when opened, even if that browser has a local draft. **Import from dashboard** remains the manual refresh action for an editor that is already open.
+- Aligned the public HA-hosted editor source with the owner-private Site v17 startup behavior. Both editor transports now request the current `roomcraft_layout` when opened, even if that browser has a local draft. **Import from dashboard** remains the manual refresh action for an editor that is already open.
 - A different local draft is saved for **Recover previous browser draft** before the dashboard layout replaces it. If Home Assistant is unreachable, the local draft remains usable. A slow dashboard response does not overwrite a drag, an in-progress edit, or an active Inspector edit.
 - Synced `ha-local/README.md`, `public/app.js`, `public/editor.html`, and `tests/editor-migration.test.mjs` from the Site source. The user manual and deployment checklist explain the changed startup behavior.
-- Public checkout verification: 23 Site tests passed, 13 Home Assistant card tests passed, and the editor JavaScript syntax check passed. This source commit alone does not deploy Home Assistant or publish the Site.
+- Published Site v17 from source commit `825c13d0f583ba504e22c80181123843c0d49c19` and reinstalled the LAN editor with a new cache version, a private HA backup, and configuration readback. Browser checks showed both editors loading the current layout with eight control objects; the LAN editor offered **Recover previous browser draft** for its older copy. Some Chrome sessions still need Studio's **Open editor in a new tab** fallback.
+- Verification: 23 Site tests, 13 Home Assistant card tests, four migration tests, TypeScript, editor JavaScript syntax, and production build passed. The target Apolosign tablet still needs its own on-device fit and touch check.
 
 ## 2026-10-31 — Interactive plan and complete entity drawer
 
