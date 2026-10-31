@@ -126,6 +126,23 @@ class MigrationTests(unittest.TestCase):
         with self.assertRaisesRegex(MigrationError, "small-sofa blind"):
             migrate_dashboard(current_dashboard(), old)
 
+    def test_existing_fan_scene_targets_survive_a_repeat_migration(self):
+        current = current_dashboard()
+        current["roomcraft_layout"]["items"].append({
+            "id": "ceiling-fan", "type": "fans-fan-light-white", "name": "Ceiling fan",
+            "x": 650, "y": 350, "w": 158, "h": 158, "rotation": 0,
+            "entityId": "switch.ceiling_fan", "tapAction": "activate",
+            "tapEntityId": "scene.ceiling_fan_on_scene", "holdAction": "activate",
+            "holdEntityId": "scene.ceiling_fan_off",
+        })
+        updated = migrate_dashboard(current, old_dashboard())
+        element = next(element for element in updated["views"][0]["cards"][0]["elements"]
+                       if element.get("roomcraft_item_id") == "ceiling-fan")
+        self.assertEqual(element["entity"], "switch.ceiling_fan")
+        self.assertEqual(element["roomcraft_tap_entity"], "scene.ceiling_fan_on_scene")
+        self.assertEqual(element["roomcraft_hold_entity"], "scene.ceiling_fan_off")
+        self.assertEqual(migrate_dashboard(updated, old_dashboard()), updated)
+
 
 if __name__ == "__main__":
     unittest.main()

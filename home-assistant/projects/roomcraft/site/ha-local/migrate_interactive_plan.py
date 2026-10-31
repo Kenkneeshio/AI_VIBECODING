@@ -35,6 +35,7 @@ OBJECT_ELEMENT_TYPE = "custom:roomcraft-object-control"
 MENU_ELEMENT_TYPE = "custom:roomcraft-entity-menu"
 ENTITY_ID = re.compile(r"^[a-z_]+\.[a-z0-9_]+$")
 CAMERA_ID = re.compile(r"^camera\.[a-z0-9_]+$")
+CONTROL_ACTIONS = {"auto", "toggle", "activate", "more-info", "none"}
 
 # Coordinates were checked against the 1536 × 1024 furnished plan. They cover
 # the glass with enough margin for a touch target, but can be moved in Studio.
@@ -202,6 +203,14 @@ def _validate_item(item: dict, *, camera: bool = False) -> None:
             raise MigrationError("The camera item has an invalid entity ID.")
     elif not isinstance(entity, str) or not ENTITY_ID.fullmatch(entity):
         raise MigrationError("A linked object has an invalid entity ID.")
+    if not camera:
+        for key in ("tapEntityId", "holdEntityId"):
+            target = item.get(key, "")
+            if not isinstance(target, str) or (target and not ENTITY_ID.fullmatch(target)):
+                raise MigrationError("A linked object has an invalid action target.")
+        for key in ("tapAction", "holdAction"):
+            if item.get(key, "auto") not in CONTROL_ACTIONS:
+                raise MigrationError("A linked object has an invalid action.")
 
 
 def _camera_elements(items: list[dict]) -> list[dict]:
@@ -240,6 +249,8 @@ def _object_elements(items: list[dict]) -> list[dict]:
             "control_zone": item.get("type") == "controlZone",
             "roomcraft_tap_action": item.get("tapAction") or "auto",
             "roomcraft_hold_action": item.get("holdAction") or "auto",
+            **({"roomcraft_tap_entity": item["tapEntityId"]} if item.get("tapEntityId") else {}),
+            **({"roomcraft_hold_entity": item["holdEntityId"]} if item.get("holdEntityId") else {}),
             "style": {
                 "left": _percent(item["x"], PLAN_WIDTH), "top": _percent(item["y"], PLAN_HEIGHT),
                 "width": _percent(item["w"], PLAN_WIDTH), "height": _percent(item["h"], PLAN_HEIGHT),

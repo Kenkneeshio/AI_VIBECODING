@@ -27,11 +27,12 @@ The [layout schema](../layout.schema.json) is the authored scene. Live values, c
 | Office / study | Office bulb | `light.lab_light` | Named for the Office, but unavailable at audit. Keep the lamp movable and show its unavailable control state until the device reconnects. |
 | Master bedroom | Master bulb | `light.master_light` | Named bedroom bulb; available at audit. |
 | Hallway | Hall dimmer and thermostat | `light.hallway_switch_light_1`, `climate.thermostat_2` | Dimmer name and thermostat area support these locations. Their detail controls are searchable in the drawer; place a thermostat object only after confirming its wall position. |
+| Living ceiling center, provisional | Ceiling fan motor, light, and state | `scene.ceiling_fan_on_scene`, `scene.ceiling_fan_off`, `scene.ceiling_fan_light_toggle`, `switch.ceiling_fan` | The old Main Dashboard uses separate Fan On, Fan Off, and Light scene buttons, and shows the switch as state. The published artwork is at canvas position (690, 420), with a separate 68 × 68 center light target. None has a verified HA area; confirm the physical room and move both targets together if needed. |
 | Master bathroom | Humidifier | `humidifier.humidifier` | Area registry confirms the appliance; its `light.master_bathroom_humidifier_ambient_light` controls only the appliance's ambient light. |
 | Exterior entry | Porch camera | `camera.porch_camera_profile_000` | Verified ONVIF HLS is the live source for this floor's exterior thumbnail. Label it **Live** while streaming and open native camera details on tap. |
 | Garage, outside this plan | Door and camera | `cover.garage_door_door_1`, `camera.garage_camera` | Put these in Security or a separate exterior view. Verify the camera stream and require clear intent before a door command. |
 
-No primary room light was verified for either bathroom, the dressing nook, or the balcony. `switch.ceiling_fan` is available, but its physical room has not been verified. The Dining/Sink GU10 and photo-wall bulbs still need placement confirmation. The Eufy `camera.front_door` and `image.front_door_event_image` remain in the HA inventory for other security views; they are not this floor's exterior camera. The [full room mapping](ha-inventory/entity-inventory.json) records these confidence limits.
+No primary room light was verified for either bathroom, the dressing nook, or the balcony. The ceiling-fan light has no separate `light.*` entity or readable on/off state: its available Tuya scene is a one-shot toggle. `switch.ceiling_fan` is available, but the old dashboard treats it as state while separate scenes operate Fan On and Fan Off. The unsupported `switch.ceiling_fan_switch_switch_1` is unavailable and should not be used. The Dining/Sink GU10 and photo-wall bulbs still need placement confirmation. The Eufy `camera.front_door` and `image.front_door_event_image` remain in the HA inventory for other security views; they are not this floor's exterior camera. The [full room mapping](ha-inventory/entity-inventory.json) records these confidence limits.
 
 ## Interaction rules
 
@@ -40,7 +41,8 @@ No primary room light was verified for either bathroom, the dressing nook, or th
 | Lamp, pendant, ceiling fixture | Toggle bound `light.*` | Native details for supported dimming, color temperature, or color. |
 | Counter light connected to a switch | Toggle confirmed `switch.*` | Native details; do not treat an unrelated outlet as a lamp. |
 | Window with a blind | Open native cover details on the frame | Tilt and position if the entity reports support. |
-| Ceiling fan | Toggle the bound on/off entity | Do not show speed controls unless a real `fan.*` entity supports them. |
+| Ceiling fan motor | Fan artwork: tap activates `scene.ceiling_fan_on_scene`; hold activates `scene.ceiling_fan_off` | Bind `switch.ceiling_fan` as the displayed state, with the two scenes as separate tap/hold targets. Do not infer speed control or assume the switch affects only the motor. |
+| Ceiling-fan light | Center light area: tap activates `scene.ceiling_fan_light_toggle` | This scene toggles the light without reporting its current on/off state. Label the action **Toggle light**, not **Light on/off**. |
 | Air filter or humidifier | Open the appliance's control | Mode, humidity, and nearby environmental readouts. |
 | Robot vacuum | Open status and action panel | Start, pause, return to base, battery, and authenticated map; live plan position waits for calibration. |
 | Porch camera thumbnail | Open native camera details | Use the verified HLS source for **Live**. If a future camera uses an event still, label that feed **Latest event** and show its time. |

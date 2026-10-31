@@ -24,6 +24,39 @@ test('old object bindings keep automatic device actions', () => {
   assert.equal(c.effectiveHoldAction({ ...oldBlind, holdAction: 'toggle' }), 'toggle');
 });
 
+test('a fan can show its switch state while tap and hold run separate scenes', () => {
+  const c = controls();
+  const fan = {
+    id: 'fan', type: 'fans-fan-light-white', name: 'Ceiling fan', x: 650, y: 350,
+    w: 158, h: 158, rotation: 0, entityId: 'switch.ceiling_fan',
+    tapEntityId: 'scene.ceiling_fan_on_scene', holdEntityId: 'scene.ceiling_fan_off',
+    tapAction: 'activate', holdAction: 'activate'
+  };
+  assert.equal(c.validBinding(fan), true);
+  assert.equal(c.effectiveTapAction(fan), 'activate');
+  assert.equal(c.effectiveTapAction({ entityId: 'scene.ceiling_fan_light_toggle' }), 'activate');
+  assert.equal(c.effectiveTapAction({ entityId: 'script.example' }), 'activate');
+  assert.equal(c.effectiveTapAction({ entityId: 'button.example' }), 'activate');
+  assert.equal(c.validBinding({ ...fan, tapEntityId: 'https://invalid.example' }), false);
+  assert.equal(c.propertyUpdate('holdEntityId', ' scene.ceiling_fan_off ').value, 'scene.ceiling_fan_off');
+  assert.equal(c.propertyUpdate('tapEntityId', 'javascript:alert(1)').valid, false);
+
+  const element = c.manualDashboardElements({ items: [fan], hotspots: [] })[0];
+  assert.equal(element.entity, 'switch.ceiling_fan');
+  assert.equal(element.roomcraft_tap_entity, 'scene.ceiling_fan_on_scene');
+  assert.equal(element.roomcraft_hold_entity, 'scene.ceiling_fan_off');
+  const yaml = c.manualYaml({ items: [fan], hotspots: [] });
+  assert.match(yaml, /roomcraft_tap_action: "activate"/);
+  assert.match(yaml, /roomcraft_hold_entity: "scene.ceiling_fan_off"/);
+  const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+  const inspector = c.renderInspector(fan, { icon: '✳', label: 'Ceiling fan' },
+    () => '', () => '', escape, []);
+  assert.match(inspector, /Run scene, script, or button/);
+  assert.match(inspector, /data-prop="tapEntityId"/);
+  assert.match(inspector, /data-prop="holdEntityId"/);
+});
+
 test('button labels, icons, and actions accept only safe values', () => {
   const c = controls();
   assert.equal(c.validBinding({ controlLabel: 'Desk lamp', controlIcon: 'mdi:desk-lamp', tapAction: 'toggle', holdAction: 'none' }), true);

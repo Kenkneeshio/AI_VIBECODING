@@ -63,6 +63,8 @@ Top-level cards: 2. Drawer section: **Lighting**.
 | `switch.smart_switch_switch_1` | no_live_state |
 | `switch.smart_switch_switch_1_2` | available |
 
+The ceiling-fan group presents the light toggle scene and separate Fan On/Fan Off scenes as action buttons. It shows `switch.ceiling_fan` as a state readout. The scenes are one-shot actions; the light has no independent `light.*` state, and Home Assistant does not assign these devices to a room.
+
 ### Security and Control
 
 Top-level cards: 3. Drawer section: **Security and Control**.

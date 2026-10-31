@@ -9,7 +9,7 @@ const OBJECT_ELEMENT_TYPE = "custom:roomcraft-object-control";
 const MENU_ELEMENT_TYPE = "custom:roomcraft-entity-menu";
 const PLAN_WIDTH = 1536;
 const PLAN_HEIGHT = 1024;
-const ACTIONS = ["auto", "toggle", "more-info", "none"];
+const ACTIONS = ["auto", "toggle", "activate", "more-info", "none"];
 
 function isObject(value: unknown): value is JsonObject {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -51,6 +51,10 @@ export function validObjectControl(item: unknown): item is JsonObject {
     (item.controlIcon === undefined || item.controlIcon === "" || typeof item.controlIcon === "string" && /^mdi:[a-z0-9-]+$/.test(item.controlIcon)) &&
     (item.tapAction === undefined || ACTIONS.includes(String(item.tapAction))) &&
     (item.holdAction === undefined || ACTIONS.includes(String(item.holdAction))) &&
+    (item.tapEntityId === undefined || typeof item.tapEntityId === "string" &&
+      (item.tapEntityId === "" || /^[a-z_]+\.[a-z0-9_]+$/.test(item.tapEntityId))) &&
+    (item.holdEntityId === undefined || typeof item.holdEntityId === "string" &&
+      (item.holdEntityId === "" || /^[a-z_]+\.[a-z0-9_]+$/.test(item.holdEntityId))) &&
     [item.x, item.y, item.w, item.h, item.rotation ?? 0].every((value) => typeof value === "number" && Number.isFinite(value)) &&
     Number(item.x) >= 0 && Number(item.x) <= PLAN_WIDTH &&
     Number(item.y) >= 0 && Number(item.y) <= PLAN_HEIGHT &&
@@ -72,6 +76,8 @@ export function objectControlElements(items: unknown): JsonObject[] {
         control_zone: item.type === "controlZone",
         roomcraft_tap_action: item.tapAction || "auto",
         roomcraft_hold_action: item.holdAction || "auto",
+        ...(item.tapEntityId ? { roomcraft_tap_entity: item.tapEntityId } : {}),
+        ...(item.holdEntityId ? { roomcraft_hold_entity: item.holdEntityId } : {}),
         style: {
           left: percent(item.x as number, PLAN_WIDTH), top: percent(item.y as number, PLAN_HEIGHT),
           width: percent(item.w as number, PLAN_WIDTH), height: percent(item.h as number, PLAN_HEIGHT),

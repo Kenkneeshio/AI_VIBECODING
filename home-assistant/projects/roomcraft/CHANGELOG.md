@@ -2,6 +2,14 @@
 
 All notable Roomcraft changes are recorded here. Deployment status is tracked separately from a source commit.
 
+## 2026-10-31 — Ceiling fan and light scene controls
+
+- The editor and dashboard controls support a one-shot **Run** action for scenes, scripts, and buttons, plus separate tap and hold entity targets. The published fan artwork shows the `switch.ceiling_fan` state while tap runs `scene.ceiling_fan_on_scene` and hold runs `scene.ceiling_fan_off`; its separate 68 × 68 center area runs `scene.ceiling_fan_light_toggle`.
+- Read-only Home Assistant and old Main Dashboard checks found no separate fan-light `light.*` entity or on/off state. The three scenes are available; the unsupported wall-switch entity is unavailable. No device command was issued.
+- Published the fan provisionally at the living-room ceiling center (canvas position 690, 420) and deployed owner-private Site v18 from source `f019321`. Home Assistant export and exact readback verified 28 editable items, 10 controls, the three fan scenes, the porch camera, and the plan image URL. Browser checks showed rendered fan artwork and both accessible fan and light targets.
+- Refreshed the public-safe illustrated plan capture in the user manual with the new fan; the live camera remains a separate Home Assistant overlay and is not present in the image.
+- Verification passed 25 Site tests, 16 Home Assistant card tests, and five migration tests. Home Assistant still has no assigned room for this fan; confirm its physical location and move both targets together if needed.
+
 ## 2026-10-31 — Dashboard-first editor startup, Site v17
 
 - Aligned the public HA-hosted editor source with the owner-private Site v17 startup behavior. Both editor transports now request the current `roomcraft_layout` when opened, even if that browser has a local draft. **Import from dashboard** remains the manual refresh action for an editor that is already open.
