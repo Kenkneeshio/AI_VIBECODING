@@ -2,6 +2,8 @@
 
 Read-only mapping of the existing **Main Dashboard** (`dashboard-dashboard`) at 2026-10-31 19:14 UTC. It has one sections-style view, 6 sections, and 65 direct entity references. The Roomcraft drawer now includes **On plan**, **All entities**, search, registry availability, and these six curated sections. This map explains their source; it does not delete or overwrite the Main Dashboard.
 
+**Historical snapshot:** these rows are source references from that audit, not the current Second Floor plan bindings. The current front-door tile uses a dated event still, and the separate garage tile can start streaming on tap. See the [current camera and object guide](live-object-graphics.md). Do not treat an older porch camera reference in this map as a working stream or copy its entity ID into a new layout without checking Home Assistant.
+
 At audit time, 56 direct references were available, eight unavailable, and one had no live state. Dynamic references inside templates may not be included. Recheck states before migrating a control.
 
 | Existing section | Drawer section | Direct references |

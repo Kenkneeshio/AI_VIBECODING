@@ -6,7 +6,7 @@ import { test } from 'node:test';
 const inventorySource = readFileSync(new URL('../public/inventory.js', import.meta.url), 'utf8');
 const artSource = readFileSync(new URL('../public/object-art.js', import.meta.url), 'utf8');
 
-test('photo-inspired catalog objects have working perspective render paths', () => {
+test('photo-inspired catalog and home controls have working perspective render paths', () => {
   const window = { dispatchEvent() {} };
   class Image {
     complete = true;
@@ -35,6 +35,10 @@ test('photo-inspired catalog objects have working perspective render paths', () 
     const object = { id: template.type, type: template.type, name: template.label,
       x: 500, y: 400, w: template.w, h: template.h, rotation: 0 };
     assert.equal(window.RoomcraftObjectArt.draw(canvas, object), true, template.type);
+  }
+  for (const [type, width, height] of [['thermostat', 48, 54], ['windowFan', 46, 46], ['garageDoor', 116, 52]]) {
+    const object = { id: type, type, name: type, x: 500, y: 400, w: width, h: height, rotation: 0 };
+    assert.equal(window.RoomcraftObjectArt.draw(canvas, object), true, type);
   }
   assert.ok(strokes > templates.length * 5);
 });

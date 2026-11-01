@@ -2,6 +2,8 @@
 
 Read-only snapshot: **2026-10-31 19:14 UTC**. The [machine-readable JSON](entity-inventory.json) contains all 1,760 sanitized entity rows, including disabled entries and four live entities absent from the entity registry. These pages omit current values, camera media, credentials, network addresses, and mobile or personal identifiers. IDs labeled `private_####` are redacted placeholders.
 
+**Archived evidence, not current configuration:** this public repository retains the dated metadata for discovery and historical review. It predates the latest Second Floor camera and object bindings. In particular, its porch recommendation is superseded: the current front-door tile uses a dated event image because live playback is unavailable, while the garage tile can start a separate stream on tap. For current behavior use the [live-object guide](../live-object-graphics.md) and verify entity bindings privately in Home Assistant. Do not publish a newer raw registry or camera media here.
+
 Availability reflects only the audit time. Recheck the Home Assistant entity registry and the physical device before binding an object or issuing a command. A name that suggests a room is not proof of placement; the room table in the JSON records mapping confidence.
 
 ## Snapshot counts

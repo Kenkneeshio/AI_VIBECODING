@@ -45,9 +45,11 @@ test('a fan can show its switch state while tap and hold run separate scenes', (
   assert.equal(element.entity, 'switch.ceiling_fan');
   assert.equal(element.roomcraft_tap_entity, 'scene.ceiling_fan_on_scene');
   assert.equal(element.roomcraft_hold_entity, 'scene.ceiling_fan_off');
+  assert.equal(element.roomcraft_visual_kind, 'fan');
   const yaml = c.manualYaml({ items: [fan], hotspots: [] });
   assert.match(yaml, /roomcraft_tap_action: "activate"/);
   assert.match(yaml, /roomcraft_hold_entity: "scene.ceiling_fan_off"/);
+  assert.match(yaml, /roomcraft_visual_kind: "fan"/);
   const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;').replaceAll('"', '&quot;');
   const inspector = c.renderInspector(fan, { icon: '✳', label: 'Ceiling fan' },
@@ -55,6 +57,7 @@ test('a fan can show its switch state while tap and hold run separate scenes', (
   assert.match(inspector, /Run scene, script, or button/);
   assert.match(inspector, /data-prop="tapEntityId"/);
   assert.match(inspector, /data-prop="holdEntityId"/);
+  assert.match(inspector, /data-prop="visualKind"/);
 });
 
 test('button labels, icons, and actions accept only safe values', () => {
@@ -66,6 +69,10 @@ test('button labels, icons, and actions accept only safe values', () => {
   assert.equal(c.propertyUpdate('controlLabel', '  Desk lamp  ').value, 'Desk lamp');
   assert.equal(c.propertyUpdate('controlIcon', 'mdi:lightbulb').valid, true);
   assert.equal(c.propertyUpdate('controlIcon', 'javascript:alert(1)').valid, false);
+  assert.equal(c.propertyUpdate('visualKind', 'auto').value, undefined);
+  assert.equal(c.propertyUpdate('visualKind', 'window').value, 'window');
+  assert.equal(c.propertyUpdate('visualKind', 'unsafe').valid, false);
+  assert.equal(c.validBinding({ visualKind: 'unsafe' }), false);
 });
 
 test('dashboard entity suggestions are sanitized, searchable, and domain filtered', () => {

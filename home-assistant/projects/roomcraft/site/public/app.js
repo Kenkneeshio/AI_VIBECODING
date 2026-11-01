@@ -65,6 +65,9 @@
     { type: 'floorLamp', label: 'Floor lamp', icon: '◉', w: 54, h: 92, group: 'lighting' },
     { type: 'tableLamp', label: 'Table lamp', icon: '◌', w: 48, h: 52, group: 'lighting' },
     { type: 'wallSconce', label: 'Wall sconce', icon: '◖', w: 34, h: 48, group: 'lighting' },
+    { type: 'thermostat', label: 'Wall thermostat / AC', icon: '◴', w: 48, h: 54, group: 'systems', mount: 'wall', visualKind: 'climate' },
+    { type: 'windowFan', label: 'Window fan', icon: '✣', w: 46, h: 46, group: 'systems', mount: 'wall', visualKind: 'fan' },
+    { type: 'garageDoor', label: 'Garage door control', icon: '▥', w: 116, h: 52, group: 'systems', visualKind: 'door' },
     { type: 'cameraThumbnail', label: 'Camera thumbnail', icon: '▣', w: 170, h: 110, group: 'security' },
     { type: 'controlZone', label: 'Invisible button area', icon: '▧', w: 120, h: 72, group: 'security' },
     { type: 'plant', label: 'Flowers', icon: '✿', w: 44, h: 44, group: 'decor' },
@@ -78,7 +81,7 @@
     ...(window.RoomcraftInventory?.groups || []),
     ['living', 'Living & dining'], ['bedroom', 'Bedroom & storage'],
     ['utility', 'Kitchen & bath'], ['lighting', 'Lights & lamps'],
-    ['decor', 'Decor'], ['build', 'Build'], ['security', 'Cameras & controls']
+    ['systems', 'Climate, doors & fans'], ['decor', 'Decor'], ['build', 'Build'], ['security', 'Cameras & controls']
   ];
   const templateByType = Object.fromEntries(templates.map(t => [t.type, t]));
 
@@ -88,7 +91,9 @@
   const point = (x, y) => ({ x, y });
   const room = (id, name, surface, points, label) => ({ id, name, surface, points: points.map(p => point(...p)), label: point(...label) });
   const wall = (id, x1, y1, x2, y2) => ({ id, x1, y1, x2, y2 });
-  const item = (id, type, name, x, y, w, h, rotation = 0) => ({ id, type, name, x, y, w, h, rotation, entityId: '', ...(type==='cameraThumbnail'?{previewMode:'event',imageEntityId:''}:{}) });
+  const item = (id, type, name, x, y, w, h, rotation = 0) => ({ id, type, name, x, y, w, h, rotation, entityId: '',
+    ...(templateByType[type]?.visualKind?{visualKind:templateByType[type].visualKind}:{}),
+    ...(type==='cameraThumbnail'?{previewMode:'event',imageEntityId:''}:{}) });
   const validEntityId = value => /^[a-z_]+\.[a-z0-9_]+$/i.test(value||'');
   function clampLinkedItem(o){
     if(o.type==='cameraThumbnail'||!validEntityId(o.entityId))return;
@@ -334,7 +339,6 @@
       c.strokeStyle='rgba(202,227,226,.54)';c.lineWidth=1.5;c.stroke();
       c.fillStyle='#e5f2e9';c.beginPath();c.arc(0,-5,Math.min(w,h)*.17,0,Math.PI*2);c.fill();
       c.fillStyle='#263f49';c.beginPath();c.arc(0,-5,Math.min(w,h)*.09,0,Math.PI*2);c.fill();
-      c.textAlign='center';c.fillStyle='#f4f3e6';c.font=`700 ${Math.max(10,Math.min(15,h*.12))}px system-ui, sans-serif`;c.fillText(o.previewMode==='live'?'LIVE CAMERA':o.previewMode==='offline'?'CAMERA OFFLINE':'LATEST EVENT',0,h*.34);
     }
     c.restore();
   }
@@ -388,8 +392,14 @@
       if(!clean){drawHotspots(c);drawSelection(c);}
     }else{
       const raster=window.RoomcraftRasterRenderer;
-      if(!raster?.draw(c,project,STARTER,{original:reference,shell:emptyShell,wallFree:wallFreeShell},o=>drawObject(c,o))){
-        drawBackdrop(c);drawRooms(c);for(const o of project.items)drawObject(c,o);for(const w of project.walls)drawWall(c,w);
+      const drawDynamicObject=o=>{
+        // HA renders the bound fan as a stateful, rotating object. Keep the
+        // editor's fan art, but omit its fixed blades from the exported PNG.
+        if(clean&&validEntityId(o.entityId)&&templateByType[o.type]?.artFamily==='ceilingFan')return;
+        drawObject(c,o);
+      };
+      if(!raster?.draw(c,project,STARTER,{original:reference,shell:emptyShell,wallFree:wallFreeShell},drawDynamicObject)){
+        drawBackdrop(c);drawRooms(c);for(const o of project.items)drawDynamicObject(o);for(const w of project.walls)drawWall(c,w);
       }
       if(!clean){
         drawControlZones(c);drawHotspots(c);drawSelection(c);
@@ -820,7 +830,7 @@
     try{
       if(!dashboardRevision){const current=await dashboardRequest('GET');if(!current.revision)throw new Error('Dashboard revision is missing');dashboardRevision=current.revision;}
       const next=clone(project);next.hotspots=dashboardControls(next);
-      if(!await askConfirmation('Export to Home Assistant',`Replace the Second Floor plan image and ${next.hotspots.length} controls with this layout? The editable project is saved with the dashboard for future imports.`,'Export layout')){
+      if(!await askConfirmation('Export to Home Assistant','Replace the Second Floor plan image and interactive objects with this layout? The editable project is saved with the dashboard for future imports.','Export layout')){
         setDashboardStatus('Dashboard export canceled');return;
       }
       const before=JSON.stringify(project);

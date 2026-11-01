@@ -85,6 +85,7 @@
         "entityId": { "type": "string", "pattern": "^(?:|[a-z_]+\\.[a-z0-9_]+)$", "description": "State source and default action target; empty means decorative only." },
         "controlLabel": { "type": "string", "maxLength": 80 },
         "controlIcon": { "type": "string", "pattern": "^(?:|mdi:[a-z0-9-]+)$" },
+        "visualKind": { "enum": ["auto", "light", "fan", "climate", "window", "door", "device", "none"], "description": "Optional live object treatment; auto infers from the item and bound state entity." },
         "tapAction": { "$ref": "#/$defs/objectAction" },
         "holdAction": { "$ref": "#/$defs/objectAction" },
         "tapEntityId": { "$ref": "#/$defs/optionalEntityId", "description": "Optional action target different from entityId." },

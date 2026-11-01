@@ -24,6 +24,7 @@ const PREVIOUS_SCENE = 'wall-to-wall-v1';
 const PREVIOUS_SCENE_BOUNDS = { width: 1472, height: 828, left: 20, top: 96 };
 const HEADER_TOP = '5.3%';
 const CONTROL_ACTIONS = ['auto', 'toggle', 'activate', 'more-info', 'none'];
+const VISUAL_KINDS = ['light', 'fan', 'climate', 'window', 'door', 'device', 'none'];
 const ACTIVATION_SERVICES = new Map([['scene', 'turn_on'], ['script', 'turn_on'], ['button', 'press']]);
 
 function isObject(value) {
@@ -146,6 +147,7 @@ function validObjectControl(item) {
     typeof item.entityId === 'string' && /^[a-z_]+\.[a-z0-9_]+$/.test(item.entityId) &&
     (item.controlLabel === undefined || typeof item.controlLabel === 'string' && item.controlLabel.length <= 80) &&
     (item.controlIcon === undefined || item.controlIcon === '' || typeof item.controlIcon === 'string' && /^mdi:[a-z0-9-]+$/.test(item.controlIcon)) &&
+    (item.visualKind === undefined || item.visualKind === 'auto' || VISUAL_KINDS.includes(item.visualKind)) &&
     (item.tapAction === undefined || CONTROL_ACTIONS.includes(item.tapAction)) &&
     (item.holdAction === undefined || CONTROL_ACTIONS.includes(item.holdAction)) &&
     (item.tapEntityId === undefined || typeof item.tapEntityId === 'string' &&
@@ -155,6 +157,21 @@ function validObjectControl(item) {
     [item.x, item.y, item.w, item.h, item.rotation ?? 0].every(value => typeof value === 'number' && Number.isFinite(value)) &&
     item.x >= 0 && item.x <= PLAN_WIDTH && item.y >= 0 && item.y <= PLAN_HEIGHT &&
     item.w >= 12 && item.w <= PLAN_WIDTH && item.h >= 12 && item.h <= PLAN_HEIGHT;
+}
+
+function objectVisualKind(item) {
+  if (VISUAL_KINDS.includes(item.visualKind)) return item.visualKind;
+  const type = String(item.type || '').toLowerCase();
+  const entity = String(item.entityId || '').toLowerCase();
+  const label = String(item.controlLabel || item.name || '').toLowerCase();
+  const domain = entity.split('.')[0];
+  if (domain === 'fan' || (type.includes('fan') && !label.includes('fan light')) ||
+      (domain === 'switch' && /\bfan\b/.test(label) && !/\blight\b/.test(label))) return 'fan';
+  if (domain === 'climate' || /\b(air conditioner|thermostat|a\/c)\b/.test(label)) return 'climate';
+  if (domain === 'lock' || /\b(door|garage)\b/.test(label)) return 'door';
+  if (domain === 'cover' || type === 'window' || /\b(window|blind|blinds|shade|shades)\b/.test(label)) return 'window';
+  if (domain === 'light' || /light|lamp|sconce/.test(type) || /\b(light|lamp)\b/.test(label)) return 'light';
+  return 'device';
 }
 
 function objectControlElements(items) {
@@ -167,6 +184,7 @@ function objectControlElements(items) {
       title: item.controlLabel || item.name || item.entityId,
       control_icon: item.controlIcon || '',
       control_zone: item.type === 'controlZone',
+      roomcraft_visual_kind: objectVisualKind(item),
       roomcraft_tap_action: item.tapAction || 'auto',
       roomcraft_hold_action: item.holdAction || 'auto',
       ...(item.tapEntityId ? { roomcraft_tap_entity: item.tapEntityId } : {}),
@@ -202,9 +220,20 @@ function entityMenuElement(items = [], existing = []) {
 function migrateHeaderChrome(element, previousScene) {
   const result = structuredClone(element);
   const previousTop = previousScene === PREVIOUS_SCENE ? '3.6%' : '9%';
-  if (!isObject(result.style) || result.style.top !== previousTop) return result;
   const stateLabel = result.type === 'state-label' && typeof result.entity === 'string' &&
     (result.entity === 'sensor.time' || result.entity.startsWith('weather.'));
+  if (stateLabel) {
+    if (typeof result.prefix === 'string' && /^(weather|time)\s*[·:]?\s*$/i.test(result.prefix)) {
+      delete result.prefix;
+    }
+    result.style = isObject(result.style) ? result.style : {};
+    Object.assign(result.style, {
+      color: '#f5f9f5', 'font-size': 'clamp(11px, 1vw, 14px)', 'font-weight': '600',
+      background: 'rgba(17, 33, 35, 0.42)', 'border-radius': '9px', padding: '4px 7px',
+      'text-shadow': '0 1px 2px rgba(0, 0, 0, 0.55)',
+    });
+  }
+  if (previousScene === ROOMCRAFT_SCENE || !isObject(result.style) || result.style.top !== previousTop) return result;
   const action = isObject(result.tap_action) ? result.tap_action : {};
   const editorLink = result.type === 'icon' && result.icon === 'mdi:pencil-ruler' &&
     action.navigation_path === '/second-floor/studio';
@@ -231,8 +260,7 @@ function updatePlanCard(config, image, hotspots, items = []) {
     delete element.id;
     return element;
   }), ...objects, ...cameraThumbnailElements(items), entityMenuElement(items, card.elements || []),
-    ...retained.map(element => previousScene !== ROOMCRAFT_SCENE
-      ? migrateHeaderChrome(element, previousScene) : structuredClone(element))];
+    ...retained.map(element => migrateHeaderChrome(element, previousScene))];
   return { next, card };
 }
 
@@ -511,12 +539,30 @@ class RoomcraftEditorCard extends HTMLElement {
   }
 }
 
-/** The artwork stays untouched: the object's own footprint is its hit target. */
+function controlVisualKind(config) {
+  if (VISUAL_KINDS.includes(config.roomcraft_visual_kind)) return config.roomcraft_visual_kind;
+  return objectVisualKind({ type: config.control_zone ? 'controlZone' : '',
+    entityId: config.entity, name: config.title, controlLabel: config.title });
+}
+
+function controlDisplayState(value, domain) {
+  if (!value || value === 'unavailable' || value === 'unknown') return 'unavailable';
+  if (['scene', 'script', 'button'].includes(domain)) return 'ready';
+  if (['on', 'open', 'opening', 'unlocked', 'unlocking', 'playing', 'cleaning', 'returning',
+    'heat', 'cool', 'heat_cool', 'auto', 'dry', 'fan_only', 'heating', 'cooling'].includes(value)
+  ) return 'on';
+  if (['off', 'closed', 'closing', 'locked', 'locking', 'idle', 'paused', 'docked',
+    'standby'].includes(value)) return 'off';
+  return 'unavailable';
+}
+
+/** The linked object's own artwork and state treatment form its hit target. */
 class RoomcraftObjectControl extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
     this._holdTimer = null;
+    this._feedbackTimer = null;
     this._held = false;
     this._moved = false;
   }
@@ -531,7 +577,9 @@ class RoomcraftObjectControl extends HTMLElement {
             !/^[a-z_]+\.[a-z0-9_]+$/.test(config.roomcraft_tap_entity))) ||
         (config.roomcraft_hold_entity !== undefined &&
           (typeof config.roomcraft_hold_entity !== 'string' ||
-            !/^[a-z_]+\.[a-z0-9_]+$/.test(config.roomcraft_hold_entity)))) {
+            !/^[a-z_]+\.[a-z0-9_]+$/.test(config.roomcraft_hold_entity))) ||
+        (config.roomcraft_visual_kind !== undefined && config.roomcraft_visual_kind !== 'auto' &&
+          !VISUAL_KINDS.includes(config.roomcraft_visual_kind))) {
       throw new Error('The Roomcraft object has an invalid device binding.');
     }
     this._config = config;
@@ -540,11 +588,72 @@ class RoomcraftObjectControl extends HTMLElement {
   }
 
   set hass(value) { this._hass = value; this._refresh(); }
-  disconnectedCallback() { clearTimeout(this._holdTimer); }
+  disconnectedCallback() {
+    clearTimeout(this._holdTimer);
+    clearTimeout(this._feedbackTimer);
+    this._button?.removeAttribute('data-feedback');
+  }
 
   _build() {
     const style = document.createElement('style');
-    style.textContent = ':host{display:block;box-sizing:border-box;min-width:32px;min-height:32px}.target{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;border-radius:12px;background:transparent;cursor:pointer;touch-action:manipulation}.target:hover,.target:focus-visible{outline:2px solid #7ee8d2;outline-offset:1px;background:#42bba81c}.target[data-state="on"]:not([data-zone="true"])::after{content:"";position:absolute;inset:15%;border-radius:50%;box-shadow:0 0 16px 6px #ffe79a75;pointer-events:none}.target[data-state="unavailable"]{cursor:help}.target[data-state="unavailable"]:focus-visible{outline-color:#f8c36b}.hint{display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;color:#ecfff7;filter:drop-shadow(0 1px 3px #102a2a)}.target:hover .hint,.target:focus-visible .hint{display:block}';
+    style.textContent = `
+      :host{display:block;box-sizing:border-box;min-width:32px;min-height:32px}
+      .target{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;border-radius:12px;background:transparent;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+      .target:hover,.target:focus-visible{outline:2px solid #7ee8d2;outline-offset:1px}
+      .target:active{filter:brightness(1.25)}
+      .target[data-feedback]::after{content:"";position:absolute;inset:1px;z-index:2;border:3px solid #d9fff4;border-radius:12px;background:#b8fff035;box-shadow:0 0 0 3px #15313cbb,0 0 14px 5px #6eead5c9;pointer-events:none}
+      .target[data-feedback="hold"]::after{border-color:#fff2bc;background:#ffe8a42d;box-shadow:0 0 0 3px #372a1fbb,0 0 14px 5px #ffd47bc9}
+      .target[data-state="unavailable"]{cursor:help}
+      .target[data-state="unavailable"]:focus-visible{outline-color:#f8c36b}
+      .art,.rotor,.blade,.hub{position:absolute;pointer-events:none;box-sizing:border-box}
+      .art{inset:5%;border-radius:50%;opacity:1;transition:background .18s,box-shadow .18s,filter .18s}
+      .target[data-visual="none"] .art,.target[data-state="ready"] .art,
+      .target[data-zone="true"][data-visual="device"] .art{display:none}
+      .target[data-visual="light"][data-state="off"] .art{
+        background:radial-gradient(circle,#14222b 0 25%,#182731e8 43%,#111e28a8 66%,transparent 84%);
+        backdrop-filter:brightness(.22) saturate(.3);box-shadow:inset 0 0 0 2px #7d8c97,0 2px 9px #05141b99}
+      .target[data-visual="light"][data-state="on"] .art{
+        background:radial-gradient(circle,#fffef2 0 15%,#ffe6a5e8 31%,#ffca68a0 50%,transparent 78%);
+        box-shadow:0 0 18px 9px #ffd865a6,0 0 34px 17px #ffd86562,inset 0 0 0 2px #fff8dd}
+      .target[data-visual="fan"] .art{inset:0;border-radius:0;background:radial-gradient(ellipse at center,#172630e8 0 26%,#172630a6 49%,transparent 76%);backdrop-filter:none;box-shadow:none}
+      .target[data-visual="fan"][data-state="on"] .art{background:radial-gradient(ellipse at center,#22303ad9 0 27%,#263c468c 48%,transparent 76%);backdrop-filter:none;box-shadow:none}
+      .rotor{inset:7%;display:none;transform-origin:50% 50%}
+      .target[data-visual="fan"] .rotor{display:block}
+      .target[data-visual="fan"][data-state="on"] .rotor{animation:roomcraft-spin 2.8s steps(8,end) infinite;filter:drop-shadow(0 0 5px #fff0bd) drop-shadow(0 0 8px #ffd166b8)}
+      .blade{width:14%;height:38%;top:11%;left:43%;transform-origin:50% 103%;
+        background:linear-gradient(90deg,#8999a0,#d7e3e0 40%,#f6faf0 65%,#91a4a8);border:1px solid #5b7079;border-radius:48%}
+      .blade:nth-child(1){transform:rotate(0deg)}
+      .blade:nth-child(2){transform:rotate(72deg)}
+      .blade:nth-child(3){transform:rotate(144deg)}
+      .blade:nth-child(4){transform:rotate(216deg)}
+      .blade:nth-child(5){transform:rotate(288deg)}
+      .target[data-visual="fan"][data-state="off"] .blade{background:linear-gradient(90deg,#34464c,#6b7a7f 55%,#394b52);border-color:#26353b}
+      .hub{width:28%;height:28%;top:36%;left:36%;border-radius:50%;background:radial-gradient(circle at 38% 35%,#fff8da,#a5b3a8 70%,#5b6e70);border:2px solid #4e666b;box-shadow:0 1px 4px #17232a88}
+      .target[data-visual="fan"][data-state="off"] .hub{background:radial-gradient(circle at 38% 35%,#8f9b9d,#34474d 75%)}
+      .target[data-visual="window"] .art,.target[data-visual="door"] .art{inset:6%;border-radius:7px}
+      .target[data-visual="window"][data-state="off"] .art,.target[data-visual="door"][data-state="off"] .art{
+        background:linear-gradient(145deg,#101b27dd,#24313bd9);backdrop-filter:brightness(.22) saturate(.25);box-shadow:inset 0 0 0 3px #6c818c,0 2px 8px #07131a99}
+      .target[data-visual="window"][data-state="on"] .art{
+        background:linear-gradient(145deg,#90eaf1a3,#2b9fc7aa 42%,#e2fbf1a8 73%,#5cc8e0aa);
+        box-shadow:inset 0 0 0 3px #e6ffff,0 0 13px 5px #48d7f1a6}
+      .target[data-visual="door"][data-state="on"] .art{
+        background:linear-gradient(145deg,#d8ffc2bb,#54c87fab 45%,#e3ffccaa);
+        box-shadow:inset 0 0 0 3px #edffe8,0 0 13px 5px #8bef9ca6}
+      .target[data-visual="climate"] .art{inset:5%;border-radius:12px}
+      .target[data-visual="climate"][data-state="off"] .art{
+        background:#182a36c9;backdrop-filter:brightness(.28) saturate(.35);box-shadow:inset 0 0 0 3px #718896}
+      .target[data-visual="climate"][data-state="on"] .art{
+        background:linear-gradient(145deg,#b6f5f1c7,#4bc9d2ae);box-shadow:inset 0 0 0 3px #e9fffa,0 0 18px 7px #60e4dea6}
+      .target[data-visual="device"] .art{inset:3%;border-radius:12px}
+      .target[data-visual="device"][data-state="off"] .art{background:#14212ca8;backdrop-filter:brightness(.3);box-shadow:inset 0 0 0 3px #84939a}
+      .target[data-visual="device"][data-state="on"] .art{background:#a6efd278;box-shadow:inset 0 0 0 3px #d8fff0,0 0 13px 5px #5feab68a}
+      .target[data-state="unavailable"] .art{background:#28313bb8;box-shadow:inset 0 0 0 2px #87919b;filter:grayscale(1)}
+      .target[data-visual="fan"][data-state="unavailable"] .art{background:radial-gradient(ellipse at center,#293842e6 0 27%,#29384299 49%,transparent 76%);box-shadow:none}
+      .hint{display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;color:#ecfff7;filter:drop-shadow(0 1px 3px #102a2a)}
+      .target:hover .hint,.target:focus-visible .hint{display:block}
+      @keyframes roomcraft-spin{to{transform:rotate(360deg)}}
+      @media(prefers-reduced-motion:reduce){.target[data-visual="fan"][data-state="on"] .rotor{animation:none}}
+    `;
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'target';
@@ -582,7 +691,20 @@ class RoomcraftObjectControl extends HTMLElement {
     });
     const icon = document.createElement('ha-icon');
     icon.className = 'hint';
-    button.append(icon);
+    const art = document.createElement('span');
+    art.className = 'art';
+    const rotor = document.createElement('span');
+    rotor.className = 'rotor';
+    for (let index = 0; index < 5; index++) {
+      const blade = document.createElement('span');
+      blade.className = 'blade';
+      rotor.append(blade);
+    }
+    const hub = document.createElement('span');
+    hub.className = 'hub';
+    rotor.append(hub);
+    art.append(rotor);
+    button.append(art, icon);
     this.shadowRoot.append(style, button);
     this._button = button;
     this._icon = icon;
@@ -593,10 +715,12 @@ class RoomcraftObjectControl extends HTMLElement {
     const state = this._hass?.states?.[this._config.entity];
     const value = state?.state || 'unavailable';
     const domain = this._config.entity.split('.')[0];
-    const actionOnly = domain === 'scene' || domain === 'button';
+    const actionOnly = ['scene', 'script', 'button'].includes(domain);
     const displayValue = actionOnly && !['unavailable', 'unknown'].includes(value) ? 'ready' : value;
-    const active = !actionOnly && ['on', 'open', 'playing', 'cleaning', 'heat', 'cool', 'heating', 'cooling'].includes(value);
-    this._button.setAttribute('data-state', value === 'unavailable' || value === 'unknown' ? 'unavailable' : active ? 'on' : 'off');
+    const visualState = controlDisplayState(value, domain);
+    const visualKind = controlVisualKind(this._config);
+    this._button.setAttribute('data-state', visualState);
+    this._button.setAttribute('data-visual', visualKind);
     this._button.setAttribute('data-zone', String(this._config.control_zone === true));
     this._icon.icon = this._config.control_icon || state?.attributes?.icon || 'mdi:gesture-tap';
     const label = this._config.title || state?.attributes?.friendly_name || this._config.entity;
@@ -630,6 +754,7 @@ class RoomcraftObjectControl extends HTMLElement {
     if (!entityId || !this._hass) return;
     let action = this._actionFor(kind);
     if (action === 'none') return;
+    this._acknowledge(kind);
     const targetId = this._targetFor(kind);
     if (['toggle', 'activate'].includes(action) &&
         ['unavailable', 'unknown'].includes(this._hass.states?.[targetId]?.state)) {
@@ -646,6 +771,12 @@ class RoomcraftObjectControl extends HTMLElement {
     } else {
       this._showDetails(targetId);
     }
+  }
+
+  _acknowledge(kind) {
+    clearTimeout(this._feedbackTimer);
+    this._button?.setAttribute('data-feedback', kind);
+    this._feedbackTimer = setTimeout(() => this._button?.removeAttribute('data-feedback'), 650);
   }
 
   _showDetails(entityId) {
@@ -944,6 +1075,22 @@ class RoomcraftCameraThumbnail extends HTMLElement {
     this._objectUrl = null;
     this._liveElement = null;
     this._lastFailure = 0;
+    this._failedImageKey = '';
+    this._stillReady = false;
+    this._stillPending = false;
+    this._stillError = 'Latest event unavailable';
+    this._stillFooter = 'LATEST EVENT';
+    this._imageLoadTimer = null;
+    this._liveReady = false;
+    this._liveTimer = null;
+    this._liveStartedAt = 0;
+    this._liveFailedAt = 0;
+    this._liveFailedCameraId = '';
+    this._turnOnRequestedAt = 0;
+    this._turnOnError = false;
+    this._turnOnTimer = null;
+    this._holdTimer = null;
+    this._held = false;
   }
 
   setConfig(config) {
@@ -969,20 +1116,37 @@ class RoomcraftCameraThumbnail extends HTMLElement {
 
   disconnectedCallback() {
     ++this._requestSerial;
+    clearTimeout(this._holdTimer);
+    clearTimeout(this._turnOnTimer);
+    this._stopLive();
     this._revokeImage();
   }
 
   _build() {
     const style = document.createElement('style');
-    style.textContent = ':host{display:block;box-sizing:border-box;min-width:40px;min-height:40px}.frame{box-sizing:border-box;display:block;position:relative;width:100%;height:100%;min-height:40px;overflow:hidden;padding:0;border:2px solid #e4ebdf;border-radius:9px;background:#182a2c;color:#fff;box-shadow:0 4px 15px #1118;cursor:pointer;font:inherit;text-align:left}.media,.still,.live{position:absolute;inset:0;width:100%;height:100%}.still{object-fit:cover}.live{display:block;overflow:hidden}.veil{position:absolute;inset:0;background:linear-gradient(#0008,transparent 36%,transparent 62%,#000a);pointer-events:none}.head,.foot{position:absolute;left:7px;right:7px;z-index:2;font:600 10px/1.2 system-ui,sans-serif;text-shadow:0 1px 3px #000}.head{top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.foot{bottom:6px}.message{position:absolute;inset:25px 7px 20px;display:flex;align-items:center;justify-content:center;text-align:center;color:#e1e9e3;font:500 10px/1.2 system-ui,sans-serif}.still[hidden],.message[hidden]{display:none}';
+    style.textContent = ':host{display:block;box-sizing:border-box;min-width:40px;min-height:40px}.frame{box-sizing:border-box;display:block;position:relative;width:100%;height:100%;min-height:40px;overflow:hidden;padding:0;border:2px solid #e4ebdf;border-radius:9px;background:#182a2c;color:#fff;box-shadow:0 4px 15px #1118;cursor:pointer;font:inherit;text-align:left}.media,.still,.live{position:absolute;inset:0;width:100%;height:100%}.still{object-fit:cover}.live{display:block;overflow:hidden;opacity:0;pointer-events:none}.veil{position:absolute;inset:0;background:linear-gradient(#0008,transparent 36%,transparent 62%,#000a);pointer-events:none}.head,.foot{position:absolute;left:7px;right:7px;z-index:2;font:600 10px/1.2 system-ui,sans-serif;text-shadow:0 1px 3px #000}.head{top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.foot{bottom:6px}.message{position:absolute;inset:25px 7px 20px;display:flex;align-items:center;justify-content:center;text-align:center;color:#e1e9e3;font:500 10px/1.2 system-ui,sans-serif}.still[hidden],.message[hidden]{display:none}';
     const frame = document.createElement('button');
     frame.type = 'button';
     frame.className = 'frame';
     frame.addEventListener('click', () => {
-      const entityId = this._config?.camera_entity;
-      if (entityId) this.dispatchEvent(new CustomEvent('hass-more-info', {
-        bubbles: true, composed: true, detail: { entityId },
-      }));
+      if (this._held) { this._held = false; return; }
+      this._activateCamera();
+    });
+    frame.addEventListener('pointerdown', event => {
+      if (event.button !== 0) return;
+      this._held = false;
+      clearTimeout(this._holdTimer);
+      this._holdTimer = setTimeout(() => {
+        this._held = true;
+        this._openDetails();
+      }, 550);
+    });
+    for (const name of ['pointerup', 'pointercancel', 'pointerleave']) {
+      frame.addEventListener(name, () => clearTimeout(this._holdTimer));
+    }
+    frame.addEventListener('contextmenu', event => {
+      event.preventDefault();
+      this._openDetails();
     });
     const media = document.createElement('div');
     media.className = 'media';
@@ -990,7 +1154,19 @@ class RoomcraftCameraThumbnail extends HTMLElement {
     still.className = 'still';
     still.alt = '';
     still.hidden = true;
-    still.addEventListener('error', () => this._showUnavailable('Latest event unavailable'));
+    still.addEventListener('load', () => {
+      if (!this._objectUrl || still.src !== this._objectUrl) return;
+      if (!still.naturalWidth || !still.naturalHeight) { this._stillFailed(); return; }
+      clearTimeout(this._imageLoadTimer);
+      this._imageLoadTimer = null;
+      this._pendingKey = '';
+      this._stillPending = false;
+      this._stillReady = true;
+      this._renderCamera();
+    });
+    still.addEventListener('error', () => {
+      if (this._objectUrl && still.src === this._objectUrl) this._stillFailed();
+    });
     const veil = document.createElement('div');
     veil.className = 'veil';
     const name = document.createElement('div');
@@ -1010,19 +1186,118 @@ class RoomcraftCameraThumbnail extends HTMLElement {
     this._message = message;
   }
 
+  _openDetails() {
+    const entityId = this._config?.camera_entity;
+    if (entityId) this.dispatchEvent(new CustomEvent('hass-more-info', {
+      bubbles: true, composed: true, detail: { entityId },
+    }));
+  }
+
+  _activateCamera() {
+    const entityId = this._config?.camera_entity;
+    const state = this._hass?.states?.[entityId]?.state;
+    if (this._config?.preview_mode !== 'live' || state !== 'idle' ||
+        typeof this._hass?.callService !== 'function') {
+      this._openDetails();
+      return;
+    }
+    if (this._turnOnRequestedAt && Date.now() - this._turnOnRequestedAt < 15000) return;
+    this._turnOnRequestedAt = Date.now();
+    this._turnOnError = false;
+    clearTimeout(this._turnOnTimer);
+    this._turnOnTimer = setTimeout(() => {
+      this._turnOnRequestedAt = 0;
+      this._turnOnError = true;
+      this._renderCamera();
+    }, 15000);
+    this._turnOnTimer.unref?.();
+    this._renderCamera();
+    try {
+      Promise.resolve(this._hass.callService('camera', 'turn_on', { entity_id: entityId }))
+        .catch(() => {
+          clearTimeout(this._turnOnTimer);
+          this._turnOnRequestedAt = 0;
+          this._turnOnError = true;
+          this._renderCamera();
+        });
+    } catch {
+      clearTimeout(this._turnOnTimer);
+      this._turnOnRequestedAt = 0;
+      this._turnOnError = true;
+      this._renderCamera();
+    }
+  }
+
   _revokeImage() {
+    clearTimeout(this._imageLoadTimer);
+    this._imageLoadTimer = null;
     if (this._objectUrl) URL.revokeObjectURL(this._objectUrl);
     this._objectUrl = null;
     this._imageKey = '';
     this._pendingKey = '';
+    this._stillReady = false;
+    this._stillPending = false;
   }
 
-  _showUnavailable(message, footer = 'LATEST EVENT') {
-    if (!this._frame) return;
-    this._still.hidden = true;
-    this._message.hidden = false;
-    this._message.textContent = message;
-    this._foot.textContent = footer;
+  _stillFailed() {
+    this._failedImageKey = this._pendingKey || this._imageKey;
+    this._lastFailure = Date.now();
+    this._revokeImage();
+    this._stillError = 'Latest event unavailable';
+    this._renderCamera();
+  }
+
+  _stopLive() {
+    if (this._liveTimer) clearInterval(this._liveTimer);
+    this._liveTimer = null;
+    this._liveElement?.remove();
+    this._liveElement = null;
+    this._liveCameraId = '';
+    this._liveReady = false;
+    this._liveStartedAt = 0;
+  }
+
+  _renderCamera() {
+    if (!this._frame || !this._config) return;
+    const offline = this._config.preview_mode === 'offline';
+    const live = !offline && this._liveReady && this._liveElement?.parentNode === this._media;
+    const still = !offline && this._stillReady && !!this._objectUrl;
+    const startable = this._config.preview_mode === 'live' && this._cameraState === 'idle';
+    this._frame.setAttribute('aria-label', startable
+      ? 'Start ' + this._name.textContent + ' camera stream; hold for details'
+      : 'Open ' + this._name.textContent + ' camera details');
+    this._frame.title = startable ? 'Tap to start stream · Hold for details' : 'Open camera details';
+    if (this._liveElement) this._liveElement.style.opacity = live ? '1' : '0';
+    this._still.hidden = !still || live;
+    this._message.hidden = !!(live || still);
+    if (live) {
+      this._foot.textContent = 'LIVE';
+    } else if (still) {
+      this._foot.textContent = this._turnOnRequestedAt ? 'CONNECTING · PREVIEW'
+        : this._turnOnError ? 'PREVIEW · LIVE UNAVAILABLE'
+        : this._liveFailedCameraId === this._config.camera_entity && this._liveFailedAt
+          ? 'PREVIEW · LIVE UNAVAILABLE'
+        : this._wantsLive ? this._stillFooter.replace(/^LATEST EVENT/, 'PREVIEW')
+        : this._stillFooter;
+    } else if (offline) {
+      this._message.textContent = 'Camera preview off';
+      this._foot.textContent = 'OFF';
+    } else if (this._liveTimer || this._turnOnRequestedAt) {
+      this._message.textContent = 'Connecting to camera…';
+      this._foot.textContent = 'CONNECTING';
+    } else if (this._stillPending) {
+      this._message.textContent = 'Loading latest event…';
+      this._foot.textContent = 'LOADING';
+    } else if (startable && !this._turnOnError) {
+      this._message.textContent = 'Tap to start camera';
+      this._foot.textContent = 'READY';
+    } else if (this._wantsLive || this._cameraUnavailable) {
+      this._message.textContent = 'Camera unavailable';
+      this._foot.textContent = 'UNAVAILABLE';
+    } else {
+      this._message.textContent = this._stillError;
+      this._foot.textContent = this._stillFooter;
+    }
   }
 
   _eventTime(state) {
@@ -1035,120 +1310,188 @@ class RoomcraftCameraThumbnail extends HTMLElement {
     }).format(new Date(timestamp));
   }
 
-  _showLive() {
-    if (typeof customElements.get('hui-image-element') !== 'function') return false;
-    if (this._liveCameraId !== this._config.camera_entity) {
-      this._liveElement?.remove();
-      this._liveElement = null;
+  _startLive(cameraId) {
+    if (this._liveElement && this._liveCameraId !== cameraId) this._stopLive();
+    if (this._liveElement) {
+      this._liveElement.hass = this._hass;
+      return;
     }
-    if (!this._liveElement) {
-      const element = document.createElement('hui-image-element');
-      if (typeof element.setConfig !== 'function') return false;
-      element.className = 'live';
-      try {
-        element.setConfig({
-          type: 'image', entity: this._config.camera_entity,
-          camera_image: this._config.camera_entity, camera_view: 'live',
-          tap_action: { action: 'none' }, hold_action: { action: 'none' },
-        });
-      } catch { return false; }
-      this._liveElement = element;
-      this._liveCameraId = this._config.camera_entity;
+    if (this._liveFailedCameraId === cameraId && Date.now() - this._liveFailedAt < 30000) return;
+    if (typeof customElements.get('hui-image-element') !== 'function') return;
+    const element = document.createElement('hui-image-element');
+    if (typeof element.setConfig !== 'function') return;
+    element.className = 'live';
+    try {
+      element.setConfig({
+        type: 'image', entity: cameraId,
+        camera_image: cameraId, camera_view: 'live',
+        tap_action: { action: 'none' }, hold_action: { action: 'none' },
+      });
+    } catch { return; }
+    this._liveElement = element;
+    this._liveCameraId = cameraId;
+    this._liveStartedAt = Date.now();
+    this._media.append(element);
+    element.hass = this._hass;
+    this._liveTimer = setInterval(() => this._pollLive(), 500);
+    this._liveTimer.unref?.();
+    this._pollLive();
+  }
+
+  _pollLive() {
+    if (!this._liveElement) return;
+    if (this._hass?.states?.[this._liveCameraId]?.state !== 'streaming') {
+      this._stopLive();
+      this._refreshStill();
+      this._renderCamera();
+      return;
     }
-    if (this._liveElement.parentNode !== this._media) this._media.append(this._liveElement);
-    this._liveElement.hass = this._hass;
-    this._still.hidden = true;
-    this._message.hidden = true;
-    this._foot.textContent = 'LIVE';
-    return true;
+    // Home Assistant nests video or MJPEG images inside open shadow roots.
+    // Inspect decoded media; a mounted element can still be blank or failed.
+    const stack = [this._liveElement];
+    let playing = false;
+    while (stack.length && !playing) {
+      const node = stack.pop();
+      const tag = String(node.tagName || node.tag || '').toLowerCase();
+      if (tag === 'video' &&
+          node.readyState >= 2 && node.videoWidth > 0 && node.videoHeight > 0 &&
+          !node.paused && !node.ended) {
+        playing = true;
+        break;
+      }
+      if (tag === 'img' && node.complete && node.naturalWidth > 0 && node.naturalHeight > 0) {
+        // A decoded still can also appear in hui-image-element. Accept only
+        // this camera's same-origin stream endpoint as MJPEG live media.
+        try {
+          const url = new URL(node.currentSrc || node.src, location.origin);
+          const prefix = '/api/camera_proxy_stream/';
+          if (url.origin === location.origin && url.pathname.startsWith(prefix) &&
+              decodeURIComponent(url.pathname.slice(prefix.length)) === this._liveCameraId) {
+            playing = true;
+            break;
+          }
+        } catch { /* Ignore malformed image URLs. */ }
+      }
+      if (node.shadowRoot) stack.push(node.shadowRoot);
+      for (const child of node.children || []) stack.push(child);
+    }
+    if (playing) {
+      this._liveReady = true;
+      this._liveFailedAt = 0;
+      this._liveFailedCameraId = '';
+    } else if (this._liveReady) {
+      this._liveReady = false;
+      this._liveStartedAt = Date.now();
+      this._refreshStill();
+    } else if (Date.now() - this._liveStartedAt >= 15000) {
+      this._liveFailedAt = Date.now();
+      this._liveFailedCameraId = this._liveCameraId;
+      this._stopLive();
+    }
+    this._renderCamera();
   }
 
   _refresh() {
     if (!this._frame || !this._hass || !this._config) return;
     const cameraId = this._config.camera_entity;
-    const imageId = this._config.image_entity;
-    const cameraState = this._hass.states?.[cameraId];
-    const wantsLive = this._config.preview_mode === 'live';
-    if (cameraId && (wantsLive || cameraState?.state === 'streaming') && this._showLive()) {
-      ++this._requestSerial;
-      this._revokeImage();
-      return;
+    if (this._previousCameraId !== cameraId) {
+      this._stopLive();
+      this._liveFailedCameraId = '';
+      this._turnOnRequestedAt = 0;
+      this._turnOnError = false;
+      clearTimeout(this._turnOnTimer);
+      this._previousCameraId = cameraId;
     }
-    if (this._liveElement?.parentNode === this._media) this._liveElement.remove();
-    if (wantsLive) {
-      ++this._requestSerial;
-      this._revokeImage();
-      this._showUnavailable('Live view unavailable', 'LIVE');
-      return;
+    this._cameraState = this._hass.states?.[cameraId]?.state;
+    this._cameraUnavailable = !!cameraId &&
+      (!this._cameraState || this._cameraState === 'unavailable' || this._cameraState === 'unknown');
+    this._wantsLive = this._config.preview_mode === 'live' || this._cameraState === 'streaming';
+    if (this._cameraState === 'streaming') {
+      this._turnOnRequestedAt = 0;
+      this._turnOnError = false;
+      clearTimeout(this._turnOnTimer);
+    } else if (this._config.preview_mode !== 'live') {
+      this._turnOnRequestedAt = 0;
+      this._turnOnError = false;
+      clearTimeout(this._turnOnTimer);
     }
     if (this._config.preview_mode === 'offline') {
+      this._stopLive();
       ++this._requestSerial;
       this._revokeImage();
-      this._showUnavailable('Camera preview off');
+      this._renderCamera();
       return;
     }
+    // Rendering an idle camera in live mode can wake battery cameras. Only
+    // mount HA's native stream after HA reports one is active.
+    if (cameraId && this._cameraState === 'streaming') this._startLive(cameraId);
+    else this._stopLive();
+    if (!this._liveReady) this._refreshStill();
+    this._renderCamera();
+  }
+
+  _refreshStill() {
+    if (!this._hass || !this._config || this._config.preview_mode === 'offline') return;
+    const cameraId = this._config.camera_entity;
+    const imageId = this._config.image_entity;
     if (!imageId) {
       ++this._requestSerial;
       this._revokeImage();
-      this._showUnavailable(cameraId ? 'Latest event image not assigned' : 'Assign a camera in Roomcraft');
+      this._stillError = cameraId ? 'Latest event image not assigned' : 'Assign a camera in Roomcraft';
       return;
     }
     const eventState = this._hass.states?.[imageId];
     const picture = eventState?.attributes?.entity_picture;
     const eventTime = this._eventTime(eventState);
-    const footer = eventTime ? `LATEST EVENT · ${eventTime}` : 'LATEST EVENT';
-    this._foot.textContent = footer;
+    this._stillFooter = eventTime ? 'LATEST EVENT · ' + eventTime : 'LATEST EVENT';
     if (typeof picture !== 'string' || !picture) {
       ++this._requestSerial;
       this._revokeImage();
-      this._showUnavailable('Latest event unavailable', footer);
+      this._stillError = 'Latest event unavailable';
       return;
     }
     let url;
     try { url = new URL(picture, location.origin); }
-    catch { ++this._requestSerial; this._revokeImage(); this._showUnavailable('Latest event unavailable', footer); return; }
+    catch { ++this._requestSerial; this._revokeImage(); this._stillError = 'Latest event unavailable'; return; }
     // Restrict authenticated requests to HA's own image endpoint. Never send
     // the HA bearer token to a URL supplied by an arbitrary entity state.
     if (url.origin !== location.origin || !url.pathname.startsWith('/api/image_proxy/')) {
       ++this._requestSerial;
       this._revokeImage();
-      this._showUnavailable('Latest event unavailable', footer);
+      this._stillError = 'Latest event unavailable';
       return;
     }
-    const key = `${imageId}|${picture}|${eventState.state}`;
-    if (this._imageKey === key && this._objectUrl) {
-      this._still.hidden = false;
-      this._message.hidden = true;
-      return;
-    }
+    const key = imageId + '|' + picture + '|' + eventState.state;
+    if (this._imageKey === key && this._objectUrl) return;
     if (this._pendingKey === key) return;
-    if (this._imageKey === key && Date.now() - this._lastFailure < 30000) return;
-    if (this._imageKey !== key) this._revokeImage();
-    this._imageKey = key;
+    if (this._failedImageKey === key && Date.now() - this._lastFailure < 30000) return;
+    this._revokeImage();
     this._pendingKey = key;
-    this._showUnavailable('Loading latest event…', footer);
+    this._stillPending = true;
+    this._stillError = 'Latest event unavailable';
     const serial = ++this._requestSerial;
-    this._hass.fetchWithAuth(url.pathname + url.search)
+    this._imageLoadTimer = setTimeout(() => {
+      if (serial !== this._requestSerial || this._pendingKey !== key || this._stillReady) return;
+      ++this._requestSerial;
+      this._stillFailed();
+    }, 12000);
+    this._imageLoadTimer.unref?.();
+    Promise.resolve().then(() => this._hass.fetchWithAuth(url.pathname + url.search))
       .then(response => {
-        if (!response.ok) throw new Error(`Image request failed (${response.status}).`);
+        if (!response.ok) throw new Error('Image request failed (' + response.status + ').');
         return response.blob();
       })
       .then(blob => {
         if (!blob.type.startsWith('image/')) throw new Error('Image response was not an image.');
         if (serial !== this._requestSerial) return;
-        this._revokeImage();
         this._imageKey = key;
         this._objectUrl = URL.createObjectURL(blob);
+        // Keep the placeholder until the browser actually decodes the image.
         this._still.src = this._objectUrl;
-        this._still.hidden = false;
-        this._message.hidden = true;
-        this._foot.textContent = footer;
       })
       .catch(() => {
         if (serial !== this._requestSerial) return;
-        this._pendingKey = '';
-        this._lastFailure = Date.now();
-        this._showUnavailable('Latest event unavailable', footer);
+        this._stillFailed();
       });
   }
 }

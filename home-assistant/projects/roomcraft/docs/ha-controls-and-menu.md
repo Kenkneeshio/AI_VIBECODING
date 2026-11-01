@@ -24,15 +24,15 @@ The [layout schema](../layout.schema.json) is the authored scene. Live values, c
 | Dining | Air filter and docked robot | `fan.air_filter_2`, `vacuum.l10s_ultra` | Area registry places both in Dining. They are searchable in the drawer now; place and bind their movable objects after confirming their exact positions. Robot art does not yet track live map coordinates. |
 | Kitchen | Sink, pantry, cooking fixtures | `light.smart_gu10_light_bulb_5`, `light.smart_gu10_light_bulb_7`, `light.smart_gu10_light_bulb_8` | Names identify functions; verify exact physical placement before assigning each drawn light. |
 | Kitchen | Sink track and counter lights | `light.sink_light_light_1`, `switch.smart_switch_3_switch_1` | Device names identify the sink track dimmer and counter switch. A `switch.*` binds to the light artwork only when the actual circuit is confirmed. |
-| Office / study | Office bulb | `light.lab_light` | Named for the Office, but unavailable at audit. Keep the lamp movable and show its unavailable control state until the device reconnects. |
+| Office / study | Office bulb and desk lamp | `light.lab_light` | The dated inventory marked this unavailable, but later release checks found the lamp bound and rendering a state treatment. Recheck the current HA state before editing. |
 | Master bedroom | Master bulb | `light.master_light` | Named bedroom bulb; available at audit. |
-| Hallway | Hall dimmer and thermostat | `light.hallway_switch_light_1`, `climate.thermostat_2` | Dimmer name and thermostat area support these locations. Their detail controls are searchable in the drawer; place a thermostat object only after confirming its wall position. |
+| Hallway | Hall dimmer and thermostat | `light.hallway_switch_light_1`, `climate.thermostat_2` | Dimmer name and thermostat area support these locations. A movable thermostat object is now placed; confirm its exact wall position before changing it. |
 | Living ceiling center, provisional | Ceiling fan motor, light, and state | `scene.ceiling_fan_on_scene`, `scene.ceiling_fan_off`, `scene.ceiling_fan_light_toggle`, `switch.ceiling_fan` | The old Main Dashboard uses separate Fan On, Fan Off, and Light scene buttons, and shows the switch as state. The published artwork is at canvas position (690, 420), with a separate 68 × 68 center light target. None has a verified HA area; confirm the physical room and move both targets together if needed. |
 | Master bathroom | Humidifier | `humidifier.humidifier` | Area registry confirms the appliance; its `light.master_bathroom_humidifier_ambient_light` controls only the appliance's ambient light. |
-| Exterior entry | Porch camera | `camera.porch_camera_profile_000` | Verified ONVIF HLS is the live source for this floor's exterior thumbnail. Label it **Live** while streaming and open native camera details on tap. |
-| Garage, outside this plan | Door and camera | `cover.garage_door_door_1`, `camera.garage_camera` | Put these in Security or a separate exterior view. Verify the camera stream and require clear intent before a door command. |
+| Exterior entry | Front-door camera and event still | Private camera and event-image bindings | The floor thumbnail now shows a dated latest-event image from the actual front-door camera because its live stream is unavailable. Tap opens camera details. |
+| Exterior garage | Garage door tile and camera | Private cover and camera bindings | Both have movable plan objects. The camera shows an event preview while idle; tapping requests streaming, and **LIVE** appears only after a frame decodes. Require clear intent before a door command. |
 
-No primary room light was verified for either bathroom, the dressing nook, or the balcony. The ceiling-fan light has no separate `light.*` entity or readable on/off state: its available Tuya scene is a one-shot toggle. `switch.ceiling_fan` is available, but the old dashboard treats it as state while separate scenes operate Fan On and Fan Off. The unsupported `switch.ceiling_fan_switch_switch_1` is unavailable and should not be used. The Dining/Sink GU10 and photo-wall bulbs still need placement confirmation. The Eufy `camera.front_door` and `image.front_door_event_image` remain in the HA inventory for other security views; they are not this floor's exterior camera. The [full room mapping](ha-inventory/entity-inventory.json) records these confidence limits.
+No primary room light was verified for either bathroom, the dressing nook, or the balcony. The ceiling-fan light has no separate `light.*` entity or readable on/off state: its available scene is a one-shot toggle. A real light or switch feedback entity is needed before its center target can show on/off. `switch.ceiling_fan` is available, but the old dashboard treats it as state while separate scenes operate Fan On and Fan Off. The unsupported wall-switch entity is unavailable and should not be used. The Dining/Sink GU10 and photo-wall bulbs still need placement confirmation. The [full room mapping](ha-inventory/entity-inventory.json) is a dated snapshot and retains the previous porch recommendation as history, not the current floor binding.
 
 ## Interaction rules
 
@@ -45,7 +45,8 @@ No primary room light was verified for either bathroom, the dressing nook, or th
 | Ceiling-fan light | Center light area: tap activates `scene.ceiling_fan_light_toggle` | This scene toggles the light without reporting its current on/off state. Label the action **Toggle light**, not **Light on/off**. |
 | Air filter or humidifier | Open the appliance's control | Mode, humidity, and nearby environmental readouts. |
 | Robot vacuum | Open status and action panel | Start, pause, return to base, battery, and authenticated map; live plan position waits for calibration. |
-| Porch camera thumbnail | Open native camera details | Use the verified HLS source for **Live**. If a future camera uses an event still, label that feed **Latest event** and show its time. |
+| Front-door camera thumbnail | Open native camera details on tap | Show its actual latest-event image and date; do not claim live playback. |
+| Garage camera thumbnail | Tap while idle to request a stream; hold/right-click for details | Show preview or connecting until a decoded frame plays, then **LIVE**. One camera failure must not affect the other. |
 | Garage door | Open a clearly labeled Security control | Current cover state and an intentional open/close action. |
 
 Place weather and clock readouts near the plan edge; keep room surfaces visible. Useful readout sources include `weather.forecast_ishioho_city`, `sun.sun`, `sensor.thermostat_temperature_2`, `sensor.thermostat_humidity_2`, the air-quality monitor CO₂ and PM2.5 sensors, and the robot's status/battery sensors. The [inventory JSON](ha-inventory/entity-inventory.json) lists their IDs and audit availability without exporting their changing values.
@@ -61,7 +62,7 @@ The drawer preserves the six curated groups in the [Main Dashboard map](main-das
 | Planning | Calendar and task controls from Main Dashboard | Private event details stay in authenticated views. |
 | Weather and Air Quality | Weather, thermostat, humidifier, temperature, humidity, and air quality | A few compact readouts can remain on the plan edge. |
 | Lighting | Lights, switches, three blind zones, fan, and scenes | The actual light and window objects remain tappable. |
-| Security and Control | Cameras, motion, door sensors, and garage control | The porch camera is the floor thumbnail; off-floor devices stay in this group. |
+| Security and Control | Cameras, motion, door sensors, and garage control | Front-door and garage thumbnails are on the plan; detailed cards remain in this group. |
 | Energy | Power and energy charts | No dense chart layer over the room drawing. |
 | Robot Vacuum | Dreame map, status, controls, and maintenance | Robot art opens detail; live location needs calibration. |
 

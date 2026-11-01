@@ -2,9 +2,10 @@
   'use strict';
 
   const actions = new Set(['auto', 'toggle', 'activate', 'more-info', 'none']);
+  const visualKinds = new Set(['auto', 'light', 'fan', 'climate', 'window', 'door', 'device', 'none']);
   const iconPattern = /^mdi:[a-z0-9-]+$/i;
   const bindingKeys = new Set(['tapAction', 'holdAction', 'tapEntityId', 'holdEntityId',
-    'controlLabel', 'controlIcon']);
+    'controlLabel', 'controlIcon', 'visualKind']);
   const entityPattern = /^[a-z_]+\.[a-z0-9_]+$/i;
   const sceneWidth = 1536;
   const sceneHeight = 864;
@@ -36,7 +37,8 @@
       && (!('holdEntityId' in item) || typeof item.holdEntityId === 'string'
         && (!item.holdEntityId || entityPattern.test(item.holdEntityId)))
       && (!('controlLabel' in item) || (typeof item.controlLabel === 'string' && item.controlLabel.length <= 80))
-      && (!('controlIcon' in item) || (typeof item.controlIcon === 'string' && (!item.controlIcon || iconPattern.test(item.controlIcon))));
+      && (!('controlIcon' in item) || (typeof item.controlIcon === 'string' && (!item.controlIcon || iconPattern.test(item.controlIcon))))
+      && (!('visualKind' in item) || visualKinds.has(item.visualKind));
   }
 
   function propertyUpdate(key, rawValue) {
@@ -44,6 +46,9 @@
     const value = rawValue.trim();
     if (key === 'tapAction' || key === 'holdAction') {
       return actions.has(value) ? { valid: true, value: value === 'auto' ? undefined : value } : { valid: false };
+    }
+    if (key === 'visualKind') {
+      return visualKinds.has(value) ? { valid: true, value: value === 'auto' ? undefined : value } : { valid: false };
     }
     if (key === 'tapEntityId' || key === 'holdEntityId') {
       return !value || entityPattern.test(value) ? { valid: true, value: value || undefined } : { valid: false };
@@ -61,6 +66,21 @@
 
   function effectiveHoldAction(item) {
     return item.holdAction && item.holdAction !== 'auto' ? item.holdAction : 'more-info';
+  }
+
+  function visualKind(item) {
+    if (item.visualKind && item.visualKind !== 'auto') return item.visualKind;
+    const type = String(item.type || '').toLowerCase();
+    const entity = String(item.entityId || '').toLowerCase();
+    const label = String(item.controlLabel || item.name || '').toLowerCase();
+    const domain = entity.split('.')[0];
+    if (domain === 'fan' || (type.includes('fan') && !label.includes('fan light')) ||
+        (domain === 'switch' && /\bfan\b/.test(label) && !/\blight\b/.test(label))) return 'fan';
+    if (domain === 'climate' || /\b(air conditioner|thermostat|a\/c)\b/.test(label)) return 'climate';
+    if (domain === 'lock' || /\b(door|garage)\b/.test(label)) return 'door';
+    if (domain === 'cover' || type === 'window' || /\b(window|blind|blinds|shade|shades)\b/.test(label)) return 'window';
+    if (domain === 'light' || /light|lamp|sconce/.test(type) || /\b(light|lamp)\b/.test(label)) return 'light';
+    return 'device';
   }
 
   function manualDashboardElements(project) {
@@ -97,6 +117,7 @@
       title: item.controlLabel || item.name || item.entityId,
       control_icon: item.controlIcon || '',
       control_zone: item.type === 'controlZone',
+      roomcraft_visual_kind: visualKind(item),
       roomcraft_tap_action: item.tapAction || 'auto',
       roomcraft_hold_action: item.holdAction || 'auto',
       ...(item.tapEntityId ? { roomcraft_tap_entity: item.tapEntityId } : {}),
@@ -221,12 +242,17 @@
           + '<option value="mdi:window-closed"><option value="mdi:garage"><option value="mdi:television">'
           + '<option value="mdi:robot-vacuum"><option value="mdi:power"></datalist></div>')
         + actionField('tapAction', 'Tap action', item.tapAction, 'Automatic for device')
+        + '<div class="field"><label for="prop-visualKind">Live graphic</label><select id="prop-visualKind" data-prop="visualKind">'
+        + [['auto','Automatic'],['light','Light or lamp'],['fan','Ceiling fan'],['climate','Air conditioning'],['window','Window or blinds'],['door','Door or garage'],['device','General device'],['none','No state graphic']]
+          .map(([value,label]) => '<option value="' + value + '"' + ((item.visualKind || 'auto') === value ? ' selected' : '') + '>' + label + '</option>').join('')
+        + '</select></div>'
         + entityField('Tap target (optional)', 'tapEntityId', item.tapEntityId || '', entityOptions, null, escape)
         + actionField('holdAction', 'Hold action', item.holdAction, 'Default · open device details')
         + entityField('Hold target (optional)', 'holdEntityId', item.holdEntityId || '', entityOptions, null, escape)
         + '<p class="field-hint">Search available devices by name or enter an entity ID. Automatic tap toggles lights, switches, and fans; runs scenes, scripts, and buttons; and opens details for other devices. The object name is the button label unless you set one above.'
         + ' Optional tap and hold targets let this object show one entity’s state while running a different scene, script, or button.'
-        + (zone ? ' This area stays invisible on the dashboard.' : '') + '</p></div>';
+        + ' The live graphic follows the main entity. Choose Fan to spin when that switch is on.'
+        + (zone ? ' General control areas stay invisible; Window and Door modes show a state tint.' : '') + '</p></div>';
     }
     return '<div class="inspector-block"><p class="inspector-label">SELECTED OBJECT</p>'
       + '<div class="selection-title"><span class="selection-icon">' + template.icon + '</span><div><h3>' + escape(item.name)
@@ -237,6 +263,6 @@
   window.RoomcraftObjectControls = {
     isBindingKey: key => bindingKeys.has(key),
     validBinding, propertyUpdate, effectiveTapAction, effectiveHoldAction,
-    normalizeEntityOptions, manualDashboardElements, manualYaml, renderInspector
+    normalizeEntityOptions, manualDashboardElements, manualYaml, renderInspector, visualKind
   };
 })();

@@ -1,7 +1,7 @@
 /* Illustrated top-down art for objects that do not have a cutout in the PNG. */
 (() => {
   'use strict';
-  const supported=new Set(['armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce','floorPlant','artwork','mirror','window']);
+  const supported=new Set(['armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce','thermostat','windowFan','garageDoor','floorPlant','artwork','mirror','window']);
   // These cells face the same near-top-down camera as the supplied plan.
   // Front-facing atlas pieces use the perspective-aware canvas art below.
   const atlas=new Image();
@@ -564,7 +564,7 @@
     if(!supported.has(o.type))return false;
     if(drawAtlas(c,o))return true;
     const w=o.w,h=o.h,x=-w/2,y=-h/2;
-    if(o.type!=='ceilingLight'&&o.type!=='pendantLight'&&o.type!=='wallSconce'&&o.type!=='window')worldContact(c,o);
+    if(o.type!=='ceilingLight'&&o.type!=='pendantLight'&&o.type!=='wallSconce'&&o.type!=='thermostat'&&o.type!=='windowFan'&&o.type!=='window')worldContact(c,o);
     c.save();c.translate(o.x,o.y);c.rotate((o.rotation||0)*Math.PI/180);
     c.shadowColor='transparent';
     switch(o.type){
@@ -643,6 +643,44 @@
       }
       case 'wallSconce':{
         rr(c,-w*.45,-h*.43,w*.9,h*.86,6,'#897965','#5c554b',2);c.shadowColor='transparent';glow(c,Math.min(w,h)*.7);oval(c,0,0,w*.34,h*.36,'#f0d49d','#b89462',2);oval(c,-w*.09,-h*.1,w*.08,h*.09,'#fff8df');break;
+      }
+      case 'thermostat':{
+        // A raised wall thermostat: the display is neutral until HA state art is overlaid.
+        raisedCase(c,x+1,y+1,w-2,h-5,7,4,'#38474d');
+        rr(c,x,y,w,h-5,7,gradient(c,x,y,w,h,[[0,'#edf1e8'],[.62,'#c6d0ca'],[1,'#879a9b']]),'#4e6064',1.5);
+        rr(c,x+5,y+5,w-10,h*.52,3,'#243a45','#7c9297',1);
+        rr(c,x+7,y+7,w-14,h*.38,2,gradient(c,x+7,y+7,w-14,h*.38,[[0,'#a9cad0'],[1,'#527d8b']]));
+        disc(c,0,y+h*.18,Math.min(w,h)*.1,'#e5e7d8','#6c7c7a',1);
+        for(let i=0;i<4;i++)rr(c,x+9+i*(w-18)/4,y+h*.7,(w-22)/6,1.4,0,'#708487');
+        break;
+      }
+      case 'windowFan':{
+        // A compact five-blade fan recessed into the existing blue window.
+        rr(c,x,y,w,h,3,'#26343b','#0d1e27',1.2);
+        rr(c,x+3,y+3,w-6,h-6,2,gradient(c,x+3,y+3,w-6,h-6,[[0,'#a0d6eb'],[.55,'#6ab1d0'],[1,'#3b799c']]),'#c8e8ee',.8);
+        for(const side of [-1,1])rr(c,side<0?x+4:x+w-9,y+5,5,h-10,1,'#536976','#22343d',.6);
+        const radius=Math.min(w,h)*.37;
+        disc(c,0,0,radius,'#344851','#dce8e5',1.2);
+        for(let i=0;i<5;i++){
+          c.save();c.rotate(i*Math.PI*2/5);
+          oval(c,0,-radius*.56,radius*.23,radius*.48,'#8ba8b1','#66838f',.55);
+          c.restore();
+        }
+        disc(c,0,0,radius*.28,'#f5f0d8','#5c747b',.8);
+        break;
+      }
+      case 'garageDoor':{
+        // A compact exterior control tile, rather than a fictitious interior door.
+        raisedCase(c,x,y,w,h-5,5,6,'#24343d');
+        rr(c,x,y,w,h-5,5,gradient(c,x,y,w,h,[[0,'#435965'],[.5,'#283b45'],[1,'#172832']]),'#0c1d26',1.6);
+        rr(c,x+5,y+5,w-10,h-16,2,'#182a34','#72909b',.8);
+        for(let i=0;i<5;i++){
+          const yy=y+7+i*(h-20)/5;
+          rr(c,x+8,yy,w-16,(h-24)/5,1,i%2?'#5a7480':'#6e8890','#18303b',.5);
+          rr(c,x+9,yy+1,w-18,1,0,'#d3e3dc88');
+        }
+        rr(c,x+4,y+4,3,h-15,1,'#b9ccd0');rr(c,x+w-7,y+4,3,h-15,1,'#b9ccd0');
+        break;
       }
       case 'floorPlant':{
         disc(c,2,8,w*.37,'#6b5443','#4c4139',2);c.shadowColor='transparent';disc(c,0,0,w*.32,'#ad9c7f','#e0cdae',2);disc(c,0,0,w*.27,'#594a35');
