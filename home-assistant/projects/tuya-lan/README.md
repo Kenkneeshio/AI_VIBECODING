@@ -36,7 +36,7 @@ Local control of an already-paired device can run without Tuya cloud if the loca
 
 ## Start here
 
-1. Read [architecture and team boundaries](docs/architecture.md), [option comparison](docs/options.md), and [deployment and rollback](docs/deployment.md).
+1. Read the [compact execution plan](docs/EXECUTION_PLAN.md), [architecture and team boundaries](docs/architecture.md), [option comparison](docs/options.md), and [deployment and rollback](docs/deployment.md).
 2. Maintain the private device/credential map outside GitHub. The public example below shows shape only:
 
    ```text
