@@ -1,7 +1,7 @@
 """Publish the Roomcraft editor into Home Assistant's local dashboard.
 
 This script copies public, credential-free editor assets to /config/www and
-registers the Lovelace card. It saves a private dashboard backup before
+registers the Lovelace card and outdoor weather modules. It saves a private dashboard backup before
 changing the Studio view. Supply the existing trusted HA management module;
 its credentials are never copied into the editor or this repository.
 """
@@ -19,7 +19,7 @@ from datetime import datetime
 from urllib.request import urlopen
 
 REMOTE_STATIC = "/config/www/roomcraft"
-RESOURCE_PREFIX = "/local/roomcraft/roomcraft-card.js"
+RESOURCE_NAMES = ("roomcraft-card.js", "roomcraft-weather-outdoor.js")
 DASHBOARD_PATH = "second-floor"
 
 
@@ -27,24 +27,25 @@ def run(*args: str) -> None:
     subprocess.run(args, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
 
-def source_digest(public: Path, card: Path) -> str:
+def source_digest(public: Path, modules: tuple[Path, ...]) -> str:
     digest = hashlib.sha256()
-    for path in [card, *sorted(path for path in public.rglob("*") if path.is_file())]:
-        digest.update(path.relative_to(card.parent.parent).as_posix().encode())
+    for path in [*modules, *sorted(path for path in public.rglob("*") if path.is_file())]:
+        digest.update(path.relative_to(public.parent).as_posix().encode())
         with path.open("rb") as stream:
             while chunk := stream.read(1024 * 1024):
                 digest.update(chunk)
     return digest.hexdigest()[:16]
 
 
-def copy_assets(host: str, user: str, key: Path, public: Path, card: Path) -> None:
+def copy_assets(host: str, user: str, key: Path, public: Path, modules: tuple[Path, ...]) -> None:
     target = f"{user}@{host}"
     ssh_options = ["-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes", "-o", "ConnectTimeout=10", "-i", str(key)]
     run("ssh", *ssh_options, target, f"mkdir -p {REMOTE_STATIC}")
     for path in sorted(public.iterdir()):
         run("scp", "-r", *ssh_options, str(path), f"{target}:{REMOTE_STATIC}/")
-    run("scp", *ssh_options, str(card), f"{target}:{REMOTE_STATIC}/roomcraft-card.js")
-    for name in ("editor.html", "roomcraft-card.js", "ha-iframe-bridge.js"):
+    for module in modules:
+        run("scp", *ssh_options, str(module), f"{target}:{REMOTE_STATIC}/{module.name}")
+    for name in ("editor.html", *RESOURCE_NAMES, "ha-iframe-bridge.js"):
         with urlopen(f"http://{host}:8123/local/roomcraft/{name}", timeout=15) as response:
             if response.status != 200 or not response.read(128):
                 raise RuntimeError(f"Home Assistant did not serve {name}")
@@ -73,6 +74,22 @@ def update_dashboard(config: dict, version: str) -> dict:
     return next_config
 
 
+def register_resources(api, resources: list[dict], version: str) -> list[str]:
+    """Reconcile each Roomcraft module independently and return expected URLs."""
+    resource_urls = [f"/local/roomcraft/{name}?v={version}" for name in RESOURCE_NAMES]
+    for resource_url in resource_urls:
+        resource_path = resource_url.split("?", 1)[0]
+        existing = next((item for item in resources
+                         if item.get("url", "").split("?", 1)[0] == resource_path), None)
+        if existing:
+            if existing.get("url") != resource_url or existing.get("type") != "module":
+                api.call("lovelace/resources/update", resource_id=existing["id"],
+                         url=resource_url, res_type="module")
+        else:
+            api.call("lovelace/resources/create", url=resource_url, res_type="module")
+    return resource_urls
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", required=True, help="Home Assistant LAN IP or hostname")
@@ -91,11 +108,11 @@ def main() -> int:
 
     project = Path(__file__).resolve().parents[1]
     public = project / "public"
-    card = Path(__file__).resolve().with_name("roomcraft-card.js")
-    if not (public / "editor.html").is_file() or not card.is_file():
+    modules = tuple(Path(__file__).resolve().with_name(name) for name in RESOURCE_NAMES)
+    if not (public / "editor.html").is_file() or any(not module.is_file() for module in modules):
         raise RuntimeError("Roomcraft editor assets are missing")
-    version = source_digest(public, card)
-    copy_assets(args.host, args.ssh_user, args.ssh_key, public, card)
+    version = source_digest(public, modules)
+    copy_assets(args.host, args.ssh_user, args.ssh_key, public, modules)
     print(f"Static editor assets verified at http://{args.host}:8123/local/roomcraft/editor.html")
     if args.assets_only:
         print("Dashboard and resources unchanged (--assets-only).")
@@ -112,13 +129,7 @@ def main() -> int:
         backup.write_text(json.dumps(current, indent=2), encoding="utf-8")
 
         resources = api.call("lovelace/resources")
-        existing = next((item for item in resources if item.get("url", "").startswith(RESOURCE_PREFIX)), None)
-        resource_url = f"{RESOURCE_PREFIX}?v={version}"
-        if existing:
-            if existing.get("url") != resource_url:
-                api.call("lovelace/resources/update", resource_id=existing["id"], url=resource_url, res_type="module")
-        else:
-            api.call("lovelace/resources/create", url=resource_url, res_type="module")
+        resource_urls = register_resources(api, resources, version)
 
         latest = api.call("lovelace/config", url_path=DASHBOARD_PATH)
         if latest != current:
@@ -129,12 +140,14 @@ def main() -> int:
         if verified != next_config:
             raise RuntimeError("Dashboard save could not be verified")
         verified_resources = api.call("lovelace/resources")
-        if not any(item.get("url") == resource_url for item in verified_resources):
-            raise RuntimeError("Roomcraft card resource was not registered")
+        for resource_url in resource_urls:
+            if not any(item.get("url") == resource_url and item.get("type") == "module"
+                       for item in verified_resources):
+                raise RuntimeError(f"Roomcraft module was not registered: {resource_url}")
 
     print(f"Private dashboard backup: {backup}")
     print(f"Roomcraft LAN editor: http://{args.host}:8123/second-floor/studio")
-    print("HA dashboard and card resource read-back verified.")
+    print("HA dashboard and card/weather resources read-back verified.")
     return 0
 
 

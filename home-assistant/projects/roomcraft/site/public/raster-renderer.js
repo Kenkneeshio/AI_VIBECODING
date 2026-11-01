@@ -21,8 +21,9 @@
     lamp:{ box:[1419,446,48,60], shapes:[['e',3,2,39,41],['e',13,34,22,22]] }
   };
   const prototype = {sofa:'i1',tv:'i2',table:'i3',desk:'i4',chair:'i5',bed:'i6',counter:'i7',tub:'i9',toilet:'i11',plant:'i13',lamp:'lamp'};
-  // Reapply the original recessed blue glazing from the empty illustrated shell
-  // above floor and furniture repairs in Design view, including moved cutouts.
+  // The source art contains bright cyan exterior panes. Paint these fixed
+  // openings as subdued top-down glazing after floor and furniture repairs.
+  // User-placed windows are painted separately below and remain editable.
   const exteriorWindows = [
     [461,201,76,26,0],[728,201,72,26,0],
     [866.5,201,65,26,0],[962.5,201,67,26,0],
@@ -226,41 +227,28 @@
     w=Math.max(32,w);h=Math.max(16,h);
     c.save();c.translate(x,y);c.rotate(rotation*Math.PI/180);
     const left=-w/2,top=-h/2;
-    const gx=left+4,gy=top+4,gw=w-8,gh=h-10;
-    // The dark cut runs through the wall. Glazing sits inside it, with a
-    // narrow front reveal on the side facing the room. Rotation is chosen by
-    // the side of the wall used during placement, so the reveal follows it.
-    c.shadowColor='rgba(16,28,34,.35)';c.shadowBlur=5;c.shadowOffsetX=2;c.shadowOffsetY=5;
-    c.fillStyle='#0d1c28';c.fillRect(left,top,w,h);
+    const gx=left+5,gy=top+5,gw=w-10,gh=h-11;
+    // The long axis follows the wall; the short axis is its thickness. No
+    // vertical facade or glowing cyan band is visible from this viewpoint.
+    c.shadowColor='rgba(10,17,22,.32)';c.shadowBlur=3;c.shadowOffsetX=0;c.shadowOffsetY=2;
+    c.fillStyle='#17242c';c.fillRect(left,top,w,h);
     c.shadowColor='transparent';c.shadowBlur=0;c.shadowOffsetX=0;c.shadowOffsetY=0;
-    c.fillStyle='#344756';c.fillRect(left+1,top+1,w-2,h-2);
-    c.fillStyle='#0b263b';c.fillRect(gx-1,gy-1,gw+2,gh+2);
+    c.fillStyle='#41515a';c.fillRect(left+2,top+2,w-4,h-4);
+    c.fillStyle='#122632';c.fillRect(gx-1,gy-1,gw+2,gh+2);
     const glass=c.createLinearGradient(0,gy,0,gy+gh);
-    glass.addColorStop(0,'#ebfaff');glass.addColorStop(.12,'#86c9e7');
-    glass.addColorStop(.48,'#59b6dd');glass.addColorStop(.71,'#9ad8ea');
-    glass.addColorStop(1,'#4f8fb7');
+    glass.addColorStop(0,'#2b4959');glass.addColorStop(.3,'#547586');
+    glass.addColorStop(.65,'#385a6b');glass.addColorStop(1,'#1e3745');
     c.fillStyle=glass;c.fillRect(gx,gy,gw,gh);
-    c.save();c.beginPath();c.rect(gx,gy,gw,gh);c.clip();
-    const panes=Math.max(2,Math.round(w/40));
-    for(let i=0;i<panes;i++){
-      const px=gx+i*gw/panes,pw=gw/panes;
-      const reflection=c.createLinearGradient(px,gy,px+pw*.65,gy+gh);
-      reflection.addColorStop(0,'rgba(255,255,255,.57)');
-      reflection.addColorStop(.35,'rgba(255,255,255,.04)');
-      reflection.addColorStop(.73,'rgba(255,255,255,.22)');
-      reflection.addColorStop(1,'rgba(255,255,255,0)');
-      c.fillStyle=reflection;c.fillRect(px,gy,pw,gh);
-      if(i){c.fillStyle='#376178';c.fillRect(px-1.1,gy,2.2,gh);c.fillStyle='#d9f5f9';c.fillRect(px+.5,gy,.7,gh);}
+    const panes=w>110?3:2;
+    for(let i=1;i<panes;i++){
+      const px=gx+i*gw/panes;
+      c.fillStyle='#1d3440';c.fillRect(px-1,gy,2,gh);
+      c.fillStyle='rgba(164,188,193,.35)';c.fillRect(px+1,gy,1,gh);
     }
-    c.fillStyle='rgba(255,255,255,.55)';c.fillRect(gx,gy+gh*.45,gw,1);
-    c.restore();
-    // Thin metal jambs, upper cap and a projected inner sill echo the source
-    // art's slightly raised walls without turning the pane into a white box.
-    c.fillStyle='#e6ece8';c.fillRect(left+1,top+2,2,h-4);c.fillRect(left+w-3,top+2,2,h-4);
-    c.fillStyle='#bad7dc';c.fillRect(left+3,top+2,w-6,1.2);
-    c.fillStyle='#eef7f2';c.fillRect(left+3,top+h-5,w-6,2);
-    c.fillStyle='#aa9c87';c.fillRect(left+3,top+h-3,w-6,3);
-    c.fillStyle='rgba(65,47,34,.22)';c.fillRect(left+4,top+h,w-8,2);
+    c.fillStyle='rgba(208,225,222,.16)';c.fillRect(gx+1,gy+2,gw-2,1);
+    c.fillStyle='#70858a';c.fillRect(left+2,top+3,2,h-6);c.fillRect(left+w-4,top+3,2,h-6);
+    c.fillStyle='#86979a';c.fillRect(left+4,top+h-4,w-8,1.5);
+    c.fillStyle='rgba(10,18,23,.45)';c.fillRect(left+4,top+h-2,w-8,1);
     c.restore();
   }
   function repairItem(c,id,original,shell) {
@@ -356,12 +344,7 @@
     // Ceiling fixtures remain visible above movable furniture, independent of insertion order.
     for(const item of changed.filter(isCeilingLayer))drawItem(c,item,starter,original,shell,fallback);
     for(const wall of project.walls){const base=starter.walls.find(w=>w.id===wall.id);if(!sameWall(wall,base))drawNewWall(c,wall);}
-    for(const [x,y,w,h,rotation] of exteriorWindows){
-      const vertical=Math.abs(rotation)%180===90;
-      const sx=Math.round(x-(vertical?h:w)/2),sy=Math.round(y-(vertical?w:h)/2);
-      const sw=vertical?h:w,sh=vertical?w:h;
-      c.drawImage(shell,sx,sy,sw,sh,sx,sy,sw,sh);
-    }
+    for(const [x,y,w,h,rotation] of exteriorWindows)drawGlazedWindow(c,x,y,w,h,rotation);
     for(const item of changed.filter(i=>i.type==='window'))drawItem(c,item,starter,original,shell,fallback);
     return true;
   }

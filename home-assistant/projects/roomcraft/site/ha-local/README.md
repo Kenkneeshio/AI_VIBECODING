@@ -6,6 +6,7 @@ The official local editor is the **Layout Studio** view at `http://<HA-LAN-IP>:8
 
 - `public/` is copied to Home Assistant `/config/www/roomcraft/`. It contains the editor, graphics, and the small `ha-iframe-bridge.js`. The source contains no access tokens or live entity IDs.
 - `roomcraft-card.js` is registered as a Lovelace module resource and is the only card in the dashboard's `studio` panel view. Home Assistant supplies the card with the signed-in user's `hass` object. The card embeds the editor and provides **Open editor in a new tab** for browsers that leave the embedded frame blank.
+- `roomcraft-weather-outdoor.js` is a separate Lovelace module for the `plan` picture card. It reads the configured weather entity, the sun entity, and optionally a moon-phase sensor from the signed-in Home Assistant session. Hourly forecasts come from `weather.get_forecasts`; the outdoor artwork and 12-hour strip use forecast timestamps, not fixed hour slots. The module contains no site-specific entity IDs or credentials.
 - The embedded editor exchanges request/response messages with its parent card. The new-tab editor uses its `window.opener` instead. The card checks the exact iframe or opened window, origin, request ID, and method before answering.
 - The card reads and saves the dashboard through Home Assistant's authenticated WebSocket commands. It uploads the rendered PNG with `hass.fetchWithAuth` using the current user's session; it never sends the token to the iframe. Publishing requires an HA administrator. A stored snapshot is checked before and after image upload, and the saved dashboard is read back.
 - Export writes the `roomcraft_layout` and the `plan` picture card's rendered image, object hit targets, camera thumbnail, one entity menu, and any independent state-icon hotspots. Weather, clock, edit link, and unrelated dashboard views are retained. Bound fixtures and windows replace their duplicate floating icons.
@@ -16,7 +17,7 @@ The static editor files at `/local/roomcraft/` are public to anyone who can reac
 
 ## Install or update
 
-Run from a workstation with OpenSSH, Python, and the private authenticated `HomeAssistantManagement/ha_manage.py` adapter. The adapter and SSH key stay outside the repository. The script uploads assets, registers or updates the module resource with a content-based cache version, backs up the dashboard, switches Studio to a panel card, updates the plan edit icon, then verifies the saved dashboard and resource.
+Run from a workstation with OpenSSH, Python, and the private authenticated `HomeAssistantManagement/ha_manage.py` adapter. The adapter and SSH key stay outside the repository. The script uploads assets, registers or updates both module resources with a content-based cache version, backs up the dashboard, switches Studio to a panel card, updates the plan edit icon, then verifies the saved dashboard and resources.
 
 ```powershell
 python ha-local/install.py --host <HA-LAN-IP> --ssh-key <SSH-KEY-PATH> --management-root <PRIVATE-HA-MANAGEMENT-DIR> --backup-dir <PRIVATE-BACKUP-DIR>
@@ -32,15 +33,31 @@ Keep `/second-floor/studio` as the link given to LAN users. If Studio shows **Co
 
 The static files, custom card resource, and dashboard configuration persist across Home Assistant restarts. Updating the editor uses the same install command and does not require a Home Assistant core restart. The one-time interactive-plan migration is in `migrate_interactive_plan.py`; run its default dry run, review the planned changes, then run `--apply`. It privately backs up and verifies the dashboard. The migration maps the exterior camera to the porch live stream and turns the three blind windows into movable control areas.
 
+Place the weather element once in the plan's picture-elements `elements` array. Use actual entity IDs only in the private Home Assistant dashboard configuration. The full-scene element stays below camera and object controls in the stack, while its forecast strip remains tappable.
+
+```yaml
+- type: custom:roomcraft-weather-outdoor
+  weather_entity: weather.<local_weather>
+  sun_entity: sun.sun
+  moon_entity: sensor.<moon_phase>
+  style:
+    left: 50%
+    top: 50%
+    width: 100%
+    height: 100%
+    transform: translate(-50%, -50%)
+    z-index: 2
+```
+
 ## Verification
 
 1. Open the local Studio URL in a fresh browser and sign into Home Assistant. Use its new-tab button if the embedded frame stays blank.
-2. Confirm the editor loads the current dashboard layout on opening and offers **Recover previous browser draft** if that browser held a different draft. If HA is unreachable, the local draft remains usable. **Import from dashboard** refreshes an editor that is already open.
-3. Move a control area without changing any device state, export to the dashboard, and read back the plan and `roomcraft_layout` through the HA API. Move it back after the check. The v19 baseline is 36 editable items and 10 object controls, including separate ceiling-fan blade and center-light targets; confirm their scene IDs by readback without activating them.
-4. Open the cloud editor and confirm it loads the same saved layout. Use **Import from dashboard** if it was already open. Reverse the change and export again if it was only a probe.
-5. Check a narrow browser viewport and the plan's edit icon. A private ADB screen capture confirmed full-plan fit on the target Apolosign Calendar's 1920 × 1080 display. Touch interaction, editor/drawer fit, and reboot recovery still need on-device checks; see the [tablet access runbook](../../docs/tablet-access.md).
+2. Confirm the editor loads the current dashboard layout by default when there is no unsaved browser draft. Otherwise press **Import from dashboard**.
+3. Move a control area without changing any device state, export to the dashboard, and read back the plan and `roomcraft_layout` through the HA API. Move it back after the check.
+4. Import from dashboard in the cloud editor; confirm the same layout. Reverse the change and export again if it was only a probe.
+5. Check a narrow viewport and the plan's edit icon.
 
-Run `node --test ha-local/roomcraft-card.test.mjs` for the bridge, object control, camera, menu, and conflict checks, plus `python -m unittest discover -s ha-local -p 'test_*.py'` for the migration. The Site's bridge tests remain independent. The manual YAML export also emits these custom element types and therefore requires the `/local/roomcraft/roomcraft-card.js` Lovelace module resource.
+Run `node --test ha-local/roomcraft-card.test.mjs` for the bridge, object control, camera, menu, and conflict checks. Run `python -m unittest discover -s ha-local -p test_install.py` for resource registration. The Site's bridge tests remain independent. The manual YAML export also emits these custom element types and therefore requires the `/local/roomcraft/roomcraft-card.js` Lovelace module resource. The outdoor weather element requires `/local/roomcraft/roomcraft-weather-outdoor.js`.
 
 ## Rollback
 

@@ -118,6 +118,9 @@
       control_icon: item.controlIcon || '',
       control_zone: item.type === 'controlZone',
       roomcraft_visual_kind: visualKind(item),
+      ...(visualKind(item) === 'light' && ['lamp', 'tableLamp'].includes(item.type)
+        ? { roomcraft_light_form: 'table_lamp' } : {}),
+      ...(visualKind(item) === 'window' ? { roomcraft_window_axis: item.w < item.h ? 'vertical' : 'horizontal' } : {}),
       roomcraft_tap_action: item.tapAction || 'auto',
       roomcraft_hold_action: item.holdAction || 'auto',
       ...(item.tapEntityId ? { roomcraft_tap_entity: item.tapEntityId } : {}),
@@ -131,6 +134,7 @@
       camera_entity: item.entityId || '',
       image_entity: item.imageEntityId || '',
       preview_mode: item.previewMode || 'event',
+      ...(item.previewMode === 'event_live' ? { event_entities: item.eventEntityIds || [] } : {}),
       style: dimensions(item, 3)
     }));
     const menu = {
@@ -225,9 +229,15 @@
         + entityField('Camera entity ID', 'entityId', item.entityId || '', entityOptions, 'camera', escape)
         + '<div class="field"><label for="prop-previewMode">Preview mode</label><select id="prop-previewMode" data-prop="previewMode">'
         + '<option value="event"' + ((item.previewMode || 'event') === 'event' ? ' selected' : '') + '>Latest event image</option>'
-        + '<option value="live"' + (item.previewMode === 'live' ? ' selected' : '') + '>Live stream</option></select></div>'
+        + '<option value="live"' + (item.previewMode === 'live' ? ' selected' : '') + '>Live on tap</option>'
+        + '<option value="live_auto"' + (item.previewMode === 'live_auto' ? ' selected' : '') + '>Always show live feed</option>'
+        + '<option value="event_live"' + (item.previewMode === 'event_live' ? ' selected' : '') + '>Live during an event</option>'
+        + '<option value="offline"' + (item.previewMode === 'offline' ? ' selected' : '') + '>Preview off</option></select></div>'
         + entityField('Event image entity', 'imageEntityId', item.imageEntityId || '', entityOptions, 'image', escape)
-        + '<p class="field-hint">The latest event image is a snapshot. Choose Live stream only when the camera feed is working.</p></div>';
+        + '<div class="field"><label for="prop-eventEntityIds">Event sensors (comma separated)</label>'
+        + '<input id="prop-eventEntityIds" data-prop="eventEntityIds" type="text" value="' + escape((item.eventEntityIds || []).join(', '))
+        + '" placeholder="binary_sensor.ring, binary_sensor.person" autocomplete="off"></div>'
+        + '<p class="field-hint">Event mode shows the latest image until a listed sensor turns on, then tries live video for a short event window. Always-live mode is for cameras that can stream continuously.</p></div>';
     } else {
       link = '<div class="inspector-block"><p class="inspector-label">DASHBOARD BUTTON</p>'
         + entityField('Device entity ID', 'entityId', item.entityId || '', entityOptions, null, escape)

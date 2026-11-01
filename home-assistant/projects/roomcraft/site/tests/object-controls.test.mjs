@@ -94,11 +94,15 @@ test('dashboard entity suggestions are sanitized, searchable, and domain filtere
   assert.match(chair, /value="light.example_lamp"/);
   assert.match(chair, /Bedside &lt;lamp&gt; · Bedroom · light/);
   const camera = c.renderInspector(
-    { type: 'cameraThumbnail', name: 'Camera', x: 0, y: 0, w: 170, h: 110, rotation: 0 },
+    { type: 'cameraThumbnail', name: 'Camera', x: 0, y: 0, w: 170, h: 110, rotation: 0,
+      previewMode: 'event_live', eventEntityIds: ['binary_sensor.entry_ring', 'binary_sensor.entry_person'] },
     { icon: '▣', label: 'Camera' }, () => '', () => '', escape, options
   );
   assert.match(camera, /value="camera.example_entry"/);
   assert.match(camera, /value="image.example_event"/);
+  assert.match(camera, /value="event_live" selected/);
+  assert.match(camera, /binary_sensor.entry_ring, binary_sensor.entry_person/);
+  assert.match(camera, /value="live_auto"/);
   assert.doesNotMatch(camera, /value="light.example_lamp"/);
 });
 
@@ -110,6 +114,42 @@ test('transparent control area produces no bitmap artwork', () => {
   window.RoomcraftRasterRenderer.drawItem(canvas, {
     id: 'zone', type: 'controlZone', x: 100, y: 100, w: 80, h: 40, rotation: 0
   }, { items: [] }, null, null, () => { throw new Error('Unexpected fallback art'); });
+});
+
+test('manual dashboard YAML carries window orientation and doorbell event sensors', () => {
+  const c = controls();
+  const elements = c.manualDashboardElements({
+    hotspots: [],
+    items: [
+      { id: 'side-blind', type: 'controlZone', name: 'Side blind', x: 400, y: 300,
+        w: 45, h: 130, rotation: 0, entityId: 'cover.example_blind' },
+      { id: 'doorbell', type: 'cameraThumbnail', name: 'Doorbell', x: 180, y: 820,
+        w: 150, h: 90, rotation: 0, entityId: 'camera.example_doorbell',
+        imageEntityId: 'image.example_event', previewMode: 'event_live',
+        eventEntityIds: ['binary_sensor.example_ring', 'binary_sensor.example_person'] },
+    ],
+  });
+  assert.equal(elements.find(element => element.roomcraft_item_id === 'side-blind').roomcraft_window_axis, 'vertical');
+  assert.deepEqual(Array.from(elements.find(element => element.roomcraft_item_id === 'doorbell').event_entities),
+    ['binary_sensor.example_ring', 'binary_sensor.example_person']);
+  const yaml = c.manualYaml({ hotspots: [], items: [
+    { id: 'doorbell', type: 'cameraThumbnail', name: 'Doorbell', x: 180, y: 820,
+      w: 150, h: 90, rotation: 0, entityId: 'camera.example_doorbell',
+      imageEntityId: 'image.example_event', previewMode: 'event_live',
+      eventEntityIds: ['binary_sensor.example_ring'] },
+  ] });
+  assert.match(yaml, /event_entities:/);
+  assert.match(yaml, /binary_sensor\.example_ring/);
+});
+
+test('a bedroom-style desk lamp keeps a small stateful light shade', () => {
+  const c = controls();
+  const lamp = { id: 'desk-lamp', type: 'lamp', name: 'Office desk lamp', x: 850, y: 260,
+    w: 48, h: 52, rotation: 0, entityId: 'light.example_office' };
+  const element = c.manualDashboardElements({ items: [lamp], hotspots: [] })[0];
+  assert.equal(element.roomcraft_visual_kind, 'light');
+  assert.equal(element.roomcraft_light_form, 'table_lamp');
+  assert.match(c.manualYaml({ items: [lamp], hotspots: [] }), /roomcraft_light_form: "table_lamp"/);
 });
 
 test('manual YAML keeps linked furniture and invisible zones as custom controls', () => {

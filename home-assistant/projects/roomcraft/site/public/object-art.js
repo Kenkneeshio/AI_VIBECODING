@@ -696,14 +696,25 @@
         c.fillStyle='#ffffff9c';c.beginPath();c.moveTo(x+w*.18,y+8);c.lineTo(x+w*.42,y+8);c.lineTo(x+w*.19,y+h-8);c.lineTo(x+w*.1,y+h-8);c.fill();rr(c,x+w*.63,y+8,w*.07,h*.58,2,'#ffffff55');break;
       }
       case 'window':{
-        rr(c,x,y,w,h,1,'#14232d','#0b1721',1);c.shadowColor='transparent';
-        const g=c.createLinearGradient(x,y+3,x,y+h-5);
-        g.addColorStop(0,'#e9f9fd');g.addColorStop(.2,'#86c9e7');
-        g.addColorStop(.7,'#62b6da');g.addColorStop(1,'#438eb4');
-        rr(c,x+4,y+4,w-8,h-10,1,g,'#688fa1',1);
-        for(let i=1;i<Math.max(2,Math.round(w/40));i++)rr(c,x+4+i*(w-8)/Math.max(2,Math.round(w/40))-1,y+4,2,h-10,0,'#426c7e');
-        rr(c,x+1,y+2,2,h-4,0,'#e6ece8');rr(c,x+w-3,y+2,2,h-4,0,'#e6ece8');
-        rr(c,x+3,y+h-5,w-6,2,0,'#eef7f2');rr(c,x+3,y+h-3,w-6,3,0,'#aa9c87');break;
+        // Match the recessed top-down wall opening used by raster exports.
+        // The shallow depth and narrow inner sill rotate with the wall.
+        c.fillStyle='#101e29';c.fillRect(x,y,w,h);
+        c.fillStyle='#344956';c.fillRect(x+2,y+2,w-4,h-4);
+        c.fillStyle='#0b202f';c.fillRect(x+4,y+4,w-8,h-9);
+        const g=c.createLinearGradient(0,y+5,0,y+h-6);
+        g.addColorStop(0,'#39708d');g.addColorStop(.25,'#78b4d0');
+        g.addColorStop(.62,'#8bc3d9');g.addColorStop(1,'#457d98');
+        c.fillStyle=g;c.fillRect(x+5,y+5,w-10,h-11);
+        const panes=Math.max(1,Math.round(w/65));
+        for(let i=1;i<panes;i++){
+          const px=x+5+i*(w-10)/panes;
+          c.fillStyle='#34556a';c.fillRect(px-1,y+5,2,h-11);
+          c.fillStyle='#9bc8d5';c.fillRect(px+1,y+5,1,h-11);
+        }
+        c.fillStyle='rgba(231,249,252,.3)';c.fillRect(x+6,y+7,w-12,1);
+        c.fillStyle='#9eb6b8';c.fillRect(x+2,y+3,2,h-6);c.fillRect(x+w-4,y+3,2,h-6);
+        c.fillStyle='#aebfc0';c.fillRect(x+4,y+h-4,w-8,1.5);
+        c.fillStyle='rgba(28,35,36,.4)';c.fillRect(x+4,y+h-2,w-8,1);break;
       }
     }
     c.restore();return true;

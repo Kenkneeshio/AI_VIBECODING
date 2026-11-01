@@ -79,7 +79,11 @@ export function validCameraThumbnail(item: unknown): item is JsonObject {
   return typeof item.id === "string" && item.id.length > 0 && item.id.length <= 128 &&
     typeof entity === "string" && (entity === "" || /^camera\.[a-z0-9_]+$/.test(entity)) &&
     typeof image === "string" && (image === "" || /^image\.[a-z0-9_]+$/.test(image)) &&
-    (item.previewMode === undefined || ["event", "live", "offline"].includes(String(item.previewMode))) &&
+    (item.previewMode === undefined || ["event", "live", "live_auto", "event_live", "offline"].includes(String(item.previewMode))) &&
+    (item.previewMode !== "event_live" || Array.isArray(item.eventEntityIds) && item.eventEntityIds.length > 0) &&
+    (item.eventEntityIds === undefined || Array.isArray(item.eventEntityIds) && item.eventEntityIds.length <= 6 &&
+      item.eventEntityIds.every((id: unknown) => typeof id === "string" && /^binary_sensor\.[a-z0-9_]+$/.test(id)) &&
+      new Set(item.eventEntityIds).size === item.eventEntityIds.length) &&
     [item.x, item.y, item.w, item.h, item.rotation ?? 0].every((value) => typeof value === "number" && Number.isFinite(value)) &&
     Number(item.x) >= 0 && Number(item.x) <= PLAN_WIDTH &&
     Number(item.y) >= 0 && Number(item.y) <= PLAN_HEIGHT &&
@@ -131,6 +135,7 @@ export function objectControlElements(items: unknown): JsonObject[] {
   return items.filter((item) => isObject(item) && item.type !== "cameraThumbnail" && item.entityId)
     .map((item) => {
       if (!validObjectControl(item)) throw new Error("The layout has an invalid object control.");
+      const visualKind = objectVisualKind(item);
       return {
         type: OBJECT_ELEMENT_TYPE,
         roomcraft_item_id: item.id,
@@ -138,7 +143,10 @@ export function objectControlElements(items: unknown): JsonObject[] {
         title: item.controlLabel || item.name || item.entityId,
         control_icon: item.controlIcon || "",
         control_zone: item.type === "controlZone",
-        roomcraft_visual_kind: objectVisualKind(item),
+        roomcraft_visual_kind: visualKind,
+        ...(visualKind === "light" && ["lamp", "tableLamp"].includes(String(item.type)) ?
+          { roomcraft_light_form: "table_lamp" } : {}),
+        ...(visualKind === "window" ? { roomcraft_window_axis: Number(item.w) < Number(item.h) ? "vertical" : "horizontal" } : {}),
         roomcraft_tap_action: item.tapAction || "auto",
         roomcraft_hold_action: item.holdAction || "auto",
         ...(item.tapEntityId ? { roomcraft_tap_entity: item.tapEntityId } : {}),
@@ -189,6 +197,7 @@ export function cameraThumbnailElements(items: unknown): JsonObject[] {
         camera_entity: item.entityId || "",
         image_entity: item.imageEntityId || "",
         preview_mode: item.previewMode || "event",
+        ...(item.previewMode === "event_live" ? { event_entities: item.eventEntityIds || [] } : {}),
         style: {
           left: percent((item.x as number) - SCENE_LEFT, SCENE_WIDTH),
           top: percent((item.y as number) - SCENE_TOP, SCENE_HEIGHT),

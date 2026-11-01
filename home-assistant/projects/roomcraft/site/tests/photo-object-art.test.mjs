@@ -17,11 +17,14 @@ test('photo-inspired catalog and home controls have working perspective render p
   runInNewContext(artSource, { window, Image, Event: class Event {} });
 
   let strokes = 0;
+  const rotations = [], rectangles = [];
   const gradient = { addColorStop() {} };
   const canvas = new Proxy({}, {
     get(target, key) {
       if (key === 'createLinearGradient' || key === 'createRadialGradient') return () => gradient;
       if (key === 'stroke' || key === 'fill') return () => { strokes++; };
+      if (key === 'rotate') return angle => { rotations.push(angle); };
+      if (key === 'fillRect') return (...dimensions) => { rectangles.push(dimensions); };
       return target[key] ?? (() => {});
     },
     set(target, key, value) { target[key] = value; return true; }
@@ -40,5 +43,13 @@ test('photo-inspired catalog and home controls have working perspective render p
     const object = { id: type, type, name: type, x: 500, y: 400, w: width, h: height, rotation: 0 };
     assert.equal(window.RoomcraftObjectArt.draw(canvas, object), true, type);
   }
+  const before = rectangles.length;
+  assert.equal(window.RoomcraftObjectArt.draw(canvas, {
+    id: 'wall-window', type: 'window', name: 'Wall window',
+    x: 500, y: 400, w: 100, h: 28, rotation: 90
+  }), true);
+  assert.equal(rotations.at(-1), Math.PI / 2, 'the wall window rotates into a vertical opening');
+  assert.ok(rectangles.slice(before).every(([, , width, height]) => width <= 100 && height <= 28),
+    'glazing and sill stay within the shallow wall opening');
   assert.ok(strokes > templates.length * 5);
 });

@@ -1,6 +1,6 @@
 # Roomcraft
 
-Roomcraft is the editable source for the illustrated **Second Floor** Home Assistant floor plan. The editor keeps rooms, walls, floor finishes, furniture, decorative objects, and Home Assistant control positions in one versioned layout. Bound lamps, fans, AC, windows, and doors can show high-contrast live state on the object itself; two camera thumbnail objects reserve independent authenticated previews on the plan. Its export bridge renders the dashboard image and saves the editable layout alongside the Home Assistant card. The dashboard is the viewing and control surface; Roomcraft is the authoring surface.
+Roomcraft is the editable source for the illustrated **Second Floor** Home Assistant floor plan. The editor keeps rooms, walls, floor finishes, furniture, decorative objects, and Home Assistant control positions in one versioned layout. Bound lamps, fans, AC, windows, and doors can show high-contrast live state on the object itself; independent camera thumbnail objects support doorbell event, overhead live, and garage tap-to-start previews. An outdoor layer can show local current and 12-hour weather with a day/night and moon cycle. Its export bridge renders the dashboard image and saves the editable layout alongside the Home Assistant card. The dashboard is the viewing and control surface; Roomcraft is the authoring surface.
 
 ![Roomcraft editor with furnished second-floor plan](docs/images/editor-overview.png)
 
@@ -15,7 +15,7 @@ Roomcraft is the editable source for the illustrated **Second Floor** Home Assis
 | Set up or roll back an installation | [Deployment guide](docs/deployment.md) |
 | Recover calendar tablet and phone-to-desktop access | [Tablet and remote access runbook](docs/tablet-access.md) |
 | Change the renderer, bridge, or live data | [Architecture and team boundaries](docs/architecture.md) |
-| Configure live object graphics, fan motion, or camera frames | [Live object and camera guide](docs/live-object-graphics.md) |
+| Configure live object graphics, three camera modes, or outdoor weather | [Live object, camera, and weather guide](docs/live-object-graphics.md) |
 | Inspect the editable JSON contract | [Layout format](docs/layout-format.md), [schema](layout.schema.json) |
 | Find a device, its area, or its audit availability | [Sanitized Home Assistant inventory](docs/ha-inventory/README.md) |
 | Use in-plan controls and the shipped entity drawer | [Controls and drawer guide](docs/ha-controls-and-menu.md), [Main Dashboard map](docs/main-dashboard-map.md) |
@@ -62,10 +62,10 @@ The official HA-hosted editor uses the current user's authenticated session to u
 
 1. Open `http://<HA-LAN-IP>:8123/second-floor/studio` on a device on the home network and sign in to Home Assistant. Confirm the furnished plan loads.
 2. In **Floors**, apply a finish to a room; in **Wall**, draw an interior wall; in **Objects**, place furniture. Use **Undo** to restore the starting scene.
-3. Confirm the editor loaded the current dashboard layout; use **Import from dashboard** to refresh an already open editor. The latest readback had 41 items, including eight separately placed living-room play objects, 14 object controls, and two camera frames.
+3. Confirm the editor loaded the current dashboard layout; use **Import from dashboard** to refresh an already open editor. Current private readback has 41 items, including eight separately placed living-room play objects, 13 mapped controls, three camera frames, and one independent weather picture element.
 4. Export editable JSON as a private backup before any dashboard transfer.
 5. For an intended release or an isolated test dashboard, select **Export to dashboard**, reload the floor-plan view, and confirm the new image and controls. Import again to verify the editable layout round-trips.
-6. Open the drawer: verify **On plan**, **All entities**, search, availability, and the six curated Main Dashboard groups. Confirm the three living-window blinds, separate fan-blade and center-light targets, and new office/AC/garage controls. Check the front-door latest-event tile and the garage preview separately; starting the garage stream requires a tap. Inspect bindings without running scenes or toggling devices unless that physical test is planned.
+6. Open the drawer: verify **On plan**, **All entities**, search, availability, and the six curated Main Dashboard groups. Confirm the three living-window blinds, separate fan-blade and center-light targets, and office/AC/garage controls. Check the front-door last-event tile, overhead auto-live tile, garage tap-to-start preview, and outdoor weather separately. The fan-light center cannot claim an on/off state until a feedback entity exists. Inspect bindings without running scenes or toggling devices unless that physical test is planned.
 
 See the [full checklist](docs/deployment.md#release-verification) before considering a deployment complete.
 

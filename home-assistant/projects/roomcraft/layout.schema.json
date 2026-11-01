@@ -91,7 +91,14 @@
         "tapEntityId": { "$ref": "#/$defs/optionalEntityId", "description": "Optional action target different from entityId." },
         "holdEntityId": { "$ref": "#/$defs/optionalEntityId", "description": "Optional action target different from entityId." },
         "imageEntityId": { "type": "string" },
-        "previewMode": { "enum": ["event", "live", "offline"] }
+        "previewMode": { "enum": ["event", "live", "live_auto", "event_live", "offline"] },
+        "eventEntityIds": {
+          "type": "array",
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^binary_sensor\\.[a-z0-9_]+$" },
+          "description": "Rising-on event triggers for event_live camera mode; IDs remain private in an installed layout."
+        }
       },
       "allOf": [
         {
@@ -102,6 +109,12 @@
               "imageEntityId": { "type": "string", "pattern": "^(?:|image\\.[a-z0-9_]+)$" }
             }
           }
+        },
+        {
+          "if": { "properties": { "type": { "const": "cameraThumbnail" }, "previewMode": { "const": "event_live" } },
+                  "required": ["type", "previewMode"] },
+          "then": { "required": ["eventEntityIds"],
+                    "properties": { "eventEntityIds": { "type": "array", "minItems": 1 } } }
         }
       ],
       "additionalProperties": true

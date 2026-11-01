@@ -112,10 +112,14 @@ function validCameraThumbnail(item) {
   if (!isObject(item) || item.type !== 'cameraThumbnail') return false;
   const entity = item.entityId ?? '';
   const image = item.imageEntityId ?? '';
+  const events = item.eventEntityIds ?? [];
   return typeof item.id === 'string' && item.id.length > 0 && item.id.length <= 128 &&
     typeof entity === 'string' && (entity === '' || /^camera\.[a-z0-9_]+$/.test(entity)) &&
     typeof image === 'string' && (image === '' || /^image\.[a-z0-9_]+$/.test(image)) &&
-    (item.previewMode === undefined || ['event', 'live', 'offline'].includes(item.previewMode)) &&
+    (item.previewMode === undefined || ['event', 'live', 'live_auto', 'event_live', 'offline'].includes(item.previewMode)) &&
+    Array.isArray(events) && events.length <= 6 &&
+    events.every(id => typeof id === 'string' && /^binary_sensor\.[a-z0-9_]+$/.test(id)) &&
+    new Set(events).size === events.length &&
     [item.x, item.y, item.w, item.h, item.rotation ?? 0].every(value => typeof value === 'number' && Number.isFinite(value)) &&
     item.x >= 0 && item.x <= PLAN_WIDTH && item.y >= 0 && item.y <= PLAN_HEIGHT &&
     item.w >= 40 && item.w <= PLAN_WIDTH && item.h >= 40 && item.h <= PLAN_HEIGHT;
@@ -131,6 +135,7 @@ function cameraThumbnailElements(items) {
       camera_entity: item.entityId || '',
       image_entity: item.imageEntityId || '',
       preview_mode: item.previewMode || 'event',
+      event_entities: item.eventEntityIds || [],
       style: {
         left: percent(item.x - SCENE_LEFT, SCENE_WIDTH), top: percent(item.y - SCENE_TOP, SCENE_HEIGHT),
         width: percent(item.w, SCENE_WIDTH), height: percent(item.h, SCENE_HEIGHT),
@@ -177,6 +182,7 @@ function objectVisualKind(item) {
 function objectControlElements(items) {
   return items.filter(item => isObject(item) && item.type !== 'cameraThumbnail' && item.entityId).map(item => {
     if (!validObjectControl(item)) throw new Error('The layout has an invalid object control.');
+    const visualKind = objectVisualKind(item);
     return {
       type: OBJECT_ELEMENT_TYPE,
       roomcraft_item_id: item.id,
@@ -184,7 +190,10 @@ function objectControlElements(items) {
       title: item.controlLabel || item.name || item.entityId,
       control_icon: item.controlIcon || '',
       control_zone: item.type === 'controlZone',
-      roomcraft_visual_kind: objectVisualKind(item),
+      roomcraft_visual_kind: visualKind,
+      ...(visualKind === 'light' && ['lamp', 'tableLamp'].includes(item.type) ?
+        { roomcraft_light_form: 'table_lamp' } : {}),
+      ...(visualKind === 'window' ? { roomcraft_window_axis: item.w < item.h ? 'vertical' : 'horizontal' } : {}),
       roomcraft_tap_action: item.tapAction || 'auto',
       roomcraft_hold_action: item.holdAction || 'auto',
       ...(item.tapEntityId ? { roomcraft_tap_entity: item.tapEntityId } : {}),
@@ -548,11 +557,40 @@ function controlVisualKind(config) {
 function controlDisplayState(value, domain) {
   if (!value || value === 'unavailable' || value === 'unknown') return 'unavailable';
   if (['scene', 'script', 'button'].includes(domain)) return 'ready';
-  if (['on', 'open', 'opening', 'unlocked', 'unlocking', 'playing', 'cleaning', 'returning',
-    'heat', 'cool', 'heat_cool', 'auto', 'dry', 'fan_only', 'heating', 'cooling'].includes(value)
-  ) return 'on';
-  if (['off', 'closed', 'closing', 'locked', 'locking', 'idle', 'paused', 'docked',
-    'standby'].includes(value)) return 'off';
+  // A motor or light never lights up because another domain reports a mode,
+  // sensor value, or the last time an action-only scene ran.
+  if (['light', 'switch', 'fan', 'input_boolean', 'binary_sensor'].includes(domain)) {
+    if (value === 'on') return 'on';
+    if (value === 'off') return 'off';
+    return 'unavailable';
+  }
+  if (domain === 'cover') {
+    if (['open', 'opening'].includes(value)) return 'on';
+    if (['closed', 'closing'].includes(value)) return 'off';
+    return 'unavailable';
+  }
+  if (domain === 'lock') {
+    if (['unlocked', 'unlocking'].includes(value)) return 'on';
+    if (['locked', 'locking'].includes(value)) return 'off';
+    return 'unavailable';
+  }
+  if (domain === 'climate') {
+    if (['heat', 'cool', 'heat_cool', 'auto', 'dry', 'fan_only'].includes(value)) return 'on';
+    if (value === 'off') return 'off';
+    return 'unavailable';
+  }
+  if (domain === 'media_player') {
+    if (value === 'playing') return 'on';
+    if (['off', 'idle', 'paused', 'standby'].includes(value)) return 'off';
+    return 'unavailable';
+  }
+  if (domain === 'vacuum') {
+    if (['cleaning', 'returning'].includes(value)) return 'on';
+    if (['off', 'idle', 'paused', 'docked'].includes(value)) return 'off';
+    return 'unavailable';
+  }
+  if (value === 'on') return 'on';
+  if (value === 'off') return 'off';
   return 'unavailable';
 }
 
@@ -579,7 +617,10 @@ class RoomcraftObjectControl extends HTMLElement {
           (typeof config.roomcraft_hold_entity !== 'string' ||
             !/^[a-z_]+\.[a-z0-9_]+$/.test(config.roomcraft_hold_entity))) ||
         (config.roomcraft_visual_kind !== undefined && config.roomcraft_visual_kind !== 'auto' &&
-          !VISUAL_KINDS.includes(config.roomcraft_visual_kind))) {
+          !VISUAL_KINDS.includes(config.roomcraft_visual_kind)) ||
+        (config.roomcraft_light_form !== undefined && config.roomcraft_light_form !== 'table_lamp') ||
+        (config.roomcraft_window_axis !== undefined &&
+          !['horizontal', 'vertical'].includes(config.roomcraft_window_axis))) {
       throw new Error('The Roomcraft object has an invalid device binding.');
     }
     this._config = config;
@@ -615,11 +656,22 @@ class RoomcraftObjectControl extends HTMLElement {
       .target[data-visual="light"][data-state="on"] .art{
         background:radial-gradient(circle,#fffef2 0 15%,#ffe6a5e8 31%,#ffca68a0 50%,transparent 78%);
         box-shadow:0 0 18px 9px #ffd865a6,0 0 34px 17px #ffd86562,inset 0 0 0 2px #fff8dd}
+      .target[data-visual="light"][data-form="table_lamp"] .art{
+        inset:7% 17% auto;height:58%;border-radius:46% 46% 50% 50%;
+        transition:background .18s,box-shadow .18s,backdrop-filter .18s}
+      .target[data-visual="light"][data-form="table_lamp"][data-state="off"] .art{
+        background:radial-gradient(ellipse at 45% 39%,#1d2730bb 0 39%,#101a2399 67%,transparent 83%);
+        backdrop-filter:brightness(.35) saturate(.42);
+        box-shadow:inset 0 0 0 1px #74838a,0 1px 4px #07131a99}
+      .target[data-visual="light"][data-form="table_lamp"][data-state="on"] .art{
+        background:radial-gradient(ellipse at 45% 39%,#fff8dfeb 0 32%,#ffdd8dbe 55%,transparent 82%);
+        backdrop-filter:none;
+        box-shadow:0 0 8px 3px #ffd46b9c,0 0 16px 7px #ffd46b59,inset 0 0 0 1px #fff5d4}
       .target[data-visual="fan"] .art{inset:0;border-radius:0;background:radial-gradient(ellipse at center,#172630e8 0 26%,#172630a6 49%,transparent 76%);backdrop-filter:none;box-shadow:none}
       .target[data-visual="fan"][data-state="on"] .art{background:radial-gradient(ellipse at center,#22303ad9 0 27%,#263c468c 48%,transparent 76%);backdrop-filter:none;box-shadow:none}
       .rotor{inset:7%;display:none;transform-origin:50% 50%}
       .target[data-visual="fan"] .rotor{display:block}
-      .target[data-visual="fan"][data-state="on"] .rotor{animation:roomcraft-spin 2.8s steps(8,end) infinite;filter:drop-shadow(0 0 5px #fff0bd) drop-shadow(0 0 8px #ffd166b8)}
+      .target[data-visual="fan"][data-state="on"] .rotor{animation:roomcraft-spin 2.8s steps(8,end) infinite;filter:drop-shadow(0 0 4px #9bc9d69c)}
       .blade{width:14%;height:38%;top:11%;left:43%;transform-origin:50% 103%;
         background:linear-gradient(90deg,#8999a0,#d7e3e0 40%,#f6faf0 65%,#91a4a8);border:1px solid #5b7079;border-radius:48%}
       .blade:nth-child(1){transform:rotate(0deg)}
@@ -628,14 +680,21 @@ class RoomcraftObjectControl extends HTMLElement {
       .blade:nth-child(4){transform:rotate(216deg)}
       .blade:nth-child(5){transform:rotate(288deg)}
       .target[data-visual="fan"][data-state="off"] .blade{background:linear-gradient(90deg,#34464c,#6b7a7f 55%,#394b52);border-color:#26353b}
-      .hub{width:28%;height:28%;top:36%;left:36%;border-radius:50%;background:radial-gradient(circle at 38% 35%,#fff8da,#a5b3a8 70%,#5b6e70);border:2px solid #4e666b;box-shadow:0 1px 4px #17232a88}
+      .hub{width:28%;height:28%;top:36%;left:36%;border-radius:50%;background:radial-gradient(circle at 38% 35%,#c7d4d4,#7d9396 70%,#4c6469);border:2px solid #4e666b;box-shadow:0 1px 4px #17232a88}
       .target[data-visual="fan"][data-state="off"] .hub{background:radial-gradient(circle at 38% 35%,#8f9b9d,#34474d 75%)}
-      .target[data-visual="window"] .art,.target[data-visual="door"] .art{inset:6%;border-radius:7px}
-      .target[data-visual="window"][data-state="off"] .art,.target[data-visual="door"][data-state="off"] .art{
-        background:linear-gradient(145deg,#101b27dd,#24313bd9);backdrop-filter:brightness(.22) saturate(.25);box-shadow:inset 0 0 0 3px #6c818c,0 2px 8px #07131a99}
+      .target[data-visual="window"] .art{border-radius:5px;backdrop-filter:none}
+      .target[data-visual="window"][data-axis="horizontal"] .art{inset:auto 7%;top:50%;height:clamp(8px,22%,18px);transform:translateY(-50%)}
+      .target[data-visual="window"][data-axis="vertical"] .art{inset:7% auto;left:50%;width:clamp(8px,22%,18px);transform:translateX(-50%)}
+      .target[data-visual="door"] .art{inset:6%;border-radius:7px}
+      .target[data-visual="window"][data-state="off"] .art{
+        background:repeating-linear-gradient(to bottom,#263b47 0 3px,#101e29 3px 7px);box-shadow:inset 0 0 0 2px #6c818c,0 2px 7px #07131a99}
+      .target[data-visual="window"][data-axis="vertical"][data-state="off"] .art{background:repeating-linear-gradient(to right,#263b47 0 3px,#101e29 3px 7px)}
       .target[data-visual="window"][data-state="on"] .art{
-        background:linear-gradient(145deg,#90eaf1a3,#2b9fc7aa 42%,#e2fbf1a8 73%,#5cc8e0aa);
-        box-shadow:inset 0 0 0 3px #e6ffff,0 0 13px 5px #48d7f1a6}
+        background:linear-gradient(to bottom,#c5dce0b8,#6c99a8a6 48%,#a9cbd1b8);
+        box-shadow:inset 0 0 0 1.5px #d4e5e1,inset 0 2px 3px #e7f0e48a,0 1px 3px #0b1d27a8}
+      .target[data-visual="window"][data-axis="vertical"][data-state="on"] .art{background:linear-gradient(to right,#c5dce0b8,#6c99a8a6 48%,#a9cbd1b8)}
+      .target[data-visual="door"][data-state="off"] .art{
+        background:linear-gradient(145deg,#101b27dd,#24313bd9);backdrop-filter:brightness(.22) saturate(.25);box-shadow:inset 0 0 0 3px #6c818c,0 2px 8px #07131a99}
       .target[data-visual="door"][data-state="on"] .art{
         background:linear-gradient(145deg,#d8ffc2bb,#54c87fab 45%,#e3ffccaa);
         box-shadow:inset 0 0 0 3px #edffe8,0 0 13px 5px #8bef9ca6}
@@ -721,6 +780,8 @@ class RoomcraftObjectControl extends HTMLElement {
     const visualKind = controlVisualKind(this._config);
     this._button.setAttribute('data-state', visualState);
     this._button.setAttribute('data-visual', visualKind);
+    this._button.setAttribute('data-form', visualKind === 'light' ? this._config.roomcraft_light_form || '' : '');
+    this._button.setAttribute('data-axis', this._config.roomcraft_window_axis || 'horizontal');
     this._button.setAttribute('data-zone', String(this._config.control_zone === true));
     this._icon.icon = this._config.control_icon || state?.attributes?.icon || 'mdi:gesture-tap';
     const label = this._config.title || state?.attributes?.friendly_name || this._config.entity;
@@ -1062,8 +1123,8 @@ class RoomcraftEntityMenu extends HTMLElement {
 /**
  * A picture-elements overlay. The still is fetched through the current HA
  * session; no camera token or snapshot URL is stored in public Site assets.
- * A battery doorbell is never woken by rendering this element. When HA itself
- * reports an active stream, its native image element can show that stream.
+ * Battery cameras are woken only by a tap or a configured event sensor.
+ * HA's native image element owns stream transport and credentials.
  */
 class RoomcraftCameraThumbnail extends HTMLElement {
   constructor() {
@@ -1089,6 +1150,17 @@ class RoomcraftCameraThumbnail extends HTMLElement {
     this._turnOnRequestedAt = 0;
     this._turnOnError = false;
     this._turnOnTimer = null;
+    this._eventTriggerStates = new Map();
+    this._eventLiveUntil = 0;
+    this._eventTimer = null;
+    this._eventCameraId = '';
+    this._eventStartAttempted = false;
+    this._eventStartPending = false;
+    this._eventStartError = false;
+    this._eventOwnsStream = false;
+    this._eventSequence = 0;
+    this._videoSample = null;
+    this._lastVideoAdvanceAt = 0;
     this._holdTimer = null;
     this._held = false;
   }
@@ -1097,8 +1169,19 @@ class RoomcraftCameraThumbnail extends HTMLElement {
     if (!isObject(config) || typeof config.camera_entity !== 'string' ||
         (config.camera_entity && !/^camera\.[a-z0-9_]+$/.test(config.camera_entity)) ||
         typeof config.image_entity !== 'string' ||
-        (config.image_entity && !/^image\.[a-z0-9_]+$/.test(config.image_entity))) {
+        (config.image_entity && !/^image\.[a-z0-9_]+$/.test(config.image_entity)) ||
+        !['event', 'live', 'live_auto', 'event_live', 'offline'].includes(config.preview_mode ?? 'event') ||
+        (config.event_entities !== undefined &&
+          (!Array.isArray(config.event_entities) || config.event_entities.length > 6 ||
+            config.event_entities.some(id => typeof id !== 'string' || !/^binary_sensor\.[a-z0-9_]+$/.test(id)) ||
+            new Set(config.event_entities).size !== config.event_entities.length))) {
       throw new Error('The Roomcraft camera thumbnail has an invalid entity.');
+    }
+    if (this._config && (this._config.camera_entity !== config.camera_entity ||
+        this._config.preview_mode !== config.preview_mode ||
+        JSON.stringify(this._config.event_entities || []) !== JSON.stringify(config.event_entities || []))) {
+      this._closeEventWindow();
+      this._eventTriggerStates.clear();
     }
     this._config = config;
     if (!this._frame) this._build();
@@ -1118,13 +1201,14 @@ class RoomcraftCameraThumbnail extends HTMLElement {
     ++this._requestSerial;
     clearTimeout(this._holdTimer);
     clearTimeout(this._turnOnTimer);
+    this._closeEventWindow();
     this._stopLive();
     this._revokeImage();
   }
 
   _build() {
     const style = document.createElement('style');
-    style.textContent = ':host{display:block;box-sizing:border-box;min-width:40px;min-height:40px}.frame{box-sizing:border-box;display:block;position:relative;width:100%;height:100%;min-height:40px;overflow:hidden;padding:0;border:2px solid #e4ebdf;border-radius:9px;background:#182a2c;color:#fff;box-shadow:0 4px 15px #1118;cursor:pointer;font:inherit;text-align:left}.media,.still,.live{position:absolute;inset:0;width:100%;height:100%}.still{object-fit:cover}.live{display:block;overflow:hidden;opacity:0;pointer-events:none}.veil{position:absolute;inset:0;background:linear-gradient(#0008,transparent 36%,transparent 62%,#000a);pointer-events:none}.head,.foot{position:absolute;left:7px;right:7px;z-index:2;font:600 10px/1.2 system-ui,sans-serif;text-shadow:0 1px 3px #000}.head{top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.foot{bottom:6px}.message{position:absolute;inset:25px 7px 20px;display:flex;align-items:center;justify-content:center;text-align:center;color:#e1e9e3;font:500 10px/1.2 system-ui,sans-serif}.still[hidden],.message[hidden]{display:none}';
+    style.textContent = ':host{display:block;box-sizing:border-box;min-width:40px;min-height:40px}.frame{box-sizing:border-box;display:block;position:relative;width:100%;height:100%;min-height:40px;overflow:hidden;padding:0;border:2px solid #e4ebdf;border-radius:9px;background:#182a2c;color:#fff;box-shadow:0 4px 15px #1118;cursor:pointer;font:inherit;text-align:left}.frame:active{filter:brightness(1.18);transform:scale(.985)}.media,.still,.live{position:absolute;inset:0;width:100%;height:100%}.still{object-fit:cover}.live{display:block;overflow:hidden;opacity:0;pointer-events:none}.veil{position:absolute;inset:0;background:linear-gradient(#0008,transparent 36%,transparent 62%,#000a);pointer-events:none}.head,.foot{position:absolute;left:7px;right:7px;z-index:2;font:600 10px/1.2 system-ui,sans-serif;text-shadow:0 1px 3px #000}.head{top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.foot{bottom:6px}.message{position:absolute;inset:25px 7px 20px;display:flex;align-items:center;justify-content:center;text-align:center;color:#e1e9e3;font:500 10px/1.2 system-ui,sans-serif}.still[hidden],.message[hidden]{display:none}';
     const frame = document.createElement('button');
     frame.type = 'button';
     frame.className = 'frame';
@@ -1255,12 +1339,119 @@ class RoomcraftCameraThumbnail extends HTMLElement {
     this._liveCameraId = '';
     this._liveReady = false;
     this._liveStartedAt = 0;
+    this._videoSample = null;
+    this._lastVideoAdvanceAt = 0;
+  }
+
+  _eventWindowOpen(now = Date.now()) {
+    return this._config?.preview_mode === 'event_live' &&
+      this._eventCameraId === this._config.camera_entity &&
+      this._eventLiveUntil > now;
+  }
+
+  _stopStartedEventStream(cameraId) {
+    if (!cameraId || typeof this._hass?.callService !== 'function') return;
+    try {
+      Promise.resolve(this._hass.callService('camera', 'turn_off', { entity_id: cameraId }))
+        .catch(() => {});
+    } catch { /* A failed cleanup must not hide the last event image. */ }
+  }
+
+  _releaseEventStream() {
+    if (!this._eventOwnsStream) return;
+    this._eventOwnsStream = false;
+    this._stopStartedEventStream(this._eventCameraId);
+  }
+
+  _closeEventWindow() {
+    clearTimeout(this._eventTimer);
+    this._eventTimer = null;
+    ++this._eventSequence;
+    this._releaseEventStream();
+    this._eventCameraId = '';
+    this._eventLiveUntil = 0;
+    this._eventStartAttempted = false;
+    this._eventStartPending = false;
+    this._eventStartError = false;
+  }
+
+  _requestEventStream(cameraId) {
+    this._eventStartAttempted = true;
+    if (typeof this._hass?.callService !== 'function') {
+      this._eventStartError = true;
+      return;
+    }
+    this._eventStartPending = true;
+    this._eventStartError = false;
+    const sequence = ++this._eventSequence;
+    let request;
+    try { request = this._hass.callService('camera', 'turn_on', { entity_id: cameraId }); }
+    catch { request = Promise.reject(new Error('Camera start failed.')); }
+    Promise.resolve(request).then(() => {
+      if (sequence !== this._eventSequence || !this._eventWindowOpen()) {
+        // The request may finish after the 60-second event window has closed.
+        this._stopStartedEventStream(cameraId);
+        return;
+      }
+      this._eventStartPending = false;
+      this._eventOwnsStream = true;
+      this._renderCamera();
+    }).catch(() => {
+      if (sequence !== this._eventSequence) return;
+      this._eventStartPending = false;
+      this._eventStartError = true;
+      this._liveFailedAt = Date.now();
+      this._liveFailedCameraId = cameraId;
+      this._stopLive();
+      this._refreshStill();
+      this._renderCamera();
+    });
+  }
+
+  _syncEventWindow(cameraId) {
+    if (this._config.preview_mode !== 'event_live' || !cameraId ||
+        this._eventCameraId && this._eventCameraId !== cameraId) {
+      if (this._eventLiveUntil || this._eventOwnsStream || this._eventStartPending) this._closeEventWindow();
+      return;
+    }
+    const now = Date.now();
+    let triggered = false;
+    for (const entityId of this._config.event_entities || []) {
+      const on = this._hass.states?.[entityId]?.state === 'on';
+      if (on && !this._eventTriggerStates.get(entityId)) triggered = true;
+      this._eventTriggerStates.set(entityId, on);
+    }
+    if (triggered) {
+      const wasOpen = this._eventWindowOpen(now);
+      this._eventCameraId = cameraId;
+      this._eventLiveUntil = now + 60000;
+      if (!wasOpen || this._eventStartError ||
+          !this._eventOwnsStream && !this._eventStartPending) {
+        this._eventStartAttempted = false;
+        this._eventStartError = false;
+        this._liveFailedAt = 0;
+        this._liveFailedCameraId = '';
+      }
+    }
+    if (!this._eventWindowOpen(now)) {
+      if (this._eventLiveUntil || this._eventOwnsStream || this._eventStartPending) this._closeEventWindow();
+      return;
+    }
+    clearTimeout(this._eventTimer);
+    this._eventTimer = setTimeout(() => this._refresh(), Math.max(1, this._eventLiveUntil - now));
+    this._eventTimer.unref?.();
+    if (!this._eventStartAttempted && !this._eventStartPending && !this._eventOwnsStream &&
+        !this._cameraUnavailable) {
+      if (this._cameraState === 'streaming') this._eventStartAttempted = true;
+      else this._requestEventStream(cameraId);
+    }
   }
 
   _renderCamera() {
     if (!this._frame || !this._config) return;
     const offline = this._config.preview_mode === 'offline';
-    const live = !offline && this._liveReady && this._liveElement?.parentNode === this._media;
+    const eventGate = this._config.preview_mode !== 'event_live' || this._eventWindowOpen();
+    const live = !offline && eventGate && this._liveReady && this._liveElement?.parentNode === this._media;
     const still = !offline && this._stillReady && !!this._objectUrl;
     const startable = this._config.preview_mode === 'live' && this._cameraState === 'idle';
     this._frame.setAttribute('aria-label', startable
@@ -1273,8 +1464,8 @@ class RoomcraftCameraThumbnail extends HTMLElement {
     if (live) {
       this._foot.textContent = 'LIVE';
     } else if (still) {
-      this._foot.textContent = this._turnOnRequestedAt ? 'CONNECTING · PREVIEW'
-        : this._turnOnError ? 'PREVIEW · LIVE UNAVAILABLE'
+      this._foot.textContent = this._turnOnRequestedAt || this._eventStartPending ? 'CONNECTING · PREVIEW'
+        : this._turnOnError || this._eventStartError ? 'PREVIEW · LIVE UNAVAILABLE'
         : this._liveFailedCameraId === this._config.camera_entity && this._liveFailedAt
           ? 'PREVIEW · LIVE UNAVAILABLE'
         : this._wantsLive ? this._stillFooter.replace(/^LATEST EVENT/, 'PREVIEW')
@@ -1282,7 +1473,7 @@ class RoomcraftCameraThumbnail extends HTMLElement {
     } else if (offline) {
       this._message.textContent = 'Camera preview off';
       this._foot.textContent = 'OFF';
-    } else if (this._liveTimer || this._turnOnRequestedAt) {
+    } else if (this._liveTimer || this._turnOnRequestedAt || this._eventStartPending) {
       this._message.textContent = 'Connecting to camera…';
       this._foot.textContent = 'CONNECTING';
     } else if (this._stillPending) {
@@ -1340,7 +1531,12 @@ class RoomcraftCameraThumbnail extends HTMLElement {
 
   _pollLive() {
     if (!this._liveElement) return;
-    if (this._hass?.states?.[this._liveCameraId]?.state !== 'streaming') {
+    const mode = this._config?.preview_mode;
+    const state = this._hass?.states?.[this._liveCameraId]?.state;
+    const allowed = mode === 'event_live' ? this._eventWindowOpen()
+      : mode === 'live_auto' ? !!state && state !== 'unavailable' && state !== 'unknown'
+      : state === 'streaming';
+    if (!allowed) {
       this._stopLive();
       this._refreshStill();
       this._renderCamera();
@@ -1356,8 +1552,26 @@ class RoomcraftCameraThumbnail extends HTMLElement {
       if (tag === 'video' &&
           node.readyState >= 2 && node.videoWidth > 0 && node.videoHeight > 0 &&
           !node.paused && !node.ended) {
-        playing = true;
-        break;
+        if (mode !== 'live_auto') {
+          playing = true;
+          break;
+        }
+        // ONVIF/WebRTC cameras can remain "idle" in HA while video is playing.
+        // A decoded first frame alone is insufficient evidence of a live feed.
+        const time = Number(node.currentTime);
+        const quality = typeof node.getVideoPlaybackQuality === 'function'
+          ? node.getVideoPlaybackQuality()?.totalVideoFrames : undefined;
+        const frames = Number.isFinite(quality) ? quality
+          : Number.isFinite(node.webkitDecodedFrameCount) ? node.webkitDecodedFrameCount
+          : Number.isFinite(node.mozPaintedFrames) ? node.mozPaintedFrames : NaN;
+        if (this._videoSample?.node === node &&
+            (Number.isFinite(time) && time > this._videoSample.time + 0.015 ||
+             Number.isFinite(frames) && frames > this._videoSample.frames)) {
+          this._lastVideoAdvanceAt = Date.now();
+        }
+        this._videoSample = { node, time, frames };
+        playing = this._lastVideoAdvanceAt > 0 && Date.now() - this._lastVideoAdvanceAt < 2000;
+        if (playing) break;
       }
       if (tag === 'img' && node.complete && node.naturalWidth > 0 && node.naturalHeight > 0) {
         // A decoded still can also appear in hui-image-element. Accept only
@@ -1387,6 +1601,7 @@ class RoomcraftCameraThumbnail extends HTMLElement {
       this._liveFailedAt = Date.now();
       this._liveFailedCameraId = this._liveCameraId;
       this._stopLive();
+      if (mode === 'event_live') this._releaseEventStream();
     }
     this._renderCamera();
   }
@@ -1395,6 +1610,7 @@ class RoomcraftCameraThumbnail extends HTMLElement {
     if (!this._frame || !this._hass || !this._config) return;
     const cameraId = this._config.camera_entity;
     if (this._previousCameraId !== cameraId) {
+      if (this._eventCameraId) this._closeEventWindow();
       this._stopLive();
       this._liveFailedCameraId = '';
       this._turnOnRequestedAt = 0;
@@ -1405,7 +1621,11 @@ class RoomcraftCameraThumbnail extends HTMLElement {
     this._cameraState = this._hass.states?.[cameraId]?.state;
     this._cameraUnavailable = !!cameraId &&
       (!this._cameraState || this._cameraState === 'unavailable' || this._cameraState === 'unknown');
-    this._wantsLive = this._config.preview_mode === 'live' || this._cameraState === 'streaming';
+    this._syncEventWindow(cameraId);
+    const mode = this._config.preview_mode;
+    const eventGate = this._eventWindowOpen();
+    this._wantsLive = mode === 'live' || mode === 'live_auto' ||
+      (mode === 'event_live' ? eventGate : this._cameraState === 'streaming');
     if (this._cameraState === 'streaming') {
       this._turnOnRequestedAt = 0;
       this._turnOnError = false;
@@ -1422,9 +1642,12 @@ class RoomcraftCameraThumbnail extends HTMLElement {
       this._renderCamera();
       return;
     }
-    // Rendering an idle camera in live mode can wake battery cameras. Only
-    // mount HA's native stream after HA reports one is active.
-    if (cameraId && this._cameraState === 'streaming') this._startLive(cameraId);
+    // Auto mode is for cameras whose native WebRTC stream plays even when HA
+    // reports idle. Event mode mounts only inside a sensor-triggered window.
+    const mountLive = cameraId && !this._cameraUnavailable &&
+      (mode === 'live_auto' || mode === 'event_live' && eventGate ||
+       mode !== 'event_live' && this._cameraState === 'streaming');
+    if (mountLive) this._startLive(cameraId);
     else this._stopLive();
     if (!this._liveReady) this._refreshStill();
     this._renderCamera();
