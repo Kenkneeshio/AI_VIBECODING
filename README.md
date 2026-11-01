@@ -8,7 +8,7 @@ Maintained by [Kenkneeshio](https://github.com/Kenkneeshio).
 
 | Section | Purpose | Status |
 | --- | --- | --- |
-| [Home Assistant](home-assistant/README.md) | Custom integrations, apps/add-ons, dashboard cards, automations, scripts, and assets | [Roomcraft](home-assistant/projects/roomcraft/README.md) — active second-floor layout editor; [ishioho](home-assistant/projects/ishioho/README.md) — legacy prototype |
+| [Home Assistant](home-assistant/README.md) | Custom integrations, apps/add-ons, dashboard cards, automations, scripts, and assets | [Roomcraft](home-assistant/projects/roomcraft/README.md) — active second-floor layout editor; [Tuya LAN](home-assistant/projects/tuya-lan/README.md) — local-control pilot; [ishioho](home-assistant/projects/ishioho/README.md) — legacy prototype |
 
 Additional project areas can be added as new ideas take shape.
 
@@ -33,6 +33,7 @@ AI_VIBECODING/
     ├── projects/
     │   ├── README.md
     │   ├── roomcraft/
+    │   ├── tuya-lan/
     │   └── ishioho/
     ├── assets/README.md
     ├── docs/deployment.md
@@ -41,7 +42,7 @@ AI_VIBECODING/
 
 ## Current status
 
-[Roomcraft](home-assistant/projects/roomcraft/README.md) is the active second-floor layout authoring project. Its [illustrated manual](home-assistant/projects/roomcraft/docs/user-manual.md) covers walls, floors, furniture, and Home Assistant transfer. The older [ishioho dashboard](home-assistant/projects/ishioho/README.md) remains as a tested four-theme prototype with its source and history preserved. Committing here does not deploy either project to Home Assistant.
+[Roomcraft](home-assistant/projects/roomcraft/README.md) is the active second-floor layout authoring project. Its [illustrated manual](home-assistant/projects/roomcraft/docs/user-manual.md) covers walls, floors, furniture, and Home Assistant transfer. [Tuya LAN](home-assistant/projects/tuya-lan/README.md) documents a pilot for local control of eligible, already-paired Tuya devices. The older [ishioho dashboard](home-assistant/projects/ishioho/README.md) remains as a tested four-theme prototype with its source and history preserved. Committing here does not deploy these projects to Home Assistant.
 
 ## Public repository
 

@@ -17,6 +17,7 @@ Use lowercase names with hyphens.
 | Project | Purpose | Status |
 | --- | --- | --- |
 | [Roomcraft](roomcraft/README.md) | Active second-floor layout editor, illustrated plan, and Home Assistant dashboard transfer | Active on one installation; public source and manual |
+| [Tuya LAN migration](tuya-lan/README.md) | Move eligible, already-paired Tuya devices to direct Home Assistant LAN control | Three read-only LAN probes and one bulb imported; verification incomplete |
 | [ishioho](ishioho/README.md) | Historical four-theme control panel with contextual popups and searchable entity directory | Legacy prototype for the second-floor authoring workflow; source and tests preserved |
 
 The repository contains reusable source and examples, not live home configuration. Publishing changes does not deploy a dashboard.
