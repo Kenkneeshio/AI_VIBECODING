@@ -219,6 +219,9 @@
   let focusCanvas = false;
   let dashboardRevision = null;
   let dashboardTransferBusy = false;
+  let dashboardSource = location.pathname.startsWith('/local/roomcraft/')
+    ? new URL('/second-floor/plan', location.origin).href : null;
+  let dashboardPublishedProject = null;
   let projectChangeSerial = 0;
   let entityOptions = [];
 
@@ -237,6 +240,17 @@
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(project)); label.innerHTML = '<span class="save-dot"></span> Saved locally'; }
       catch (_) { label.textContent = 'Browser storage is full'; }
     }, 250);
+  }
+  function saveDraftNow() {
+    clearTimeout(saveTimer);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
+      document.getElementById('saveState').innerHTML = '<span class="save-dot"></span> Saved locally';
+      return true;
+    } catch (_) {
+      document.getElementById('saveState').textContent = 'Browser storage is full';
+      return false;
+    }
   }
   function snapshot() { history.push(clone(project)); if (history.length > 70) history.shift(); future = []; updateHistoryButtons(); }
   function undo() { if (!history.length) return; future.push(clone(project)); project = history.pop(); selected = null; afterChange('Undid last change'); }
@@ -742,6 +756,15 @@
 
   function setDashboardStatus(message,isError=false){const status=document.getElementById('dashboardTransferStatus');status.textContent=message;status.classList.toggle('error',isError);setStatus(message);}
   function setDashboardBusy(busy){dashboardTransferBusy=busy;document.body.classList.toggle('dashboard-transfer-busy',busy);for(const id of ['importDashboardButton','exportDashboardButton'])document.getElementById(id).disabled=busy;}
+  function rememberDashboardSource(source){
+    if(typeof source!=='string')return;
+    try{
+      const url=new URL(source);
+      if(!['http:','https:'].includes(url.protocol)||url.username||url.password||url.pathname!=='/second-floor/plan')return;
+      if(location.pathname.startsWith('/local/roomcraft/')&&url.origin!==location.origin)return;
+      dashboardSource=url.href;
+    }catch(_){}
+  }
   function askConfirmation(title,message,acceptLabel){
     const dialog=document.getElementById('confirmationDialog');
     const accept=document.getElementById('confirmationAccept');
@@ -771,6 +794,19 @@
     if(!data||typeof data!=='object')throw new Error('Dashboard response is empty');
     return data;
   }
+  async function backToDashboard(){
+    if(dashboardTransferBusy){showToast('Wait for the dashboard transfer to finish');return;}
+    if(!dashboardSource){
+      try{rememberDashboardSource((await dashboardRequest('GET')).source);}
+      catch(_){showToast('Dashboard link unavailable. Check the Home Assistant connection.');return;}
+    }
+    if(!dashboardSource){showToast('Dashboard link unavailable. Check the Home Assistant connection.');return;}
+    const unpublished=dashboardPublishedProject!==JSON.stringify(project);
+    if(unpublished&&!await askConfirmation('View dashboard','This layout has edits that are saved in this browser but have not been exported to Home Assistant. View the dashboard anyway?','View dashboard'))return;
+    if(!saveDraftNow()&&unpublished){showToast('Browser draft could not be saved. Export layout JSON before leaving.');return;}
+    try{window.top.location.assign(dashboardSource);}
+    catch(_){window.location.assign(dashboardSource);}
+  }
   function projectFromDashboard(data){
     const hasEditable=!!data.project;
     let next=hasEditable?data.project:clone(STARTER);
@@ -790,6 +826,7 @@
     setDashboardStatus('Loading the current Home Assistant layout…');
     try{
       const data=await dashboardRequest('GET');
+      rememberDashboardSource(data.source);
       updateEntityOptions(data);
       if(!data.revision)throw new Error('Dashboard revision is missing');
       const {next,hasEditable}=projectFromDashboard(data);
@@ -808,7 +845,7 @@
           return;
         }
       }
-      project=current;selected=null;afterChange('Loaded current Home Assistant layout');fitView();
+      project=current;selected=null;afterChange('Loaded current Home Assistant layout');dashboardPublishedProject=JSON.stringify(project);fitView();
       const detail=hasEditable?'Current editable dashboard layout loaded':'Current dashboard controls loaded with the starting editable plan';
       setDashboardStatus(different?detail+' · previous browser draft available to recover':detail);
     }catch(error){
@@ -822,6 +859,7 @@
     setDashboardBusy(true);setDashboardStatus('Reading the Home Assistant dashboard…');
     try{
       const data=await dashboardRequest('GET');
+      rememberDashboardSource(data.source);
       updateEntityOptions(data);
       if(!data.revision)throw new Error('Dashboard revision is missing');
       const {next,hasEditable}=projectFromDashboard(data);
@@ -829,7 +867,7 @@
       if(!await askConfirmation('Import dashboard layout',`Import ${detail} from Home Assistant? This replaces the layout saved in this browser. You can undo the import during this session or export your current layout as JSON first.`,'Import layout')){
         setDashboardStatus('Dashboard import canceled');return;
       }
-      snapshot();project=restoreFixedGeometry(clone(next));dashboardRevision=data.revision;selected=null;clearPlacement();setViewMode('design');afterChange('Imported from Home Assistant dashboard');fitView();
+      snapshot();project=restoreFixedGeometry(clone(next));dashboardRevision=data.revision;selected=null;clearPlacement();setViewMode('design');afterChange('Imported from Home Assistant dashboard');dashboardPublishedProject=JSON.stringify(project);fitView();
       const message=hasEditable?'Editable layout imported from dashboard':'Dashboard controls imported. Its image has no editable Roomcraft data, so the starting furnishings were used.';
       setDashboardStatus(message);showToast(message);
     }catch(error){const message=`Import failed: ${error.message||'Home Assistant is unavailable'}`;setDashboardStatus(message,true);showToast(message);}
@@ -851,7 +889,9 @@
       setDashboardStatus('Uploading image and saving dashboard…');
       const saved=await dashboardRequest('POST',{project:next,pngDataUrl,revision:dashboardRevision});
       if(!saved.imageUrl)throw new Error('Dashboard save did not return an image URL');
+      rememberDashboardSource(saved.source);
       dashboardRevision=saved.revision||null;
+      dashboardPublishedProject=JSON.stringify(project);
       setDashboardStatus('Layout, image, and controls exported to Home Assistant');showToast('Home Assistant dashboard updated');
     }catch(error){if(error.status===409)dashboardRevision=null;const message=error.status===409?'Dashboard changed since your last import. Import it before exporting again.':`Export failed: ${error.message||'Home Assistant is unavailable'}`;setDashboardStatus(message,true);showToast(message);}
     finally{setDashboardBusy(false);}
@@ -886,6 +926,7 @@
     document.getElementById('undoButton').addEventListener('click',undo);document.getElementById('redoButton').addEventListener('click',redo);
     document.getElementById('importDashboardButton').addEventListener('click',importFromDashboard);
     document.getElementById('exportDashboardButton').addEventListener('click',exportToDashboard);
+    document.getElementById('backDashboardButton').addEventListener('click',backToDashboard);
     const menu=document.getElementById('exportMenu'),menuButton=document.getElementById('exportButton');
     const showMenu=open=>{menu.hidden=!open;menuButton.setAttribute('aria-expanded',String(open));};
     menuButton.addEventListener('click',()=>showMenu(menu.hidden));

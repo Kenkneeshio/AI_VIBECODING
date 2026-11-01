@@ -8,9 +8,15 @@ const controlsSource = readFileSync(new URL('../public/object-controls.js', impo
 const storageKey = 'roomcraft.second-floor.v2';
 const crop = { x: 0, y: 80, width: 1536, height: 864 };
 
-function boot(savedProject, dashboardRequest) {
+function boot(savedProject, dashboardRequest, options = {}) {
   const data = new Map([[storageKey, JSON.stringify(savedProject)]]);
   const listeners = new Map();
+  const navigation = [];
+  const location = {
+    pathname: options.pathname || '/local/roomcraft/editor.html',
+    origin: options.origin || 'http://ha.test',
+    assign(url) { navigation.push(url); }
+  };
   const gradient = { addColorStop() {} };
   const drawing = new Proxy({}, {
     get(target, key) {
@@ -25,11 +31,13 @@ function boot(savedProject, dashboardRequest) {
     return {
       id, style: {}, dataset: {}, classList: { add() {}, remove() {}, toggle() {} },
       addEventListener(name, fn) { listeners.set(`${id}:${name}`, fn); },
+      removeEventListener(name, fn) { if (listeners.get(`${id}:${name}`) === fn) listeners.delete(`${id}:${name}`); },
       getContext() { return drawing; },
       getBoundingClientRect() { return { left: 0, top: 0, width: crop.width + 28, height: crop.height + 28 }; },
       querySelectorAll() { return []; },
       setPointerCapture() {}, setAttribute() {},
-      appendChild() {}, remove() {}, focus() {}
+      appendChild() {}, remove() {}, focus() {},
+      showModal() { this.open = true; }, close() { this.open = false; }
     };
   }
   const elements = new Map();
@@ -48,8 +56,9 @@ function boot(savedProject, dashboardRequest) {
     naturalWidth = 0;
     addEventListener() {}
   }
-  const window = { addEventListener() {}, RoomcraftInventory: { templates: [], groups: [] },
+  const window = { addEventListener() {}, location, RoomcraftInventory: { templates: [], groups: [] },
     ...(dashboardRequest ? { RoomcraftDashboardBridge: { request: dashboardRequest } } : {}) };
+  window.top = window;
   runInNewContext(controlsSource, { window });
   const localStorage = {
     getItem(key) { return data.get(key) ?? null; },
@@ -57,7 +66,7 @@ function boot(savedProject, dashboardRequest) {
     removeItem(key) { data.delete(key); }
   };
   runInNewContext(source, {
-    document, window, localStorage, Image: ImageStub,
+    document, window, location, URL, localStorage, Image: ImageStub,
     setTimeout(fn) { fn(); return 1; }, clearTimeout() {},
     requestAnimationFrame(fn) { fn(); },
     AbortSignal, console
@@ -67,7 +76,7 @@ function boot(savedProject, dashboardRequest) {
   const event = (x, y) => ({ clientX: x - crop.x + 14, clientY: y - crop.y + 14, button: 0, pointerId: 1, preventDefault() {} });
   const pointer = (kind, x, y) => listeners.get(`planCanvas:${kind}`)(event(x, y));
   const read = () => JSON.parse(data.get(storageKey));
-  return { pointer, read, elements, storage: data,
+  return { pointer, read, elements, storage: data, navigation,
     dispatch: (id, kind, event) => listeners.get(`${id}:${kind}`)(event) };
 }
 
@@ -300,4 +309,37 @@ test('startup keeps a browser draft if Home Assistant is unreachable', async () 
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(editor.read().items.find(i => i.id === 'chair').x, 500);
   assert.match(editor.elements.get('dashboardTransferStatus').textContent, /browser layout kept: Offline/);
+});
+
+test('Dashboard header returns to the actual Home Assistant plan in both editor contexts', async () => {
+  const project = { version: 2, editableReferenceVersion: 2, rooms: [], walls: [], hotspots: [], items: [] };
+  const source = 'https://ha.example/second-floor/plan';
+  const response = async () => ({ revision: 'current', project, hotspots: [], source });
+  const hosted = boot(project, response);
+  const cloud = boot(project, response, { pathname: '/editor', origin: 'https://studio.example' });
+  await new Promise(resolve => setImmediate(resolve));
+  await hosted.dispatch('backDashboardButton', 'click', {});
+  await cloud.dispatch('backDashboardButton', 'click', {});
+  assert.deepEqual(hosted.navigation, ['http://ha.test/second-floor/plan']);
+  assert.deepEqual(cloud.navigation, [source]);
+});
+
+test('Dashboard return keeps unpublished edits in the browser and allows cancellation', async () => {
+  const project = { version: 2, editableReferenceVersion: 2, rooms: [], walls: [], hotspots: [],
+    items: [{ id: 'chair', type: 'chair', name: 'Chair', x: 500, y: 500, w: 48, h: 48, rotation: 0, entityId: '' }] };
+  const editor = boot(project, async () => ({ revision: 'current', project, hotspots: [], source: 'http://ha.test/second-floor/plan' }));
+  await new Promise(resolve => setImmediate(resolve));
+  editor.pointer('pointerdown', 500, 500);
+  editor.pointer('pointermove', 540, 500);
+  editor.pointer('pointerup', 540, 500);
+  const firstReturn = editor.dispatch('backDashboardButton', 'click', {});
+  assert.equal(editor.elements.get('confirmationDialog').open, true);
+  editor.dispatch('confirmationCancel', 'click', {});
+  await firstReturn;
+  assert.deepEqual(editor.navigation, []);
+  const secondReturn = editor.dispatch('backDashboardButton', 'click', {});
+  editor.dispatch('confirmationAccept', 'click', {});
+  await secondReturn;
+  assert.deepEqual(editor.navigation, ['http://ha.test/second-floor/plan']);
+  assert.equal(editor.read().items.find(item => item.id === 'chair').x, 540);
 });

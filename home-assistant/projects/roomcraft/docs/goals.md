@@ -3,6 +3,7 @@
 | Goal | Reason | Evidence of completion |
 | --- | --- | --- |
 | Make Roomcraft the official second-floor layout authoring tool | Avoid a static dashboard image becoming an uneditable, divergent copy and let HA users edit from their usual login | The HA `studio` panel hosts Roomcraft; import/export persists `roomcraft_layout` and the rendered plan |
+| Return from the editor to the live plan in one step | Laptop and tablet users should not need browser history or a copied URL after editing | **← Dashboard** uses the authenticated dashboard source, prompts over unpublished edits, saves a recoverable browser draft, and stays put if navigation or storage is unavailable |
 | Keep all upstairs rooms level and visually coherent | Doorways should connect spaces without unexplained elevation changes | One shared floor plane through doors; per-room finishes are visible and editable |
 | Match the furnished reference's perspective and detail | The PNG is the approved visual starting point | Furnished default, wall/window art, object atlas, and visual comparison in the user manual |
 | Make photo-inspired play furnishings easy to rearrange | The living room changes as the baby grows, and the user wants the real play area represented in the editor and dashboard | 16 catalog variants across 11 designs; eight distinct objects placed on the plan; HA readback confirms their saved geometry and the original controls |

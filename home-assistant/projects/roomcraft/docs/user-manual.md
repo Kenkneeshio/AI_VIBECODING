@@ -127,6 +127,8 @@ Use the two buttons at the lower-left of either editor to work with the live das
 3. **Export to dashboard** renders a detailed PNG, uploads it to Home Assistant, and saves the editable project with the dashboard. Reload the dashboard to see the result.
 4. Import once more to verify that the same project opens for the next editing session. If you switch between the HA-hosted and cloud editors, import in the second editor before editing.
 
+Select **← Dashboard** in the editor header to return to the Second Floor plan. The HA-hosted editor uses the same-origin dashboard route; the owner-private Site uses the dashboard address supplied by its authenticated connection. If you have edits that have not been exported to Home Assistant, the editor asks before leaving and keeps a browser draft. Choose **Cancel** to remain in Studio. Returning to the dashboard does not publish those edits; use **Export to dashboard** first when you want them visible on the wall panel. During an import or export, the control asks you to wait and stays in the editor. If the dashboard link is unavailable or the unpublished draft cannot be saved, it stays in the editor with a message; export editable JSON for recovery if browser storage is full.
+
 The editor checks the dashboard revision before exporting. If another change happened, import the newest dashboard version and review your draft before retrying. This protects a teammate's more recent dashboard edit.
 
 The **Export** menu also provides a PNG and a manual Home Assistant YAML fallback. The YAML references a local image path; copy the PNG to that path before applying it manually.

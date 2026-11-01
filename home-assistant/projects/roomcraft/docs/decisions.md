@@ -1,5 +1,13 @@
 # Decision log
 
+## 2026-10-31 — Return to the dashboard without losing an editor draft
+
+**Decision:** Put **← Dashboard** in the editor header. The HA-hosted editor uses its same-origin Second Floor route; the owner-private Site accepts a validated dashboard URL returned by its authenticated API. Before navigation, compare the current project to the last imported or exported project. If edits are unpublished, ask the user, save the browser draft synchronously, and only then navigate the top-level page. A transfer in progress, missing destination, or failed draft save prevents navigation.
+
+**Reason:** The layout editor and live panel are two modes of the same workspace. A direct return path is simpler on a wall tablet, but leaving during an export or with unsaved local work could hide a change or interrupt a transfer. The cloud Site cannot safely hardcode a private HA address.
+
+**Consequence:** Returning to the panel does not publish changes. The user must export to HA for the wall panel to update, or recover the browser draft later. Tests cover both editor contexts, cancellation, preserved edits, and destination validation. The API may reveal the destination to the authenticated owner, but it must never include credentials or a stream URL.
+
 ## 2026-10-31 — Model the office's single desk lamp as one object
 
 **Decision:** Keep one editable `lamp` item on the office desk, using the bedroom-style perspective sprite and the office light as its sole state source. Remove the separate study ceiling-fixture item from the private project and replace that starter fixture with the desk lamp in the default list.
