@@ -93,7 +93,7 @@
   const wall = (id, x1, y1, x2, y2) => ({ id, x1, y1, x2, y2 });
   const item = (id, type, name, x, y, w, h, rotation = 0) => ({ id, type, name, x, y, w, h, rotation, entityId: '',
     ...(templateByType[type]?.visualKind?{visualKind:templateByType[type].visualKind}:{}),
-    ...(type==='cameraThumbnail'?{previewMode:'event',imageEntityId:''}:{}) });
+    ...(type==='cameraThumbnail'?{previewMode:'event',imageEntityId:'',eventEntityIds:[]}:{}) });
   const validEntityId = value => /^[a-z_]+\.[a-z0-9_]+$/i.test(value||'');
   function clampLinkedItem(o){
     if(o.type==='cameraThumbnail'||!validEntityId(o.entityId))return;
@@ -138,7 +138,7 @@
     item('fixture-living','ceilingLight','Living ceiling light',660,330,58,58),
     item('fixture-dining','pendantLight','Dining pendant light',445,540,70,70),
     item('fixture-kitchen','ceilingLight','Kitchen ceiling light',744,610,58,58),
-    item('fixture-study','ceilingLight','Study ceiling light',1008,410,58,58),
+    item('office-desk-lamp','lamp','Office desk lamp',851,260,48,52),
     item('fixture-bedroom','ceilingLight','Bedroom ceiling light',1185,510,58,58),
     item('fixture-bath-one','ceilingLight','Bath 01 ceiling light',970,686,58,58),
     item('fixture-bath-two','ceilingLight','Bath 02 ceiling light',1260,700,58,58),
@@ -165,7 +165,10 @@
       && p.items.every(i => typeof i.id === 'string' && templateByType[i.type] && [i.x,i.y,i.w,i.h,i.rotation].every(Number.isFinite)
         && (window.RoomcraftObjectControls?.validBinding(i) ?? true)
         && (i.type!=='cameraThumbnail'||(i.x>=0&&i.x<=W&&i.y>=0&&i.y<=H&&i.w>=40&&i.h>=40&&i.w<=W&&i.h<=H
-          && (!i.previewMode||['event','live','offline'].includes(i.previewMode))
+          && (!i.previewMode||['event','live','live_auto','event_live','offline'].includes(i.previewMode))
+          && (!i.eventEntityIds||(Array.isArray(i.eventEntityIds)&&i.eventEntityIds.length<=6
+            && i.eventEntityIds.every(id=>typeof id==='string'&&/^binary_sensor\.[a-z0-9_]+$/i.test(id))
+            && new Set(i.eventEntityIds).size===i.eventEntityIds.length))
           && (!i.entityId||/^camera\.[a-z0-9_]+$/i.test(i.entityId))
           && (!i.imageEntityId||/^image\.[a-z0-9_]+$/i.test(i.imageEntityId)))))
       && (!('hotspots' in p) || (Array.isArray(p.hotspots) && p.hotspots.every(h => {
@@ -664,8 +667,16 @@
       afterChange('Updated dashboard button');return;
     }
     if(selected.kind==='item'&&target.type==='cameraThumbnail'&&key==='imageEntityId'&&!(key in target))target.imageEntityId='';
+    if(selected.kind==='item'&&target.type==='cameraThumbnail'&&key==='eventEntityIds'){
+      const ids=value.split(',').map(id=>id.trim()).filter(Boolean);
+      if(ids.length>6||ids.some(id=>!/^binary_sensor\.[a-z0-9_]+$/i.test(id))||new Set(ids).size!==ids.length){
+        showToast('Use up to six distinct binary sensor IDs');renderInspector();return;
+      }
+      if(JSON.stringify(target.eventEntityIds||[])===JSON.stringify(ids))return;
+      snapshot();target.eventEntityIds=ids;afterChange('Updated camera event sensors');return;
+    }
     if(!(key in target))return;
-    if(key==='previewMode'&&!['event','live','offline'].includes(value))return;
+    if(key==='previewMode'&&!['event','live','live_auto','event_live','offline'].includes(value))return;
     if(key==='entityId'&&value&&!validEntityId(value)){showToast('Use an entity ID like light.living_room');renderInspector();return;}
     if(target.type==='cameraThumbnail'&&key==='entityId'&&value&&!/^camera\.[a-z0-9_]+$/i.test(value)){showToast('Use a camera entity ID');renderInspector();return;}
     if(target.type==='cameraThumbnail'&&key==='imageEntityId'&&value&&!/^image\.[a-z0-9_]+$/i.test(value)){showToast('Use an image entity ID');renderInspector();return;}

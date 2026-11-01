@@ -114,6 +114,37 @@ test('LAN bridge rejects invalid camera thumbnail before image upload', async ()
   assert.equal(uploads, 0);
 });
 
+test('LAN bridge exports event triggers and validates camera modes and sensor IDs', async () => {
+  const saved = dashboard();
+  const card = new Card();
+  card.hass = {
+    connected: true, user: { is_admin: true },
+    callWS: async request => {
+      if (request.type === 'lovelace/config') return structuredClone(saved);
+      if (request.type === 'lovelace/config/save') { Object.assign(saved, structuredClone(request.config)); return null; }
+      throw new Error('Unexpected HA command');
+    },
+    fetchWithAuth: async () => ({ ok: true, json: async () => ({ id: 'b'.repeat(32) }) }),
+  };
+  const imported = await card._readDashboard();
+  const item = { id: 'entry', type: 'cameraThumbnail', name: 'Entry', x: 260, y: 390,
+    w: 170, h: 110, rotation: 0, entityId: 'camera.entry', imageEntityId: 'image.entry_event',
+    previewMode: 'event_live', eventEntityIds: ['binary_sensor.entry_ring', 'binary_sensor.entry_person'] };
+  await card._writeDashboard({ project: { version: 2, rooms: [], walls: [], hotspots: [], items: [item] },
+    revision: imported.revision, pngDataUrl: pngDataUrl() });
+  const element = saved.views[0].cards[0].elements.find(value => value.roomcraft_item_id === 'entry');
+  assert.equal(element.preview_mode, 'event_live');
+  assert.deepEqual(Array.from(element.event_entities), item.eventEntityIds);
+  const current = await card._readDashboard();
+  for (const eventEntityIds of [['https://outside.example'], ['light.entry'],
+    ['binary_sensor.entry_ring', 'binary_sensor.entry_ring'], Array(7).fill('binary_sensor.x')]) {
+    const invalid = { ...item, eventEntityIds };
+    await assert.rejects(card._writeDashboard({ project: { version: 2, rooms: [], walls: [],
+      hotspots: [], items: [invalid] }, revision: current.revision, pngDataUrl: pngDataUrl() }),
+    /invalid camera thumbnail/i);
+  }
+});
+
 test('camera element fetches latest event using HA auth and reports its timestamp', async () => {
   const camera = new Camera();
   camera.setConfig({ type: 'custom:roomcraft-camera-thumbnail', title: 'Front door',
@@ -162,6 +193,16 @@ test('camera element refuses an external picture URL and falls back without expo
   assert.equal(fetches, 0);
   assert.equal(camera._message.textContent, 'Latest event unavailable');
   assert.equal(camera._still.hidden, true);
+});
+
+test('camera element rejects malformed event sensor configuration', () => {
+  const camera = new Camera();
+  assert.throws(() => camera.setConfig({ type: 'custom:roomcraft-camera-thumbnail',
+    camera_entity: 'camera.entry', image_entity: 'image.entry_event', preview_mode: 'event_live',
+    event_entities: ['light.outside'] }), /invalid entity/i);
+  assert.throws(() => camera.setConfig({ type: 'custom:roomcraft-camera-thumbnail',
+    camera_entity: 'camera.entry', image_entity: '', preview_mode: 'live_auto',
+    event_entities: ['binary_sensor.entry', 'binary_sensor.entry'] }), /invalid entity/i);
 });
 
 test('camera element shows a clear fallback when HA image proxy fails', async () => {
@@ -379,6 +420,171 @@ test('a downloaded but undecodable event image remains unavailable', async () =>
   camera.disconnectedCallback();
 });
 
+test('event live camera is gated by ring or person, then returns to dated still and stops its own stream', async () => {
+  let nativeElements = 0;
+  class NativeImage extends FakeNode {
+    constructor(tag) {
+      super(tag);
+      nativeElements++;
+      const image = new FakeNode('img');
+      Object.assign(image, { complete: true, naturalWidth: 640, naturalHeight: 360,
+        currentSrc: 'http://ha.example.test/api/camera_proxy_stream/camera.entry' });
+      this.attachShadow().append(image);
+    }
+    setConfig(value) { this.config = value; }
+  }
+  const createElement = context.document.createElement;
+  context.document.createElement = tag => tag === 'hui-image-element' ? new NativeImage(tag) : createElement(tag);
+  registered.set('hui-image-element', NativeImage);
+  const camera = new Camera();
+  try {
+    camera.setConfig({ type: 'custom:roomcraft-camera-thumbnail', title: 'Entry',
+      camera_entity: 'camera.entry', image_entity: 'image.entry_event', preview_mode: 'event_live',
+      event_entities: ['binary_sensor.entry_ring', 'binary_sensor.entry_person'] });
+    const calls = [];
+    const hass = { states: {
+      'camera.entry': { state: 'streaming' },
+      'binary_sensor.entry_ring': { state: 'off' },
+      'binary_sensor.entry_person': { state: 'off' },
+      'image.entry_event': { state: '2026-10-31T15:54:00Z',
+        attributes: { entity_picture: '/api/image_proxy/image.entry_event' } },
+    },
+    callService: (...args) => { calls.push(args); return Promise.resolve(); },
+    fetchWithAuth: async () => ({ ok: true, blob: async () => new Blob(['jpeg'], { type: 'image/jpeg' }) }) };
+    camera.hass = hass;
+    await new Promise(resolve => setTimeout(resolve, 0));
+    camera._still.naturalWidth = 640;
+    camera._still.naturalHeight = 360;
+    camera._still.listeners.load();
+    assert.equal(nativeElements, 0);
+    assert.match(camera._foot.textContent, /^LATEST EVENT · /);
+    assert.deepEqual(calls, []);
+    camera._frame.listeners.click();
+    assert.deepEqual(calls, []);
+    assert.equal(camera.lastEvent?.type, 'hass-more-info');
+
+    hass.states['camera.entry'].state = 'idle';
+    hass.states['binary_sensor.entry_ring'].state = 'on';
+    camera.hass = hass;
+    assert.deepEqual(JSON.parse(JSON.stringify(calls)),
+      [['camera', 'turn_on', { entity_id: 'camera.entry' }]]);
+    assert.equal(nativeElements, 1);
+    assert.equal(camera._foot.textContent, 'LIVE');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(camera._eventOwnsStream, true);
+    const firstDeadline = camera._eventLiveUntil;
+    hass.states['binary_sensor.entry_ring'].state = 'off';
+    camera.hass = hass;
+    hass.states['binary_sensor.entry_person'].state = 'on';
+    camera.hass = hass;
+    assert.ok(camera._eventLiveUntil >= firstDeadline);
+    hass.states['binary_sensor.entry_person'].state = 'off';
+    hass.states['camera.entry'].state = 'streaming';
+    camera.hass = hass;
+    camera._eventLiveUntil = Date.now() - 1;
+    camera._refresh();
+    assert.deepEqual(JSON.parse(JSON.stringify(calls)), [
+      ['camera', 'turn_on', { entity_id: 'camera.entry' }],
+      ['camera', 'turn_off', { entity_id: 'camera.entry' }],
+    ]);
+    assert.equal(camera._liveElement, null);
+    assert.match(camera._foot.textContent, /^LATEST EVENT · /);
+    assert.notEqual(camera._foot.textContent, 'LIVE');
+  } finally {
+    camera.disconnectedCallback();
+    registered.delete('hui-image-element');
+    context.document.createElement = createElement;
+  }
+});
+
+test('event live camera never stops another viewer stream and failed start falls back to still', async () => {
+  class NativeImage extends FakeNode { setConfig(value) { this.config = value; } }
+  const createElement = context.document.createElement;
+  context.document.createElement = tag => tag === 'hui-image-element' ? new NativeImage(tag) : createElement(tag);
+  registered.set('hui-image-element', NativeImage);
+  const camera = new Camera();
+  try {
+    camera.setConfig({ type: 'custom:roomcraft-camera-thumbnail', title: 'Entry',
+      camera_entity: 'camera.entry', image_entity: 'image.entry_event', preview_mode: 'event_live',
+      event_entities: ['binary_sensor.entry_ring', 'binary_sensor.entry_person'] });
+    const calls = [];
+    const hass = { states: {
+      'camera.entry': { state: 'streaming' },
+      'binary_sensor.entry_ring': { state: 'on' },
+      'binary_sensor.entry_person': { state: 'off' },
+      'image.entry_event': { state: '2026-10-31T15:54:00Z',
+        attributes: { entity_picture: '/api/image_proxy/image.entry_event' } },
+    },
+    callService: (...args) => { calls.push(args); return Promise.reject(new Error('offline')); },
+    fetchWithAuth: async () => ({ ok: true, blob: async () => new Blob(['jpeg'], { type: 'image/jpeg' }) }) };
+    camera.hass = hass;
+    await new Promise(resolve => setTimeout(resolve, 0));
+    camera._still.naturalWidth = 640;
+    camera._still.naturalHeight = 360;
+    camera._still.listeners.load();
+    hass.states['binary_sensor.entry_ring'].state = 'off';
+    camera.hass = hass;
+    camera._eventLiveUntil = Date.now() - 1;
+    camera._refresh();
+    assert.deepEqual(calls, []);
+
+    hass.states['camera.entry'].state = 'idle';
+    hass.states['binary_sensor.entry_person'].state = 'on';
+    camera.hass = hass;
+    await new Promise(resolve => setTimeout(resolve, 0));
+    assert.deepEqual(JSON.parse(JSON.stringify(calls)),
+      [['camera', 'turn_on', { entity_id: 'camera.entry' }]]);
+    assert.equal(camera._still.hidden, false);
+    assert.equal(camera._foot.textContent, 'PREVIEW · LIVE UNAVAILABLE');
+    camera.hass = hass;
+    assert.equal(calls.length, 1);
+  } finally {
+    camera.disconnectedCallback();
+    registered.delete('hui-image-element');
+    context.document.createElement = createElement;
+  }
+});
+
+test('auto live ONVIF camera mounts while idle but claims LIVE only after video advances', () => {
+  let video;
+  class NativeImage extends FakeNode {
+    constructor(tag) {
+      super(tag);
+      video = new FakeNode('video');
+      Object.assign(video, { readyState: 3, videoWidth: 640, videoHeight: 360,
+        paused: false, ended: false, currentTime: 0 });
+      this.attachShadow().append(video);
+    }
+    setConfig(value) { this.config = value; }
+  }
+  const createElement = context.document.createElement;
+  context.document.createElement = tag => tag === 'hui-image-element' ? new NativeImage(tag) : createElement(tag);
+  registered.set('hui-image-element', NativeImage);
+  const camera = new Camera();
+  try {
+    camera.setConfig({ type: 'custom:roomcraft-camera-thumbnail', title: 'Porch',
+      camera_entity: 'camera.porch', image_entity: '', preview_mode: 'live_auto' });
+    const calls = [];
+    camera.hass = { states: { 'camera.porch': { state: 'idle' } },
+      callService: (...args) => { calls.push(args); return Promise.resolve(); } };
+    assert.ok(camera._liveElement);
+    assert.notEqual(camera._foot.textContent, 'LIVE');
+    camera._frame.listeners.click();
+    assert.deepEqual(calls, []);
+    assert.equal(camera.lastEvent?.type, 'hass-more-info');
+    video.currentTime = 0.5;
+    camera._pollLive();
+    assert.equal(camera._foot.textContent, 'LIVE');
+    camera._lastVideoAdvanceAt = Date.now() - 2100;
+    camera._pollLive();
+    assert.notEqual(camera._foot.textContent, 'LIVE');
+  } finally {
+    camera.disconnectedCallback();
+    registered.delete('hui-image-element');
+    context.document.createElement = createElement;
+  }
+});
+
 test('the object artwork is the light control, with details on hold', async () => {
   const object = new ObjectControl();
   object.setConfig({ type: 'custom:roomcraft-object-control', roomcraft_item_id: 'lamp',
@@ -400,6 +606,28 @@ test('the object artwork is the light control, with details on hold', async () =
     roomcraft_tap_action: 'none', roomcraft_hold_action: 'toggle' });
   assert.equal(object._button.attributes['data-zone'], 'true');
   assert.match(object._button.attributes['aria-label'], /Tap disabled; hold to toggle/);
+  object.disconnectedCallback();
+});
+
+test('a bound table lamp shades only its small lamp head and follows the light switch', () => {
+  const object = new ObjectControl();
+  object.setConfig({ type: 'custom:roomcraft-object-control', roomcraft_item_id: 'office-desk-lamp',
+    entity: 'light.office', title: 'Office desk lamp', roomcraft_visual_kind: 'light',
+    roomcraft_light_form: 'table_lamp' });
+  const css = object.shadowRoot.children[0].textContent;
+  assert.match(css, /\[data-form="table_lamp"\] \.art\{[^}]*height:58%/);
+  assert.match(css, /\[data-form="table_lamp"\]\[data-state="off"\] \.art\{[^}]*brightness\(\.35\)/);
+  assert.match(css, /\[data-form="table_lamp"\]\[data-state="on"\] \.art\{[^}]*0 0 8px 3px/);
+  object.hass = { states: { 'light.office': { state: 'off' } } };
+  assert.equal(object._button.attributes['data-form'], 'table_lamp');
+  assert.equal(object._button.attributes['data-state'], 'off');
+  object.hass = { states: { 'light.office': { state: 'on' } } };
+  assert.equal(object._button.attributes['data-form'], 'table_lamp');
+  assert.equal(object._button.attributes['data-state'], 'on');
+  object.hass = { states: { 'light.office': { state: 'unavailable' } } };
+  assert.equal(object._button.attributes['data-state'], 'unavailable');
+  assert.throws(() => object.setConfig({ entity: 'light.office',
+    roomcraft_light_form: 'giant_glow' }), /invalid device binding/i);
   object.disconnectedCallback();
 });
 
@@ -431,9 +659,14 @@ test('a scene bound to the fan light runs from its artwork without pretending to
     entity: 'scene.ceiling_fan_light_toggle', title: 'Ceiling fan light',
     roomcraft_tap_action: 'auto', roomcraft_hold_action: 'auto' });
   const calls = [];
-  object.hass = { states: { 'scene.ceiling_fan_light_toggle': { state: '2026-10-31T18:00:00Z' } },
+  object.hass = { states: {
+    'scene.ceiling_fan_light_toggle': { state: '2026-10-31T18:00:00Z' },
+    'switch.ceiling_fan': { state: 'on' },
+    'sensor.ceiling_fan_light': { state: 'on' },
+  },
     callService: (...args) => { calls.push(args); return Promise.resolve(); } };
   assert.equal(object._button.attributes['data-state'], 'ready');
+  assert.match(object.shadowRoot.children[0].textContent, /\.target\[data-state="ready"\] \.art/);
   assert.match(object._button.attributes['aria-label'], /Ceiling fan light: ready\. Tap to run; hold for details/);
   assert.equal(object._button.title, 'Ceiling fan light · ready');
   object._activate('tap');
@@ -475,6 +708,8 @@ test('fan rotation follows the fan switch, not a fan sensor or scene timestamp',
   object.setConfig({ entity: 'switch.ceiling_fan', title: 'Ceiling fan', roomcraft_visual_kind: 'fan' });
   const css = object.shadowRoot.children[0].textContent;
   assert.match(css, /steps\(8,end\)/);
+  assert.match(css, /\[data-visual="fan"\]\[data-state="on"\] \.rotor\{[^}]*#9bc9d6/);
+  assert.doesNotMatch(css, /\[data-visual="fan"\]\[data-state="on"\] \.rotor\{[^}]*#ffd166/);
   assert.match(css, /prefers-reduced-motion:reduce/);
   assert.match(css, /\[data-visual="fan"\] \.art\{[^}]*border-radius:0;[^}]*box-shadow:none/);
   assert.doesNotMatch(css, /\[data-visual="fan"\] \.art\{[^}]*inset 0 0 0/);
@@ -482,15 +717,42 @@ test('fan rotation follows the fan switch, not a fan sensor or scene timestamp',
   assert.equal(rotor.children.filter(child => child.className === 'blade').length, 5);
   object.hass = { states: {
     'switch.ceiling_fan': { state: 'off' },
+    'switch.fan_light': { state: 'on' },
     'sensor.ceiling_fan_speed': { state: 'high' },
   } };
   assert.equal(object._button.attributes['data-state'], 'off');
   object.hass = { states: {
     'switch.ceiling_fan': { state: 'on' },
+    'switch.fan_light': { state: 'off' },
     'sensor.ceiling_fan_speed': { state: '0' },
   } };
   assert.equal(object._button.attributes['data-state'], 'on');
   assert.match(object._button.attributes['aria-label'], /Ceiling fan: on\./);
+});
+
+test('a scene action can control a fan light while only its switch determines the glow', () => {
+  const object = new ObjectControl();
+  object.setConfig({ entity: 'switch.fan_light', title: 'Ceiling fan light',
+    roomcraft_visual_kind: 'light', roomcraft_tap_action: 'activate',
+    roomcraft_tap_entity: 'scene.fan_light_toggle' });
+  const calls = [];
+  const states = {
+    'switch.fan_light': { state: 'off' },
+    'scene.fan_light_toggle': { state: '2026-10-31T18:00:00Z' },
+  };
+  object.hass = { states, callService: (...args) => { calls.push(args); return Promise.resolve(); } };
+  assert.equal(object._button.attributes['data-state'], 'off');
+  object._activate('tap');
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0])),
+    ['scene', 'turn_on', { entity_id: 'scene.fan_light_toggle' }]);
+  assert.equal(object._button.attributes['data-state'], 'off', 'a scene call is not an on state');
+  states['switch.fan_light'] = { state: 'on' };
+  object.hass = { states, callService: () => Promise.resolve() };
+  assert.equal(object._button.attributes['data-state'], 'on');
+  states['switch.fan_light'] = { state: 'heat' };
+  object.hass = { states };
+  assert.equal(object._button.attributes['data-state'], 'unavailable', 'a switch needs on/off, not a borrowed climate mode');
+  object.disconnectedCallback();
 });
 
 test('light, window, door, and climate overlays use their own live states', () => {
@@ -515,6 +777,22 @@ test('light, window, door, and climate overlays use their own live states', () =
     object.hass = { states: { [entry.entity]: { state: 'unexpected_state' } } };
     assert.equal(object._button.attributes['data-state'], 'unavailable');
   }
+});
+
+test('window artwork is a narrow pane inside its full touch target', () => {
+  const object = new ObjectControl();
+  object.setConfig({ entity: 'cover.study_blind', title: 'Study blind',
+    roomcraft_visual_kind: 'window', roomcraft_window_axis: 'vertical' });
+  object.hass = { states: { 'cover.study_blind': { state: 'open' } } };
+  const css = object.shadowRoot.children[0].textContent;
+  assert.equal(object._button.attributes['data-axis'], 'vertical');
+  assert.equal(object._button.attributes['data-state'], 'on');
+  assert.match(css, /\.target\[data-visual="window"\]\[data-axis="vertical"\] \.art\{[^}]*width:clamp\(8px,22%,18px\)/);
+  assert.match(css, /\.target\[data-visual="window"\]\[data-axis="horizontal"\] \.art\{[^}]*height:clamp\(8px,22%,18px\)/);
+  assert.match(css, /repeating-linear-gradient\(to right/);
+  assert.throws(() => object.setConfig({ entity: 'cover.study_blind',
+    roomcraft_window_axis: 'diagonal' }), /invalid device binding/i);
+  object.disconnectedCallback();
 });
 
 test('the entity menu includes live and disabled registry entities', () => {
@@ -626,6 +904,41 @@ test('LAN bridge imports, exports, and retains unrelated HA elements/views', asy
   const changed = await card._readDashboard();
   await card._writeDashboard({ project, revision: changed.revision, pngDataUrl: pngDataUrl() });
   assert.equal(saved.views[0].cards[0].elements[2].style.top, '7%');
+});
+
+test('LAN bridge exports blind axes and table lamp form without shrinking touch targets', async () => {
+  let saved = dashboard();
+  const card = new Card();
+  card.hass = { connected: true, user: { is_admin: true },
+    callWS: async request => {
+      if (request.type === 'lovelace/config') return structuredClone(saved);
+      if (request.type === 'lovelace/config/save') { saved = structuredClone(request.config); return null; }
+      throw new Error('Unexpected HA command');
+    },
+    fetchWithAuth: async () => ({ ok: true, json: async () => ({ id: 'c'.repeat(32) }) }),
+  };
+  const imported = await card._readDashboard();
+  const project = { version: 2, rooms: [], walls: [], hotspots: [], items: [
+    { id: 'top-blind', type: 'controlZone', name: 'Top blind', entityId: 'cover.top_blind',
+      x: 500, y: 250, w: 120, h: 72, rotation: 0 },
+    { id: 'side-blind', type: 'controlZone', name: 'Side blind', entityId: 'cover.side_blind',
+      x: 600, y: 250, w: 72, h: 120, rotation: 0 },
+    { id: 'office-desk-lamp', type: 'lamp', name: 'Office desk lamp', entityId: 'light.office',
+      x: 900, y: 250, w: 48, h: 60, rotation: 0 },
+  ] };
+  await card._writeDashboard({ project, revision: imported.revision, pngDataUrl: pngDataUrl() });
+  const elements = saved.views[0].cards[0].elements;
+  const horizontal = elements.find(element => element.roomcraft_item_id === 'top-blind');
+  const vertical = elements.find(element => element.roomcraft_item_id === 'side-blind');
+  const lamp = elements.find(element => element.roomcraft_item_id === 'office-desk-lamp');
+  assert.equal(horizontal.roomcraft_window_axis, 'horizontal');
+  assert.equal(vertical.roomcraft_window_axis, 'vertical');
+  assert.equal(horizontal.style.width, '7.81%');
+  assert.equal(horizontal.style.height, '8.33%');
+  assert.equal(vertical.style.width, '4.69%');
+  assert.equal(vertical.style.height, '13.89%');
+  assert.equal(lamp.roomcraft_visual_kind, 'light');
+  assert.equal(lamp.roomcraft_light_form, 'table_lamp');
 });
 
 test('LAN bridge removes Weather and Time words even on an already-current scene', async () => {

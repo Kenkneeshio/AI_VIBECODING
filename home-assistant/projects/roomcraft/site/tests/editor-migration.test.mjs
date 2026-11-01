@@ -80,7 +80,9 @@ test('migrates a saved plan into movable lamp and room fixtures without duplicat
   const migrated = editor.read();
   assert.equal(migrated.editableReferenceVersion, 2);
   assert.equal(migrated.items.filter(i => i.id === 'i14').length, 1);
-  assert.equal(migrated.items.filter(i => i.id.startsWith('fixture-')).length, 8);
+  assert.equal(migrated.items.filter(i => i.id.startsWith('fixture-')).length, 7);
+  assert.equal(migrated.items.find(i => i.id === 'office-desk-lamp')?.type, 'lamp');
+  assert.equal(migrated.items.some(i => i.id === 'fixture-study'), false);
   assert.equal(migrated.items.find(i => i.id === 'i14').x, 1393);
 
   const reopened = boot(migrated);
@@ -88,7 +90,8 @@ test('migrates a saved plan into movable lamp and room fixtures without duplicat
   reopened.pointer('pointermove', 1373, 516);
   reopened.pointer('pointerup', 1373, 516);
   assert.equal(reopened.read().items.filter(i => i.id === 'i14').length, 1);
-  assert.equal(reopened.read().items.filter(i => i.id.startsWith('fixture-')).length, 8);
+  assert.equal(reopened.read().items.filter(i => i.id.startsWith('fixture-')).length, 7);
+  assert.equal(reopened.read().items.filter(i => i.id === 'office-desk-lamp').length, 1);
 });
 
 test('a deliberately removed migrated lamp is not respawned on a later load', () => {

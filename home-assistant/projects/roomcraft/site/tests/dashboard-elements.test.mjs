@@ -148,9 +148,20 @@ test('linked artwork replaces a duplicate icon and preserves curated menu sectio
   assert.equal(result[0].control_icon, 'mdi:lamp');
   assert.equal(result[0].control_zone, false);
   assert.equal(result[0].roomcraft_visual_kind, 'light');
+  assert.equal(result[0].roomcraft_light_form, 'table_lamp');
   assert.equal(result[0].style.left, '78.13%');
   assert.deepEqual(result[1].sections, [{ title: 'Lighting', entities: ['light.bedroom'] }]);
   assert.deepEqual(result[1].bound_objects, [{ entity_id: 'light.bedroom', label: 'Bedside light', icon: 'mdi:lamp' }]);
+});
+
+test('table lamps export a compact shade form only when rendered as lights', () => {
+  const base = { id: 'office-desk-lamp', type: 'tableLamp', name: 'Office desk lamp',
+    x: 915, y: 245, w: 48, h: 60, rotation: 0, entityId: 'light.office' };
+  const [lamp] = mergeDashboardElements([], [], [base]);
+  assert.equal(lamp.roomcraft_visual_kind, 'light');
+  assert.equal(lamp.roomcraft_light_form, 'table_lamp');
+  const [nonLight] = mergeDashboardElements([], [], [{ ...base, visualKind: 'device' }]);
+  assert.equal(nonLight.roomcraft_light_form, undefined);
 });
 
 test('a linked fan exports separate scene targets without losing its monitored switch', () => {
@@ -180,15 +191,26 @@ test('linked object visuals classify stateful equipment and allow a safe overrid
   assert.equal(objectVisualKind({ ...base, visualKind: 'auto' }), 'window');
   assert.equal(validObjectControl({ ...base, visualKind: 'auto' }), true);
   assert.equal(validObjectControl({ ...base, visualKind: 'not-a-kind' }), false);
+  const horizontal = mergeDashboardElements([], [], [{ ...base, id: 'horizontal', w: 98, h: 58 }])[0];
+  const vertical = mergeDashboardElements([], [], [{ ...base, id: 'vertical', w: 70, h: 135 }])[0];
+  assert.equal(horizontal.roomcraft_window_axis, 'horizontal');
+  assert.equal(vertical.roomcraft_window_axis, 'vertical');
 });
 
 test('camera thumbnail validation rejects external or malformed entities and invalid geometry', () => {
   const item = { id: 'cam', type: 'cameraThumbnail', x: 260, y: 390, w: 170, h: 110,
     rotation: 0, entityId: 'camera.entry', imageEntityId: 'image.entry_event', previewMode: 'event' };
   assert.equal(validCameraThumbnail(item), true);
+  const gated = { ...item, previewMode: 'event_live',
+    eventEntityIds: ['binary_sensor.entry_ring', 'binary_sensor.entry_person'] };
+  assert.equal(validCameraThumbnail(gated), true);
+  assert.deepEqual(mergeDashboardElements([], [], [gated])[0].event_entities, gated.eventEntityIds);
+  assert.equal(validCameraThumbnail({ ...item, previewMode: 'live_auto' }), true);
   for (const change of [
     { entityId: 'https://outside.example/image' }, { entityId: 'camera.entry?token=secret' },
     { imageEntityId: 'sensor.entry' }, { x: -1 }, { w: 0 }, { rotation: Infinity },
+    { previewMode: 'event_live' }, { eventEntityIds: ['scene.not_a_sensor'] },
+    { eventEntityIds: ['binary_sensor.entry_ring', 'binary_sensor.entry_ring'] },
   ]) {
     assert.equal(validCameraThumbnail({ ...item, ...change }), false);
   }

@@ -1,5 +1,21 @@
 # Decision log
 
+## 2026-10-31 — Model the office's single desk lamp as one object
+
+**Decision:** Keep one editable `lamp` item on the office desk, using the bedroom-style perspective sprite and the office light as its sole state source. Remove the separate study ceiling-fixture item from the private project and replace that starter fixture with the desk lamp in the default list.
+
+**Reason:** The office contains one physical desk lamp. Two illustrated fixtures bound to the same light incorrectly suggested two devices and made the plan harder to edit.
+
+**Consequence:** Dashboard export should derive one office light control from one movable object. Importing an old private layout may still bring back the prior fixture, so check for and remove it during migration without deleting unrelated user edits. A reference bitmap can retain baked light pixels, but the editable layer and controls must not invent a second physical fixture.
+
+## 2026-10-31 — Treat camera events and outdoor forecasts as runtime overlays
+
+**Decision:** Keep three camera frames as separately authored `cameraThumbnail` items. Use `event_live` with configured binary sensors for the doorbell, `live_auto` for an overhead ONVIF camera that may play while its HA entity says `idle`, and tap-start `live` for the garage. The doorbell opens a bounded 60-second live attempt after a ring/person `on` edge, then returns to the dated latest-event image. Label media **LIVE** only after decoded playback evidence. Put current and next-12-hour weather, day/night, and moon phase in one independent HA picture element whose art is clipped to exterior rectangles. Keep the layout JSON and rendered base PNG free of live device/weather/media values.
+
+**Reason:** Battery doorbells should not stay live between events; an event can fail to establish a stream, so the last image must remain useful. An always-playing ONVIF stream may report `idle`, so camera entity state alone is not enough evidence of playback. Forecasts describe future conditions; they must be visibly previewed as future and use actual timestamps. The exterior mask preserves room visibility and touch targets. Independent modules and item IDs let camera, editor, and weather teams change their code without moving the house geometry.
+
+**Consequence:** Both export bridges validate the same camera mode and `eventEntityIds` contract. The HA card owns camera timers, event-service calls, media decoding, and still fallback. The weather module calls HA's hourly forecast service through the signed-in session and uses HA's sun, moon, and time zone data. The installer registers both versioned Lovelace resources. Scene-only fan-light controls remain neutral until a stateful HA entity exists; they cannot borrow a motor state or infer light state from the last scene run. Verify on the actual tablet before marking the release deployed. See [live object graphics](live-object-graphics.md) and [deployment](deployment.md).
+
 ## 2026-10-31 — Device state belongs on the object; camera media stays in Home Assistant
 
 **Decision:** Keep the editable layout and rendered PNG free of live values. A bound item's optional `visualKind` selects a high-contrast device treatment; Automatic infers a kind from its catalog type, state entity, and label. The HA overlay reads the bound state entity, uses explicit active/inactive lists, and shows unrecognized or unavailable values neutrally. Scene/script/button actions are ready controls, never invented on/off state. The fan's five-blade rotor uses stepped motion only from its motor switch; reduced-motion preference stops it. Exterior and garage camera frames are independent `cameraThumbnail` items backed by separate authenticated HA feeds.

@@ -85,7 +85,20 @@
       "rotation": 0,
       "entityId": "camera.example_entry",
       "imageEntityId": "image.example_entry_event",
-      "previewMode": "event"
+      "previewMode": "event_live",
+      "eventEntityIds": ["binary_sensor.example_entry_ring", "binary_sensor.example_entry_person"]
+    },
+    {
+      "id": "example-overhead-preview",
+      "type": "cameraThumbnail",
+      "name": "Example overhead camera",
+      "x": 675,
+      "y": 540,
+      "w": 150,
+      "h": 100,
+      "rotation": 0,
+      "entityId": "camera.example_overhead",
+      "previewMode": "live_auto"
     },
     {
       "id": "example-garage-preview",
