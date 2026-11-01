@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">Roomcraft camera preview states</title>
+  <desc id="desc">The front-door camera uses a dated latest-event still. The garage camera begins with an idle preview, starts a stream only after a tap, and says live only after a frame decodes. Failed streams return to preview or unavailable.</desc>
+  <defs>
+    <linearGradient id="bg" x2="0" y2="1"><stop stop-color="#f8f7f1"/><stop offset="1" stop-color="#e9efe9"/></linearGradient>
+    <linearGradient id="scene" x2="0" y2="1"><stop stop-color="#638990"/><stop offset="1" stop-color="#30474c"/></linearGradient>
+    <filter id="shadow" x="-15%" y="-20%" width="130%" height="150%"><feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#172b31" flood-opacity=".18"/></filter>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M1 1 8 4.5 1 8" fill="none" stroke="#72988d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></marker>
+  </defs>
+  <rect width="1200" height="360" rx="20" fill="url(#bg)"/>
+  <text x="30" y="38" font-family="Arial,sans-serif" font-size="12" font-weight="700" letter-spacing="2" fill="#698a79">ROOMCRAFT · AUTHENTICATED CAMERA STATES</text>
+  <text x="30" y="66" font-family="Arial,sans-serif" font-size="23" font-weight="700" fill="#203936">A preview never claims to be live video</text>
+  <g filter="url(#shadow)" fill="#fffef9">
+    <rect x="30" y="95" width="250" height="220" rx="16"/>
+    <rect x="330" y="95" width="250" height="220" rx="16"/>
+    <rect x="630" y="95" width="250" height="220" rx="16"/>
+    <rect x="930" y="95" width="240" height="220" rx="16"/>
+  </g>
+  <path d="M287 206h35M587 206h35M887 206h35" stroke="#72988d" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <g font-family="Arial,sans-serif">
+    <text x="47" y="122" font-size="11" font-weight="700" letter-spacing="1.2" fill="#b06856">FRONT DOOR</text>
+    <text x="47" y="145" font-size="16" font-weight="700" fill="#203936">Latest event image</text>
+    <text x="347" y="122" font-size="11" font-weight="700" letter-spacing="1.2" fill="#b06856">GARAGE · IDLE</text>
+    <text x="347" y="145" font-size="16" font-weight="700" fill="#203936">Preview only</text>
+    <text x="647" y="122" font-size="11" font-weight="700" letter-spacing="1.2" fill="#b06856">TAP TO REQUEST</text>
+    <text x="647" y="145" font-size="16" font-weight="700" fill="#203936">Connecting</text>
+    <text x="947" y="122" font-size="11" font-weight="700" letter-spacing="1.2" fill="#b06856">DECODED FRAME</text>
+    <text x="947" y="145" font-size="16" font-weight="700" fill="#203936">Live garage stream</text>
+  </g>
+  <g>
+    <rect x="47" y="159" width="216" height="104" rx="9" fill="url(#scene)"/>
+    <rect x="347" y="159" width="216" height="104" rx="9" fill="url(#scene)"/>
+    <rect x="647" y="159" width="216" height="104" rx="9" fill="#223941"/>
+    <rect x="947" y="159" width="206" height="104" rx="9" fill="url(#scene)"/>
+    <path d="M47 247q55-49 108-20t108-30v66H47ZM347 247q55-49 108-20t108-30v66H347ZM947 247q51-47 103-20t103-30v66H947Z" fill="#1d393e" opacity=".75"/>
+    <circle cx="755" cy="211" r="17" fill="none" stroke="#a9d7ce" stroke-width="4" stroke-dasharray="8 6"/>
+  </g>
+  <g font-family="Arial,sans-serif" font-size="11" font-weight="700" fill="#f7fff9">
+    <text x="59" y="247">LATEST EVENT · DATE</text>
+    <text x="359" y="247">PREVIEW</text>
+    <text x="659" y="247">CONNECTING · PREVIEW</text>
+    <text x="959" y="247">LIVE</text>
+  </g>
+  <g font-family="Arial,sans-serif" font-size="11" fill="#526961">
+    <text x="47" y="292">Tap opens camera details</text>
+    <text x="347" y="292">Display does not wake camera</text>
+    <text x="647" y="292">HA starts stream on a tap</text>
+    <text x="947" y="292">Only after media plays</text>
+  </g>
+  <text x="30" y="341" font-family="Arial,sans-serif" font-size="12" fill="#526961">On failure: keep a decoded event still as PREVIEW · LIVE UNAVAILABLE, or show UNAVAILABLE when no still exists. Drawn example only; no home media is included.</text>
+</svg>

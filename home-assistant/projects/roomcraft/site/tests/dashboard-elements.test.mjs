@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ROOMCRAFT_SCENE, editableDashboardHotspots, mergeDashboardElements, validCameraThumbnail, validObjectControl, withUpdatedPlanCard } from '../lib/dashboard-elements.ts';
+import { ROOMCRAFT_SCENE, editableDashboardHotspots, mergeDashboardElements, objectVisualKind, validCameraThumbnail, validObjectControl, withUpdatedPlanCard } from '../lib/dashboard-elements.ts';
 
 test('dashboard export replaces editable controls and retains independent overlays', () => {
   const existing = [
@@ -65,6 +65,27 @@ test('new full-width crop migrates reserved header chrome and preserves later ed
   assert.equal(second.views[0].cards[0].elements[1].style.top, '7%');
 });
 
+test('every export keeps weather and time values but softens their native header chrome', () => {
+  const existing = [
+    { type: 'state-label', entity: 'weather.home', prefix: 'Weather · ',
+      style: { left: '68%', top: '5.3%', background: 'rgba(24, 29, 35, 0.8)', padding: '8px 12px' } },
+    { type: 'state-label', entity: 'sensor.time', prefix: 'Time · ',
+      style: { left: '83%', top: '5.3%', background: 'rgba(24, 29, 35, 0.8)', padding: '8px 12px' } },
+    { type: 'state-label', entity: 'sensor.other', prefix: 'Other · ', style: { left: '50%', top: '5.3%' } },
+  ];
+  const result = mergeDashboardElements([], existing, [], ROOMCRAFT_SCENE).slice(1);
+  assert.deepEqual(result.map(element => element.entity), ['weather.home', 'sensor.time', 'sensor.other']);
+  for (const element of result.slice(0, 2)) {
+    assert.equal(element.prefix, undefined);
+    assert.equal(element.style.background, 'rgba(17, 33, 35, 0.42)');
+    assert.equal(element.style.padding, '4px 7px');
+    assert.equal(element.style.top, '5.3%');
+  }
+  assert.deepEqual(result[2], existing[2]);
+  assert.deepEqual(mergeDashboardElements([], result, [], ROOMCRAFT_SCENE).slice(1), result);
+  assert.equal(existing[0].prefix, 'Weather · ');
+});
+
 test('previous cropped scene imports with its old bounds and migrates its reserved header', () => {
   const oldHotspot = { type: 'state-icon', entity: 'light.study', style: { left: '42.47%', top: '39.11%' } };
   const previous = { views: [{ path: 'plan', cards: [{ type: 'picture-elements',
@@ -126,6 +147,7 @@ test('linked artwork replaces a duplicate icon and preserves curated menu sectio
   assert.equal(result[0].roomcraft_hold_action, 'more-info');
   assert.equal(result[0].control_icon, 'mdi:lamp');
   assert.equal(result[0].control_zone, false);
+  assert.equal(result[0].roomcraft_visual_kind, 'light');
   assert.equal(result[0].style.left, '78.13%');
   assert.deepEqual(result[1].sections, [{ title: 'Lighting', entities: ['light.bedroom'] }]);
   assert.deepEqual(result[1].bound_objects, [{ entity_id: 'light.bedroom', label: 'Bedside light', icon: 'mdi:lamp' }]);
@@ -143,6 +165,21 @@ test('a linked fan exports separate scene targets without losing its monitored s
   assert.equal(element.roomcraft_tap_action, 'activate');
   assert.equal(element.roomcraft_tap_entity, 'scene.ceiling_fan_on_scene');
   assert.equal(element.roomcraft_hold_entity, 'scene.ceiling_fan_off');
+  assert.equal(element.roomcraft_visual_kind, 'fan');
+});
+
+test('linked object visuals classify stateful equipment and allow a safe override', () => {
+  const base = { id: 'device', type: 'controlZone', x: 400, y: 400, w: 60, h: 50,
+    entityId: 'cover.example', name: 'Window blind' };
+  assert.equal(objectVisualKind(base), 'window');
+  assert.equal(objectVisualKind({ ...base, entityId: 'cover.garage', name: 'Garage door' }), 'door');
+  assert.equal(objectVisualKind({ ...base, entityId: 'climate.study', name: 'Study AC' }), 'climate');
+  assert.equal(objectVisualKind({ ...base, entityId: 'switch.ceiling_fan', name: 'Ceiling fan' }), 'fan');
+  assert.equal(objectVisualKind({ ...base, entityId: 'light.study', name: 'Study desk lamp' }), 'light');
+  assert.equal(objectVisualKind({ ...base, visualKind: 'none' }), 'none');
+  assert.equal(objectVisualKind({ ...base, visualKind: 'auto' }), 'window');
+  assert.equal(validObjectControl({ ...base, visualKind: 'auto' }), true);
+  assert.equal(validObjectControl({ ...base, visualKind: 'not-a-kind' }), false);
 });
 
 test('camera thumbnail validation rejects external or malformed entities and invalid geometry', () => {

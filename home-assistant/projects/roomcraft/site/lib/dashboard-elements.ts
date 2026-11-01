@@ -18,6 +18,7 @@ const PREVIOUS_SCENE = "wall-to-wall-v1";
 const PREVIOUS_SCENE_BOUNDS = { width: 1472, height: 828, left: 20, top: 96 };
 const HEADER_TOP = "5.3%";
 const ACTIONS = ["auto", "toggle", "activate", "more-info", "none"];
+const VISUAL_KINDS = ["light", "fan", "climate", "window", "door", "device", "none"];
 
 function isObject(value: unknown): value is JsonObject {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -96,6 +97,7 @@ export function validObjectControl(item: unknown): item is JsonObject {
     typeof item.entityId === "string" && /^[a-z_]+\.[a-z0-9_]+$/.test(item.entityId) &&
     (item.controlLabel === undefined || typeof item.controlLabel === "string" && item.controlLabel.length <= 80) &&
     (item.controlIcon === undefined || item.controlIcon === "" || typeof item.controlIcon === "string" && /^mdi:[a-z0-9-]+$/.test(item.controlIcon)) &&
+    (item.visualKind === undefined || item.visualKind === "auto" || VISUAL_KINDS.includes(String(item.visualKind))) &&
     (item.tapAction === undefined || ACTIONS.includes(String(item.tapAction))) &&
     (item.holdAction === undefined || ACTIONS.includes(String(item.holdAction))) &&
     (item.tapEntityId === undefined || typeof item.tapEntityId === "string" &&
@@ -107,6 +109,21 @@ export function validObjectControl(item: unknown): item is JsonObject {
     Number(item.y) >= 0 && Number(item.y) <= PLAN_HEIGHT &&
     Number(item.w) >= 12 && Number(item.w) <= PLAN_WIDTH &&
     Number(item.h) >= 12 && Number(item.h) <= PLAN_HEIGHT;
+}
+
+export function objectVisualKind(item: JsonObject): string {
+  if (typeof item.visualKind === "string" && VISUAL_KINDS.includes(item.visualKind)) return item.visualKind;
+  const type = String(item.type || "").toLowerCase();
+  const entity = String(item.entityId || "").toLowerCase();
+  const label = String(item.controlLabel || item.name || "").toLowerCase();
+  const domain = entity.split(".")[0];
+  if (domain === "fan" || (type.includes("fan") && !label.includes("fan light")) ||
+      (domain === "switch" && /\bfan\b/.test(label) && !/\blight\b/.test(label))) return "fan";
+  if (domain === "climate" || /\b(air conditioner|thermostat|a\/c)\b/.test(label)) return "climate";
+  if (domain === "lock" || /\b(door|garage)\b/.test(label)) return "door";
+  if (domain === "cover" || type === "window" || /\b(window|blind|blinds|shade|shades)\b/.test(label)) return "window";
+  if (domain === "light" || /light|lamp|sconce/.test(type) || /\b(light|lamp)\b/.test(label)) return "light";
+  return "device";
 }
 
 export function objectControlElements(items: unknown): JsonObject[] {
@@ -121,6 +138,7 @@ export function objectControlElements(items: unknown): JsonObject[] {
         title: item.controlLabel || item.name || item.entityId,
         control_icon: item.controlIcon || "",
         control_zone: item.type === "controlZone",
+        roomcraft_visual_kind: objectVisualKind(item),
         roomcraft_tap_action: item.tapAction || "auto",
         roomcraft_hold_action: item.holdAction || "auto",
         ...(item.tapEntityId ? { roomcraft_tap_entity: item.tapEntityId } : {}),
@@ -192,9 +210,25 @@ function isManagedElement(element: JsonObject): boolean {
 function migrateHeaderChrome(element: JsonObject, previousScene: unknown): JsonObject {
   const result = structuredClone(element);
   const previousTop = previousScene === PREVIOUS_SCENE ? "3.6%" : "9%";
-  if (!isObject(result.style) || result.style.top !== previousTop) return result;
   const stateLabel = result.type === "state-label" && typeof result.entity === "string" &&
     (result.entity === "sensor.time" || result.entity.startsWith("weather."));
+  if (stateLabel) {
+    if (typeof result.prefix === "string" && /^(weather|time)\s*[·:]?\s*$/i.test(result.prefix)) {
+      delete result.prefix;
+    }
+    const style = isObject(result.style) ? result.style : {};
+    Object.assign(style, {
+      color: "#f5f9f5",
+      "font-size": "clamp(11px, 1vw, 14px)",
+      "font-weight": "600",
+      background: "rgba(17, 33, 35, 0.42)",
+      "border-radius": "9px",
+      padding: "4px 7px",
+      "text-shadow": "0 1px 2px rgba(0, 0, 0, 0.55)",
+    });
+    result.style = style;
+  }
+  if (previousScene === ROOMCRAFT_SCENE || !isObject(result.style) || result.style.top !== previousTop) return result;
   const action = isObject(result.tap_action) ? result.tap_action : {};
   const editorLink = result.type === "icon" && result.icon === "mdi:pencil-ruler" &&
     action.navigation_path === "/second-floor/studio";
@@ -212,7 +246,7 @@ export function mergeDashboardElements(hotspots: JsonObject[], existing: unknown
   });
   const retained = Array.isArray(existing)
     ? existing.filter((element) => isObject(element) && element.type !== "state-icon" && !isManagedElement(element))
-      .map((element) => previousScene !== ROOMCRAFT_SCENE ? migrateHeaderChrome(element, previousScene) : structuredClone(element))
+      .map((element) => migrateHeaderChrome(element, previousScene))
     : [];
   return [...managed, ...objects, ...cameraThumbnailElements(items), entityMenuElement(items, existing), ...retained];
 }

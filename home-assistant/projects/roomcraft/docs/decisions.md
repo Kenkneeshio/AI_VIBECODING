@@ -1,5 +1,13 @@
 # Decision log
 
+## 2026-10-31 — Device state belongs on the object; camera media stays in Home Assistant
+
+**Decision:** Keep the editable layout and rendered PNG free of live values. A bound item's optional `visualKind` selects a high-contrast device treatment; Automatic infers a kind from its catalog type, state entity, and label. The HA overlay reads the bound state entity, uses explicit active/inactive lists, and shows unrecognized or unavailable values neutrally. Scene/script/button actions are ready controls, never invented on/off state. The fan's five-blade rotor uses stepped motion only from its motor switch; reduced-motion preference stops it. Exterior and garage camera frames are independent `cameraThumbnail` items backed by separate authenticated HA feeds.
+
+**Reason:** The object is already the control target, so its live appearance conveys state without adding a separate button. A static export cannot represent changing light, fan, climate, cover, or door state. Two camera frames must not share media or failure states. Low-frame-rate and reduced-motion behavior keeps the wall tablet usable.
+
+**Consequence:** Both export transports, manual YAML, HA card, layout schema, and Inspector must agree on `visualKind` and the derived `roomcraft_visual_kind`. State values and camera frames never enter project JSON or public assets. The current front-door tile uses a dated latest-event image because live playback is unavailable; the garage tile starts streaming only after a tap and labels itself **LIVE** only after decoding a frame. Check on/off/unknown, scene-ready, motion preference, camera preview/stream/unavailable states, and accessible feedback before treating the release as complete. See [live object graphics](live-object-graphics.md) and [deployment](deployment.md).
+
 ## 2026-10-31 — Preserve the entire house width in the 16:9 scene
 
 **Decision:** Render the existing 1536 × 1024 editable project at its original pixel scale across the complete x0–1536 width, cropping only y80–944 to make a 1536 × 864 display image. Keep all authored geometry in project coordinates. Export `roomcraft_scene: full-width-v1` and map overlay y positions by `(y - 80) / 864`; x positions use `x / 1536`. Import reverses this mapping for marked independent markers and still recognizes the earlier `wall-to-wall-v1` crop and unmarked 3:2 cards.
@@ -57,6 +65,8 @@
 **Consequence:** The center target says **Ready** or **Toggle light** rather than showing a fabricated on/off state. Move fan and center target together if its actual room differs. Keep scene activation, target-entity, and export-parity tests in both transports.
 
 ## 2026-10-31 — Use the verified porch feed for this floor
+
+**Historical decision, superseded by the current camera behavior above.** The ONVIF source later became unreachable, and the current floor uses the actual front-door camera's dated event still plus a separate garage stream that starts on tap. This entry remains as the reason for the earlier binding and is not a deployment instruction.
 
 **Decision:** Bind the exterior floor-plan thumbnail to `camera.porch_camera_profile_000` in live mode. Keep the Eufy `camera.front_door` and `image.front_door_event_image` as separate security inventory entries, not the exterior image for this floor.
 
