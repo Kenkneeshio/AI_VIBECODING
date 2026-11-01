@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-01 — Cloud and local coexistence latency pilot
+
+- Kept the official Tuya cloud entity and the `tuya_local` entity enabled for the same bulb; the old setup was not replaced or renamed.
+- Ran a balanced visible on/off pair through each route and restored the starting `off` state. The HA service call returned in an average 0.085 s locally and 0.158 s through the cloud entity. The commanded entity reported the new state in an average 1.12 s locally and 1.17 s through the cloud entity.
+- Across the balanced pair plus two earlier comparable commands per route, local state convergence succeeded 4/4 times. Cloud convergence succeeded 3/4 times; one accepted cloud service call did not produce matching state in either entity within 20 s, and the bulb was restored through the local entity.
+- Treat these results as a one-device sample. The successful cloud and local state latencies were close; the observed advantage was faster HA service return and better reliability. Do not configure a second local integration for this bulb because many Tuya devices permit only one local client.
+
 ## 2026-11-01 — Pilot design
 
 - Recorded the goal: Home Assistant control over eligible Tuya devices on the LAN, without a new phone app or Tuya cloud call for already-paired devices whose keys are cached.

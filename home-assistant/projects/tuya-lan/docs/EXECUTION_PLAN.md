@@ -2,13 +2,13 @@
 
 ## Goal and current state
 
-Make Home Assistant Green the local control point for eligible Tuya devices, then bind Roomcraft objects to verified local entities. Avoid a second phone and Tuya cloud calls for devices whose keys are already cached. PR #15 is merged. `tuya_local` 2026.10.0 is installed; one bulb has a loaded local entry. Nine helper tests pass. Three raw LAN reads took 0.297–0.406 s; an idempotent HA off call took 0.597 s. These are **not** measured physical-to-dashboard update times. Existing cloud entities remain in place. Five devices advertised on LAN; 42 keys are cached, including six gateway subdevices. Do not bulk-import the 42.
+Make Home Assistant Green the local control point for eligible Tuya devices, then bind Roomcraft objects to verified local entities. Avoid a second phone and Tuya cloud calls for devices whose keys are already cached. PR #15 is merged. `tuya_local` 2026.10.0 is installed; one bulb has a loaded local entry alongside its official cloud entity. Nine helper tests pass. Three raw LAN reads took 0.297–0.406 s. A balanced live on/off comparison averaged 1.12 s for the local entity and 1.17 s for the official cloud entity to report the commanded state. Local completed 4/4 total trials; cloud completed 3/4, with one cloud command not converging within 20 s. This is a small pilot, not a whole-home latency guarantee. Five devices advertised on LAN; 42 keys are cached, including six gateway subdevices. Do not bulk-import the 42.
 
 ## Stages and exit gates
 
 | Stage | Work | Exit gate |
 | --- | --- | --- |
-| 1. Prove pilot | Test one visible, reversible bulb action, compare local and cloud state-change times, verify after a full HA Core restart, then briefly test local operation without Tuya WAN access and restore access. | State, command, recovery, and offline behavior recorded; rollback works. |
+| 1. Prove pilot | Repeat latency/reliability checks over time, verify after a full HA Core restart, then briefly test local operation without Tuya WAN access and restore access. | State, command, recovery, and offline behavior recorded; rollback works. |
 | 2. Expand direct Wi-Fi | Use `tools/tuya_lan_migrate.py audit`, `probe`, then `import` for one reachable, low-risk device at a time. Check profile and every entity. Find hosts for candidates missing LAN advertisements before deciding they are unsupported. | Each imported device passes Stage 1 gates; no duplicate local connection. |
 | 3. Other transports | Classify the six gateway subdevices and other holdouts. For suitable Zigbee devices, add one Zigbee radio to Green and pair directly in ZHA. Consider firmware conversion only after chip and firmware identification. | A device-specific local route is proven, or the holdout stays documented. |
 | 4. Dashboard cutover | Map each Roomcraft object and affected automation to its verified local entity. Compare response and availability over several days; then disable the old entity for that device. | The object controls the right physical device once, shows true state, and has a tested rollback. |
