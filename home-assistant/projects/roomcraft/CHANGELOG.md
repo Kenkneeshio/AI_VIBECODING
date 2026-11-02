@@ -2,6 +2,11 @@
 
 All notable Roomcraft changes are recorded here. Deployment status is tracked separately from a source commit.
 
+## 2026-11-01 — Calendar tablet no-touch display policy
+
+- Changed the paired Apolosign Calendar tablet's Android inactivity timeout from effectively never to five minutes after the owner selected **dim after no touch**. Plugged-in stay-awake remains disabled and automatic brightness remains enabled.
+- Verified that the lock screen remains disabled and Home Assistant Companion remains the default Home app, so a normal wake does not introduce a launcher or lock-screen detour. The setting uses touch inactivity, not occupancy; it may dim while someone is still in the room and does not wake from room presence.
+
 ## 2026-10-31 — Event-gated cameras, stateful graphics, and outdoor weather
 
 - Added a **← Dashboard** control in the editor header for both HA-hosted Studio and the owner-private Site. It returns to the Second Floor plan using the current dashboard source. When the layout differs from the last imported/exported project, the editor asks before leaving and saves the browser draft. A running dashboard transfer must finish first.

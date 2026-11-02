@@ -15,7 +15,7 @@ Phone ChatGPT Remote
 
 These are separate connections. Phone Remote operates the desktop Codex session; it does not pair with Android or provide Home Assistant credentials. The SSH endpoint used here is the official `core_ssh` add-on container, not the HAOS host root environment. The owner's local private `HomeAssistantManagement/ha_manage.py` adapter contains the current HA host and SSH key reference; its DPAPI-protected API token and the key stay outside GitHub. The HA-hosted Roomcraft editor uses the signed-in HA user's browser session. The tablet's Home Assistant Companion app displays the saved dashboard; ADB is an administration and recovery path, not the dashboard data source.
 
-## Verified on 2026-10-31
+## Verified on 2026-10-31 and 2026-11-01
 
 - The Home Assistant host completed Android's pairing-code flow and connected to the calendar tablet over wireless debugging. `adb devices -l` reported `device` with model **Apolosign Calendar**. The Windows workstation could not reach the pairing port directly in this session, so the Home Assistant host was the paired ADB workstation.
 - Home Assistant Companion package `io.homeassistant.companion.android` was installed. A Home Assistant navigation intent opened its WebView on the **Second Floor → Floor Plan** dashboard.
@@ -32,6 +32,7 @@ These are separate connections. Phone Remote operates the desktop Codex session;
 - A user-level shortcut for the installed ChatGPT Codex app was added to the Windows Startup folder and its app target was verified. It is intended to launch Codex after that user signs in; neither Windows startup nor Remote reconnection has been tested after a reboot. The shortcut does not bypass Windows sign-in.
 - This was a display and connection check. Physical touch targets, scene actions, camera playback over time, and automatic reconnection after reboot were **not** tested.
 - The latest recorded Android boot reason was `reboot,userrequested` in both `sys.boot.reason` and `ro.boot.bootreason`; the retained previous-kernel log ended in an orderly `userrequested` restart. This does not identify the initiator or explain the reported recurring restarts. A vendor Bluetooth HAL crash was recorded shortly beforehand, but no causal link was established. At inspection, the tablet was AC powered, its scheduled sleep mode was disabled with no matching pending alarm, and thermal status was normal. These are point-in-time observations, not proof that power, temperature, firmware, or another service can never cause a future restart.
+- On 2026-11-01, the owner selected **dim after no touch** because no indoor occupancy sensor is available near the tablet. Android's inactivity timeout was changed from `2147483647` ms (effectively never) to `300000` ms (five minutes). Plugged-in stay-awake remains disabled, automatic brightness remains enabled, the lock screen remains disabled, and Home Assistant remains the default Home app. Android briefly dims before turning the display off; this is based on touch inactivity, so it can activate while someone is still in the room. This does not claim presence detection or automatic wake on room entry.
 
 ## What survives and what needs recovery
 
@@ -129,6 +130,8 @@ Read the current connection port from the tablet's main Wireless debugging scree
 ## Making the display more self-recovering
 
 The tablet now uses Home Assistant Companion as its default Home app, so Android should return to the dashboard after an ordinary restart. The Home key was verified, but **automatic launch after a reboot remains untested on this device**. During the next supervised restart, capture the screen before interaction, verify Home Assistant opens to Second Floor, check the login and controls, and read Android's boot reason and crash logs before clearing any state. Avoid a remote-only reboot while the physical tablet is unattended: wireless debugging can disconnect or change ports, and an unexpected setup or lock screen may require local recovery. If the reboot check fails, use the default-Home and ADB recovery steps above and record the observed screen and reason; do not assume the launcher setting fixes the underlying restart cause.
+
+The current no-touch policy uses Android's five-minute screen timeout. A touch or normal Android wake should return directly to Home Assistant because the lock screen is disabled and HA is the default Home app. If the display sleeps too aggressively during use, adjust only `screen_off_timeout`; do not re-enable permanent plugged-in wake unless the owner deliberately chooses an always-on screen again.
 
 For remote ADB recovery, test mDNS discovery with a supported platform-tools build or provide a private local reconnect helper that reads the tablet's current port. Keep credentials, ADB pairing material, private dashboard exports, camera media, and device network details outside this public repository. Do not expose wireless debugging through router forwarding or a public endpoint.
 
