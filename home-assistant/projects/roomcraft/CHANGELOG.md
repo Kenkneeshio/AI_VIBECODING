@@ -4,8 +4,8 @@ All notable Roomcraft changes are recorded here. Deployment status is tracked se
 
 ## 2026-11-01 — Calendar tablet no-touch display policy
 
-- Changed the paired Apolosign Calendar tablet's Android inactivity timeout from effectively never to five minutes after the owner selected **dim after no touch**. Plugged-in stay-awake remains disabled and automatic brightness remains enabled.
-- Verified that the lock screen remains disabled and Home Assistant Companion remains the default Home app, so a normal wake does not introduce a launcher or lock-screen detour. The setting uses touch inactivity, not occupancy; it may dim while someone is still in the room and does not wake from room presence.
+- Changed the paired Apolosign Calendar tablet's Android inactivity timeout from effectively never to five minutes after the owner selected **dim after no touch**. After the owner clarified that the power button must not be required, enabled Android stay-awake for AC, USB, and wireless power so the powered tablet can dim without entering full sleep. Automatic brightness remains enabled.
+- A temporary 15-second timeout test exceeded the timeout while Android still reported `mWakefulness=Awake`; the five-minute setting was restored afterward. Verified that the lock screen remains disabled and Home Assistant Companion remains the default Home app. The setting uses touch inactivity, not occupancy; it may dim while someone is still in the room and does not wake from room presence.
 
 ## 2026-10-31 — Event-gated cameras, stateful graphics, and outdoor weather
 
