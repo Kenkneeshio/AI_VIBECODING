@@ -4,7 +4,9 @@ Tablet ADB Keeper is an experimental, opt-in Android helper for a dedicated Home
 
 ## Status
 
-The repository contains a minimal buildable Android application skeleton. It has not yet been installed or verified on the Apolosign calendar tablet. Android does not publish a supported third-party API for enabling Wireless debugging. This project writes the vendor-sensitive global setting named `adb_wifi_enabled`; the firmware may ignore it, reset it, or require additional privileged access.
+Version 0.1.0 was installed on the Apolosign calendar tablet on 2026-11-08. Android accepted the one-time `WRITE_SECURE_SETTINGS` grant, restore-on-boot was enabled, and a manual attempt wrote and read back `adb_wifi_enabled=1`. The declared locked-boot receiver is registered and the application recorded a successful `LOCKED_BOOT_COMPLETED` restoration result during installation acceptance. A supervised physical reboot is still required before claiming full boot persistence on this firmware.
+
+Android does not publish a supported third-party API for enabling Wireless debugging. This project writes the vendor-sensitive global setting named `adb_wifi_enabled`; the firmware may ignore it, reset it, or require additional privileged access.
 
 The helper does **not** pair a computer, open a fixed port, transmit credentials, contact Home Assistant, or run a network server. Pairing remains an explicit Android/ADB operation.
 
