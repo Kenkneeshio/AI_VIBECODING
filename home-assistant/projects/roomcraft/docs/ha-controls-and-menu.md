@@ -1,5 +1,7 @@
 # Home Assistant controls and compact menu
 
+The compact device menu includes **Show object details on plan**. It is off by default so the furnished artwork stays clean. When enabled, each interactive Roomcraft object shows its friendly label, current HA state, and bound entity ID; camera tiles reveal their entity beneath the existing camera name and live/event status. The choice is stored only in that browser's local storage, so a tablet and laptop can choose independently. It never changes the layout project, entity bindings, or device state.
+
 The illustrated plan is the first place to look for a physical room or object. A tap on a bound lamp, fixture, window, fan, or appliance should open or run that object's Home Assistant control. The shipped drawer adds **On plan**, **All entities**, search, registry availability, and six curated sections from the old Main Dashboard. This guide uses the [sanitized entity inventory](ha-inventory/README.md), captured on 2026-10-31. Availability can change.
 
 ![A placed object and its Home Assistant binding flow](images/live-binding-flow.svg)

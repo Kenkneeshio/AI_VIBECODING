@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-08 — Optional on-plan device details
+
+- Added **Show object details on plan** to the authenticated device menu. It reveals compact overlays on every Roomcraft object control with its label, current HA state, and entity ID; camera tiles reveal their bound camera entity beneath the existing name/status.
+- The plan remains label-free by default. The preference persists only in that browser/tablet and does not modify the editable layout or dashboard bindings.
+- Added regression coverage for enabling, persisting, and disabling the detail overlays without changing object actions.
+
 All notable Roomcraft changes are recorded here. Deployment status is tracked separately from a source commit.
 
 ## 2026-11-01 — Calendar tablet no-touch display policy

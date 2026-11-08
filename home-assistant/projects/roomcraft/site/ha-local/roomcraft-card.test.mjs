@@ -21,6 +21,8 @@ class FakeNode {
   addEventListener(name, listener) { this.listeners[name] = listener; }
   dispatchEvent(event) { this.lastEvent = event; return true; }
 }
+const windowListeners = new Map();
+const localStorageValues = new Map();
 const context = {
   HTMLElement: class extends FakeNode { attachShadow() { this.shadowRoot = new FakeNode('shadow'); return this.shadowRoot; } },
   customElements: {
@@ -34,7 +36,23 @@ const context = {
       if (name === 'roomcraft-entity-menu') EntityMenu = value;
     },
   },
-  window: { customCards: [] },
+  window: {
+    customCards: [],
+    localStorage: {
+      getItem: key => localStorageValues.get(key) ?? null,
+      setItem: (key, value) => localStorageValues.set(key, value),
+    },
+    addEventListener(name, listener) {
+      const listeners = windowListeners.get(name) || new Set();
+      listeners.add(listener);
+      windowListeners.set(name, listeners);
+    },
+    removeEventListener(name, listener) { windowListeners.get(name)?.delete(listener); },
+    dispatchEvent(event) {
+      for (const listener of windowListeners.get(event.type) || []) listener(event);
+      return true;
+    },
+  },
   location: { origin: 'http://ha.example.test' },
   document: { createElement: tag => new FakeNode(tag), body: new FakeNode('body'),
     addEventListener() {}, removeEventListener() {} },
@@ -606,6 +624,41 @@ test('the object artwork is the light control, with details on hold', async () =
     roomcraft_tap_action: 'none', roomcraft_hold_action: 'toggle' });
   assert.equal(object._button.attributes['data-zone'], 'true');
   assert.match(object._button.attributes['aria-label'], /Tap disabled; hold to toggle/);
+  object.disconnectedCallback();
+});
+
+test('the dashboard menu toggles live object and camera details without changing controls', () => {
+  const object = new ObjectControl();
+  object.setConfig({ entity: 'light.study', title: 'Study lamp' });
+  object.hass = { states: { 'light.study': { state: 'on' } } };
+  object.connectedCallback();
+  const camera = new Camera();
+  camera.setConfig({ type: 'custom:roomcraft-camera-thumbnail', title: 'Garage',
+    camera_entity: 'camera.garage', image_entity: '', preview_mode: 'offline' });
+  camera.connectedCallback();
+  const menu = new EntityMenu();
+  menu.setConfig({ type: 'custom:roomcraft-entity-menu', roomcraft_menu: true, sections: [] });
+  menu.connectedCallback();
+  menu._open();
+
+  assert.equal(menu._detailToggle.attributes['aria-pressed'], 'false');
+  assert.equal(object.attributes['data-show-details'], 'false');
+  assert.equal(camera._frame.attributes['data-show-details'], 'false');
+  menu._detailToggle.listeners.click();
+  assert.equal(menu._detailToggle.attributes['aria-pressed'], 'true');
+  assert.equal(menu._detailSwitch.textContent, 'ON');
+  assert.equal(object.attributes['data-show-details'], 'true');
+  assert.equal(object._detailName.textContent, 'Study lamp');
+  assert.equal(object._detailState.textContent, 'on');
+  assert.equal(object._detailEntity.textContent, 'light.study');
+  assert.equal(camera._frame.attributes['data-show-details'], 'true');
+  assert.equal(camera._detailEntity.textContent, 'camera.garage');
+
+  menu._detailToggle.listeners.click();
+  assert.equal(object.attributes['data-show-details'], 'false');
+  assert.equal(camera._frame.attributes['data-show-details'], 'false');
+  menu.disconnectedCallback();
+  camera.disconnectedCallback();
   object.disconnectedCallback();
 });
 
