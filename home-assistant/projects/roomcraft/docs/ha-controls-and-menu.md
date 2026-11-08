@@ -2,7 +2,7 @@
 
 The compact device menu includes **Show object details on plan**. It is off by default so the furnished artwork stays clean. When enabled, a compact card appears beside each interactive Roomcraft object with its friendly label, current HA state, and bound entity ID; camera tiles get a neighboring entity card while retaining the camera name and live/event status inside the frame. Cards select right, left, above, or below based on available viewport space. The choice is stored only in that browser's local storage, so a tablet and laptop can choose independently. It never changes the layout project, entity bindings, or device state.
 
-The illustrated plan is the first place to look for a physical room or object. A tap on a bound lamp, fixture, window, fan, or appliance should open or run that object's Home Assistant control. The shipped drawer adds **On plan**, **All entities**, search, registry availability, and six curated sections from the old Main Dashboard. This guide uses the [sanitized entity inventory](ha-inventory/README.md), captured on 2026-10-31. Availability can change.
+The illustrated plan is the first place to look for a physical room or object. A tap on a bound lamp, fixture, window, fan, or appliance should open or run that object's Home Assistant control. The shipped drawer adds **On plan**, **All entities**, search, registry availability, and six curated sections from the old Main Dashboard. Its **Device portals** row opens the official Dreame browser app and the local TP-Link Deco console in a separate tab; these are compatibility fallbacks for the wall tablet, not Home Assistant entities. This guide uses the [sanitized entity inventory](ha-inventory/README.md), captured on 2026-10-31. Availability can change.
 
 ![A placed object and its Home Assistant binding flow](images/live-binding-flow.svg)
 
@@ -69,3 +69,4 @@ The drawer preserves the six curated groups in the [Main Dashboard map](main-das
 | Robot Vacuum | Dreame map, status, controls, and maintenance | Robot art opens detail; live location needs calibration. |
 
 The Studio edit link remains a separate entry on the plan. Search and availability come from Home Assistant's registry, so refresh or reimport after entity changes. The drawer has shipped; fit and touch behavior on the target tablet still need an on-device check. Keep the old Main Dashboard as a reference while validating the curated views.
+

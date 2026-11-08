@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-08 — Official device web portals
+
+- Added official Dreame web control and TP-Link Deco local-management links to the authenticated Home Assistant device drawer so the wall tablet can reach them even when Google Play marks the native app incompatible.
+- Kept unsupported and unverified APK mirrors out of the dashboard. SwitchBot does not publish a working consumer web-control portal; its official compatibility fallback is a vendor-supplied APK requested from SwitchBot support.
+- Added regression coverage for the portal allowlist and safe new-tab link attributes.
+
 ## 2026-11-08 — Optional on-plan device details
 
 - Added **Show object details on plan** to the authenticated device menu. It reveals compact cards beside every Roomcraft object control with its label, current HA state, and entity ID; camera tiles show their bound camera entity in a neighboring card. Cards automatically move left, right, above, or below to stay inside the screen instead of covering the artwork.
@@ -196,4 +202,5 @@ All notable Roomcraft changes are recorded here. Deployment status is tracked se
 ## Recording future changes
 
 For each release, include the user-visible change, model migration if any, tested HA and browser versions, verification performed, deployment outcome, and rollback route.
+
 

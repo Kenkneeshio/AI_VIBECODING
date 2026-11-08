@@ -888,6 +888,24 @@ test('the entity menu includes live and disabled registry entities', () => {
   menu._close();
 });
 
+test('the entity menu exposes only verified official web portals', () => {
+  const menu = new EntityMenu();
+  menu.setConfig({ type: 'custom:roomcraft-entity-menu', roomcraft_menu: true,
+    bound_objects: [], sections: [] });
+  menu.hass = { states: {} };
+  menu._open();
+  const head = menu._portal.shadowRoot.children[2].children[0];
+  const portals = head.children.find(child => child.className === 'links portal-links');
+  assert.ok(portals);
+  assert.deepEqual(portals.children.map(link => [link.textContent, link.href]), [
+    ['Dreame', 'https://smarthome.dreame.tech/'],
+    ['Deco', 'http://tplinkdeco.net/'],
+  ]);
+  assert.equal(portals.children.every(link => link.target === '_blank'), true);
+  assert.equal(portals.children.every(link => link.rel === 'noopener noreferrer'), true);
+  menu._close();
+});
+
 test('the entity menu offers an accessible Run action for a live scene', () => {
   const menu = new EntityMenu();
   menu.setConfig({ type: 'custom:roomcraft-entity-menu', roomcraft_menu: true,
@@ -1106,3 +1124,4 @@ test('popup editor receives only its own same-origin dashboard response', async 
   assert.equal(replies[0].message.ok, true);
   assert.equal(replies[0].message.data.project.version, 2);
 });
+

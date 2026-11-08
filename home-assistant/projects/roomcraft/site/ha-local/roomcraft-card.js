@@ -989,7 +989,7 @@ class RoomcraftEntityMenu extends HTMLElement {
     const portal = document.createElement('div');
     const root = portal.attachShadow({ mode: 'open' });
     const style = document.createElement('style');
-    style.textContent = ':host{position:fixed;inset:0;z-index:10000;display:block;font:14px/1.4 system-ui,sans-serif;color:#ecf4ee}.scrim{position:absolute;inset:0;background:#071517b8}.drawer{position:absolute;top:0;bottom:0;left:0;width:min(620px,100vw);box-sizing:border-box;display:flex;flex-direction:column;background:#142a2c;box-shadow:12px 0 32px #0008}.head{padding:16px 18px 8px;border-bottom:1px solid #ffffff24}.title{display:flex;align-items:center;justify-content:space-between;gap:10px}.title strong{font-size:19px}.close{border:1px solid #a9cbc250;background:#294447;color:white;border-radius:9px;min-width:38px;min-height:38px;cursor:pointer}.links{display:flex;gap:12px;flex-wrap:wrap;margin:9px 0 12px}.links a{color:#ace5d5;text-decoration:none;font-weight:600}.detail-mode{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;box-sizing:border-box;margin:0 0 10px;padding:9px 11px;border:1px solid #87bcb0;border-radius:9px;background:#203b3d;color:#eef8f3;cursor:pointer;font:inherit;text-align:left}.detail-mode strong,.detail-mode small{display:block}.detail-mode small{margin-top:2px;color:#a9c9c0}.detail-mode .switch{flex:none;min-width:48px;padding:4px 7px;border-radius:999px;background:#596d6a;color:#fff;text-align:center;font-size:11px}.detail-mode[aria-pressed="true"]{border-color:#bfe9d8;background:#294d47}.detail-mode[aria-pressed="true"] .switch{background:#168b62}.search{box-sizing:border-box;width:100%;min-height:43px;border:1px solid #8ab3a9;border-radius:9px;background:#f4f9f6;color:#153032;padding:8px 11px;font:inherit}.sections{display:flex;gap:7px;overflow-x:auto;padding:10px 18px;border-bottom:1px solid #ffffff20}.section{flex:none;border:1px solid #799a90;border-radius:999px;background:transparent;color:#deebe5;padding:7px 11px;cursor:pointer;font:inherit}.section[aria-pressed="true"]{background:#bfe9d8;color:#15352d;border-color:#bfe9d8;font-weight:700}.summary{padding:8px 18px;color:#a9c9c0;font-size:12px}.rows{overflow:auto;flex:1;padding:0 12px 14px}.row{display:flex;align-items:center;gap:8px;margin:5px 0;border:1px solid #ffffff22;border-radius:10px;background:#203b3d}.detail{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:9px 11px;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer;font:inherit}.row-icon{flex:none;width:20px;height:20px;margin-left:8px;color:#bfe9d8}.name{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.meta{color:#a9c5bd;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}.state{flex:none;font-size:11px;color:#cde8df;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.toggle{flex:none;min-width:42px;min-height:38px;margin-right:5px;border:1px solid #87bcb0;border-radius:8px;background:#31594d;color:white;cursor:pointer}.toggle[disabled]{opacity:.45;cursor:default}.more{display:block;width:100%;margin:8px 0;padding:10px;border:1px solid #87bcb0;border-radius:8px;background:#31594d;color:white;cursor:pointer}.empty{padding:28px 10px;text-align:center;color:#b8d1c8}@media(max-width:540px){.head{padding:11px 12px 6px}.sections{padding:8px 12px}.rows{padding:0 8px 10px}.state{max-width:74px}}';
+    style.textContent = ':host{position:fixed;inset:0;z-index:10000;display:block;font:14px/1.4 system-ui,sans-serif;color:#ecf4ee}.scrim{position:absolute;inset:0;background:#071517b8}.drawer{position:absolute;top:0;bottom:0;left:0;width:min(620px,100vw);box-sizing:border-box;display:flex;flex-direction:column;background:#142a2c;box-shadow:12px 0 32px #0008}.head{padding:16px 18px 8px;border-bottom:1px solid #ffffff24}.title{display:flex;align-items:center;justify-content:space-between;gap:10px}.title strong{font-size:19px}.close{border:1px solid #a9cbc250;background:#294447;color:white;border-radius:9px;min-width:38px;min-height:38px;cursor:pointer}.links{display:flex;gap:12px;flex-wrap:wrap;margin:9px 0 5px}.links a{color:#ace5d5;text-decoration:none;font-weight:600}.portal-links{margin:0 0 12px;color:#8fb4aa;font-size:12px}.portal-links::before{content:"Device portals · ";color:#a9c9c0}.portal-links a{font-weight:600}.detail-mode{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;box-sizing:border-box;margin:0 0 10px;padding:9px 11px;border:1px solid #87bcb0;border-radius:9px;background:#203b3d;color:#eef8f3;cursor:pointer;font:inherit;text-align:left}.detail-mode strong,.detail-mode small{display:block}.detail-mode small{margin-top:2px;color:#a9c9c0}.detail-mode .switch{flex:none;min-width:48px;padding:4px 7px;border-radius:999px;background:#596d6a;color:#fff;text-align:center;font-size:11px}.detail-mode[aria-pressed="true"]{border-color:#bfe9d8;background:#294d47}.detail-mode[aria-pressed="true"] .switch{background:#168b62}.search{box-sizing:border-box;width:100%;min-height:43px;border:1px solid #8ab3a9;border-radius:9px;background:#f4f9f6;color:#153032;padding:8px 11px;font:inherit}.sections{display:flex;gap:7px;overflow-x:auto;padding:10px 18px;border-bottom:1px solid #ffffff20}.section{flex:none;border:1px solid #799a90;border-radius:999px;background:transparent;color:#deebe5;padding:7px 11px;cursor:pointer;font:inherit}.section[aria-pressed="true"]{background:#bfe9d8;color:#15352d;border-color:#bfe9d8;font-weight:700}.summary{padding:8px 18px;color:#a9c9c0;font-size:12px}.rows{overflow:auto;flex:1;padding:0 12px 14px}.row{display:flex;align-items:center;gap:8px;margin:5px 0;border:1px solid #ffffff22;border-radius:10px;background:#203b3d}.detail{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:9px 11px;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer;font:inherit}.row-icon{flex:none;width:20px;height:20px;margin-left:8px;color:#bfe9d8}.name{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.meta{color:#a9c5bd;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}.state{flex:none;font-size:11px;color:#cde8df;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.toggle{flex:none;min-width:42px;min-height:38px;margin-right:5px;border:1px solid #87bcb0;border-radius:8px;background:#31594d;color:white;cursor:pointer}.toggle[disabled]{opacity:.45;cursor:default}.more{display:block;width:100%;margin:8px 0;padding:10px;border:1px solid #87bcb0;border-radius:8px;background:#31594d;color:white;cursor:pointer}.empty{padding:28px 10px;text-align:center;color:#b8d1c8}@media(max-width:540px){.head{padding:11px 12px 6px}.sections{padding:8px 12px}.rows{padding:0 8px 10px}.state{max-width:74px}}';
     const scrim = document.createElement('div');
     scrim.className = 'scrim';
     scrim.addEventListener('click', () => this._close());
@@ -1022,6 +1022,20 @@ class RoomcraftEntityMenu extends HTMLElement {
       link.textContent = label;
       links.append(link);
     }
+    const portalLinks = document.createElement('nav');
+    portalLinks.className = 'links portal-links';
+    portalLinks.setAttribute('aria-label', 'Official device web portals');
+    for (const [label, href] of [
+      ['Dreame', 'https://smarthome.dreame.tech/'],
+      ['Deco', 'http://tplinkdeco.net/'],
+    ]) {
+      const link = document.createElement('a');
+      link.href = href;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = label;
+      portalLinks.append(link);
+    }
     const detailMode = document.createElement('button');
     detailMode.type = 'button';
     detailMode.className = 'detail-mode';
@@ -1041,7 +1055,7 @@ class RoomcraftEntityMenu extends HTMLElement {
     search.placeholder = 'Search every entity, room, or device';
     search.setAttribute('aria-label', 'Search devices and sensors');
     search.addEventListener('input', () => { this._limit = 80; this._renderRows(); });
-    head.append(title, links, detailMode, search);
+    head.append(title, links, portalLinks, detailMode, search);
     const sections = document.createElement('div');
     sections.className = 'sections';
     const summary = document.createElement('div');
@@ -1886,3 +1900,4 @@ if (!window.customCards.some(card => card.type === 'roomcraft-editor-card')) {
   window.customCards.push({ type: 'roomcraft-editor-card', name: 'Roomcraft Editor',
     description: 'Edit and publish the Second Floor layout using Home Assistant authentication.' });
 }
+
