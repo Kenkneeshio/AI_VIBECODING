@@ -17,8 +17,9 @@ Use lowercase names with hyphens.
 | Project | Purpose | Status |
 | --- | --- | --- |
 | [Roomcraft](roomcraft/README.md) | Active second-floor layout editor, illustrated plan, and Home Assistant dashboard transfer | Active on one installation; public source and manual |
+| [System Watchdog](system-watchdog/README.md) | Unified HA, integration, Roomcraft, sensor, Codex workstation, tablet, and tablet-app health | Active on one installation; HA view and five-minute Windows heartbeat |
 | [Tuya LAN migration](tuya-lan/README.md) | Move eligible, already-paired Tuya devices to direct Home Assistant LAN control | Three read-only LAN probes and one bulb imported; verification incomplete |
-| [Tablet ADB Keeper](tablet-adb-keeper/README.md) | Experimental Android boot helper for restoring Wireless debugging on a dedicated wall tablet | Buildable skeleton; device verification pending |
+| [Tablet ADB Keeper](tablet-adb-keeper/README.md) | Experimental Android boot helper for restoring Wireless debugging on a dedicated wall tablet | Installed with privileged setting verified; supervised reboot acceptance remains |
 | [ishioho](ishioho/README.md) | Historical four-theme control panel with contextual popups and searchable entity directory | Legacy prototype for the second-floor authoring workflow; source and tests preserved |
 
 The repository contains reusable source and examples, not live home configuration. Publishing changes does not deploy a dashboard.
@@ -33,3 +34,4 @@ Each project's README should explain:
 - Known limitations and tested versions.
 
 Add the project to the index in [the Home Assistant section](../README.md).
+

@@ -1015,7 +1015,7 @@ class RoomcraftEntityMenu extends HTMLElement {
     links.className = 'links';
     for (const [label, href] of [
       ['Live Home', '/second-floor/live'], ['Layout Studio', '/second-floor/studio'],
-      ['Main Dashboard', '/dashboard-dashboard/0'],
+      ['System Health', '/second-floor/health'], ['Main Dashboard', '/dashboard-dashboard/0'],
     ]) {
       const link = document.createElement('a');
       link.href = href;
@@ -1900,4 +1900,5 @@ if (!window.customCards.some(card => card.type === 'roomcraft-editor-card')) {
   window.customCards.push({ type: 'roomcraft-editor-card', name: 'Roomcraft Editor',
     description: 'Edit and publish the Second Floor layout using Home Assistant authentication.' });
 }
+
 

@@ -1,0 +1,9 @@
+scan_interval: 60
+stale_after: 600
+roomcraft_entities:
+  - light.example_room_lamp
+  - cover.example_room_blind
+sensor_entities:
+  - sensor.example_air_quality
+  - binary_sensor.example_leak
+
