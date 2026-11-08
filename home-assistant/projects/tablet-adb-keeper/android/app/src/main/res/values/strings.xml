@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tablet ADB Keeper</string>
+    <string name="explanation">Experimental, local-only boot helper. Enable only after the privileged permission is granted and while someone can recover the tablet physically.</string>
+    <string name="enable_restore">Enable restore on boot</string>
+    <string name="disable_restore">Disable restore on boot</string>
+    <string name="attempt_now">Attempt now</string>
+    <string name="open_developer_options">Open Developer options</string>
+    <string name="granted">granted</string>
+    <string name="missing">missing</string>
+    <string name="enabled">enabled</string>
+    <string name="disabled">disabled</string>
+    <string name="status_template">Privileged permission: %1$s\nRestore on boot: %2$s\nObserved wireless-debug setting: %3$d\n\nLast result:\n%4$s</string>
+</resources>

@@ -39,6 +39,7 @@ Choose the simplest project type that solves the actual problem. An automation o
 | --- | --- | --- |
 | [Roomcraft](projects/roomcraft/README.md) | Official second-floor layout editor with furnished illustration, editable walls/floors/objects, and dashboard transfer | Active on one installation; [illustrated manual](projects/roomcraft/docs/user-manual.md) |
 | [Tuya LAN migration](projects/tuya-lan/README.md) | Direct local control pilot for eligible, already-paired Tuya devices using HA entities | One bulb imported into `tuya-local`; control, recovery, and cloud-offline gates remain open |
+| [Tablet ADB Keeper](projects/tablet-adb-keeper/README.md) | Opt-in Android boot helper that attempts to restore Wireless debugging on a dedicated wall tablet | Experimental skeleton; privileged permission and target-device testing required |
 | [ishioho](projects/ishioho/README.md) | Four illustrated dashboard themes with room controls, searchable entities, camera popups, weather/moon display, and a room-level robot tracker | Legacy prototype for this layout workflow; source and tests preserved |
 
 ## Management approach
