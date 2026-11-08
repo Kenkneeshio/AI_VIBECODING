@@ -626,6 +626,7 @@ class RoomcraftObjectControl extends HTMLElement {
       this._detailsVisible = Boolean(event.detail?.visible);
       this._refreshDetailVisibility();
     };
+    this._onDetailResize = () => this._refreshDetailPosition();
   }
 
   setConfig(config) {
@@ -654,10 +655,12 @@ class RoomcraftObjectControl extends HTMLElement {
   set hass(value) { this._hass = value; this._refresh(); }
   connectedCallback() {
     window.addEventListener?.(DETAIL_VISIBILITY_EVENT, this._onDetailVisibility);
+    window.addEventListener?.('resize', this._onDetailResize);
     this._refreshDetailVisibility();
   }
   disconnectedCallback() {
     window.removeEventListener?.(DETAIL_VISIBILITY_EVENT, this._onDetailVisibility);
+    window.removeEventListener?.('resize', this._onDetailResize);
     clearTimeout(this._holdTimer);
     clearTimeout(this._feedbackTimer);
     this._button?.removeAttribute('data-feedback');
@@ -738,8 +741,12 @@ class RoomcraftObjectControl extends HTMLElement {
       .target[data-visual="fan"][data-state="unavailable"] .art{background:radial-gradient(ellipse at center,#293842e6 0 27%,#29384299 49%,transparent 76%);box-shadow:none}
       .hint{display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;color:#ecfff7;filter:drop-shadow(0 1px 3px #102a2a)}
       .target:hover .hint,.target:focus-visible .hint{display:block}
-      .detail-badge{display:none;position:absolute;left:50%;top:50%;z-index:4;transform:translate(-50%,-50%);box-sizing:border-box;width:max-content;min-width:112px;max-width:190px;padding:6px 8px;border:1px solid #dff9ef;border-radius:8px;background:#10272eed;color:#f4fff9;box-shadow:0 3px 12px #07171db8;pointer-events:none;text-align:left;font:600 10px/1.25 system-ui,sans-serif}
+      .detail-badge{display:none;position:absolute;z-index:20;box-sizing:border-box;width:max-content;min-width:112px;max-width:190px;padding:6px 8px;border:1px solid #dff9ef;border-radius:8px;background:#10272ef2;color:#f4fff9;box-shadow:0 3px 12px #07171db8;pointer-events:none;text-align:left;font:600 10px/1.25 system-ui,sans-serif}
       :host([data-show-details="true"]) .detail-badge{display:block}
+      :host([data-detail-side="right"]) .detail-badge{left:calc(100% + 7px);top:50%;transform:translateY(-50%)}
+      :host([data-detail-side="left"]) .detail-badge{right:calc(100% + 7px);top:50%;transform:translateY(-50%)}
+      :host([data-detail-side="top"]) .detail-badge{left:50%;bottom:calc(100% + 7px);transform:translateX(-50%)}
+      :host([data-detail-side="bottom"]) .detail-badge{left:50%;top:calc(100% + 7px);transform:translateX(-50%)}
       .detail-name,.detail-entity{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       .detail-name{font-size:11px}.detail-state{display:inline-block;margin-top:3px;padding:1px 5px;border-radius:999px;background:#57716d;color:#fff;text-transform:capitalize}
       .detail-state[data-state="on"]{background:#168b62}.detail-state[data-state="off"]{background:#485b65}.detail-state[data-state="ready"]{background:#7c6433}.detail-state[data-state="unavailable"]{background:#8a4b45}
@@ -850,6 +857,20 @@ class RoomcraftObjectControl extends HTMLElement {
   _refreshDetailVisibility() {
     this.setAttribute('data-show-details', String(this._detailsVisible));
     this._detail?.setAttribute('aria-hidden', String(!this._detailsVisible));
+    this._refreshDetailPosition();
+  }
+
+  _refreshDetailPosition() {
+    if (!this._detailsVisible || typeof this.getBoundingClientRect !== 'function') return;
+    const rect = this.getBoundingClientRect();
+    const width = Number(window.innerWidth) || document.documentElement?.clientWidth || 0;
+    const height = Number(window.innerHeight) || document.documentElement?.clientHeight || 0;
+    const space = 200;
+    const side = !width || rect.right + space <= width ? 'right'
+      : rect.left >= space ? 'left'
+      : rect.top >= 86 ? 'top'
+      : rect.bottom + 86 <= height ? 'bottom' : 'right';
+    this.setAttribute('data-detail-side', side);
   }
 
   _actionFor(kind) {
@@ -1261,6 +1282,7 @@ class RoomcraftCameraThumbnail extends HTMLElement {
       this._detailsVisible = Boolean(event.detail?.visible);
       this._refreshDetailVisibility();
     };
+    this._onDetailResize = () => this._refreshDetailPosition();
   }
 
   setConfig(config) {
@@ -1296,12 +1318,14 @@ class RoomcraftCameraThumbnail extends HTMLElement {
 
   connectedCallback() {
     window.addEventListener?.(DETAIL_VISIBILITY_EVENT, this._onDetailVisibility);
+    window.addEventListener?.('resize', this._onDetailResize);
     this._refreshDetailVisibility();
     this._refresh();
   }
 
   disconnectedCallback() {
     window.removeEventListener?.(DETAIL_VISIBILITY_EVENT, this._onDetailVisibility);
+    window.removeEventListener?.('resize', this._onDetailResize);
     ++this._requestSerial;
     clearTimeout(this._holdTimer);
     clearTimeout(this._turnOnTimer);
@@ -1312,7 +1336,7 @@ class RoomcraftCameraThumbnail extends HTMLElement {
 
   _build() {
     const style = document.createElement('style');
-    style.textContent = ':host{display:block;box-sizing:border-box;min-width:40px;min-height:40px}.frame{box-sizing:border-box;display:block;position:relative;width:100%;height:100%;min-height:40px;overflow:hidden;padding:0;border:2px solid #e4ebdf;border-radius:9px;background:#182a2c;color:#fff;box-shadow:0 4px 15px #1118;cursor:pointer;font:inherit;text-align:left}.frame:active{filter:brightness(1.18);transform:scale(.985)}.media,.still,.live{position:absolute;inset:0;width:100%;height:100%}.still{object-fit:cover}.live{display:block;overflow:hidden;opacity:0;pointer-events:none}.veil{position:absolute;inset:0;background:linear-gradient(#0008,transparent 36%,transparent 62%,#000a);pointer-events:none}.head,.foot{position:absolute;left:7px;right:7px;z-index:2;font:600 10px/1.2 system-ui,sans-serif;text-shadow:0 1px 3px #000}.head{top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.foot{bottom:6px}.detail-entity{display:none;position:absolute;left:7px;right:7px;top:22px;z-index:3;overflow:hidden;padding:3px 5px;border:1px solid #dff9ef;border-radius:5px;background:#10272ee8;color:#c8e8df;text-overflow:ellipsis;white-space:nowrap;font:500 8px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;text-shadow:0 1px 2px #000}.frame[data-show-details="true"] .detail-entity{display:block}.message{position:absolute;inset:25px 7px 20px;display:flex;align-items:center;justify-content:center;text-align:center;color:#e1e9e3;font:500 10px/1.2 system-ui,sans-serif}.still[hidden],.message[hidden]{display:none}';
+    style.textContent = ':host{display:block;box-sizing:border-box;min-width:40px;min-height:40px}.frame{box-sizing:border-box;display:block;position:relative;width:100%;height:100%;min-height:40px;overflow:hidden;padding:0;border:2px solid #e4ebdf;border-radius:9px;background:#182a2c;color:#fff;box-shadow:0 4px 15px #1118;cursor:pointer;font:inherit;text-align:left}.frame:active{filter:brightness(1.18);transform:scale(.985)}.media,.still,.live{position:absolute;inset:0;width:100%;height:100%}.still{object-fit:cover}.live{display:block;overflow:hidden;opacity:0;pointer-events:none}.veil{position:absolute;inset:0;background:linear-gradient(#0008,transparent 36%,transparent 62%,#000a);pointer-events:none}.head,.foot{position:absolute;left:7px;right:7px;z-index:2;font:600 10px/1.2 system-ui,sans-serif;text-shadow:0 1px 3px #000}.head{top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.foot{bottom:6px}.detail-entity{display:none;position:absolute;z-index:20;box-sizing:border-box;width:max-content;max-width:190px;overflow:hidden;padding:5px 7px;border:1px solid #dff9ef;border-radius:7px;background:#10272ef2;color:#c8e8df;box-shadow:0 3px 12px #07171db8;text-overflow:ellipsis;white-space:nowrap;pointer-events:none;font:500 8px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;text-shadow:0 1px 2px #000}:host([data-show-details="true"]) .detail-entity{display:block}:host([data-detail-side="right"]) .detail-entity{left:calc(100% + 7px);top:50%;transform:translateY(-50%)}:host([data-detail-side="left"]) .detail-entity{right:calc(100% + 7px);top:50%;transform:translateY(-50%)}:host([data-detail-side="top"]) .detail-entity{left:50%;bottom:calc(100% + 7px);transform:translateX(-50%)}:host([data-detail-side="bottom"]) .detail-entity{left:50%;top:calc(100% + 7px);transform:translateX(-50%)}.message{position:absolute;inset:25px 7px 20px;display:flex;align-items:center;justify-content:center;text-align:center;color:#e1e9e3;font:500 10px/1.2 system-ui,sans-serif}.still[hidden],.message[hidden]{display:none}';
     const frame = document.createElement('button');
     frame.type = 'button';
     frame.className = 'frame';
@@ -1366,8 +1390,8 @@ class RoomcraftCameraThumbnail extends HTMLElement {
     const message = document.createElement('div');
     message.className = 'message';
     media.append(still);
-    frame.append(media, veil, name, detailEntity, foot, message);
-    this.shadowRoot.append(style, frame);
+    frame.append(media, veil, name, foot, message);
+    this.shadowRoot.append(style, frame, detailEntity);
     this._frame = frame;
     this._media = media;
     this._still = still;
@@ -1379,7 +1403,21 @@ class RoomcraftCameraThumbnail extends HTMLElement {
   }
 
   _refreshDetailVisibility() {
-    this._frame?.setAttribute('data-show-details', String(this._detailsVisible));
+    this.setAttribute('data-show-details', String(this._detailsVisible));
+    this._refreshDetailPosition();
+  }
+
+  _refreshDetailPosition() {
+    if (!this._detailsVisible || typeof this.getBoundingClientRect !== 'function') return;
+    const rect = this.getBoundingClientRect();
+    const width = Number(window.innerWidth) || document.documentElement?.clientWidth || 0;
+    const height = Number(window.innerHeight) || document.documentElement?.clientHeight || 0;
+    const space = 200;
+    const side = !width || rect.right + space <= width ? 'right'
+      : rect.left >= space ? 'left'
+      : rect.top >= 86 ? 'top'
+      : rect.bottom + 86 <= height ? 'bottom' : 'right';
+    this.setAttribute('data-detail-side', side);
   }
 
   _openDetails() {

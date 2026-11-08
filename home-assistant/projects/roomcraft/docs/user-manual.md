@@ -74,7 +74,7 @@ After changing a wall, check its adjoining floor polygon and any nearby window o
 
 The plan's markers represent Home Assistant controls. Select a marker to change its title, entity ID, location percentage, tap action, or hold action. The Inspector accepts an entity ID in `domain.object_id` form, such as `light.example_living_room`.
 
-On the live **Floor Plan**, open the top-left device menu and use **Show object details on plan** when identifying controls or troubleshooting a binding. Each interactive object temporarily shows its label, current HA state, and entity ID; camera tiles show their bound camera entity alongside their existing name and stream/event status. Turn the option off to restore the clean illustrated view. The choice is remembered separately by each browser or tablet and does not change the saved layout.
+On the live **Floor Plan**, open the top-left device menu and use **Show object details on plan** when identifying controls or troubleshooting a binding. A compact card appears next to each interactive object with its label, current HA state, and entity ID; camera tiles show their bound camera entity beside the frame. The cards automatically choose the side with available screen space and do not cover the object itself. Turn the option off to restore the clean illustrated view. The choice is remembered separately by each browser or tablet and does not change the saved layout.
 
 ### Make a lamp or fan a live control
 

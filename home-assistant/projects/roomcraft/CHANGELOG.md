@@ -2,7 +2,7 @@
 
 ## 2026-11-08 — Optional on-plan device details
 
-- Added **Show object details on plan** to the authenticated device menu. It reveals compact overlays on every Roomcraft object control with its label, current HA state, and entity ID; camera tiles reveal their bound camera entity beneath the existing name/status.
+- Added **Show object details on plan** to the authenticated device menu. It reveals compact cards beside every Roomcraft object control with its label, current HA state, and entity ID; camera tiles show their bound camera entity in a neighboring card. Cards automatically move left, right, above, or below to stay inside the screen instead of covering the artwork.
 - The plan remains label-free by default. The preference persists only in that browser/tablet and does not modify the editable layout or dashboard bindings.
 - Added regression coverage for enabling, persisting, and disabling the detail overlays without changing object actions.
 

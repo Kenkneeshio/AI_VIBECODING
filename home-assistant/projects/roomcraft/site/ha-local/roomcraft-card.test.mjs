@@ -643,7 +643,7 @@ test('the dashboard menu toggles live object and camera details without changing
 
   assert.equal(menu._detailToggle.attributes['aria-pressed'], 'false');
   assert.equal(object.attributes['data-show-details'], 'false');
-  assert.equal(camera._frame.attributes['data-show-details'], 'false');
+  assert.equal(camera.attributes['data-show-details'], 'false');
   menu._detailToggle.listeners.click();
   assert.equal(menu._detailToggle.attributes['aria-pressed'], 'true');
   assert.equal(menu._detailSwitch.textContent, 'ON');
@@ -651,15 +651,37 @@ test('the dashboard menu toggles live object and camera details without changing
   assert.equal(object._detailName.textContent, 'Study lamp');
   assert.equal(object._detailState.textContent, 'on');
   assert.equal(object._detailEntity.textContent, 'light.study');
-  assert.equal(camera._frame.attributes['data-show-details'], 'true');
+  assert.equal(camera.attributes['data-show-details'], 'true');
   assert.equal(camera._detailEntity.textContent, 'camera.garage');
 
   menu._detailToggle.listeners.click();
   assert.equal(object.attributes['data-show-details'], 'false');
-  assert.equal(camera._frame.attributes['data-show-details'], 'false');
+  assert.equal(camera.attributes['data-show-details'], 'false');
   menu.disconnectedCallback();
   camera.disconnectedCallback();
   object.disconnectedCallback();
+});
+
+test('detail cards are positioned beside objects and move inward near the right edge', () => {
+  const object = new ObjectControl();
+  object.getBoundingClientRect = () => ({ left: 900, right: 980, top: 200, bottom: 280 });
+  context.window.innerWidth = 1024;
+  context.window.innerHeight = 600;
+  object.setConfig({ entity: 'switch.air_filter', title: 'Air filter' });
+  object.connectedCallback();
+  const menu = new EntityMenu();
+  menu.setConfig({ type: 'custom:roomcraft-entity-menu', roomcraft_menu: true, sections: [] });
+  menu.connectedCallback();
+  menu._open();
+  menu._detailToggle.listeners.click();
+  assert.equal(object.attributes['data-detail-side'], 'left');
+  assert.match(object.shadowRoot.children[0].textContent, /left:calc\(100% \+ 7px\)/);
+  assert.match(object.shadowRoot.children[0].textContent, /right:calc\(100% \+ 7px\)/);
+  menu._detailToggle.listeners.click();
+  menu.disconnectedCallback();
+  object.disconnectedCallback();
+  delete context.window.innerWidth;
+  delete context.window.innerHeight;
 });
 
 test('a bound table lamp shades only its small lamp head and follows the light switch', () => {
