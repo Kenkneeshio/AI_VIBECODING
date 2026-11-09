@@ -47,6 +47,17 @@
     'bath-one':[['r',1020,681,73,117,8]],
     'bath-two':[['r',1195,755,202,44,5]]
   };
+  // These source-only details are not represented by movable project items.
+  // They are composited above the clean shell as transparent cutouts. Large
+  // sofa/bed regions are intentionally excluded: their rugs have dedicated
+  // layers and the furniture itself is drawn from project.items.
+  const fixedLayerDecor = {
+    great:[['r',695,672,106,127,5]],
+    study:fixedDecor.study,
+    bedroom:[['r',1403,449,80,103,8],['r',1395,197,75,92,8],['r',1143,352,52,122,5]],
+    'bath-one':fixedDecor['bath-one'],
+    'bath-two':fixedDecor['bath-two']
+  };
   const fixedExteriorWalls=new Set(['w1','w2','w3','w4','w5','w6','w7','w8','w9','w10','w11','w12']);
   let cacheImage = null, cacheShell = null;
   const sprites = new Map(), repairs = new Map(), masks = new Map(), paintMasks = new Map(), decorSpecs = new Map(), wallPaintMasks = new Map(), floorLayers = new Map();
@@ -148,10 +159,9 @@
     return c.createPattern(tile,'repeat');
   }
   function paintRoom(c,room,starter,project,images) {
-    const itemState=starter.items.map(i=>sameVisual(i,project.items.find(o=>o.id===i.id))?'1':'0').join('');
     const wallState=project.walls.map(w=>`${w.id}:${w.x1},${w.y1},${w.x2},${w.y2}`).join('|');
     const innerGeometry=room.id==='great'?JSON.stringify(project.rooms.filter(r=>r.id!=='great').map(r=>[r.id,r.points])):'';
-    const key=`${room.id}|${room.surface}|${JSON.stringify(room.points)}|${innerGeometry}|${itemState}|${wallState}`;
+    const key=`${room.id}|${room.surface}|${JSON.stringify(room.points)}|${innerGeometry}|${wallState}`;
     if(floorLayers.has(key)){c.drawImage(floorLayers.get(key),0,0);return;}
     const layer=makeCanvas(W,H),p=layer.getContext('2d');
     const fill=floorPattern(p,room.surface,images.shell);
@@ -166,14 +176,11 @@
     }
     p.stroke();
     p.restore();
-    const currentById=new Map(project.items.map(i=>[i.id,i]));
     const wallsById=new Map(project.walls.map(w=>[w.id,w]));
     p.globalCompositeOperation='destination-out';p.fillStyle='#fff';
     // The open-area polygon encloses the house footprint. Cut out every
     // enclosed room so painting it cannot overwrite their distinct floors.
     if(room.id==='great')for(const other of project.rooms){if(other.id===room.id)continue;pathRoom(p,other.points);p.fill();}
-    for(const base of starter.items){if(!sameVisual(base,currentById.get(base.id)))continue;const spec=specs[base.id];if(spec)p.drawImage(maskForPaint(spec,images.original,images.shell),spec.box[0],spec.box[1]);}
-    for(const shape of fixedDecor[room.id]||[]){const d=decorMask(shape,room.id,images.original,images.shell);p.drawImage(d.mask,d.x,d.y);}
     for(const base of starter.walls){if(!sameWall(base,wallsById.get(base.id)))continue;p.beginPath();p.lineCap='square';p.lineWidth=35;p.moveTo(base.x1,base.y1);p.lineTo(base.x2,base.y2);p.stroke();}
     if(floorLayers.size>8)floorLayers.clear();floorLayers.set(key,layer);
     c.drawImage(layer,0,0);
@@ -252,10 +259,6 @@
     c.restore();
   }
   function repairItem(c,id,original,shell) {
-    if((id==='i3'||id==='i4')&&ready(shell)){
-      const [x,y,w,h]=specs[id].box;
-      c.save();c.fillStyle=floorPattern(c,id==='i3'?'oak':'walnut',shell);c.fillRect(x,y,w,h);c.restore();return;
-    }
     if(id==='i14'&&ready(original)){
       // The lamp sits on a baked bedside table. Removing its pixels from the
       // empty shell would also punch a hole through the table. Clone a clean
@@ -273,7 +276,7 @@
     // The source bedroom-lamp crop also contains a few high-contrast pixels
     // from the bedside furniture. Reusing it for movable lamps produces a
     // false black "button" beside every fixture. Draw clean lamp art instead.
-    if(item.type==='lamp'||item.type==='table'||item.type==='desk'){fallback(item);return;}
+    if(item.type==='lamp'){fallback(item);return;}
     if(item.type==='window'){
       drawGlazedWindow(c,item.x,item.y,item.w,item.h,item.rotation||0);
       return;
@@ -307,6 +310,22 @@
     if(!bedroomRugImage.complete||!bedroomRugImage.naturalWidth)return;
     c.drawImage(bedroomRugImage,85,80,1010,1160,1200,297,215,223);
   }
+  function drawFixedDecor(c,original,shell){
+    if(typeof document==='undefined'||!ready(original)||!ready(shell))return;
+    for(const [roomId,shapes] of Object.entries(fixedLayerDecor))for(const shape of shapes){
+      const d=decorMask(shape,roomId,original,shell),[,,w,h]=shape;
+      const patch=makeCanvas(w,h),p=patch.getContext('2d');
+      p.drawImage(original,d.x,d.y,w,h,0,0,w,h);
+      p.globalCompositeOperation='destination-in';p.drawImage(d.mask,0,0);
+      // The bedside table belongs to the fixed room layer, but its lamp is a
+      // separate editable/live object. Remove only that lamp from the crop.
+      if(roomId==='bedroom'&&shape[1]===1403&&shape[2]===449){
+        p.globalCompositeOperation='destination-out';
+        p.drawImage(maskFor(specs.i14),specs.i14.box[0]-d.x,specs.i14.box[1]-d.y);
+      }
+      c.drawImage(patch,d.x,d.y);
+    }
+  }
   function waitForImage(image,src){
     if(src&&!image.src)image.src=src;
     if(image.complete&&image.naturalWidth)return Promise.resolve();
@@ -316,30 +335,27 @@
     });
   }
   function prepareExport(project,starter,images){
-    const tasks=[waitForImage(images.original),waitForImage(images.shell),waitForImage(images.wallFree)];
-    const sofa=starter.items.find(i=>i.id==='i1'),current=project.items.find(i=>i.id==='i1');
-    if(project.items.some(i=>i.type==='rug')||!sameVisual(sofa,current))tasks.push(waitForImage(rugImage,'assets/rug-sprite.png'));
-    const bed=starter.items.find(i=>i.id==='i6'),currentBed=project.items.find(i=>i.id==='i6');
-    if(!sameVisual(bed,currentBed))tasks.push(waitForImage(bedroomRugImage,'assets/bedroom-rug-sprite.png'));
+    const tasks=[waitForImage(images.original),waitForImage(images.shell),waitForImage(images.wallFree),
+      waitForImage(rugImage,'assets/rug-sprite.png'),waitForImage(bedroomRugImage,'assets/bedroom-rug-sprite.png')];
     for(const id of ['terrazzo','sage'])if(project.rooms.some(r=>r.surface===id))tasks.push(waitForImage(extraTextures[id],`assets/${id}-tile.png`));
     return Promise.all(tasks);
   }
   function draw(c,project,starter,images,fallback) {
     const {original,shell,wallFree}=images;
     if(!ready(original))return false;
-    c.drawImage(original,0,0,W,H);
-    if(!ready(shell))return true;
+    if(!ready(shell)){c.drawImage(original,0,0,W,H);return true;}
+    // The empty shell is the canonical background. Floors and walls are never
+    // repaired with furniture-sized rectangles; every object is a separate
+    // transparent layer above this seamless base.
+    c.drawImage(shell,0,0,W,H);
     const baseById=new Map(starter.items.map(i=>[i.id,i]));
     const currentById=new Map(project.items.map(i=>[i.id,i]));
-    const cleanRedrawIds=new Set(['i3','i4','i5','i13']);
     const currentWalls=new Map(project.walls.map(w=>[w.id,w]));
     for(const base of starter.walls)if(!sameWall(base,currentWalls.get(base.id)))repairWall(c,base,wallFree);
-    for(const base of starter.items){const now=currentById.get(base.id);if(cleanRedrawIds.has(base.id)||!sameVisual(base,now))repairItem(c,base.id,original,shell);}
     const starterRooms=new Map(starter.rooms.map(r=>[r.id,r]));
     for(const room of project.rooms)if(!sameRoom(room,starterRooms.get(room.id)))paintRoom(c,room,starter,project,images);
-    if(!sameVisual(starter.items.find(i=>i.id==='i1'),currentById.get('i1')))drawLivingRug(c);
-    if(!sameVisual(starter.items.find(i=>i.id==='i6'),currentById.get('i6')))drawBedroomRug(c);
-    const changed=project.items.filter(item=>cleanRedrawIds.has(item.id)||!sameVisual(item,baseById.get(item.id)));
+    drawLivingRug(c);drawBedroomRug(c);drawFixedDecor(c,original,shell);
+    const changed=project.items;
     const isFloorLayer=item=>item.type==='rug'||['playMat','floorMat'].includes(window.RoomcraftInventory?.byType?.[item.type]?.artFamily);
     const isCeilingLayer=item=>item.type==='ceilingLight'||item.type==='pendantLight'||window.RoomcraftInventory?.byType?.[item.type]?.artFamily==='ceilingFan';
     const floorItems=changed.filter(isFloorLayer);

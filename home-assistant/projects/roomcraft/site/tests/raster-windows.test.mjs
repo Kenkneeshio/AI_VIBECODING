@@ -33,14 +33,14 @@ function recordingCanvas() {
   return context;
 }
 
-test('fixed exterior windows are subdued top-down glazing, not restored cyan shell crops', () => {
+test('the seamless empty shell is the floor layer beneath subdued exterior glazing', () => {
   const raster = renderer();
   const canvas = recordingCanvas();
   const original = { name: 'original', complete: true, naturalWidth: 1536 };
   const shell = { name: 'shell', complete: true, naturalWidth: 1536 };
   const plan = { items: [], walls: [], rooms: [] };
   assert.equal(raster.draw(canvas, plan, plan, { original, shell }, () => {}), true);
-  assert.deepEqual(canvas.operations.filter(([kind]) => kind === 'image'), [['image', 'original']]);
+  assert.deepEqual(canvas.operations.filter(([kind]) => kind === 'image'), [['image', 'shell']]);
   const positions = canvas.operations.filter(([kind]) => kind === 'translate')
     .map(([, x, y]) => [x, y]);
   assert.deepEqual(positions, [

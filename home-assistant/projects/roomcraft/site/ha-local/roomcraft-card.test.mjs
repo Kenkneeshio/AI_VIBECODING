@@ -811,10 +811,10 @@ test('a bound table lamp shades only its small lamp head and follows the light s
   const css = object.shadowRoot.children[0].textContent;
   assert.match(css, /\.target\{[^}]*background:transparent[^}]*appearance:none[^}]*-webkit-appearance:none/);
   assert.doesNotMatch(css, /\.hint\{/);
-  assert.match(css, /\[data-form="table_lamp"\] \.art\{[^}]*height:38%/);
-  assert.match(css, /\[data-form="table_lamp"\]\[data-state="off"\] \.art\{[^}]*linear-gradient/);
+  assert.match(css, /\[data-form="table_lamp"\] \.art\{[^}]*height:46%/);
+  assert.match(css, /\[data-form="table_lamp"\]\[data-state="off"\] \.art\{[^}]*radial-gradient/);
   assert.match(css, /\[data-form="table_lamp"\]\[data-state="off"\] \.art\{[^}]*backdrop-filter:none/);
-  assert.match(css, /\[data-form="table_lamp"\]\[data-state="on"\] \.art\{[^}]*0 0 6px 2px/);
+  assert.match(css, /\[data-form="table_lamp"\]\[data-state="on"\] \.art\{[^}]*0 0 7px 2px/);
   object.hass = { states: { 'light.office': { state: 'off' } } };
   assert.equal(object._button.attributes['data-form'], 'table_lamp');
   assert.equal(object._button.attributes['data-state'], 'off');

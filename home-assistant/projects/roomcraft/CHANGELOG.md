@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-09 — Seamless floor and furniture layer correction
+
+- Replaced furniture-sized floor repairs with a true layer stack: the clean architectural shell supplies uninterrupted room floors, room-wide surface changes paint beneath objects, and rugs, fixed cabinetry, movable furniture, live controls, walls, and windows render in separate ordered layers.
+- Restored the high-detail reference dining set and office furniture as transparent source-art cutouts. The dining table retains all four chairs; moving or redrawing either furniture group no longer creates rectangular floor patches or translucent copies.
+- Refined the live table-lamp form into a smaller circular shade with a distinct stem and base, warmer on-state lighting, neutral off-state materials, and the existing truthful state/4-pixel indicator behavior.
+- Cache-busted the layered renderer, installed it after a private dashboard backup, exported the current project, and verified the actual 1920 × 1080 wall-tablet result. The oak, walnut, ash, ivory, and blue room surfaces remain continuous; no physical device was operated for QA.
+
 ## 2026-11-09 — Clean furniture, movable dashboard interface, and state dots
 
 - Replaced the source-PNG dining-table and office-desk crops with clean perspective-aware vector furniture. The dining set now has four chairs, including both near/bottom chairs; the office desk is a true L shape. Moving or resizing either object no longer carries neighboring floor pixels or produces ghost copies.

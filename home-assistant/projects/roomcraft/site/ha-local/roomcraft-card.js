@@ -751,17 +751,17 @@ class RoomcraftObjectControl extends HTMLElement {
         background:radial-gradient(circle at 40% 35%,#fff 0 10%,#fff4c8 11% 34%,#d8b56f 35% 48%,#7c6547 49% 57%,#ffd56b40 58% 72%,transparent 74%);
         box-shadow:0 0 11px 5px #ffd865a6,0 0 23px 11px #ffd86562}
       .target[data-visual="light"][data-form="table_lamp"] .art{
-        inset:21% 28% auto;height:38%;border-radius:48% 48% 34% 34%;
+        inset:18% 27% auto;height:46%;border-radius:50%;
         transition:background .18s,box-shadow .18s,backdrop-filter .18s}
-      .target[data-visual="light"][data-form="table_lamp"] .art::before{content:"";position:absolute;left:46%;top:72%;width:8%;height:76%;border-radius:4px;background:#756451;box-shadow:0 1px 1px #1a232777}
-      .target[data-visual="light"][data-form="table_lamp"] .art::after{content:"";position:absolute;left:24%;top:137%;width:52%;height:14%;border-radius:50%;background:#665747;box-shadow:0 2px 2px #15202773}
+      .target[data-visual="light"][data-form="table_lamp"] .art::before{content:"";position:absolute;left:46%;top:78%;width:8%;height:59%;border-radius:4px;background:linear-gradient(90deg,#5a4b3e,#aa9475 46%,#6d5b49);box-shadow:1px 1px 2px #1a232777}
+      .target[data-visual="light"][data-form="table_lamp"] .art::after{content:"";position:absolute;left:28%;top:126%;width:44%;height:17%;border-radius:50%;background:radial-gradient(ellipse at 40% 30%,#a69376,#5d4d40 72%);box-shadow:0 2px 3px #15202773}
       .target[data-visual="light"][data-form="table_lamp"][data-state="off"] .art{
-        background:linear-gradient(165deg,#f5ead2 0 18%,#cdb58c 19% 68%,#77644d 69% 82%,transparent 83%),linear-gradient(90deg,transparent 44%,#7b6b59 45% 55%,transparent 56%);
-        backdrop-filter:none;box-shadow:0 2px 3px #15202773}
+        background:radial-gradient(circle at 34% 28%,#fffaf0 0 8%,#eadbbf 9% 35%,#c4aa81 59%,#806a50 78%,#594b40 83%,transparent 86%);
+        backdrop-filter:none;box-shadow:0 3px 4px #15202773,inset 0 0 0 1px #f5e9d0}
       .target[data-visual="light"][data-form="table_lamp"][data-state="on"] .art{
-        background:linear-gradient(165deg,#fff9e9 0 18%,#ffe4a4 19% 68%,#bc8849 69% 82%,transparent 83%),radial-gradient(ellipse at 50% 70%,#ffd97890 0 28%,transparent 70%);
+        background:radial-gradient(circle at 34% 28%,#fff 0 9%,#fff5d0 10% 36%,#ffd982 58%,#c48c48 78%,#725338 83%,transparent 86%);
         backdrop-filter:none;
-        box-shadow:0 0 6px 2px #ffd46b9c,0 0 12px 5px #ffd46b59,inset 0 0 0 1px #fff5d4}
+        box-shadow:0 0 7px 2px #ffd46bad,0 0 15px 6px #ffd46b66,inset 0 0 0 1px #fffdf0}
       .target[data-visual="light"][data-form="table_lamp"][data-state="on"] .art::before{background:#b69560}.target[data-visual="light"][data-form="table_lamp"][data-state="on"] .art::after{background:#9c7848}
       .target[data-visual="fan"] .art{inset:0;border-radius:0;background:radial-gradient(ellipse at center,#172630e8 0 26%,#172630a6 49%,transparent 76%);backdrop-filter:none;box-shadow:none}
       .target[data-visual="fan"][data-state="on"] .art{background:radial-gradient(ellipse at center,#22303ad9 0 27%,#263c468c 48%,transparent 76%);backdrop-filter:none;box-shadow:none}

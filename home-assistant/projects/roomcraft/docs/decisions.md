@@ -230,6 +230,14 @@
 
 **Consequence:** Runtime adapters use private entity bindings and explicit stale/unavailable states. A generic vacuum affine transform is now supported and the private project has a calibration; future work should add graphical calibration and map-identity validation.
 
+## 2026-11-09 — Floors are canonical background layers
+
+**Decision:** Render the clean architectural shell first, then room-wide floor replacements, rugs and fixed decor, movable furniture, live controls, walls, and windows. Never erase baked furniture with a furniture-sized texture rectangle.
+
+**Reason:** Local patches cannot preserve plank continuity, lighting, or room-wide perspective and remain visible even when their texture is similar. A clean shell plus transparent object cutouts gives every room one continuous floor and keeps furniture independently editable.
+
+**Consequence:** Source-backed furniture must be extracted against `empty-shell.png`; new non-movable room details need an explicit transparent fixed-decor layer. Tests must assert that the shell—not the furnished reference—is the renderer's base image.
+
 ## 2026-10-31 — In-page confirmation for destructive edits
 
 **Decision:** Use an editor-owned confirmation dialog for reset and dashboard overwrite actions, and keep the top Export menu operable during dashboard transfer.
