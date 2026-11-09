@@ -150,8 +150,9 @@ export function objectControlElements(items: unknown): JsonObject[] {
         control_icon: item.controlIcon || "",
         control_zone: item.type === "controlZone",
         roomcraft_visual_kind: visualKind,
-        ...(visualKind === "light" && ["lamp", "tableLamp"].includes(String(item.type)) ?
-          { roomcraft_light_form: "table_lamp" } : {}),
+        ...(visualKind === "light" ? { roomcraft_light_form: "table_lamp" } : {}),
+        ...(visualKind === "device" && item.type === "humidifier" ? { roomcraft_device_form: "humidifier" } : {}),
+        ...(visualKind === "device" && item.type === "airPurifier" ? { roomcraft_device_form: "air_purifier" } : {}),
         ...(visualKind === "window" ? { roomcraft_window_axis: Number(item.w) < Number(item.h) ? "vertical" : "horizontal" } : {}),
         roomcraft_tap_action: item.tapAction || "auto",
         roomcraft_hold_action: item.holdAction || "auto",

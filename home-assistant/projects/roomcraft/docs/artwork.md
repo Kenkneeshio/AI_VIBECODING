@@ -37,5 +37,7 @@ The static artwork stays neutral. Home Assistant draws bright, dark, or unknown 
 
 The public graphics show a fictionalized floor plan and are documentation/reference art. Do not add live camera frames, exact vacuum maps, household photos, or private access URLs to this folder.
 
+Moving bound fan and robot art is visible in Design mode but intentionally absent from the clean exported PNG. Home Assistant supplies one live rotor and one calibrated robot overlay, preventing a frozen duplicate. Stateful lights share a compact table-lamp head treatment while retaining their authored lamp/fixture silhouettes. Humidifier and air-purifier sprites are separate perspective-aware catalog objects; their mist/airflow is a runtime overlay, not baked art.
+
 The [live-binding workflow diagram](images/live-binding-flow.svg) uses fictional `example_*` entity IDs and a drawn camera placeholder. The [camera-state diagram](images/camera-state-flow.svg) shows a dated front-door still, idle garage preview, connecting state, and decoded live state. These vector manual graphics contain no device image, stream URL, or installed entity inventory.
 

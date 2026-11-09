@@ -66,6 +66,8 @@
     { type: 'tableLamp', label: 'Table lamp', icon: '◌', w: 48, h: 52, group: 'lighting' },
     { type: 'wallSconce', label: 'Wall sconce', icon: '◖', w: 34, h: 48, group: 'lighting' },
     { type: 'thermostat', label: 'Wall thermostat / AC', icon: '◴', w: 48, h: 54, group: 'systems', mount: 'wall', visualKind: 'climate' },
+    { type: 'humidifier', label: 'Floor humidifier', icon: '♨', w: 46, h: 58, group: 'systems', visualKind: 'device' },
+    { type: 'airPurifier', label: 'Air purifier', icon: '≋', w: 48, h: 62, group: 'systems', visualKind: 'device' },
     { type: 'windowFan', label: 'Window fan', icon: '✣', w: 46, h: 46, group: 'systems', mount: 'wall', visualKind: 'fan' },
     { type: 'garageDoor', label: 'Garage door control', icon: '▥', w: 116, h: 52, group: 'systems', visualKind: 'door' },
     { type: 'cameraThumbnail', label: 'Camera thumbnail', icon: '▣', w: 170, h: 110, group: 'security' },
@@ -410,9 +412,10 @@
     }else{
       const raster=window.RoomcraftRasterRenderer;
       const drawDynamicObject=o=>{
-        // HA renders the bound fan as a stateful, rotating object. Keep the
-        // editor's fan art, but omit its fixed blades from the exported PNG.
-        if(clean&&validEntityId(o.entityId)&&templateByType[o.type]?.artFamily==='ceilingFan')return;
+        // HA renders bound fans and robots as live stateful objects. Keep their
+        // art in Design mode, but omit a fixed fan/robot from the exported PNG
+        // so motion and map tracking never create a second frozen copy.
+        if(clean&&validEntityId(o.entityId)&&['ceilingFan','robotVacuum'].includes(templateByType[o.type]?.artFamily))return;
         drawObject(c,o);
       };
       if(!raster?.draw(c,project,STARTER,{original:reference,shell:emptyShell,wallFree:wallFreeShell},drawDynamicObject)){

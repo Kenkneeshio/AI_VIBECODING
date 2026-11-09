@@ -39,7 +39,7 @@ test('photo-inspired catalog and home controls have working perspective render p
       x: 500, y: 400, w: template.w, h: template.h, rotation: 0 };
     assert.equal(window.RoomcraftObjectArt.draw(canvas, object), true, template.type);
   }
-  for (const [type, width, height] of [['thermostat', 48, 54], ['windowFan', 46, 46], ['garageDoor', 116, 52]]) {
+  for (const [type, width, height] of [['thermostat', 48, 54], ['humidifier', 46, 58], ['airPurifier', 48, 62], ['windowFan', 46, 46], ['garageDoor', 116, 52]]) {
     const object = { id: type, type, name: type, x: 500, y: 400, w: width, h: height, rotation: 0 };
     assert.equal(window.RoomcraftObjectArt.draw(canvas, object), true, type);
   }

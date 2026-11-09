@@ -154,14 +154,22 @@ test('linked artwork replaces a duplicate icon and preserves curated menu sectio
   assert.deepEqual(result[1].bound_objects, [{ entity_id: 'light.bedroom', label: 'Bedside light', icon: 'mdi:lamp' }]);
 });
 
-test('table lamps export a compact shade form only when rendered as lights', () => {
+test('all stateful lights share the compact table-lamp language', () => {
   const base = { id: 'office-desk-lamp', type: 'tableLamp', name: 'Office desk lamp',
     x: 915, y: 245, w: 48, h: 60, rotation: 0, entityId: 'light.office' };
   const [lamp] = mergeDashboardElements([], [], [base]);
   assert.equal(lamp.roomcraft_visual_kind, 'light');
   assert.equal(lamp.roomcraft_light_form, 'table_lamp');
+  const [ceiling] = mergeDashboardElements([], [], [{ ...base, id: 'ceiling', type: 'ceilingLight' }]);
+  assert.equal(ceiling.roomcraft_light_form, 'table_lamp');
   const [nonLight] = mergeDashboardElements([], [], [{ ...base, visualKind: 'device' }]);
   assert.equal(nonLight.roomcraft_light_form, undefined);
+  const [humidifier] = mergeDashboardElements([], [], [{ ...base, id: 'humidifier', type: 'humidifier',
+    entityId: 'humidifier.bedroom', visualKind: 'device' }]);
+  assert.equal(humidifier.roomcraft_device_form, 'humidifier');
+  const [purifier] = mergeDashboardElements([], [], [{ ...base, id: 'purifier', type: 'airPurifier',
+    entityId: 'fan.air_filter', visualKind: 'device' }]);
+  assert.equal(purifier.roomcraft_device_form, 'air_purifier');
 });
 
 test('a linked fan exports separate scene targets without losing its monitored switch', () => {

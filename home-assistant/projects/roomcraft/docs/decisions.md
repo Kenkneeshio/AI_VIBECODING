@@ -1,5 +1,23 @@
 # Decision log
 
+## 2026-11-09 — Bind animation and action to the same physical state
+
+**Decision:** Use the verified four-channel kitchen switch directly: channel 3 is the dining fan light and channel 4 is the dining fan motor. Each illustrated object toggles its channel, reads that channel for feedback, and opens native details on hold. Keep action scenes out of these two object bindings.
+
+**Reason:** A control must not animate from a scene timestamp or an unrelated legacy switch. The direct channel is both the command target and the observed state, so off, on, unavailable, glow, and rotor motion cannot contradict one another.
+
+## 2026-11-09 — Make animated appliances reusable device forms
+
+**Decision:** Keep one generic `roomcraft-object-control` element and add small validated forms (`table_lamp`, `humidifier`, `air_purifier`) instead of creating a custom card for every appliance. Forms may change only the art; the bound entity still owns state and action. Moving objects such as fans and robots are omitted from the clean PNG and rendered once as live overlays.
+
+**Reason:** Separate state, geometry, and visual-form contracts let teams add art or integrations independently, prevent frozen duplicates, and preserve the editor/dashboard round trip.
+
+## 2026-11-09 — Keep status summaries independent and non-operating
+
+**Decision:** Electrical and indoor-air summaries are independent `roomcraft-status-popup` elements. Their markers may animate and classify severity; opening a row emits native more-info only. They never toggle an entity.
+
+**Reason:** Whole-home electrical and air measurements need quick visibility but are not room objects and must not become accidental control surfaces.
+
 ## 2026-11-08 — Animate only verified physical state; calibrate vacuum coordinates privately
 
 **Decision:** Treat a device action target and a physical-state signal as separate contracts. The private ceiling fan keeps its On/Off scenes but no longer uses `switch.ceiling_fan` for animation because that entity reported on while the physical fan was stopped. The rotor remains neutral and still until trustworthy motor feedback exists. For the Dreame robot, accept an optional six-value affine `vacuumPositionTransform` that maps authenticated map-camera coordinates into plan pixels; store installation coefficients only in the private dashboard.
@@ -92,6 +110,8 @@
 
 **Decision:** Use the fan artwork as a movable target that displays `switch.ceiling_fan` state, runs `scene.ceiling_fan_on_scene` on tap, and runs `scene.ceiling_fan_off` on hold. Use a separate movable center target for `scene.ceiling_fan_light_toggle`. The current living-room position is provisional until the physical room is confirmed.
 
+**Superseded 2026-11-09:** The owner identified the fan as the dining fan and verified its motor/light as channels 4/3 of the four-channel kitchen switch. The newer direct-binding decision at the top of this file controls.
+
 **Reason:** The old Main Dashboard uses distinct scenes for these commands. Home Assistant exposes no independent `light.*` state for the fan light, and its scene timestamp cannot truthfully indicate whether the light is on.
 
 **Consequence:** The center target says **Ready** or **Toggle light** rather than showing a fabricated on/off state. Move fan and center target together if its actual room differs. Keep scene activation, target-entity, and export-parity tests in both transports.
@@ -120,7 +140,7 @@
 
 **Reason:** The plan should show where a device is. Repeating the full Main Dashboard over the drawing would obscure rooms and make touch targets harder to use. Some entities are unavailable or unassigned to an HA area; a name alone cannot prove physical placement.
 
-**Consequence:** Bind verified devices to objects; show unavailable states; leave unverified bathroom, dressing, and balcony placements unresolved. The fan is drawn provisionally in the living room, but its physical room still needs confirmation. Preserve the old Main Dashboard as a reference and verify the new drawer on the target tablet.
+**Consequence:** Bind verified devices to objects; show unavailable states; leave unverified bathroom, dressing, and balcony placements unresolved. Preserve the old Main Dashboard as a reference and verify the new drawer on the target tablet. The later 2026-11-09 decision confirms the dining fan's direct channels and supersedes the provisional fan placement/binding described by this older entry.
 
 ## 2026-10-31 — Derive fixture controls from illustrated objects
 

@@ -184,6 +184,8 @@ test('card requests hourly forecasts once, previews a future hour and masks the 
   assert.match(card.shadowRoot.innerHTML, /<rect x="0" y="75" width="145" height="740"/);
   assert.match(card.shadowRoot.innerHTML, /<rect x="145" y="75" width="235" height="305"/);
   assert.match(card.shadowRoot.innerHTML, /<rect x="0" y="815" width="1536" height="49"/);
+  assert.match(card.shadowRoot.innerHTML, /<rect x="1490" y="75" width="46" height="740"/);
+  assert.match(card.shadowRoot.innerHTML, /<rect x="1490" y="0" width="46" height="815" fill="#fff"/);
   assert.match(card.shadowRoot.innerHTML, /<stop offset="76%" stop-color="#fff"\/>/);
   assert.match(card.shadowRoot.innerHTML, /<stop offset="100%" stop-color="#000"\/>/);
   assert.match(card.shadowRoot.innerHTML, /class="night-wash"[^>]+mask="url\(#roomcraft-wash-mask\)"/);

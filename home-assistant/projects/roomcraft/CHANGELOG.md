@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-09 — Modular animated controls, status popups, and complete night mask
+
+- Rebound the dining ceiling fan and fan light to the verified third and fourth channels of the physical four-channel kitchen switch. The artwork itself now toggles the same stateful entity that drives its glow or rotation; scenes are no longer used for these two controls. The fan stays still when channel 4 is off, and the center light glows only when channel 3 is on.
+- Added consistent table-lamp live artwork for the verified living, dining, kitchen ceiling, kitchen track, kitchen counter, hallway, office, master, and fan-light controls. Added a dedicated dining air-purifier object and master-bath humidifier object. Purifier airflow and humidifier mist animate only while their own HA entity reports on; unavailable devices remain neutral.
+- Made the Dreame object smaller and friendlier, kept its authenticated map panel and calibrated position tracking, and omitted its fixed copy from exported PNGs. The live object is now the only robot on the dashboard and animates only during verified cleaning/returning activity.
+- Added animated electrical and indoor-air markers. Each opens a nearby live-value panel and native entity details without operating equipment. The electrical panel shows whole-home power and energy totals; indoor air includes CO2, PM2.5, living/master humidity, and humidifier state.
+- Extended the outdoor night/dusk mask over the right exterior strip and lengthened cross-fades for daylight, moon, stars, precipitation, clouds, and the forecast glass. The 12-hour strip remains timestamp-based, exterior-only, hidden-page aware, and reduced-motion safe.
+- Added a reusable `roomcraft_device_form` contract for humidifier and air-purifier art. Editor, local HA bridge, cloud bridge, tests, and the live card share the same form. Cache-busted editor assets and kept moving fan/robot art out of the static export.
+- Installed the release after private dashboard backups, exported the current layout through HA Studio, read the dashboard back, and cold-launched Home Assistant Companion. A private 1920 x 1080 tablet capture confirmed full-width fit, the corrected night edge, one compact robot, direct controls, three camera frames, status markers, and clean detail-off presentation. No physical switch, fan, light, purifier, humidifier, or vacuum command was sent for QA.
+
 ## 2026-11-08 — Calibrated vacuum motion and truthful fan state
 
 - Added optional six-value `vacuumPositionTransform` support across the editor, schema, dashboard bridges, and Home Assistant card. The private Second Floor project now maps the Dreame map camera's `vacuum_position` into Roomcraft plan coordinates without exposing the installation-specific coefficients in public source.

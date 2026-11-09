@@ -127,10 +127,10 @@
   add('fans','ceilingFan','light','fan-light','Ceiling fan with light',158,158,['white','brass'],{tags:'ceiling fan light'});
   add('fans','ceilingFan','palm','palm-fan','Palm-leaf ceiling fan',168,168,['forest'],{tags:'ceiling fan'});
 
-  add('cleaning','robotVacuum','round','round-robot-vac','Round robot vacuum',76,76,['white','charcoal','sage','brass'],{atlas:'robotVacuum',tags:'robot vacuum cleaner'});
-  add('cleaning','robotVacuum','docked','docked-robot-vac','Robot vacuum with dock',99,75,['white','charcoal'],{tags:'robot vacuum cleaner charging'});
-  add('cleaning','robotVacuum','mop','robot-mop','Robot vacuum mop',78,78,['white','charcoal'],{tags:'robot vacuum cleaner'});
-  add('cleaning','robotVacuum','slim','slim-robot-vac','Slim robot vacuum',84,64,['white','charcoal'],{tags:'robot vacuum cleaner'});
+  add('cleaning','robotVacuum','round','round-robot-vac','Round robot vacuum',58,58,['white','charcoal','sage','brass'],{atlas:'robotVacuum',tags:'robot vacuum cleaner cute compact'});
+  add('cleaning','robotVacuum','docked','docked-robot-vac','Robot vacuum with dock',76,58,['white','charcoal'],{tags:'robot vacuum cleaner charging compact'});
+  add('cleaning','robotVacuum','mop','robot-mop','Robot vacuum mop',60,60,['white','charcoal'],{tags:'robot vacuum cleaner cute compact'});
+  add('cleaning','robotVacuum','slim','slim-robot-vac','Slim robot vacuum',66,50,['white','charcoal'],{tags:'robot vacuum cleaner compact'});
 
   add('toy-storage','storage','basket','toy-basket','Woven toy basket',85,76,['oak','cream','sage'],{tags:'baby toy storage'});
   add('toy-storage','storage','bin','soft-toy-bin','Soft toy bin',84,74,['sage','peach','sky'],{tags:'baby toy storage'});

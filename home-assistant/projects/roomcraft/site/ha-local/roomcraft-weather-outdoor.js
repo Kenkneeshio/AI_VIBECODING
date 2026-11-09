@@ -135,16 +135,16 @@
     '*,*::before,*::after{box-sizing:border-box}',
     '.world{position:absolute;inset:0;overflow:hidden}',
     'svg{position:absolute;inset:0;width:100%;height:100%;overflow:hidden}',
-    '.night-wash{fill:#101c49;opacity:var(--night-opacity,0);transition:opacity 1.5s ease}',
-    '.dusk-wash{fill:#d96945;opacity:var(--dusk-opacity,0);transition:opacity 1.5s ease}',
-    '.sun-disc{fill:#fff6be;filter:drop-shadow(0 0 17px #ffe09d);opacity:0;transition:opacity 1s}',
-    '.sun-ray{stroke:#fff4b3;stroke-width:3;stroke-linecap:round;opacity:0;transition:opacity 1s}',
-    '.moon-dark{fill:#304675;opacity:0;filter:drop-shadow(0 0 9px #e9eff5)}',
-    '.moon-lit{fill:#e5eaf1;opacity:0;filter:drop-shadow(0 0 11px #f2f5f9)}',
-    '.star{fill:#f5f2d8;opacity:0;animation:twinkle 4s ease-in-out infinite alternate}',
-    '.cloud{fill:#f4f3e9;opacity:0;filter:drop-shadow(2px 4px 3px #23384955);animation:drift 25s ease-in-out infinite alternate}',
+    '.night-wash{fill:#101c49;opacity:var(--night-opacity,0);transition:opacity 3.5s cubic-bezier(.22,.61,.36,1)}',
+    '.dusk-wash{fill:#d96945;opacity:var(--dusk-opacity,0);transition:opacity 3.5s cubic-bezier(.22,.61,.36,1)}',
+    '.sun-disc{fill:#fff6be;filter:drop-shadow(0 0 17px #ffe09d);opacity:0;transition:opacity 2.2s ease;animation:sun-breathe 7s ease-in-out infinite alternate}',
+    '.sun-ray{stroke:#fff4b3;stroke-width:3;stroke-linecap:round;opacity:0;transition:opacity 2.2s ease}',
+    '.moon-dark{fill:#304675;opacity:0;filter:drop-shadow(0 0 9px #e9eff5);transition:opacity 2.4s ease}',
+    '.moon-lit{fill:#e5eaf1;opacity:0;filter:drop-shadow(0 0 11px #f2f5f9);transition:opacity 2.4s ease;animation:moon-breathe 8s ease-in-out infinite alternate}',
+    '.star{fill:#f5f2d8;opacity:0;transition:opacity 2.4s ease;animation:twinkle 5.5s ease-in-out infinite alternate;will-change:opacity}',
+    '.cloud{fill:#f4f3e9;opacity:0;filter:drop-shadow(2px 4px 3px #23384955);transition:opacity 2.4s ease;animation:drift 32s ease-in-out infinite alternate;will-change:transform,opacity}',
     '.cloud.back{fill:#c8d3d3;opacity:0;animation-duration:37s}',
-    '.rain,.snow,.fog,.wind{opacity:0;transition:opacity .7s}',
+    '.rain,.snow,.fog,.wind{opacity:0;transition:opacity 1.6s ease}',
     '.drop{stroke:#cee8f2;stroke-width:2.8;stroke-linecap:round;animation:rainfall .7s linear infinite}',
     '.flake{fill:#fafcff;filter:drop-shadow(0 1px 2px #a6d6e3);animation:snowfall 4s linear infinite}',
     '.fog rect{fill:#e5eceb;opacity:.45;filter:blur(10px);animation:drift 12s ease-in-out infinite alternate}',
@@ -170,8 +170,8 @@
     '.world[data-weather="wind"] .wind{opacity:.9}',
     '.world[data-weather="storm"] .night-wash{animation:lightning 8s linear infinite}',
     '.forecast{position:absolute;left:4%;right:4%;bottom:.2%;height:4.7%;min-height:34px;',
-    'border-radius:12px;background:linear-gradient(90deg,#14272eaf,#24333a8c);',
-    'box-shadow:0 -2px 8px #20303826;pointer-events:none;font:10px/1.05 sans-serif;color:#f6f3e9}',
+    'border:1px solid #d7eee21f;border-radius:13px;background:linear-gradient(90deg,#10252dbd,#25363d99,#10252dbd);',
+    'box-shadow:0 -2px 12px #13262d38;backdrop-filter:blur(5px);pointer-events:none;font:10px/1.05 sans-serif;color:#f6f3e9}',
     '.forecast::before{content:"";position:absolute;left:4.5%;right:2%;top:49%;height:1px;background:#f0eee56b}',
     '.tick{position:absolute;top:0;transform:translateX(-50%);width:37px;height:100%;border:0;',
     'background:none;color:inherit;font:inherit;padding:0;display:flex;align-items:center;justify-content:center;',
@@ -190,6 +190,8 @@
     '@keyframes snowfall{to{transform:translate(-13px,38px)}}',
     '@keyframes drift{to{transform:translateX(25px)}}',
     '@keyframes twinkle{to{opacity:.25}}',
+    '@keyframes sun-breathe{to{filter:drop-shadow(0 0 25px #ffe09dcc)}}',
+    '@keyframes moon-breathe{to{filter:drop-shadow(0 0 18px #f2f5f9c9)}}',
     '@keyframes lightning{0%,94%,97%,100%{filter:none}95%,96%{filter:brightness(1.7)}}',
     ':host([data-paused="true"]) *, :host([data-paused="true"]) *::before{animation-play-state:paused!important}',
     '@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}',
@@ -215,6 +217,7 @@
       '<rect x="0" y="0" width="1536" height="75"/>' +
       '<rect x="0" y="75" width="145" height="740"/>' +
       '<rect x="145" y="75" width="235" height="305"/>' +
+      '<rect x="1490" y="75" width="46" height="740"/>' +
       '<rect x="0" y="815" width="1536" height="49"/>' +
       '</clipPath>' +
       '<linearGradient id="roomcraft-wash-feather" x1="0" y1="0" x2="0" y2="75" gradientUnits="userSpaceOnUse">' +
@@ -226,6 +229,7 @@
       '<rect x="0" y="0" width="1536" height="75" fill="url(#roomcraft-wash-feather)"/>' +
       '<rect x="0" y="0" width="145" height="815" fill="#fff"/>' +
       '<rect x="145" y="0" width="235" height="380" fill="#fff"/>' +
+      '<rect x="1490" y="0" width="46" height="815" fill="#fff"/>' +
       '<rect x="0" y="815" width="1536" height="49" fill="#fff"/>' +
       '</mask></defs>' +
       '<g clip-path="url(#roomcraft-outside)">' +

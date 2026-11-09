@@ -8,6 +8,7 @@ let Card;
 let Camera;
 let ObjectControl;
 let EntityMenu;
+let StatusPopup;
 const registered = new Map();
 class FakeNode {
   constructor(tag = 'node') { this.tag = tag; this.children = []; this.style = {}; this.hidden = false; this.attributes = {}; this.listeners = {}; this.value = ''; }
@@ -34,6 +35,7 @@ const context = {
       if (name === 'roomcraft-camera-thumbnail') Camera = value;
       if (name === 'roomcraft-object-control') ObjectControl = value;
       if (name === 'roomcraft-entity-menu') EntityMenu = value;
+      if (name === 'roomcraft-status-popup') StatusPopup = value;
     },
   },
   window: {
@@ -79,6 +81,7 @@ test('resource registration is safe when Home Assistant imports another version'
   assert.equal(registered.get('roomcraft-camera-thumbnail'), Camera);
   assert.equal(registered.get('roomcraft-object-control'), ObjectControl);
   assert.equal(registered.get('roomcraft-entity-menu'), EntityMenu);
+  assert.equal(registered.get('roomcraft-status-popup'), StatusPopup);
   assert.equal(context.window.customCards.filter(card => card.type === 'roomcraft-editor-card').length, 1);
 });
 
@@ -717,6 +720,32 @@ test('action-only ceiling fan never spins without a verified motor state', () =>
   assert.match(object._button.attributes['aria-label'], /state unavailable: ready/i);
 });
 
+test('electrical and indoor-air markers reveal live status without operating devices', () => {
+  const electrical = new StatusPopup();
+  electrical.setConfig({ type: 'custom:roomcraft-status-popup', roomcraft_status_kind: 'electrical',
+    title: 'Electrical', entities: [{ entity: 'sensor.main_power', name: 'Home power' }] });
+  electrical.hass = { states: {
+    'sensor.main_power': { state: '3412', attributes: { unit_of_measurement: 'W', friendly_name: 'Main power' } },
+  } };
+  assert.equal(electrical._button.attributes['data-severity'], 'warn');
+  assert.match(electrical._rows.children[0].children[2].textContent, /3,412 W/);
+  electrical._button.listeners.click();
+  assert.equal(electrical._panel.hidden, false);
+
+  const air = new StatusPopup();
+  air.setConfig({ type: 'custom:roomcraft-status-popup', roomcraft_status_kind: 'air', title: 'Indoor air',
+    entities: [
+      { entity: 'sensor.room_carbon_dioxide', name: 'CO₂' },
+      { entity: 'sensor.room_humidity', name: 'Humidity' },
+    ] });
+  air.hass = { states: {
+    'sensor.room_carbon_dioxide': { state: '1550', attributes: { unit_of_measurement: 'ppm' } },
+    'sensor.room_humidity': { state: '46', attributes: { unit_of_measurement: '%' } },
+  } };
+  assert.equal(air._button.attributes['data-severity'], 'alert');
+  assert.equal(air.lastEvent, undefined);
+});
+
 test('the dashboard menu toggles live object and camera details without changing controls', () => {
   const object = new ObjectControl();
   object.setConfig({ entity: 'light.study', title: 'Study lamp' });
@@ -941,6 +970,23 @@ test('light, window, door, and climate overlays use their own live states', () =
     assert.equal(object._button.attributes['data-state'], 'unavailable');
     object.hass = { states: { [entry.entity]: { state: 'unexpected_state' } } };
     assert.equal(object._button.attributes['data-state'], 'unavailable');
+  }
+});
+
+test('humidifier and purifier forms animate only from their own on state', () => {
+  for (const entry of [
+    { entity: 'humidifier.master', form: 'humidifier' },
+    { entity: 'fan.air_filter', form: 'air_purifier' },
+  ]) {
+    const object = new ObjectControl();
+    object.setConfig({ entity: entry.entity, title: entry.form,
+      roomcraft_visual_kind: 'device', roomcraft_device_form: entry.form });
+    object.hass = { states: { [entry.entity]: { state: 'off' } } };
+    assert.equal(object._button.attributes['data-form'], entry.form);
+    assert.equal(object._button.attributes['data-state'], 'off');
+    object.hass = { states: { [entry.entity]: { state: 'on' } } };
+    assert.equal(object._button.attributes['data-state'], 'on');
+    object.disconnectedCallback();
   }
 });
 

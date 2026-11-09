@@ -1,7 +1,7 @@
 /* Illustrated top-down art for objects that do not have a cutout in the PNG. */
 (() => {
   'use strict';
-  const supported=new Set(['armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce','thermostat','windowFan','garageDoor','floorPlant','artwork','mirror','window']);
+  const supported=new Set(['armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce','thermostat','humidifier','airPurifier','windowFan','garageDoor','floorPlant','artwork','mirror','window']);
   // These cells face the same near-top-down camera as the supplied plan.
   // Front-facing atlas pieces use the perspective-aware canvas art below.
   const atlas=new Image();
@@ -507,10 +507,13 @@
         else {disc(c,0,-2,8,p.base,p.dark,1);disc(c,-3,-5,2,'rgba(255,255,255,.6)');}break;
       }
       case 'robotVacuum':{
-        if(f==='docked'){contact(c,-40,-47,80,95,8);rr(c,-26,-46,52,19,6,p.dark);rr(c,-21,-43,42,10,3,p.accent);}
-        contact(c,-37,-37,74,74,37);disc(c,0,5,37,p.dark);disc(c,0,0,36,topGradient(c,-36,-36,72,72,p),p.dark,2);
-        disc(c,0,0,30,null,p.accent,2);disc(c,0,-8,11,p.dark,p.accent,1);disc(c,0,-8,8,p.detail,p.dark,1);
-        rr(c,-8,20,16,5,2,p.accent);disc(c,-13,-18,3,'rgba(255,255,255,.5)');
+        if(f==='docked'){contact(c,-33,-39,66,78,8);rr(c,-23,-39,46,16,6,p.dark);rr(c,-18,-36,36,8,3,p.accent);}
+        contact(c,-32,-32,64,64,32);disc(c,0,4,32,p.dark);disc(c,0,0,31,topGradient(c,-31,-31,62,62,p),p.dark,2);
+        disc(c,0,0,26,null,p.accent,2);disc(c,0,-7,9,p.dark,p.accent,1);disc(c,0,-7,6.5,p.detail,p.dark,1);
+        // A tiny friendly face keeps the plan object readable without turning it
+        // into a large generic status badge.
+        disc(c,-8,9,2,p.detail);disc(c,8,9,2,p.detail);c.beginPath();c.arc(0,10,8,.3,Math.PI-.3);c.strokeStyle=p.detail;c.lineWidth=1.7;c.stroke();
+        rr(c,-7,22,14,4,2,p.accent);disc(c,-11,-16,2.5,'rgba(255,255,255,.55)');
         if(f==='mop')rr(c,-18,30,36,7,3,'#77a9b8');break;
       }
       case 'storage':{
@@ -652,6 +655,26 @@
         rr(c,x+7,y+7,w-14,h*.38,2,gradient(c,x+7,y+7,w-14,h*.38,[[0,'#a9cad0'],[1,'#527d8b']]));
         disc(c,0,y+h*.18,Math.min(w,h)*.1,'#e5e7d8','#6c7c7a',1);
         for(let i=0;i<4;i++)rr(c,x+9+i*(w-18)/4,y+h*.7,(w-22)/6,1.4,0,'#708487');
+        break;
+      }
+      case 'humidifier':{
+        // Compact raised floor appliance seen from the plan's near-overhead camera.
+        const g=c.createLinearGradient(-24,-30,22,30);g.addColorStop(0,'#f5f8f5');g.addColorStop(.52,'#d8e1df');g.addColorStop(1,'#9aaba9');
+        raisedCase(c,-22,-28,44,54,13,6,'#7c8d8b');
+        rr(c,-22,-28,44,54,13,g,'#728381',1.3);
+        oval(c,0,-21,15,6,'#eaf3f1','#748785',1);
+        oval(c,0,-21,8,3,'#9eb7b3');
+        rr(c,-15,-8,30,22,8,'#d2ddda','#82928f',.9);
+        for(const x of [-8,0,8])disc(c,x,4,1.6,'#63b7a9');
+        c.strokeStyle='rgba(255,255,255,.72)';c.lineWidth=1.3;c.beginPath();c.moveTo(-14,-14);c.lineTo(10,-20);c.stroke();
+        break;
+      }
+      case 'airPurifier':{
+        const g=c.createLinearGradient(-24,-31,24,31);g.addColorStop(0,'#f4f7f3');g.addColorStop(.5,'#d6e0dc');g.addColorStop(1,'#8fa19d');
+        raisedCase(c,-23,-30,46,58,9,6,'#6f817e');rr(c,-23,-30,46,58,9,g,'#71837f',1.3);
+        rr(c,-17,-20,34,28,5,'#263c3e','#6f8581',1);
+        for(let y=-15;y<5;y+=5)rr(c,-13,y,26,2,1,'#83a39b');
+        oval(c,0,17,11,5,'#b9d7ce','#607a73',1);disc(c,0,17,2,'#59bca4');
         break;
       }
       case 'windowFan':{

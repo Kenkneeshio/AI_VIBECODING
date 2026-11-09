@@ -134,8 +134,9 @@
       control_icon: item.controlIcon || '',
       control_zone: item.type === 'controlZone',
       roomcraft_visual_kind: visualKind(item),
-      ...(visualKind(item) === 'light' && ['lamp', 'tableLamp'].includes(item.type)
-        ? { roomcraft_light_form: 'table_lamp' } : {}),
+      ...(visualKind(item) === 'light' ? { roomcraft_light_form: 'table_lamp' } : {}),
+      ...(visualKind(item) === 'device' && item.type === 'humidifier' ? { roomcraft_device_form: 'humidifier' } : {}),
+      ...(visualKind(item) === 'device' && item.type === 'airPurifier' ? { roomcraft_device_form: 'air_purifier' } : {}),
       ...(visualKind(item) === 'window' ? { roomcraft_window_axis: item.w < item.h ? 'vertical' : 'horizontal' } : {}),
       roomcraft_tap_action: item.tapAction || 'auto',
       roomcraft_hold_action: item.holdAction || 'auto',

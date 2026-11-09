@@ -215,8 +215,12 @@ function objectControlElements(items) {
       control_icon: item.controlIcon || '',
       control_zone: item.type === 'controlZone',
       roomcraft_visual_kind: visualKind,
-      ...(visualKind === 'light' && ['lamp', 'tableLamp'].includes(item.type) ?
-        { roomcraft_light_form: 'table_lamp' } : {}),
+      // Every room light uses the same compact lamp language on the live plan.
+      // The underlying editable object can still be a pendant, ceiling fixture,
+      // or invisible zone, but the stateful artwork stays visually consistent.
+      ...(visualKind === 'light' ? { roomcraft_light_form: 'table_lamp' } : {}),
+      ...(visualKind === 'device' && item.type === 'humidifier' ? { roomcraft_device_form: 'humidifier' } : {}),
+      ...(visualKind === 'device' && item.type === 'airPurifier' ? { roomcraft_device_form: 'air_purifier' } : {}),
       ...(visualKind === 'window' ? { roomcraft_window_axis: item.w < item.h ? 'vertical' : 'horizontal' } : {}),
       roomcraft_tap_action: item.tapAction || 'auto',
       roomcraft_hold_action: item.holdAction || 'auto',
@@ -651,6 +655,7 @@ class RoomcraftObjectControl extends HTMLElement {
         (config.roomcraft_visual_kind !== undefined && config.roomcraft_visual_kind !== 'auto' &&
           !VISUAL_KINDS.includes(config.roomcraft_visual_kind)) ||
         (config.roomcraft_light_form !== undefined && config.roomcraft_light_form !== 'table_lamp') ||
+        (config.roomcraft_device_form !== undefined && !['humidifier', 'air_purifier'].includes(config.roomcraft_device_form)) ||
         (config.roomcraft_window_axis !== undefined &&
           !['horizontal', 'vertical'].includes(config.roomcraft_window_axis)) ||
         (config.roomcraft_vacuum_map_entity !== undefined &&
@@ -749,10 +754,14 @@ class RoomcraftObjectControl extends HTMLElement {
         background:#182a36c9;backdrop-filter:brightness(.28) saturate(.35);box-shadow:inset 0 0 0 3px #718896}
       .target[data-visual="climate"][data-state="on"] .art{
         background:linear-gradient(145deg,#b6f5f1c7,#4bc9d2ae);box-shadow:inset 0 0 0 3px #e9fffa,0 0 18px 7px #60e4dea6}
-      .target[data-visual="vacuum"] .art{inset:7%;border-radius:50%;background:
-        radial-gradient(circle at 42% 38%,#eef4ed 0 8%,#9eada9 9% 13%,transparent 14%),
-        radial-gradient(circle,#46575a 0 17%,#17272c 18% 57%,#77898a 58% 63%,#1a282c 64% 72%,transparent 73%);
-        box-shadow:0 3px 7px #07161ba8,inset 0 0 0 2px #afbeb8;transition:filter .2s,box-shadow .2s,transform .2s}
+      .target[data-visual="vacuum"] .art{inset:15%;border-radius:50%;background:
+        radial-gradient(circle at 42% 35%,#fafff7 0 8%,#a9bbb3 9% 13%,transparent 14%),
+        radial-gradient(circle at 50% 49%,#d9eee4 0 4%,transparent 5%),
+        radial-gradient(circle,#526766 0 17%,#20373a 18% 57%,#8ca7a0 58% 63%,#203235 64% 72%,transparent 73%);
+        box-shadow:0 3px 7px #07161ba8,inset 0 0 0 2px #c7d9d1;transition:filter .2s,box-shadow .2s,transform .2s}
+      .target[data-visual="vacuum"] .art::before{content:"";position:absolute;left:31%;top:55%;width:38%;height:18%;border-bottom:2px solid #b7e7d8;border-radius:0 0 50% 50%;background:
+        radial-gradient(circle at 12% 12%,#b7e7d8 0 2px,transparent 2.5px),
+        radial-gradient(circle at 88% 12%,#b7e7d8 0 2px,transparent 2.5px)}
       .target[data-visual="vacuum"][data-state="on"] .art{filter:brightness(1.18);box-shadow:0 0 0 3px #d7fff2,0 0 18px 7px #49e0b08f,inset 0 0 0 2px #dffcf1;animation:roomcraft-vacuum-pulse 1.6s steps(2,end) infinite}
       .target[data-visual="vacuum"][data-state="off"] .art{filter:brightness(.72) saturate(.62)}
       .target[data-visual="vacuum"][data-tracking="live"] .art::after{content:"";position:absolute;inset:29%;border-radius:50%;border:2px dashed #b8fff0;animation:roomcraft-vacuum-brush .8s steps(4,end) infinite}
@@ -760,6 +769,11 @@ class RoomcraftObjectControl extends HTMLElement {
       .target[data-visual="device"] .art{inset:3%;border-radius:12px}
       .target[data-visual="device"][data-state="off"] .art{background:#14212ca8;backdrop-filter:brightness(.3);box-shadow:inset 0 0 0 3px #84939a}
       .target[data-visual="device"][data-state="on"] .art{background:#a6efd278;box-shadow:inset 0 0 0 3px #d8fff0,0 0 13px 5px #5feab68a}
+      .target[data-visual="device"][data-form="humidifier"] .art::before,.target[data-visual="device"][data-form="humidifier"] .art::after{content:"";position:absolute;left:42%;top:-24%;width:17%;height:32%;border:2px solid #d8fff0;border-width:0 2px;border-radius:50%;opacity:0}
+      .target[data-visual="device"][data-form="humidifier"][data-state="on"] .art::before{opacity:.8;animation:roomcraft-mist 2.4s ease-out infinite}
+      .target[data-visual="device"][data-form="humidifier"][data-state="on"] .art::after{opacity:.6;animation:roomcraft-mist 2.4s 1.15s ease-out infinite}
+      .target[data-visual="device"][data-form="air_purifier"] .art::before{content:"";position:absolute;left:20%;right:20%;top:26%;height:3px;border-radius:99px;background:#c9fff0;box-shadow:0 9px #9cebd7,0 18px #70d7c0;opacity:.22}
+      .target[data-visual="device"][data-form="air_purifier"][data-state="on"] .art::before{opacity:.92;animation:roomcraft-airflow 1.8s ease-in-out infinite alternate}
       .target[data-state="unavailable"] .art{background:#28313bb8;box-shadow:inset 0 0 0 2px #87919b;filter:grayscale(1)}
       .target[data-visual="fan"][data-state="unavailable"] .art{background:radial-gradient(ellipse at center,#293842e6 0 27%,#29384299 49%,transparent 76%);box-shadow:none}
       .hint{display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;color:#ecfff7;filter:drop-shadow(0 1px 3px #102a2a)}
@@ -781,8 +795,10 @@ class RoomcraftObjectControl extends HTMLElement {
       .vacuum-rooms-title{margin:11px 1px 6px;color:#a9c9c0;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.vacuum-rooms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.vacuum-room{min-height:38px;overflow:hidden;border:1px solid #618a82;border-radius:9px;background:#1c3738;color:#e8f5ef;padding:7px 8px;cursor:pointer;text-align:left;text-overflow:ellipsis;white-space:nowrap;font:600 11px system-ui}.vacuum-room:active{filter:brightness(1.25)}.vacuum-empty{color:#9ebcb5;font-size:11px}
       @keyframes roomcraft-vacuum-pulse{50%{transform:scale(.96)}}
       @keyframes roomcraft-vacuum-brush{to{transform:rotate(360deg)}}
+      @keyframes roomcraft-mist{0%{transform:translateY(7px) scale(.8);opacity:0}30%{opacity:.8}100%{transform:translateY(-15px) scale(1.35);opacity:0}}
+      @keyframes roomcraft-airflow{to{transform:translateX(4px);filter:brightness(1.35)}}
       @keyframes roomcraft-spin{to{transform:rotate(360deg)}}
-      @media(prefers-reduced-motion:reduce){:host{transition:none}.target[data-visual="fan"][data-state="on"] .rotor,.target[data-visual="vacuum"][data-state="on"] .art,.target[data-visual="vacuum"] .art::after{animation:none}}
+      @media(prefers-reduced-motion:reduce){:host{transition:none}.target[data-visual="fan"][data-state="on"] .rotor,.target[data-visual="vacuum"][data-state="on"] .art,.target[data-visual="vacuum"] .art::after,.target[data-visual="device"] .art::before,.target[data-visual="device"] .art::after{animation:none}}
     `;
     const button = document.createElement('button');
     button.type = 'button';
@@ -915,7 +931,8 @@ class RoomcraftObjectControl extends HTMLElement {
     const visualKind = controlVisualKind(this._config);
     this._button.setAttribute('data-state', visualState);
     this._button.setAttribute('data-visual', visualKind);
-    this._button.setAttribute('data-form', visualKind === 'light' ? this._config.roomcraft_light_form || '' : '');
+    this._button.setAttribute('data-form', visualKind === 'light' ? this._config.roomcraft_light_form || '' :
+      visualKind === 'device' ? this._config.roomcraft_device_form || '' : '');
     this._button.setAttribute('data-axis', this._config.roomcraft_window_axis || 'horizontal');
     this._button.setAttribute('data-zone', String(this._config.control_zone === true));
     this._icon.icon = this._config.control_icon || state?.attributes?.icon || 'mdi:gesture-tap';
@@ -1112,6 +1129,121 @@ class RoomcraftObjectControl extends HTMLElement {
         this._vacuumRooms.append(roomButton);
       }
     }
+  }
+}
+
+/** Small object-like status marker with an animated icon and an on-demand sensor panel. */
+class RoomcraftStatusPopup extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this._open = false;
+  }
+
+  setConfig(config) {
+    const kind = config?.roomcraft_status_kind;
+    const entities = config?.entities;
+    if (!isObject(config) || !['electrical', 'air'].includes(kind) || !Array.isArray(entities) ||
+        entities.length < 1 || entities.length > 10 || entities.some(entry => !isObject(entry) ||
+          typeof entry.entity !== 'string' || !/^[a-z_]+\.[a-z0-9_]+$/.test(entry.entity) ||
+          entry.name !== undefined && (typeof entry.name !== 'string' || entry.name.length > 48))) {
+      throw new Error('The Roomcraft status popup has an invalid configuration.');
+    }
+    this._config = config;
+    if (!this._button) this._build();
+    this._refresh();
+  }
+
+  set hass(value) { this._hass = value; this._refresh(); }
+
+  _build() {
+    const style = document.createElement('style');
+    style.textContent = `
+      :host{display:block;position:relative;width:100%;height:100%;font:12px/1.25 system-ui,sans-serif;color:#eef8f3}
+      .marker{position:absolute;inset:0;width:100%;height:100%;display:grid;place-items:center;border:1px solid #d8fff0a6;border-radius:50%;background:#10282bd9;color:#d8fff0;box-shadow:0 3px 10px #0715189c,0 0 0 0 #49e0b000;cursor:pointer;-webkit-tap-highlight-color:transparent}.marker:active{transform:scale(.92)}.marker:focus-visible{outline:2px solid #fff;outline-offset:2px}
+      .glyph{font-size:25px;line-height:1;text-shadow:0 0 8px #77efd2}.marker[data-kind="electrical"] .glyph{animation:roomcraft-electric 1.7s steps(3,end) infinite}.marker[data-kind="air"] .glyph{animation:roomcraft-air 2.8s ease-in-out infinite}
+      .marker[data-severity="warn"]{border-color:#ffd16f;color:#ffe7ad;box-shadow:0 0 13px #eaa72f99}.marker[data-severity="alert"]{border-color:#ff8f77;color:#ffe1da;box-shadow:0 0 15px #ff5a3d9e}.marker[data-severity="unavailable"]{filter:grayscale(.8);opacity:.72}
+      .panel{position:absolute;z-index:12;top:calc(100% + 9px);right:0;width:238px;box-sizing:border-box;padding:10px;border:1px solid #9ed7c9;border-radius:13px;background:#10282bf2;box-shadow:0 13px 30px #0009;backdrop-filter:blur(8px)}.panel[hidden]{display:none}.head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 7px;color:#d9f5ec;font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.close{border:0;background:transparent;color:#b9d6cd;cursor:pointer;font-size:18px;line-height:1}
+      .rows{display:grid;gap:5px}.row{display:grid;grid-template-columns:8px minmax(0,1fr) auto;align-items:center;gap:7px;min-height:28px;padding:4px 6px;border:0;border-radius:8px;background:#244043;color:inherit;text-align:left;font:inherit;cursor:pointer}.row:active{filter:brightness(1.25)}.dot{width:7px;height:7px;border-radius:50%;background:#65dab2;box-shadow:0 0 7px #65dab2}.row[data-severity="warn"] .dot{background:#ffc963;box-shadow:0 0 7px #ffc963}.row[data-severity="alert"] .dot,.row[data-severity="unavailable"] .dot{background:#ff806a;box-shadow:0 0 7px #ff806a}.name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#d6e8e2}.value{color:#fff;font-weight:700;font-variant-numeric:tabular-nums}
+      @keyframes roomcraft-electric{50%{text-shadow:0 0 14px #fff,0 0 24px #75e5ff;transform:translateY(-1px)}}@keyframes roomcraft-air{50%{transform:scale(1.09);opacity:.78}}@media(prefers-reduced-motion:reduce){.glyph{animation:none!important}}
+    `;
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'marker';
+    button.setAttribute('data-kind', this._config.roomcraft_status_kind);
+    const glyph = document.createElement('span');
+    glyph.className = 'glyph';
+    glyph.textContent = this._config.roomcraft_status_kind === 'electrical' ? 'ϟ' : '◌';
+    button.append(glyph);
+    button.addEventListener('click', () => this._setOpen(!this._open));
+    const panel = document.createElement('section');
+    panel.className = 'panel'; panel.hidden = true; panel.setAttribute('role', 'dialog');
+    const head = document.createElement('header'); head.className = 'head';
+    const title = document.createElement('span');
+    title.textContent = this._config.title || (this._config.roomcraft_status_kind === 'electrical' ? 'Electrical' : 'Indoor air');
+    const close = document.createElement('button');
+    close.type = 'button'; close.className = 'close'; close.textContent = '×';
+    close.setAttribute('aria-label', 'Close status details');
+    close.addEventListener('click', () => this._setOpen(false));
+    head.append(title, close);
+    const rows = document.createElement('div'); rows.className = 'rows';
+    panel.append(head, rows);
+    this.shadowRoot.append(style, button, panel);
+    this._button = button; this._panel = panel; this._rows = rows;
+  }
+
+  _setOpen(open) {
+    this._open = Boolean(open);
+    this._panel.hidden = !this._open;
+    this._button.setAttribute('aria-expanded', String(this._open));
+  }
+
+  _severity(entityId, state) {
+    if (!state || ['unknown', 'unavailable'].includes(state.state)) return 'unavailable';
+    const value = Number(state.state);
+    if (!Number.isFinite(value)) return 'ok';
+    if (entityId.includes('carbon_dioxide')) return value >= 1500 ? 'alert' : value >= 1000 ? 'warn' : 'ok';
+    if (entityId.includes('pm2_5')) return value >= 35 ? 'alert' : value >= 12 ? 'warn' : 'ok';
+    if (entityId.includes('humidity')) return value < 25 || value > 65 ? 'alert' : value < 30 || value > 60 ? 'warn' : 'ok';
+    if (entityId.includes('volatile_organic')) return value >= .6 ? 'alert' : value >= .3 ? 'warn' : 'ok';
+    if (this._config.roomcraft_status_kind === 'electrical' && entityId.includes('power'))
+      return value >= 5000 ? 'alert' : value >= 3000 ? 'warn' : 'ok';
+    return 'ok';
+  }
+
+  _value(state) {
+    if (!state || ['unknown', 'unavailable'].includes(state.state)) return 'Unavailable';
+    const number = Number(state.state);
+    const value = Number.isFinite(number) ? number.toLocaleString(undefined, {
+      maximumFractionDigits: Math.abs(number) < 10 ? 2 : 0,
+    }) : state.state === 'on' ? 'On' : state.state === 'off' ? 'Off' : state.state;
+    return `${value}${state.attributes?.unit_of_measurement ? ` ${state.attributes.unit_of_measurement}` : ''}`;
+  }
+
+  _refresh() {
+    if (!this._rows || !this._config) return;
+    const severities = [];
+    const rows = this._config.entities.map(entry => {
+      const state = this._hass?.states?.[entry.entity];
+      const severity = this._severity(entry.entity, state);
+      severities.push(severity);
+      const row = document.createElement('button');
+      row.type = 'button'; row.className = 'row'; row.setAttribute('data-severity', severity);
+      row.setAttribute('aria-label', `${entry.name || state?.attributes?.friendly_name || entry.entity}: ${this._value(state)}`);
+      row.addEventListener('click', () => this.dispatchEvent(new CustomEvent('hass-more-info', {
+        bubbles: true, composed: true, detail: { entityId: entry.entity },
+      })));
+      const dot = document.createElement('span'); dot.className = 'dot';
+      const name = document.createElement('span'); name.className = 'name';
+      name.textContent = entry.name || state?.attributes?.friendly_name || entry.entity;
+      const value = document.createElement('span'); value.className = 'value'; value.textContent = this._value(state);
+      row.append(dot, name, value);
+      return row;
+    });
+    this._rows.replaceChildren(...rows);
+    const severity = severities.includes('alert') ? 'alert' : severities.includes('warn') ? 'warn' :
+      severities.every(value => value === 'unavailable') ? 'unavailable' : 'ok';
+    this._button.setAttribute('data-severity', severity);
+    this._button.setAttribute('aria-label', `${this._config.title || 'Home status'}: ${severity}. Tap for details`);
   }
 }
 
@@ -2083,6 +2215,9 @@ if (!customElements.get('roomcraft-object-control')) {
 }
 if (!customElements.get('roomcraft-entity-menu')) {
   customElements.define('roomcraft-entity-menu', RoomcraftEntityMenu);
+}
+if (!customElements.get('roomcraft-status-popup')) {
+  customElements.define('roomcraft-status-popup', RoomcraftStatusPopup);
 }
 if (!Array.isArray(window.customCards)) window.customCards = [];
 if (!window.customCards.some(card => card.type === 'roomcraft-editor-card')) {
