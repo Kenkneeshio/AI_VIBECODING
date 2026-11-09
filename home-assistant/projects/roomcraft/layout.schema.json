@@ -91,6 +91,7 @@
         "tapEntityId": { "$ref": "#/$defs/optionalEntityId", "description": "Optional action target different from entityId." },
         "holdEntityId": { "$ref": "#/$defs/optionalEntityId", "description": "Optional action target different from entityId." },
         "vacuumMapEntityId": { "type": "string", "pattern": "^(?:|camera\\.[a-z0-9_]+)$", "description": "Optional authenticated Home Assistant map camera used by a vacuum control panel." },
+        "vacuumPositionTransform": { "type": "array", "minItems": 6, "maxItems": 6, "items": { "type": "number", "minimum": -10000, "maximum": 10000 }, "description": "Optional affine transform [a,b,c,d,e,f] from live vacuum coordinates to Roomcraft project pixels." },
         "imageEntityId": { "type": "string" },
         "previewMode": { "enum": ["event", "live", "live_auto", "event_live", "offline"] },
         "eventEntityIds": {

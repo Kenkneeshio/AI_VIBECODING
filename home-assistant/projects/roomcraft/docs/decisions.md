@@ -1,5 +1,13 @@
 # Decision log
 
+## 2026-11-08 — Animate only verified physical state; calibrate vacuum coordinates privately
+
+**Decision:** Treat a device action target and a physical-state signal as separate contracts. The private ceiling fan keeps its On/Off scenes but no longer uses `switch.ceiling_fan` for animation because that entity reported on while the physical fan was stopped. The rotor remains neutral and still until trustworthy motor feedback exists. For the Dreame robot, accept an optional six-value affine `vacuumPositionTransform` that maps authenticated map-camera coordinates into plan pixels; store installation coefficients only in the private dashboard.
+
+**Reason:** Last-run scenes and stale or semantically incorrect switches can make decorative motion contradict the real home. Vacuum map coordinates are useful live telemetry but use a different coordinate system from the authored floor plan.
+
+**Consequence:** Active vacuum motion and brush animation require both an active vacuum state and a fresh calibrated map position. Stale active data freezes; docked state parks at the last calibrated coordinate; reduced motion disables transitions. Fan animation requires verified motor feedback and cannot be inferred from an action scene. Public code contains the generic transform contract and synthetic tests, never the home's coefficients.
+
 ## 2026-10-31 — Return to the dashboard without losing an editor draft
 
 **Decision:** Put **← Dashboard** in the editor header. The HA-hosted editor uses its same-origin Second Floor route; the owner-private Site accepts a validated dashboard URL returned by its authenticated API. Before navigation, compare the current project to the last imported or exported project. If edits are unpublished, ask the user, save the browser draft synchronously, and only then navigate the top-level page. A transfer in progress, missing destination, or failed draft save prevents navigation.
@@ -192,7 +200,7 @@
 
 **Reason:** Telemetry changes frequently and may be unavailable. It must not create layout revisions or invalidate a designer's draft.
 
-**Consequence:** Runtime adapters use private entity bindings and explicit stale/unavailable states. The vacuum overlay also needs a map-to-plan calibration.
+**Consequence:** Runtime adapters use private entity bindings and explicit stale/unavailable states. A generic vacuum affine transform is now supported and the private project has a calibration; future work should add graphical calibration and map-identity validation.
 
 ## 2026-10-31 — In-page confirmation for destructive edits
 

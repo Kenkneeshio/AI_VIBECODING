@@ -1,11 +1,18 @@
 # Changelog
 
+## 2026-11-08 — Calibrated vacuum motion and truthful fan state
+
+- Added optional six-value `vacuumPositionTransform` support across the editor, schema, dashboard bridges, and Home Assistant card. The private Second Floor project now maps the Dreame map camera's `vacuum_position` into Roomcraft plan coordinates without exposing the installation-specific coefficients in public source.
+- The robot marker parks at its last calibrated position while docked and transitions between fresh positions only while Home Assistant reports an active cleaning or return state. Its brush animation runs only during that verified activity. An active map older than 20 minutes freezes the last position and shows stale instead of inventing movement; reduced-motion mode disables transitions and animation.
+- Corrected a false ceiling-fan animation. The available `switch.ceiling_fan` reported `on` while the user confirmed that the physical fan was stopped, and the alternate wall-switch entity was unavailable. The private fan control therefore uses the On/Off scenes as actions but stays neutral and static until a trustworthy motor-feedback entity is available. The separate scene-only fan light remains neutral for the same reason.
+- Backed up and redeployed the private dashboard and card, then cold-launched Home Assistant Companion on the wall tablet. The calibrated vacuum appeared at its dock and the fan remained an action-ready static control. No physical fan or vacuum command was sent during verification.
+
 ## 2026-11-08 — On-plan vacuum controls and live map
 
 - Added a dedicated robot-vacuum live graphic and an object-anchored control panel. Tapping the illustrated robot now opens its current state, authenticated map, Start, Pause, Dock, Locate, and map-supplied room-cleaning actions; holding the robot still opens native Home Assistant details.
 - Added the optional `vacuumMapEntityId` layout binding and matching editor field, validation, dashboard import/export, schema, TypeScript bridge, and regression tests. Map images and changing vacuum state remain authenticated runtime data and are never saved in layout JSON or public assets.
 - The map freshness indicator becomes stale after 20 minutes. Reduced-motion mode removes the robot pulse. Room cleaning uses the Dreame segment service only when the bound map exposes room identifiers; unsupported actions remain hidden or disabled.
-- Deployed the card and a bound robot object to the private Second Floor dashboard after taking a private backup. Browser QA verified the panel and room list without sending a physical vacuum command. Plan-coordinate tracking remains a separate calibration feature; the authenticated map already shows the vacuum's live location.
+- Deployed the card and a bound robot object to the private Second Floor dashboard after taking a private backup. Browser QA verified the panel and room list without sending a physical vacuum command. A later same-day release added calibrated plan-coordinate tracking; the authenticated map remains the underlying live-position source.
 
 ## 2026-11-08 — Official device web portals
 

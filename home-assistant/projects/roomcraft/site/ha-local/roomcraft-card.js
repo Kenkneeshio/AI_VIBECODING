@@ -179,6 +179,9 @@ function validObjectControl(item) {
       (item.holdEntityId === '' || /^[a-z_]+\.[a-z0-9_]+$/.test(item.holdEntityId))) &&
     (item.vacuumMapEntityId === undefined || typeof item.vacuumMapEntityId === 'string' &&
       (item.vacuumMapEntityId === '' || /^camera\.[a-z0-9_]+$/.test(item.vacuumMapEntityId))) &&
+    (item.vacuumPositionTransform === undefined || Array.isArray(item.vacuumPositionTransform) &&
+      item.vacuumPositionTransform.length === 6 && item.vacuumPositionTransform.every(value =>
+        Number.isFinite(value) && Math.abs(value) <= 10000)) &&
     [item.x, item.y, item.w, item.h, item.rotation ?? 0].every(value => typeof value === 'number' && Number.isFinite(value)) &&
     item.x >= 0 && item.x <= PLAN_WIDTH && item.y >= 0 && item.y <= PLAN_HEIGHT &&
     item.w >= 12 && item.w <= PLAN_WIDTH && item.h >= 12 && item.h <= PLAN_HEIGHT;
@@ -220,6 +223,7 @@ function objectControlElements(items) {
       ...(item.tapEntityId ? { roomcraft_tap_entity: item.tapEntityId } : {}),
       ...(item.holdEntityId ? { roomcraft_hold_entity: item.holdEntityId } : {}),
       ...(item.vacuumMapEntityId ? { roomcraft_vacuum_map_entity: item.vacuumMapEntityId } : {}),
+      ...(item.vacuumPositionTransform ? { roomcraft_vacuum_position_transform: item.vacuumPositionTransform } : {}),
       style: {
         left: percent(item.x - SCENE_LEFT, SCENE_WIDTH), top: percent(item.y - SCENE_TOP, SCENE_HEIGHT),
         width: percent(item.w, SCENE_WIDTH), height: percent(item.h, SCENE_HEIGHT),
@@ -651,7 +655,11 @@ class RoomcraftObjectControl extends HTMLElement {
           !['horizontal', 'vertical'].includes(config.roomcraft_window_axis)) ||
         (config.roomcraft_vacuum_map_entity !== undefined &&
           (typeof config.roomcraft_vacuum_map_entity !== 'string' ||
-            !/^camera\.[a-z0-9_]+$/.test(config.roomcraft_vacuum_map_entity)))) {
+            !/^camera\.[a-z0-9_]+$/.test(config.roomcraft_vacuum_map_entity))) ||
+        (config.roomcraft_vacuum_position_transform !== undefined &&
+          (!Array.isArray(config.roomcraft_vacuum_position_transform) ||
+            config.roomcraft_vacuum_position_transform.length !== 6 ||
+            !config.roomcraft_vacuum_position_transform.every(value => Number.isFinite(value) && Math.abs(value) <= 10000)))) {
       throw new Error('The Roomcraft object has an invalid device binding.');
     }
     this._config = config;
@@ -676,7 +684,7 @@ class RoomcraftObjectControl extends HTMLElement {
   _build() {
     const style = document.createElement('style');
     style.textContent = `
-      :host{display:block;box-sizing:border-box;min-width:32px;min-height:32px}
+      :host{display:block;box-sizing:border-box;min-width:32px;min-height:32px;transition:left 1.3s linear,top 1.3s linear}
       .target{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;border-radius:12px;background:transparent;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
       .target:hover,.target:focus-visible{outline:2px solid #7ee8d2;outline-offset:1px}
       .target:active{filter:brightness(1.25)}
@@ -747,6 +755,8 @@ class RoomcraftObjectControl extends HTMLElement {
         box-shadow:0 3px 7px #07161ba8,inset 0 0 0 2px #afbeb8;transition:filter .2s,box-shadow .2s,transform .2s}
       .target[data-visual="vacuum"][data-state="on"] .art{filter:brightness(1.18);box-shadow:0 0 0 3px #d7fff2,0 0 18px 7px #49e0b08f,inset 0 0 0 2px #dffcf1;animation:roomcraft-vacuum-pulse 1.6s steps(2,end) infinite}
       .target[data-visual="vacuum"][data-state="off"] .art{filter:brightness(.72) saturate(.62)}
+      .target[data-visual="vacuum"][data-tracking="live"] .art::after{content:"";position:absolute;inset:29%;border-radius:50%;border:2px dashed #b8fff0;animation:roomcraft-vacuum-brush .8s steps(4,end) infinite}
+      .target[data-visual="vacuum"][data-tracking="stale"] .art{filter:grayscale(.55) brightness(.72);box-shadow:0 0 0 2px #d7b66b99,inset 0 0 0 2px #a7956f}
       .target[data-visual="device"] .art{inset:3%;border-radius:12px}
       .target[data-visual="device"][data-state="off"] .art{background:#14212ca8;backdrop-filter:brightness(.3);box-shadow:inset 0 0 0 3px #84939a}
       .target[data-visual="device"][data-state="on"] .art{background:#a6efd278;box-shadow:inset 0 0 0 3px #d8fff0,0 0 13px 5px #5feab68a}
@@ -770,8 +780,9 @@ class RoomcraftObjectControl extends HTMLElement {
       .vacuum-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:9px}.vacuum-action{display:flex;min-height:58px;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:1px solid #6f9f94;border-radius:10px;background:#21423f;color:#f2fff9;cursor:pointer;font:600 10px/1.1 system-ui}.vacuum-action:active{filter:brightness(1.25)}.vacuum-action[disabled]{opacity:.42;cursor:default}.vacuum-action ha-icon{width:22px;height:22px;color:#aeead8}
       .vacuum-rooms-title{margin:11px 1px 6px;color:#a9c9c0;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.vacuum-rooms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.vacuum-room{min-height:38px;overflow:hidden;border:1px solid #618a82;border-radius:9px;background:#1c3738;color:#e8f5ef;padding:7px 8px;cursor:pointer;text-align:left;text-overflow:ellipsis;white-space:nowrap;font:600 11px system-ui}.vacuum-room:active{filter:brightness(1.25)}.vacuum-empty{color:#9ebcb5;font-size:11px}
       @keyframes roomcraft-vacuum-pulse{50%{transform:scale(.96)}}
+      @keyframes roomcraft-vacuum-brush{to{transform:rotate(360deg)}}
       @keyframes roomcraft-spin{to{transform:rotate(360deg)}}
-      @media(prefers-reduced-motion:reduce){.target[data-visual="fan"][data-state="on"] .rotor,.target[data-visual="vacuum"][data-state="on"] .art{animation:none}}
+      @media(prefers-reduced-motion:reduce){:host{transition:none}.target[data-visual="fan"][data-state="on"] .rotor,.target[data-visual="vacuum"][data-state="on"] .art,.target[data-visual="vacuum"] .art::after{animation:none}}
     `;
     const button = document.createElement('button');
     button.type = 'button';
@@ -922,6 +933,35 @@ class RoomcraftObjectControl extends HTMLElement {
     this._detailState.setAttribute('data-state', visualState === 'unavailable' ? 'unavailable' : displayValue);
     this._detailEntity.textContent = this._config.entity;
     this._refreshVacuumPanel();
+    this._refreshVacuumPosition();
+  }
+
+  _refreshVacuumPosition() {
+    if (controlVisualKind(this._config || {}) !== 'vacuum') return;
+    const transform = this._config.roomcraft_vacuum_position_transform;
+    const mapState = this._hass?.states?.[this._config.roomcraft_vacuum_map_entity];
+    const position = mapState?.attributes?.vacuum_position;
+    if (!Array.isArray(transform) || transform.length !== 6 || !isObject(position) ||
+        !Number.isFinite(Number(position.x)) || !Number.isFinite(Number(position.y))) {
+      this._button?.removeAttribute('data-tracking');
+      return;
+    }
+    const [a, b, c, d, e, f] = transform.map(Number);
+    const projectX = a * Number(position.x) + b * Number(position.y) + c;
+    const projectY = d * Number(position.x) + e * Number(position.y) + f;
+    if (![projectX, projectY].every(Number.isFinite) || projectX < 0 || projectX > 1536 || projectY < 80 || projectY > 944) {
+      this._button?.setAttribute('data-tracking', 'stale');
+      return;
+    }
+    const entityState = this._hass?.states?.[this._config.entity]?.state || 'unknown';
+    const age = Date.now() - Date.parse(mapState?.last_updated || '');
+    const active = ['cleaning', 'returning'].includes(entityState);
+    const stale = !Number.isFinite(age) || active && age > 20 * 60 * 1000;
+    this._button?.setAttribute('data-tracking', stale ? 'stale' : active ? 'live' : 'parked');
+    if (stale && active) return;
+    this.style.left = `${Math.round(projectX / 1536 * 10000) / 100}%`;
+    this.style.top = `${Math.round((projectY - 80) / 864 * 10000) / 100}%`;
+    this._button.style['--vacuum-heading'] = `${Number(position.a) || 0}deg`;
   }
 
   _refreshDetailVisibility() {

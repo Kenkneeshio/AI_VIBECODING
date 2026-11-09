@@ -631,13 +631,15 @@ test('vacuum artwork opens map controls and calls safe vacuum and room services'
   const object = new ObjectControl();
   object.setConfig({ type: 'custom:roomcraft-object-control', roomcraft_item_id: 'vacuum',
     entity: 'vacuum.l10s_ultra', title: 'L10s Ultra', roomcraft_visual_kind: 'vacuum',
-    roomcraft_vacuum_map_entity: 'camera.l10s_ultra_map' });
+    roomcraft_vacuum_map_entity: 'camera.l10s_ultra_map',
+    roomcraft_vacuum_position_transform: [-0.1, -0.006, 560, -0.001, 0.093, 716] });
   const calls = [];
   object.hass = {
     states: {
       'vacuum.l10s_ultra': { state: 'docked', attributes: { friendly_name: 'L10s Ultra' } },
       'camera.l10s_ultra_map': { state: 'map-v1', last_updated: new Date().toISOString(),
-        attributes: { entity_picture: '/api/camera_proxy/camera.l10s_ultra_map?token=x', rooms: {
+        attributes: { entity_picture: '/api/camera_proxy/camera.l10s_ultra_map?token=x',
+          vacuum_position: { x: 32, y: 509, a: 270 }, rooms: {
           7: { room_id: 7, name: 'Living Room', order: 1 },
           3: { room_id: 3, name: 'Kitchen', order: 2 },
         } } },
@@ -651,6 +653,10 @@ test('vacuum artwork opens map controls and calls safe vacuum and room services'
   assert.equal(object._vacuumPanel.hidden, false);
   assert.match(object._vacuumMapImage.src, /camera\.l10s_ultra_map/);
   assert.equal(object._vacuumRooms.children.length, 2);
+  assert.equal(object._button.attributes['data-tracking'], 'parked');
+  assert.match(object.style.left, /%$/);
+  assert.match(object.style.top, /%$/);
+  assert.equal(object._button.style['--vacuum-heading'], '270deg');
   object._runVacuumService('start');
   object._runVacuumService('pause');
   object._runVacuumService('return_to_base');
@@ -667,6 +673,48 @@ test('vacuum artwork opens map controls and calls safe vacuum and room services'
   assert.equal(object._vacuumPanel.hidden, true);
   assert.match(object.shadowRoot.children[0].textContent, /roomcraft-vacuum-pulse/);
   object.disconnectedCallback();
+});
+
+test('tracked vacuum moves only from a calibrated fresh position and animates only while active', () => {
+  const object = new ObjectControl();
+  object.setConfig({ type: 'custom:roomcraft-object-control', roomcraft_item_id: 'vacuum',
+    entity: 'vacuum.example', roomcraft_visual_kind: 'vacuum',
+    roomcraft_vacuum_map_entity: 'camera.example_map',
+    roomcraft_vacuum_position_transform: [-0.1, 0, 560, 0, 0.09, 716] });
+  const map = { state: 'map', last_updated: new Date().toISOString(),
+    attributes: { vacuum_position: { x: 100, y: 200, a: 90 }, rooms: {} } };
+  object.hass = { states: {
+    'vacuum.example': { state: 'cleaning', attributes: {} },
+    'camera.example_map': map,
+  } };
+  assert.equal(object._button.attributes['data-tracking'], 'live');
+  assert.match(object.style.left, /%$/);
+  assert.equal(object._button.style['--vacuum-heading'], '90deg');
+
+  const parkedLeft = object.style.left;
+  map.last_updated = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  map.attributes.vacuum_position = { x: 5000, y: 5000, a: 180 };
+  object.hass = { states: {
+    'vacuum.example': { state: 'cleaning', attributes: {} },
+    'camera.example_map': map,
+  } };
+  assert.equal(object._button.attributes['data-tracking'], 'stale');
+  assert.equal(object.style.left, parkedLeft);
+});
+
+test('action-only ceiling fan never spins without a verified motor state', () => {
+  const object = new ObjectControl();
+  object.setConfig({ type: 'custom:roomcraft-object-control', roomcraft_item_id: 'ceiling-fan',
+    entity: 'scene.fan_on', title: 'Ceiling fan · state unavailable', roomcraft_visual_kind: 'fan',
+    roomcraft_tap_action: 'activate', roomcraft_tap_entity: 'scene.fan_on',
+    roomcraft_hold_action: 'activate', roomcraft_hold_entity: 'scene.fan_off' });
+  object.hass = { states: {
+    'scene.fan_on': { state: '2026-11-01T00:00:00Z', attributes: {} },
+    'scene.fan_off': { state: '2026-11-02T00:00:00Z', attributes: {} },
+  } };
+  assert.equal(object._button.attributes['data-state'], 'ready');
+  assert.equal(object._button.attributes['data-visual'], 'fan');
+  assert.match(object._button.attributes['aria-label'], /state unavailable: ready/i);
 });
 
 test('the dashboard menu toggles live object and camera details without changing controls', () => {

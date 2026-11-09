@@ -5,7 +5,7 @@
   const visualKinds = new Set(['auto', 'light', 'fan', 'climate', 'window', 'door', 'vacuum', 'device', 'none']);
   const iconPattern = /^mdi:[a-z0-9-]+$/i;
   const bindingKeys = new Set(['tapAction', 'holdAction', 'tapEntityId', 'holdEntityId',
-    'controlLabel', 'controlIcon', 'visualKind', 'vacuumMapEntityId']);
+    'controlLabel', 'controlIcon', 'visualKind', 'vacuumMapEntityId', 'vacuumPositionTransform']);
   const entityPattern = /^[a-z_]+\.[a-z0-9_]+$/i;
   const sceneWidth = 1536;
   const sceneHeight = 864;
@@ -40,7 +40,10 @@
       && (!('controlIcon' in item) || (typeof item.controlIcon === 'string' && (!item.controlIcon || iconPattern.test(item.controlIcon))))
       && (!('visualKind' in item) || visualKinds.has(item.visualKind))
       && (!('vacuumMapEntityId' in item) || typeof item.vacuumMapEntityId === 'string'
-        && (!item.vacuumMapEntityId || /^camera\.[a-z0-9_]+$/i.test(item.vacuumMapEntityId)));
+        && (!item.vacuumMapEntityId || /^camera\.[a-z0-9_]+$/i.test(item.vacuumMapEntityId)))
+      && (!('vacuumPositionTransform' in item) || Array.isArray(item.vacuumPositionTransform)
+        && item.vacuumPositionTransform.length === 6
+        && item.vacuumPositionTransform.every(value => Number.isFinite(value) && Math.abs(value) <= 10000));
   }
 
   function propertyUpdate(key, rawValue) {
@@ -58,6 +61,12 @@
     if (key === 'vacuumMapEntityId') {
       return !value || /^camera\.[a-z0-9_]+$/i.test(value)
         ? { valid: true, value: value || undefined } : { valid: false };
+    }
+    if (key === 'vacuumPositionTransform') {
+      if (!value) return { valid: true, value: undefined };
+      const numbers = value.split(',').map(part => Number(part.trim()));
+      return numbers.length === 6 && numbers.every(number => Number.isFinite(number) && Math.abs(number) <= 10000)
+        ? { valid: true, value: numbers } : { valid: false };
     }
     if (key === 'controlLabel') return value.length <= 80 ? { valid: true, value: value || undefined } : { valid: false };
     return !value || iconPattern.test(value) ? { valid: true, value: value || undefined } : { valid: false };
@@ -133,6 +142,7 @@
       ...(item.tapEntityId ? { roomcraft_tap_entity: item.tapEntityId } : {}),
       ...(item.holdEntityId ? { roomcraft_hold_entity: item.holdEntityId } : {}),
       ...(item.vacuumMapEntityId ? { roomcraft_vacuum_map_entity: item.vacuumMapEntityId } : {}),
+      ...(item.vacuumPositionTransform ? { roomcraft_vacuum_position_transform: item.vacuumPositionTransform } : {}),
       style: dimensions(item, 4)
     }));
     const cameras = items.filter(item => item.type === 'cameraThumbnail').map(item => ({
@@ -269,7 +279,10 @@
         + entityField('Hold target (optional)', 'holdEntityId', item.holdEntityId || '', entityOptions, null, escape)
         + (visualKind(item) === 'vacuum'
           ? entityField('Vacuum map camera', 'vacuumMapEntityId', item.vacuumMapEntityId || '', entityOptions, 'camera', escape)
-            + '<p class="field-hint">Tap the vacuum to open start, pause, dock, locate, room-cleaning, and live-map controls. The authenticated map stays out of exported artwork.</p>'
+            + '<div class="field"><label for="prop-vacuumPositionTransform">Position transform (advanced)</label>'
+            + '<input id="prop-vacuumPositionTransform" data-prop="vacuumPositionTransform" type="text" value="'
+            + escape((item.vacuumPositionTransform || []).join(', ')) + '" placeholder="a, b, c, d, e, f" autocomplete="off"></div>'
+            + '<p class="field-hint">The optional six-number transform maps live vacuum coordinates to plan pixels: x′ = ax + by + c, y′ = dx + ey + f. When calibrated, the robot moves smoothly to its real map position; stale active positions are not presented as live. Tap opens start, pause, dock, locate, room-cleaning, and map controls.</p>'
           : '')
         + '<p class="field-hint">Search available devices by name or enter an entity ID. Automatic tap toggles lights, switches, and fans; runs scenes, scripts, and buttons; and opens details for other devices. The object name is the button label unless you set one above.'
         + ' Optional tap and hold targets let this object show one entity’s state while running a different scene, script, or button.'
