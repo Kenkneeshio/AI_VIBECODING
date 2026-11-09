@@ -690,7 +690,7 @@ class RoomcraftObjectControl extends HTMLElement {
     const style = document.createElement('style');
     style.textContent = `
       :host{display:block;box-sizing:border-box;min-width:32px;min-height:32px;transition:left 1.3s linear,top 1.3s linear}
-      .target{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;border-radius:12px;background:transparent;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+      .target{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;border-radius:12px;background:transparent;color:transparent;box-shadow:none;appearance:none;-webkit-appearance:none;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
       .target:hover,.target:focus-visible{outline:2px solid #7ee8d2;outline-offset:1px}
       .target:active{filter:brightness(1.25)}
       .target[data-feedback]::after{content:"";position:absolute;inset:1px;z-index:2;border:3px solid #d9fff4;border-radius:12px;background:#b8fff035;box-shadow:0 0 0 3px #15313cbb,0 0 14px 5px #6eead5c9;pointer-events:none}
@@ -702,7 +702,8 @@ class RoomcraftObjectControl extends HTMLElement {
       .target[data-visual="none"] .art,.target[data-state="ready"] .art,
       .target[data-zone="true"][data-visual="device"] .art{display:none}
       .target[data-visual="light"][data-state="off"] .art{
-        background:transparent;backdrop-filter:none;box-shadow:none}
+        background:radial-gradient(circle at 42% 37%,#f7efd9 0 18%,#d7c6a3 19% 48%,#716756 49% 60%,transparent 62%);
+        backdrop-filter:none;box-shadow:0 2px 3px #15202773}
       .target[data-visual="light"][data-state="on"] .art{
         background:radial-gradient(circle,#fffef2 0 15%,#ffe6a5e8 31%,#ffca68a0 50%,transparent 78%);
         box-shadow:0 0 18px 9px #ffd865a6,0 0 34px 17px #ffd86562,inset 0 0 0 2px #fff8dd}
@@ -710,7 +711,8 @@ class RoomcraftObjectControl extends HTMLElement {
         inset:24% 30% auto;height:34%;border-radius:46% 46% 50% 50%;
         transition:background .18s,box-shadow .18s,backdrop-filter .18s}
       .target[data-visual="light"][data-form="table_lamp"][data-state="off"] .art{
-        background:transparent;backdrop-filter:none;box-shadow:none}
+        background:radial-gradient(circle at 42% 37%,#f7efd9 0 18%,#d7c6a3 19% 48%,#716756 49% 60%,transparent 62%);
+        backdrop-filter:none;box-shadow:0 2px 3px #15202773}
       .target[data-visual="light"][data-form="table_lamp"][data-state="on"] .art{
         background:radial-gradient(ellipse at 45% 39%,#fff8dfeb 0 32%,#ffdd8dbe 55%,transparent 82%);
         backdrop-filter:none;
@@ -773,8 +775,6 @@ class RoomcraftObjectControl extends HTMLElement {
       .target[data-visual="device"][data-form="air_purifier"][data-state="on"] .art::before{opacity:.92;animation:roomcraft-airflow 1.8s ease-in-out infinite alternate}
       .target[data-state="unavailable"] .art{background:#28313bb8;box-shadow:inset 0 0 0 2px #87919b;filter:grayscale(1)}
       .target[data-visual="fan"][data-state="unavailable"] .art{background:radial-gradient(ellipse at center,#293842e6 0 27%,#29384299 49%,transparent 76%);box-shadow:none}
-      .hint{display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;color:#ecfff7;filter:drop-shadow(0 1px 3px #102a2a)}
-      .target:hover .hint,.target:focus-visible .hint{display:block}
       .detail-badge{display:none;position:absolute;z-index:20;box-sizing:border-box;width:max-content;min-width:112px;max-width:190px;padding:6px 8px;border:1px solid #dff9ef;border-radius:8px;background:#10272ef2;color:#f4fff9;box-shadow:0 3px 12px #07171db8;pointer-events:none;text-align:left;font:600 10px/1.25 system-ui,sans-serif}
       :host([data-show-details="true"]) .detail-badge{display:block}
       :host([data-detail-side="right"]) .detail-badge{left:calc(100% + 7px);top:50%;transform:translateY(-50%)}
@@ -832,8 +832,6 @@ class RoomcraftObjectControl extends HTMLElement {
       if (this._held) { this._held = false; return; }
       this._activate('hold');
     });
-    const icon = document.createElement('ha-icon');
-    icon.className = 'hint';
     const art = document.createElement('span');
     art.className = 'art';
     const rotor = document.createElement('span');
@@ -847,7 +845,7 @@ class RoomcraftObjectControl extends HTMLElement {
     hub.className = 'hub';
     rotor.append(hub);
     art.append(rotor);
-    button.append(art, icon);
+    button.append(art);
     const detail = document.createElement('div');
     detail.className = 'detail-badge';
     detail.setAttribute('aria-hidden', 'true');
@@ -901,7 +899,7 @@ class RoomcraftObjectControl extends HTMLElement {
     vacuumPanel.append(vacuumHead, vacuumMap, vacuumActions, vacuumRoomsTitle, vacuumRooms);
     this.shadowRoot.append(style, button, detail, vacuumPanel);
     this._button = button;
-    this._icon = icon;
+    this._icon = null;
     this._detail = detail;
     this._detailName = detailName;
     this._detailState = detailState;
@@ -932,7 +930,6 @@ class RoomcraftObjectControl extends HTMLElement {
       visualKind === 'device' ? this._config.roomcraft_device_form || '' : '');
     this._button.setAttribute('data-axis', this._config.roomcraft_window_axis || 'horizontal');
     this._button.setAttribute('data-zone', String(this._config.control_zone === true));
-    this._icon.icon = this._config.control_icon || state?.attributes?.icon || 'mdi:gesture-tap';
     const label = this._config.title || state?.attributes?.friendly_name || this._config.entity;
     const tap = this._actionFor('tap');
     const hold = this._actionFor('hold');

@@ -266,6 +266,10 @@
   }
   function drawItem(c,item,starter,original,shell,fallback) {
     if(item.type==='controlZone')return;
+    // The source bedroom-lamp crop also contains a few high-contrast pixels
+    // from the bedside furniture. Reusing it for movable lamps produces a
+    // false black "button" beside every fixture. Draw clean lamp art instead.
+    if(item.type==='lamp'){fallback(item);return;}
     if(item.type==='window'){
       drawGlazedWindow(c,item.x,item.y,item.w,item.h,item.rotation||0);
       return;

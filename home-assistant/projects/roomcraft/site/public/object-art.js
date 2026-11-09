@@ -1,7 +1,7 @@
 /* Illustrated top-down art for objects that do not have a cutout in the PNG. */
 (() => {
   'use strict';
-  const supported=new Set(['armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce','thermostat','humidifier','airPurifier','windowFan','garageDoor','floorPlant','artwork','mirror','window']);
+  const supported=new Set(['armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','lamp','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce','thermostat','humidifier','airPurifier','windowFan','garageDoor','floorPlant','artwork','mirror','window']);
   // These cells face the same near-top-down camera as the supplied plan.
   // Front-facing atlas pieces use the perspective-aware canvas art below.
   const atlas=new Image();
@@ -637,6 +637,7 @@
         disc(c,0,-h*.19,w*.39,g,'#c6aa7d',1.5);
         disc(c,-w*.11,-h*.3,w*.08,'#fffdf0aa');break;
       }
+      case 'lamp':
       case 'tableLamp':{
         c.shadowColor='transparent';glow(c,Math.min(w,h)*.58);
         disc(c,0,3,Math.min(w,h)*.43,'#80684e','#5c4c40',1.5);

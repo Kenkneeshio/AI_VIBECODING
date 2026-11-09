@@ -159,6 +159,10 @@ test('office window fan can be placed away from a wall', () => {
   assert.equal(fan.y, 335);
 });
 
+test('clean export omits bound light art so the transparent live control renders it once', () => {
+  assert.match(source, /clean&&validEntityId\(o\.entityId\)&&\(isFixtureControl\(o\)\|\|\['ceilingFan','robotVacuum'\]/);
+});
+
 test('existing objects gain configurable dashboard button actions without a migration', () => {
   const editor = boot({
     version: 2, editableReferenceVersion: 2, rooms: [], walls: [], hotspots: [],

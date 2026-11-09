@@ -415,7 +415,7 @@
         // HA renders bound fans and robots as live stateful objects. Keep their
         // art in Design mode, but omit a fixed fan/robot from the exported PNG
         // so motion and map tracking never create a second frozen copy.
-        if(clean&&validEntityId(o.entityId)&&['ceilingFan','robotVacuum'].includes(templateByType[o.type]?.artFamily))return;
+        if(clean&&validEntityId(o.entityId)&&(isFixtureControl(o)||['ceilingFan','robotVacuum'].includes(templateByType[o.type]?.artFamily)))return;
         drawObject(c,o);
       };
       if(!raster?.draw(c,project,STARTER,{original:reference,shell:emptyShell,wallFree:wallFreeShell},drawDynamicObject)){

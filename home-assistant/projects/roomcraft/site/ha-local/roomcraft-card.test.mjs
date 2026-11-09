@@ -615,7 +615,7 @@ test('the object artwork is the light control, with details on hold', async () =
   object.hass = { states: { 'light.bedroom': { state: 'on' } },
     callService: (...args) => { calls.push(args); return Promise.resolve(); } };
   assert.equal(object._button.attributes['data-state'], 'on');
-  assert.equal(object._icon.icon, 'mdi:lamp');
+  assert.equal(object._icon, null);
   assert.equal(object._button.attributes['data-zone'], 'false');
   assert.match(object._button.attributes['aria-label'], /Tap to toggle; hold for details/);
   object._activate('tap');
@@ -809,9 +809,11 @@ test('a bound table lamp shades only its small lamp head and follows the light s
     entity: 'light.office', title: 'Office desk lamp', roomcraft_visual_kind: 'light',
     roomcraft_light_form: 'table_lamp' });
   const css = object.shadowRoot.children[0].textContent;
+  assert.match(css, /\.target\{[^}]*background:transparent[^}]*appearance:none[^}]*-webkit-appearance:none/);
+  assert.doesNotMatch(css, /\.hint\{/);
   assert.match(css, /\[data-form="table_lamp"\] \.art\{[^}]*height:34%/);
-  assert.match(css, /\[data-form="table_lamp"\]\[data-state="off"\] \.art\{[^}]*background:transparent/);
-  assert.match(css, /\[data-form="table_lamp"\]\[data-state="off"\] \.art\{[^}]*box-shadow:none/);
+  assert.match(css, /\[data-form="table_lamp"\]\[data-state="off"\] \.art\{[^}]*radial-gradient/);
+  assert.match(css, /\[data-form="table_lamp"\]\[data-state="off"\] \.art\{[^}]*backdrop-filter:none/);
   assert.match(css, /\[data-form="table_lamp"\]\[data-state="on"\] \.art\{[^}]*0 0 6px 2px/);
   object.hass = { states: { 'light.office': { state: 'off' } } };
   assert.equal(object._button.attributes['data-form'], 'table_lamp');
