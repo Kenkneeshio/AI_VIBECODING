@@ -262,3 +262,19 @@
 
 **Consequence:** The editor must keep confirmation focus and cancel/confirm behavior accessible, and transfer busy state should disable only actions that would conflict with the active transfer.
 
+## 2026-11-09 — One deterministic engine beneath every editor surface
+
+**Decision:** Keep the approved illustrated canvas backend, but move identity, canonical data, migrations, edit evidence, layers, asset contracts, and verification into the versioned `RoomcraftEngine`. Core engine modules cannot read the DOM, network, Home Assistant, device state, wall clock, randomness, or machine-specific paths.
+
+**Reason:** The editor had been its own implicit engine: array position controlled paint and hit order, object IDs depended on time, raw JSON key order affected equality, and art could silently change with asset timing. Those behaviors cannot be reproduced reliably by another engineer or customer installation.
+
+**Consequence:** Layout v2 and current art remain compatible while the UI delegates through a stable facade. Equivalent inputs and edit sequences must produce the same project, IDs, command-log digest, render-plan digest, and release manifest. Future gesture-specific reducers, dashboard transforms, and art backends extend the same engine instead of creating parallel models.
+
+## 2026-11-09 — Customer outcome is the first release input
+
+**Decision:** Apply the top-down release standard in [release-standard.md](release-standard.md) to every Roomcraft release, whether it changes code, art, Home Assistant integration, or documentation.
+
+**Reason:** Technical checks alone do not prove that a release solves the intended household/customer problem, remains operable on supported screens, or has a safe rollback.
+
+**Consequence:** Each change starts with persona/problem/observable acceptance and non-goals, then works down through contracts, modules, art, integrations, automated proof, deployment readback, and rollback. CI produces deterministic technical evidence, while the GitHub pull-request template makes the human-reviewed customer acceptance and operational evidence explicit.
+

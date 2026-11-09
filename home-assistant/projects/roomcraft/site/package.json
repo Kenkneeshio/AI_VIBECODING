@@ -8,10 +8,13 @@
   "scripts": {
     "install:ci": "node scripts/install-ci.mjs",
     "dev": "node scripts/run-framework.mjs dev",
-    "build": "node scripts/run-framework.mjs build",
+    "build": "node scripts/build-roomcraft.mjs",
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
     "test": "node --test \"tests/*.test.mjs\"",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "release:verify": "node scripts/roomcraft-release.mjs --verify",
+    "release:manifest": "node scripts/roomcraft-release.mjs --write",
+    "release:manifest:verify": "node scripts/roomcraft-release.mjs --check",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

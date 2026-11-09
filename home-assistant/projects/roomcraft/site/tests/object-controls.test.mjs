@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { test } from 'node:test';
+import { installRoomcraftEngine } from './engine-loader.mjs';
 
 const controlsSource = readFileSync(new URL('../public/object-controls.js', import.meta.url), 'utf8');
 const rasterSource = readFileSync(new URL('../public/raster-renderer.js', import.meta.url), 'utf8');
@@ -137,6 +138,7 @@ test('dashboard entity suggestions are sanitized, searchable, and domain filtere
 test('transparent control area produces no bitmap artwork', () => {
   class ImageStub { addEventListener() {} }
   const window = {};
+  installRoomcraftEngine(window);
   runInNewContext(rasterSource, { window, Image: ImageStub });
   const canvas = new Proxy({}, { get: () => { throw new Error('Unexpected bitmap paint'); } });
   window.RoomcraftRasterRenderer.drawItem(canvas, {

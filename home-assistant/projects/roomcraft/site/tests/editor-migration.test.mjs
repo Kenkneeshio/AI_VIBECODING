@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { test } from 'node:test';
+import { installRoomcraftEngine } from './engine-loader.mjs';
 
 const source = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
 const controlsSource = readFileSync(new URL('../public/object-controls.js', import.meta.url), 'utf8');
@@ -59,6 +60,7 @@ function boot(savedProject, dashboardRequest, options = {}) {
   const window = { addEventListener() {}, location, RoomcraftInventory: { templates: [], groups: [] },
     ...(dashboardRequest ? { RoomcraftDashboardBridge: { request: dashboardRequest } } : {}) };
   window.top = window;
+  installRoomcraftEngine(window);
   runInNewContext(controlsSource, { window });
   const localStorage = {
     getItem(key) { return data.get(key) ?? null; },
@@ -76,9 +78,146 @@ function boot(savedProject, dashboardRequest, options = {}) {
   const event = (x, y) => ({ clientX: x - crop.x + 14, clientY: y - crop.y + 14, button: 0, pointerId: 1, preventDefault() {} });
   const pointer = (kind, x, y) => listeners.get(`planCanvas:${kind}`)(event(x, y));
   const read = () => JSON.parse(data.get(storageKey));
-  return { pointer, read, elements, storage: data, navigation,
+  return { pointer, read, elements, storage: data, navigation, window,
     dispatch: (id, kind, event) => listeners.get(`${id}:${kind}`)(event) };
 }
+
+test('the same scene and edit sequence produce the same object ID and engine evidence', () => {
+  const initial = { version: 2, editableReferenceVersion: 4, rooms: [], walls: [], items: [], hotspots: [] };
+  const placeCamera = () => {
+    const editor = boot(initial);
+    editor.dispatch('objectsPanel', 'click', {
+      target: { closest: () => ({ dataset: { template: 'cameraThumbnail' } }) }
+    });
+    editor.pointer('pointerdown', 260, 390);
+    return { id: editor.read().items.find(i => i.type === 'cameraThumbnail').id,
+      evidence: editor.window.RoomcraftEditorEngine.inspect() };
+  };
+  const first = placeCamera();
+  const second = placeCamera();
+  assert.equal(first.id, second.id);
+  assert.deepEqual(JSON.parse(JSON.stringify(first.evidence)),JSON.parse(JSON.stringify(second.evidence)));
+  assert.equal(first.evidence.engineVersion, '1.0.0');
+  assert.equal(first.evidence.roundTripStable, true);
+  assert.equal(first.evidence.commandCount, 1);
+});
+
+test('an authoritative replacement registers imported IDs before the next allocation', async () => {
+  const initial={version:2,editableReferenceVersion:4,rooms:[],walls:[],items:[],hotspots:[]};
+  const probe=boot(initial);
+  probe.dispatch('objectsPanel','click',{target:{closest:()=>({dataset:{template:'cameraThumbnail'}})}});
+  probe.pointer('pointerdown',260,390);
+  const importedId=probe.read().items.find(item=>item.type==='cameraThumbnail').id;
+  const remote={...initial,items:[{id:importedId,type:'chair',name:'Imported chair',x:500,y:500,w:48,h:48,rotation:0,entityId:''}]};
+  const editor=boot(initial,async()=>({revision:'id-collision-check',project:remote,hotspots:[]}));
+  await new Promise(resolve=>setImmediate(resolve));
+  editor.dispatch('objectsPanel','click',{target:{closest:()=>({dataset:{template:'cameraThumbnail'}})}});
+  editor.pointer('pointerdown',260,390);
+  const ids=editor.read().items.map(item=>item.id);
+  assert.equal(new Set(ids).size,ids.length);
+  assert.notEqual(editor.read().items.find(item=>item.type==='cameraThumbnail').id,importedId);
+});
+
+test('the same authoritative import resets different local ID histories to one branch', async () => {
+  const initial={version:2,editableReferenceVersion:4,rooms:[],walls:[],items:[],hotspots:[]};
+  const authoritative={version:2,editableReferenceVersion:4,rooms:[],walls:[],items:[
+    {id:'authoritative-chair',type:'chair',name:'Chair',x:500,y:500,w:48,h:48,rotation:0,entityId:''}
+  ],hotspots:[]};
+  const importThenPlace=async localPlacements=>{
+    let requestCount=0;
+    const editor=boot(initial,async()=>{
+      requestCount++;
+      if(requestCount===1)throw new Error('Keep the local draft for this test');
+      return {revision:'authoritative-layout',project:authoritative,hotspots:[]};
+    });
+    await new Promise(resolve=>setImmediate(resolve));
+    for(let index=0;index<localPlacements;index++){
+      editor.dispatch('objectsPanel','click',{target:{closest:()=>({dataset:{template:'cameraThumbnail'}})}});
+      editor.pointer('pointerdown',260+index,390);
+    }
+    const importing=editor.dispatch('importDashboardButton','click',{});
+    await new Promise(resolve=>setImmediate(resolve));
+    editor.dispatch('confirmationAccept','click',{});
+    await importing;
+    editor.dispatch('objectsPanel','click',{target:{closest:()=>({dataset:{template:'cameraThumbnail'}})}});
+    editor.pointer('pointerdown',260,390);
+    return editor.read().items.find(item=>item.type==='cameraThumbnail').id;
+  };
+  assert.equal(await importThenPlace(1),await importThenPlace(4));
+});
+
+test('undo and redo reseed IDs from the project they restore', async () => {
+  const projectA={version:2,editableReferenceVersion:4,rooms:[],walls:[],items:[
+    {id:'project-a-chair',type:'chair',name:'A chair',x:450,y:500,w:48,h:48,rotation:0,entityId:''}
+  ],hotspots:[]};
+  const projectB={version:2,editableReferenceVersion:4,rooms:[],walls:[],items:[
+    {id:'project-b-chair',type:'chair',name:'B chair',x:550,y:500,w:48,h:48,rotation:0,entityId:''}
+  ],hotspots:[]};
+  const placeCamera=editor=>{
+    editor.dispatch('objectsPanel','click',{target:{closest:()=>({dataset:{template:'cameraThumbnail'}})}});
+    editor.pointer('pointerdown',260,390);
+    return editor.read().items.find(item=>item.type==='cameraThumbnail').id;
+  };
+  const freshA=placeCamera(boot(projectA));
+  const freshB=placeCamera(boot(projectB));
+  const importB=async()=>{
+    let requestCount=0;
+    const editor=boot(projectA,async()=>{
+      requestCount++;
+      if(requestCount===1)throw new Error('Keep A until the explicit import');
+      return {revision:'project-b',project:projectB,hotspots:[]};
+    });
+    await new Promise(resolve=>setImmediate(resolve));
+    const importing=editor.dispatch('importDashboardButton','click',{});
+    await new Promise(resolve=>setImmediate(resolve));
+    editor.dispatch('confirmationAccept','click',{});
+    await importing;
+    return editor;
+  };
+  const undone=await importB();
+  undone.dispatch('undoButton','click',{});
+  assert.equal(placeCamera(undone),freshA);
+
+  const redone=await importB();
+  redone.dispatch('undoButton','click',{});
+  redone.dispatch('redoButton','click',{});
+  assert.equal(placeCamera(redone),freshB);
+});
+
+test('editor journal checkpoints after 70 edits and replays the bounded segment', () => {
+  const initial={version:2,editableReferenceVersion:4,rooms:[],walls:[],items:[],hotspots:[]};
+  const editor=boot(initial);
+  const placeCamera=index=>{
+    editor.dispatch('objectsPanel','click',{target:{closest:()=>({dataset:{template:'cameraThumbnail'}})}});
+    editor.pointer('pointerdown',260+(index%10),390+Math.floor(index/10));
+  };
+  for(let index=0;index<71;index++)placeCamera(index);
+  const checkpoint=editor.read();
+  let evidence=editor.window.RoomcraftEditorEngine.inspect();
+  assert.equal(evidence.checkpointCount,1);
+  assert.equal(evidence.commandCount,0);
+  assert.equal(checkpoint.items.filter(item=>item.type==='cameraThumbnail').length,71);
+
+  placeCamera(71);
+  const finalProject=editor.read();
+  evidence=editor.window.RoomcraftEditorEngine.inspect();
+  assert.equal(evidence.checkpointCount,1);
+  assert.equal(evidence.commandCount,1);
+  const replay=editor.window.RoomcraftEngine.commands.replay({
+    initialState:checkpoint,
+    log:editor.window.RoomcraftEditorEngine.exportCommandLog(),
+    reducer:(state,command)=>command.type==='scene.replace'?command.payload.project:state
+  });
+  assert.equal(replay.finalHash,editor.window.RoomcraftEngine.fingerprint(finalProject));
+  assert.equal(finalProject.items.filter(item=>item.type==='cameraThumbnail').length,72);
+});
+
+test('a malformed optional layer order is rejected before the first render', () => {
+  const editor=boot({version:2,editableReferenceVersion:4,rooms:[],walls:[],hotspots:[],items:[
+    {id:'bad-z',type:'chair',name:'Bad layer',x:500,y:500,w:48,h:48,rotation:0,zIndex:'front',entityId:''}
+  ]});
+  assert.equal(editor.window.RoomcraftEditorEngine.renderPlan().operations.some(operation=>operation.id==='bad-z'),false);
+});
 
 test('migrates a saved plan into movable lamp and room fixtures without duplicating them', () => {
   const old = { version: 2, rooms: [], walls: [], items: [], hotspots: [] };

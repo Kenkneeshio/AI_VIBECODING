@@ -2,6 +2,8 @@
    untouched pixel and every movable cutout. Geometry stays in app.js. */
 (() => {
   'use strict';
+  const Engine = window.RoomcraftEngine;
+  if (!Engine) throw new Error('RoomcraftEngine must load before raster-renderer.js');
   const W = 1536, H = 1024;
   const specs = {
     i1: { box:[398,197,194,272], shapes:[['r',14,12,88,246,10],['r',13,167,171,94,11]] },
@@ -369,9 +371,9 @@
   }
   function waitForImage(image,src){
     if(src&&!image.src)image.src=src;
-    if(image.complete&&image.naturalWidth)return Promise.resolve();
+    if(image.complete)return image.naturalWidth?Promise.resolve():Promise.reject(new Error(`Image asset failed to decode: ${src||image.src||'unknown'}`));
     return new Promise((resolve,reject)=>{
-      image.addEventListener('load',resolve,{once:true});
+      image.addEventListener('load',()=>image.naturalWidth?resolve():reject(new Error(`Image asset decoded without pixels: ${src||image.src||'unknown'}`)),{once:true});
       image.addEventListener('error',()=>reject(new Error('Image asset could not load')),{once:true});
     });
   }
@@ -396,17 +398,14 @@
     const starterRooms=new Map(starter.rooms.map(r=>[r.id,r]));
     for(const room of project.rooms)if(!sameRoom(room,starterRooms.get(room.id)))paintRoom(c,room,starter,project,images);
     drawLivingRug(c);drawBedroomRug(c);drawOfficeRug(c);drawFixedDecor(c,original,shell);
-    const changed=project.items;
-    const isFloorLayer=item=>item.type==='rug'||['playMat','floorMat'].includes(window.RoomcraftInventory?.byType?.[item.type]?.artFamily);
-    const isCeilingLayer=item=>item.type==='ceilingLight'||item.type==='pendantLight'||window.RoomcraftInventory?.byType?.[item.type]?.artFamily==='ceilingFan';
-    const floorItems=changed.filter(isFloorLayer);
-    for(const item of floorItems)drawItem(c,item,starter,original,shell,fallback);
-    for(const item of changed.filter(i=>!isFloorLayer(i)&&!isCeilingLayer(i)&&i.type!=='window'))drawItem(c,item,starter,original,shell,fallback);
+    const layers=Engine.render.orderSceneItems(project.items,window.RoomcraftInventory?.byType);
+    for(const item of layers.floorItems)drawItem(c,item,starter,original,shell,fallback);
+    for(const item of layers.regularItems)drawItem(c,item,starter,original,shell,fallback);
     // Ceiling fixtures remain visible above movable furniture, independent of insertion order.
-    for(const item of changed.filter(isCeilingLayer))drawItem(c,item,starter,original,shell,fallback);
+    for(const item of layers.ceilingItems)drawItem(c,item,starter,original,shell,fallback);
     for(const wall of project.walls){const base=starter.walls.find(w=>w.id===wall.id);if(!sameWall(wall,base))drawNewWall(c,wall);}
     for(const [x,y,w,h,rotation] of exteriorWindows)drawGlazedWindow(c,x,y,w,h,rotation);
-    for(const item of changed.filter(i=>i.type==='window'))drawItem(c,item,starter,original,shell,fallback);
+    for(const item of layers.windowItems)drawItem(c,item,starter,original,shell,fallback);
     return true;
   }
   window.RoomcraftRasterRenderer={draw,drawItem,ready,prepareExport};

@@ -11,6 +11,8 @@ Roomcraft is the editable source for the illustrated **Second Floor** Home Assis
 | Need | Read |
 | --- | --- |
 | Take over engineering work and see the verified release state | [Engineering handoff](docs/engineering-handoff.md) |
+| Change engine modules, migrations, layers, art, or release evidence | [Deterministic engine contract](docs/engine-contract.md) |
+| Prepare any release from customer outcome through rollback | [Release standard](docs/release-standard.md) |
 | Learn the editor and dashboard transfer | [Illustrated user manual](docs/user-manual.md) |
 | Set up or roll back an installation | [Deployment guide](docs/deployment.md) |
 | Recover calendar tablet and phone-to-desktop access | [Tablet and remote access runbook](docs/tablet-access.md) |
@@ -37,6 +39,8 @@ roomcraft/
 ├── docs/ha-controls-and-menu.md  Object controls and the entity drawer
 ├── docs/main-dashboard-map.md   Legacy dashboard section and entity map
 ├── docs/architecture.md  Data flow, extension points, team ownership
+├── docs/engine-contract.md  Determinism, module ownership, changes, proof, rollback
+├── docs/release-standard.md Customer-first release order, evidence, and rollback gate
 ├── docs/live-object-graphics.md  State mapping, fan motion, and camera verification
 ├── docs/deployment.md    Installation, verification, rollback
 ├── docs/tablet-access.md Calendar tablet ADB and phone Remote recovery

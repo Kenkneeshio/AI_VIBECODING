@@ -55,3 +55,14 @@ test('photo-inspired catalog and home controls have working perspective render p
     'glazing and sill stay within the shallow wall opening');
   assert.ok(strokes > templates.length * 5);
 });
+
+test('authored object atlases must decode before an export can proceed', async () => {
+  const window = { dispatchEvent() {} };
+  class Image {
+    complete = true;
+    naturalWidth = 0;
+    addEventListener() {}
+  }
+  runInNewContext(artSource, { window, Image, Event: class Event {} });
+  await assert.rejects(window.RoomcraftObjectArt.prepareExport(), /atlas.*decode/i);
+});

@@ -2,6 +2,8 @@
 
 Roomcraft separates authored layout data, rendering, dashboard transport, and live Home Assistant state. Keep each boundary narrow so teams can change one layer without changing every other layer.
 
+The [deterministic engine contract](engine-contract.md) is normative for module dependency direction, canonical inputs, command replay, layer order, migrations, change review, release evidence, and rollback. This page describes the deployed data flow; where a future extraction is discussed, it must preserve that contract rather than create a second layout or renderer.
+
 ```mermaid
 flowchart LR
   E[Editor UI<br/>rooms, walls, floors, items] --> M[Versioned layout JSON]

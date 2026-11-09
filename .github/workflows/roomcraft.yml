@@ -4,11 +4,13 @@ on:
   pull_request:
     paths:
       - '.github/workflows/roomcraft.yml'
+      - '.github/PULL_REQUEST_TEMPLATE/roomcraft.md'
       - 'home-assistant/projects/roomcraft/**'
   push:
     branches: [main]
     paths:
       - '.github/workflows/roomcraft.yml'
+      - '.github/PULL_REQUEST_TEMPLATE/roomcraft.md'
       - 'home-assistant/projects/roomcraft/**'
   workflow_dispatch:
 
@@ -26,8 +28,17 @@ jobs:
           cache: npm
           cache-dependency-path: home-assistant/projects/roomcraft/site/package-lock.json
       - run: npm ci
+      - run: npm run release:verify
       - run: npm test
-      - run: node --test ha-local/roomcraft-card.test.mjs
+      - run: node --test ha-local/roomcraft-card.test.mjs ha-local/roomcraft-weather-outdoor.test.mjs
       - run: python3 -m unittest discover -s ha-local -p 'test_*.py'
       - run: npx tsc --noEmit
+      - run: npm run lint
       - run: npm run build
+      - run: npm run release:manifest:verify
+      - uses: actions/upload-artifact@v4
+        with:
+          name: roomcraft-release-manifest-${{ github.sha }}
+          path: home-assistant/projects/roomcraft/site/dist/roomcraft-release-manifest.json
+          if-no-files-found: error
+      - run: git diff --check

@@ -2,12 +2,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import test from 'node:test';
+import { installRoomcraftEngine } from './engine-loader.mjs';
 
 const source = readFileSync(new URL('../public/raster-renderer.js', import.meta.url), 'utf8');
 
 function renderer() {
   class ImageStub { addEventListener() {} }
   const window = { dispatchEvent() {} };
+  installRoomcraftEngine(window);
   runInNewContext(source, { window, Image: ImageStub });
   return window.RoomcraftRasterRenderer;
 }
@@ -79,4 +81,14 @@ test('a new editable window is painted above fixed openings at its own wall angl
   assert.deepEqual(positions.at(-1), [900, 400]);
   assert.equal(positions.length, 9);
   assert.ok(Math.abs(canvas.operations.filter(([kind]) => kind === 'rotate').at(-1)[1] - Math.PI / 2) < 1e-10);
+});
+
+test('a corrupt canonical shell rejects export instead of hanging or changing render backends', async () => {
+  const raster = renderer();
+  const failed = { complete: true, naturalWidth: 0, src: 'empty-shell.png', addEventListener() {} };
+  const ready = { complete: true, naturalWidth: 1536, src: 'floorplan.png', addEventListener() {} };
+  await assert.rejects(
+    raster.prepareExport({ rooms: [] }, { rooms: [] }, { original: ready, shell: failed, wallFree: ready }),
+    /failed to decode/i
+  );
 });

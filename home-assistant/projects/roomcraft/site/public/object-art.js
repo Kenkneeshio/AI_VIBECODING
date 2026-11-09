@@ -845,11 +845,16 @@
     c.restore();return true;
   }
   function prepareExport(){
-    const wait=image=>image.complete?Promise.resolve():new Promise(resolve=>{
-      image.addEventListener('load',resolve,{once:true});
-      image.addEventListener('error',resolve,{once:true});
-    });
-    return Promise.all([wait(atlas),wait(babyAtlas)]);
+    const wait=(image,label)=>{
+      if(image.complete)return image.naturalWidth>0?Promise.resolve():Promise.reject(new Error(`${label} failed to decode`));
+      return new Promise((resolve,reject)=>{
+        image.addEventListener('load',()=>image.naturalWidth>0?resolve():reject(new Error(`${label} decoded without pixels`)),{once:true});
+        image.addEventListener('error',()=>reject(new Error(`${label} failed to load`)),{once:true});
+      });
+    };
+    // Export is a release artifact, so it must never silently substitute the
+    // vector fallback merely because an authored atlas was late or corrupt.
+    return Promise.all([wait(atlas,'Furniture atlas'),wait(babyAtlas,'Overhead object atlas')]);
   }
   window.RoomcraftObjectArt={draw,prepareExport};
 })();

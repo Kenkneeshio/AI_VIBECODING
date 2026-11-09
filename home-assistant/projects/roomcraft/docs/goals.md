@@ -2,6 +2,7 @@
 
 | Goal | Reason | Evidence of completion |
 | --- | --- | --- |
+| Make every release deterministic, repeatable, standardized, modular, professional, and customer-led | Engineers and future customer installations need to reproduce a layout or release without rediscovering hidden ordering, timing, assets, or acceptance criteria | `RoomcraftEngine` owns canonical fingerprints, seeded IDs, migrations, command replay, layer plans, and asset/evidence contracts; CI enforces the technical gates and the GitHub template prompts the required customer-outcome-to-rollback record |
 | Make Roomcraft the official second-floor layout authoring tool | Avoid a static dashboard image becoming an uneditable, divergent copy and let HA users edit from their usual login | The HA `studio` panel hosts Roomcraft; import/export persists `roomcraft_layout` and the rendered plan |
 | Return from the editor to the live plan in one step | Laptop and tablet users should not need browser history or a copied URL after editing | **← Dashboard** uses the authenticated dashboard source, prompts over unpublished edits, saves a recoverable browser draft, and stays put if navigation or storage is unavailable |
 | Keep all upstairs rooms level and visually coherent | Doorways should connect spaces without unexplained elevation changes | One shared floor plane through doors; per-room finishes are visible and editable |

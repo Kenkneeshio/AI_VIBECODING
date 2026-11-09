@@ -1,6 +1,33 @@
 (() => {
   'use strict';
 
+  const Engine = window.RoomcraftEngine;
+  if (!Engine) throw new Error('RoomcraftEngine must load before app.js');
+  const clone = Engine.clone;
+  const projectFingerprint = value => Engine.canonicalStringify(value);
+  let idAllocator = null;
+  const allocatedIds = new Set();
+  function registerProjectIds(scene) {
+    for (const collection of ['rooms','walls','items','hotspots']) {
+      for (const record of scene?.[collection] || []) if (record?.id) allocatedIds.add(record.id);
+    }
+  }
+  function initializeIdAllocator(scene) {
+    allocatedIds.clear();
+    registerProjectIds(scene);
+    idAllocator = Engine.createIdAllocator({
+      seed: { schemaVersion: scene?.version || 2, projectHash: Engine.fingerprint(scene) },
+      namespace: 'roomcraft'
+    });
+  }
+  function uid(prefix) {
+    if (!idAllocator) throw new Error('Roomcraft deterministic ID allocator is not initialized');
+    let id;
+    do { id = idAllocator.next(prefix); } while (allocatedIds.has(id));
+    allocatedIds.add(id);
+    return id;
+  }
+
   // Keep the editable house at its original coordinates. The 16:9 view shows
   // the full source width and trims only outdoor space above and below it.
   const W = 1536, H = 1024, VIEW_W = 1536, VIEW_H = 864, CROP_X = 0, CROP_Y = 80;
@@ -94,9 +121,6 @@
   ];
   const templateByType = Object.fromEntries(templates.map(t => [t.type, t]));
 
-  let nextId = 1000;
-  const uid = prefix => `${prefix}-${Date.now().toString(36)}-${nextId++}`;
-  const clone = value => JSON.parse(JSON.stringify(value));
   const point = (x, y) => ({ x, y });
   const room = (id, name, surface, points, label) => ({ id, name, surface, points: points.map(p => point(...p)), label: point(...label) });
   const wall = (id, x1, y1, x2, y2) => ({ id, x1, y1, x2, y2 });
@@ -176,6 +200,47 @@
   const fixedRoomIds = new Set(STARTER.rooms.map(r => r.id));
   const fixedExteriorWallIds = new Set(['w1','w2','w3','w4','w5','w6','w7','w8','w9','w10','w11','w12']);
   const isFixedExteriorWall = w => !!w && fixedExteriorWallIds.has(w.id);
+  const REFERENCE_MIGRATIONS = [
+    {id:'reference-v1-movable-bedside-lamp',from:0,to:1,apply(state){
+      const lamp=STARTER.items.find(i=>i.id==='i14');
+      const nearbyLamp=state.items.some(i=>i.id==='i14'||(i.type==='lamp'&&Math.hypot(i.x-lamp.x,i.y-lamp.y)<45));
+      if(!nearbyLamp)state.items.push(clone(lamp));
+      return state;
+    }},
+    {id:'reference-v2-room-fixtures',from:1,to:2,apply(state){
+      for(const fixture of DEFAULT_ROOM_FIXTURES){
+        const present=state.items.some(i=>i.id===fixture.id||(i.type===fixture.type&&Math.hypot(i.x-fixture.x,i.y-fixture.y)<30));
+        if(!present)state.items.push(clone(fixture));
+      }
+      return state;
+    }},
+    {id:'reference-v3-movable-interface',from:2,to:3,apply(state){
+      for(const control of DEFAULT_INTERFACE_ITEMS)if(!state.items.some(i=>i.id===control.id||i.type===control.type))state.items.push(clone(control));
+      return state;
+    }},
+    {id:'reference-v4-office-and-bedroom-art',from:3,to:4,apply(state){
+      const desk=state.items.find(i=>i.id==='i4');
+      // Correct only the two shipped shallow-desk variants. Owner geometry is
+      // data, not a migration target, and therefore remains untouched.
+      if(matchesKnownGeometry(desk,[
+        {x:923,y:273,w:196,h:85,rotation:0},
+        {x:924,y:278,w:196,h:85,rotation:0}
+      ]))Object.assign(desk,{x:930,y:312,w:245,h:156,rotation:0});
+      const chair=state.items.find(i=>i.id==='i5');
+      if(matchesKnownGeometry(chair,[
+        {x:978,y:310,w:47,h:47,rotation:0},
+        {x:975,y:322,w:47,h:47,rotation:0}
+      ]))Object.assign(chair,{x:978,y:310,w:47,h:47,rotation:0});
+      for(const furniture of REFERENCE_FURNITURE_V4){
+        const present=state.items.some(i=>i.id===furniture.id||
+          (i.type===furniture.type&&Math.hypot(i.x-furniture.x,i.y-furniture.y)<36));
+        // Retain the legacy array position for byte-compatible v2 projects;
+        // the render engine now owns the actual visual layer.
+        if(!present)state.items.unshift(clone(furniture));
+      }
+      return state;
+    }}
+  ];
 
   let hasLocalDraft = false;
   function loadProject() {
@@ -192,6 +257,7 @@
       && p.rooms.every(r => typeof r.id === 'string' && !!surfaceById[r.surface] && Array.isArray(r.points) && r.points.length >= 3 && r.points.every(q => Number.isFinite(q.x) && Number.isFinite(q.y)))
       && p.walls.every(w => typeof w.id === 'string' && (!w.finish || !!wallFinishById[w.finish]) && [w.x1,w.y1,w.x2,w.y2].every(Number.isFinite))
       && p.items.every(i => typeof i.id === 'string' && templateByType[i.type] && [i.x,i.y,i.w,i.h,i.rotation].every(Number.isFinite)
+        && (!Object.prototype.hasOwnProperty.call(i,'zIndex')||Number.isFinite(i.zIndex))
         && (window.RoomcraftObjectControls?.validBinding(i) ?? true)
         && (i.type!=='cameraThumbnail'||(i.x>=0&&i.x<=W&&i.y>=0&&i.y<=H&&i.w>=40&&i.h>=40&&i.w<=W&&i.h<=H
           && (!i.previewMode||['event','live','live_auto','event_live','offline'].includes(i.previewMode))
@@ -209,57 +275,29 @@
       })));
   }
   function restoreFixedGeometry(p){
-    const rooms=new Set(p.rooms.map(r=>r.id)),walls=new Map(p.walls.map(w=>[w.id,w]));
-    for(const r of STARTER.rooms)if(fixedRoomIds.has(r.id)&&!rooms.has(r.id))p.rooms.push(clone(r));
-    for(const w of STARTER.walls)if(fixedExteriorWallIds.has(w.id)){if(walls.has(w.id)){const current=walls.get(w.id);current.x1=w.x1;current.y1=w.y1;current.x2=w.x2;current.y2=w.y2;}else p.walls.push(clone(w));}
-    if(!Array.isArray(p.hotspots))p.hotspots=clone(DEFAULT_HOTSPOTS);
-    // Older saved layouts predate the movable lamp. Migrate once, and remember
-    // the migration so removing the lamp later remains an intentional edit.
-    if((p.editableReferenceVersion||0)<1){
-      const lamp=STARTER.items.find(i=>i.id==='i14');
-      const nearbyLamp=p.items.some(i=>i.id==='i14'||(i.type==='lamp'&&Math.hypot(i.x-lamp.x,i.y-lamp.y)<45));
-      if(!nearbyLamp)p.items.push(clone(lamp));
-      p.editableReferenceVersion=1;
-    }
-    if(p.editableReferenceVersion<2){
-      for(const fixture of DEFAULT_ROOM_FIXTURES){
-        const present=p.items.some(i=>i.id===fixture.id||(i.type===fixture.type&&Math.hypot(i.x-fixture.x,i.y-fixture.y)<30));
-        if(!present)p.items.push(clone(fixture));
-      }
-      p.editableReferenceVersion=2;
-    }
-    if(p.editableReferenceVersion<3){
-      for(const control of DEFAULT_INTERFACE_ITEMS)if(!p.items.some(i=>i.id===control.id||i.type===control.type))p.items.push(clone(control));
-      p.editableReferenceVersion=3;
-    }
-    if(p.editableReferenceVersion<4){
-      const desk=p.items.find(i=>i.id==='i4');
-      // Correct only the two shipped shallow-desk variants. A desk the owner
-      // has already moved, resized, or rotated is a real edit and must survive
-      // this one-time visual-reference migration.
-      if(matchesKnownGeometry(desk,[
-        {x:923,y:273,w:196,h:85,rotation:0},
-        {x:924,y:278,w:196,h:85,rotation:0}
-      ]))Object.assign(desk,{x:930,y:312,w:245,h:156,rotation:0});
-      const chair=p.items.find(i=>i.id==='i5');
-      if(matchesKnownGeometry(chair,[
-        {x:978,y:310,w:47,h:47,rotation:0},
-        {x:975,y:322,w:47,h:47,rotation:0}
-      ]))Object.assign(chair,{x:978,y:310,w:47,h:47,rotation:0});
-      for(const furniture of REFERENCE_FURNITURE_V4){
-        const present=p.items.some(i=>i.id===furniture.id||
-          (i.type===furniture.type&&Math.hypot(i.x-furniture.x,i.y-furniture.y)<36));
-        // Put support furniture below lamps, chairs, and controls in both the
-        // paint order and reverse-order hit testing.
-        if(!present)p.items.unshift(clone(furniture));
-      }
-      p.editableReferenceVersion=4;
-    }
-    for(const o of p.items)clampLinkedItem(o);
-    p.version=2;
-    return p;
+    let next=Engine.normalizeScene(p);
+    const rooms=new Set(next.rooms.map(r=>r.id)),walls=new Map(next.walls.map(w=>[w.id,w]));
+    for(const r of STARTER.rooms)if(fixedRoomIds.has(r.id)&&!rooms.has(r.id))next.rooms.push(clone(r));
+    for(const w of STARTER.walls)if(fixedExteriorWallIds.has(w.id)){if(walls.has(w.id)){const current=walls.get(w.id);current.x1=w.x1;current.y1=w.y1;current.x2=w.x2;current.y2=w.y2;}else next.walls.push(clone(w));}
+    if(!Array.isArray(next.hotspots))next.hotspots=clone(DEFAULT_HOTSPOTS);
+    next=clone(Engine.migrations.run(next,REFERENCE_MIGRATIONS,4,{versionKey:'editableReferenceVersion'}).project);
+    for(const o of next.items)clampLinkedItem(o);
+    next.version=2;
+    return Engine.normalizeScene(next);
   }
   let project = loadProject();
+  initializeIdAllocator(project);
+  const sceneReducer = (state,command) => {
+    if(command.type!=='scene.replace')throw new Error(`Unsupported Roomcraft command: ${command.type}`);
+    return command.payload.project;
+  };
+  const createEditorJournal = initialState => Engine.commands.createJournal({
+    initialState,
+    seed:{schemaVersion:initialState.version,initialHash:Engine.fingerprint(initialState)},
+    namespace:'edit',reducer:sceneReducer,validate:validProject
+  });
+  let editorJournal = createEditorJournal(project);
+  let journalCommandCount = 0, journalCheckpointCount = 0;
   let selected = null;
   let tool = 'select';
   let viewMode = 'design';
@@ -280,7 +318,16 @@
   let dashboardPublishedProject = null;
   let dashboardDefaultProject = null;
   let projectChangeSerial = 0;
+  let sceneOrderCache = null;
   let entityOptions = [];
+
+  function sceneLayers(){
+    if(!sceneOrderCache||sceneOrderCache.serial!==projectChangeSerial||sceneOrderCache.items!==project.items||sceneOrderCache.length!==project.items.length){
+      sceneOrderCache={serial:projectChangeSerial,items:project.items,length:project.items.length,
+        layers:Engine.render.orderSceneItems(project.items,window.RoomcraftInventory?.byType)};
+    }
+    return sceneOrderCache.layers;
+  }
 
   function updateEntityOptions(data) {
     entityOptions = window.RoomcraftObjectControls.normalizeEntityOptions(data?.entityOptions);
@@ -294,14 +341,14 @@
     label.innerHTML = '<span class="save-dot"></span> Saving…';
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(project)); label.innerHTML = '<span class="save-dot"></span> Saved locally'; }
+      try { localStorage.setItem(STORAGE_KEY, projectFingerprint(project)); label.innerHTML = '<span class="save-dot"></span> Saved locally'; }
       catch (_) { label.textContent = 'Browser storage is full'; }
     }, 250);
   }
   function saveDraftNow() {
     clearTimeout(saveTimer);
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
+      localStorage.setItem(STORAGE_KEY, projectFingerprint(project));
       document.getElementById('saveState').innerHTML = '<span class="save-dot"></span> Saved locally';
       return true;
     } catch (_) {
@@ -310,10 +357,23 @@
     }
   }
   function snapshot() { history.push(clone(project)); if (history.length > 70) history.shift(); future = []; updateHistoryButtons(); }
-  function undo() { if (!history.length) return; future.push(clone(project)); project = history.pop(); selected = null; afterChange('Undid last change'); }
-  function redo() { if (!future.length) return; history.push(clone(project)); project = future.pop(); selected = null; afterChange('Redid change'); }
+  function undo() { if (!history.length) return; future.push(clone(project)); project = history.pop(); selected = null; afterChange('Undid last change',{resetIdentity:true}); }
+  function redo() { if (!future.length) return; history.push(clone(project)); project = future.pop(); selected = null; afterChange('Redid change',{resetIdentity:true}); }
   function updateHistoryButtons() { document.getElementById('undoButton').disabled = !history.length; document.getElementById('redoButton').disabled = !future.length; }
-  function afterChange(message) { projectChangeSerial++;saveSoon(); draw(); renderInspector(); renderRoomList(); renderHotspotList(); updateRestoreButton(); updateRecoveryButton(); updateHistoryButtons(); if (message) setStatus(message); }
+  function afterChange(message,options={}) {
+    project=Engine.normalizeScene(project);
+    if(options.authoritative||options.resetIdentity)initializeIdAllocator(project);
+    else registerProjectIds(project);
+    if(options.authoritative){
+      // A full import/reset starts a reproducible identity and evidence branch
+      // from that project, independent of the browser draft that preceded it.
+      editorJournal=createEditorJournal(project);journalCommandCount=0;journalCheckpointCount=0;
+    }else{
+      if(journalCommandCount>=70){editorJournal=createEditorJournal(project);journalCommandCount=0;journalCheckpointCount++;}
+      else{editorJournal.dispatch('scene.replace',{project,reason:message||'editor change'});journalCommandCount++;}
+    }
+    projectChangeSerial++;sceneOrderCache=null;saveSoon();draw();renderInspector();renderRoomList();renderHotspotList();updateRestoreButton();updateRecoveryButton();updateHistoryButtons();if(message)setStatus(message);
+  }
   function setStatus(message) { document.getElementById('statusText').textContent = message; }
   function showToast(message) { const t = document.getElementById('viewportToast'); t.textContent = message; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2800); }
 
@@ -487,7 +547,13 @@
         drawObject(c,o);
       };
       if(!raster?.draw(c,project,STARTER,{original:reference,shell:emptyShell,wallFree:wallFreeShell},drawDynamicObject)){
-        drawBackdrop(c);drawRooms(c);for(const o of project.items)drawDynamicObject(o);for(const w of project.walls)drawWall(c,w);
+        const layers=sceneLayers();
+        drawBackdrop(c);drawRooms(c);
+        for(const o of layers.floorItems)drawDynamicObject(o);
+        for(const o of layers.regularItems)drawDynamicObject(o);
+        for(const o of layers.ceilingItems)drawDynamicObject(o);
+        for(const w of project.walls)drawWall(c,w);
+        for(const o of layers.windowItems)drawDynamicObject(o);
       }
       if(!clean){
         drawControlZones(c);drawHotspots(c);drawSelection(c);
@@ -545,8 +611,10 @@
   function hitItem(p,includeTouchTarget=true){
     // Prefer the visible footprint. Only use a larger touch target when no
     // object was directly hit, so a small lamp cannot steal its neighbor.
-    for(const expanded of includeTouchTarget?[false,true]:[false])for(let i=project.items.length-1;i>=0;i--){
-      const o=project.items[i],q=itemLocalPoint(p,o);
+    const layers=sceneLayers();
+    const hitOrder=[...layers.floorItems,...layers.regularItems,...layers.ceilingItems,...layers.windowItems];
+    for(const expanded of includeTouchTarget?[false,true]:[false])for(let i=hitOrder.length-1;i>=0;i--){
+      const o=hitOrder[i],q=itemLocalPoint(p,o);
       const halfW=expanded?Math.max(o.w/2+5,22/currentView.scale):o.w/2+4;
       const halfH=expanded?Math.max(o.h/2+5,22/currentView.scale):o.h/2+4;
       if(Math.abs(q.x)<=halfW&&Math.abs(q.y)<=halfH)return o;
@@ -709,8 +777,8 @@
   }
   function readPreRecoveryLayout(){try{const raw=localStorage.getItem(BEFORE_RECOVERY_KEY);if(!raw)return null;const parsed=JSON.parse(raw);return validProject(parsed)?parsed:null;}catch(_){return null;}}
   function updateRecoveryButton(){const b=document.getElementById('recoverDraftButton');if(b)b.hidden=!readPreviousDraft();const back=document.getElementById('returnPreRecoveryButton');if(back)back.hidden=!readPreRecoveryLayout();}
-  function recoverPreviousDraft(){const previous=readPreviousDraft();if(!previous){showToast('No previous browser draft found');return;}if(!readPreRecoveryLayout()){try{localStorage.setItem(BEFORE_RECOVERY_KEY,JSON.stringify(project));}catch(_){showToast('Could not save current layout; export JSON first');return;}}snapshot();project=restoreFixedGeometry(clone(previous));selected=null;clearPlacement();afterChange('Recovered previous browser draft');showToast('Previous draft restored; pre-recovery layout saved');}
-  function returnPreRecoveryLayout(){const before=readPreRecoveryLayout();if(!before){showToast('No pre-recovery layout found');return;}snapshot();project=restoreFixedGeometry(clone(before));selected=null;clearPlacement();localStorage.removeItem(BEFORE_RECOVERY_KEY);afterChange('Returned to pre-recovery layout');showToast('Pre-recovery layout restored');}
+  function recoverPreviousDraft(){const previous=readPreviousDraft();if(!previous){showToast('No previous browser draft found');return;}if(!readPreRecoveryLayout()){try{localStorage.setItem(BEFORE_RECOVERY_KEY,projectFingerprint(project));}catch(_){showToast('Could not save current layout; export JSON first');return;}}snapshot();project=restoreFixedGeometry(clone(previous));selected=null;clearPlacement();afterChange('Recovered previous browser draft',{authoritative:true});showToast('Previous draft restored; pre-recovery layout saved');}
+  function returnPreRecoveryLayout(){const before=readPreRecoveryLayout();if(!before){showToast('No pre-recovery layout found');return;}snapshot();project=restoreFixedGeometry(clone(before));selected=null;clearPlacement();localStorage.removeItem(BEFORE_RECOVERY_KEY);afterChange('Returned to pre-recovery layout',{authoritative:true});showToast('Pre-recovery layout restored');}
   function field(label,key,value,type='text'){return `<div class="field"><label for="prop-${key}">${label}</label><input id="prop-${key}" data-prop="${key}" type="${type}" value="${htmlEscape(value)}" ${type==='number'?'step="1"':''}></div>`;}
   function hotspotField(label,key,value,type='text'){return `<div class="field"><label for="hotspot-${key}">${label}</label><input id="hotspot-${key}" data-hotspot-prop="${key}" type="${type}" value="${htmlEscape(value)}" ${type==='number'?'step="0.01" min="0" max="100"':''}></div>`;}
   function variantField(t,type){
@@ -799,7 +867,7 @@
   function updateRestoreButton(){const button=document.getElementById('restoreFurnishingsButton');if(!button)return;const count=missingReferenceItems().length;button.disabled=count===0;button.textContent=count?`↺ Restore ${count} missing reference object${count===1?'':'s'}`:'✓ All reference furniture is present';button.title=count?'Add missing original furnishings while keeping your floors, rooms, and new objects':'All original furnishings are already in this design';}
   function restoreReferenceItems(){const missing=missingReferenceItems();if(!missing.length){showToast('All reference furniture is present');return;}snapshot();project.items.push(...missing.map(clone));selected=null;clearPlacement();afterChange(`Restored ${missing.length} reference object${missing.length===1?'':'s'}`);showToast('Original furnishings restored; other edits kept');}
   function download(name,type,content){const blob=content instanceof Blob?content:new Blob([content],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);}
-  function exportJson(){download('roomcraft-editable-layout.json','application/json',JSON.stringify(project,null,2));showToast('Editable layout JSON downloaded');}
+  function exportJson(){download('roomcraft-editable-layout.json','application/json',JSON.stringify(Engine.canonicalize(project),null,2));showToast('Editable layout JSON downloaded');}
   async function renderDetailedPng(){
     await Promise.all([window.RoomcraftRasterRenderer?.prepareExport(project,STARTER,{original:reference,shell:emptyShell,wallFree:wallFreeShell}),window.RoomcraftObjectArt?.prepareExport?.()]);
     const out=document.createElement('canvas');out.width=VIEW_W;out.height=VIEW_H;draw(out.getContext('2d'),true,'design');return out;
@@ -823,7 +891,7 @@
     download('roomcraft-home-assistant.yaml','text/yaml',yaml);
     showToast('Home Assistant YAML with object buttons and menu downloaded');
   }
-  function importProject(file){if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(String(reader.result));if(!validProject(parsed))throw new Error('Invalid project format');snapshot();project=restoreFixedGeometry(parsed);selected=null;afterChange('Imported project');showToast('Project imported');fitView();}catch(err){showToast('Could not import this project JSON');}};reader.readAsText(file);}
+  function importProject(file){if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(String(reader.result));if(!validProject(parsed))throw new Error('Invalid project format');snapshot();project=restoreFixedGeometry(parsed);selected=null;clearPlacement();afterChange('Imported project',{authoritative:true});showToast('Project imported');fitView();}catch(err){showToast('Could not import this project JSON');}};reader.readAsText(file);}
 
   function setDashboardStatus(message,isError=false){const status=document.getElementById('dashboardTransferStatus');status.textContent=message;status.classList.toggle('error',isError);setStatus(message);}
   function setDashboardBusy(busy){dashboardTransferBusy=busy;document.body.classList.toggle('dashboard-transfer-busy',busy);for(const id of ['importDashboardButton','exportDashboardButton'])document.getElementById(id).disabled=busy;}
@@ -872,7 +940,7 @@
       catch(_){showToast('Dashboard link unavailable. Check the Home Assistant connection.');return;}
     }
     if(!dashboardSource){showToast('Dashboard link unavailable. Check the Home Assistant connection.');return;}
-    const unpublished=dashboardPublishedProject!==JSON.stringify(project);
+    const unpublished=dashboardPublishedProject!==projectFingerprint(project);
     if(unpublished&&!await askConfirmation('View dashboard','This layout has edits that are saved in this browser but have not been exported to Home Assistant. View the dashboard anyway?','View dashboard'))return;
     if(!saveDraftNow()&&unpublished){showToast('Browser draft could not be saved. Export layout JSON before leaving.');return;}
     try{window.top.location.assign(dashboardSource);}
@@ -907,16 +975,16 @@
         setDashboardStatus('Browser edits kept. Import from dashboard when ready.');return;
       }
       const current=restoreFixedGeometry(clone(next));
-      const different=hasLocalDraft&&JSON.stringify(project)!==JSON.stringify(current);
+      const different=hasLocalDraft&&projectFingerprint(project)!==projectFingerprint(current);
       if(different){
         try{
-          localStorage.setItem(REPLACED_DRAFT_KEY,localStorage.getItem(STORAGE_KEY)||JSON.stringify(project));
+          localStorage.setItem(REPLACED_DRAFT_KEY,localStorage.getItem(STORAGE_KEY)||projectFingerprint(project));
         }catch(_){
           setDashboardStatus('Current dashboard found, but browser draft backup failed. Export your layout JSON before importing.',true);
           return;
         }
       }
-      project=current;dashboardDefaultProject=clone(current);selected=null;afterChange('Loaded current Home Assistant layout');dashboardPublishedProject=JSON.stringify(project);fitView();
+      project=current;dashboardDefaultProject=clone(current);selected=null;afterChange('Loaded current Home Assistant layout',{authoritative:true});dashboardPublishedProject=projectFingerprint(project);fitView();
       const detail=hasEditable?'Current editable dashboard layout loaded':'Current dashboard controls loaded with the starting editable plan';
       setDashboardStatus(different?detail+' · previous browser draft available to recover':detail);
     }catch(error){
@@ -938,7 +1006,7 @@
       if(!await askConfirmation('Import dashboard layout',`Import ${detail} from Home Assistant? This replaces the layout saved in this browser. You can undo the import during this session or export your current layout as JSON first.`,'Import layout')){
         setDashboardStatus('Dashboard import canceled');return;
       }
-      snapshot();project=restoreFixedGeometry(clone(next));dashboardDefaultProject=clone(project);dashboardRevision=data.revision;selected=null;clearPlacement();setViewMode('design');afterChange('Imported from Home Assistant dashboard');dashboardPublishedProject=JSON.stringify(project);fitView();
+      snapshot();project=restoreFixedGeometry(clone(next));dashboardDefaultProject=clone(project);dashboardRevision=data.revision;selected=null;clearPlacement();setViewMode('design');afterChange('Imported from Home Assistant dashboard',{authoritative:true});dashboardPublishedProject=projectFingerprint(project);fitView();
       const message=hasEditable?'Editable layout imported from dashboard':'Dashboard controls imported. Its image has no editable Roomcraft data, so the starting furnishings were used.';
       setDashboardStatus(message);showToast(message);
     }catch(error){const message=`Import failed: ${error.message||'Home Assistant is unavailable'}`;setDashboardStatus(message,true);showToast(message);}
@@ -953,17 +1021,17 @@
       if(!await askConfirmation('Export to Home Assistant','Replace the Second Floor plan image and interactive objects with this layout? The editable project is saved with the dashboard for future imports.','Export layout')){
         setDashboardStatus('Dashboard export canceled');return;
       }
-      const before=JSON.stringify(project);
+      const before=projectFingerprint(project);
       setDashboardStatus('Rendering the detailed dashboard image…');
       const pngDataUrl=(await renderDetailedPng()).toDataURL('image/png');
-      if(JSON.stringify(project)!==before)throw new Error('Layout changed while the image was rendering; try again');
+      if(projectFingerprint(project)!==before)throw new Error('Layout changed while the image was rendering; try again');
       setDashboardStatus('Uploading image and saving dashboard…');
       const saved=await dashboardRequest('POST',{project:next,pngDataUrl,revision:dashboardRevision});
       if(!saved.imageUrl)throw new Error('Dashboard save did not return an image URL');
       rememberDashboardSource(saved.source);
       dashboardRevision=saved.revision||null;
       dashboardDefaultProject=clone(project);
-      dashboardPublishedProject=JSON.stringify(project);
+      dashboardPublishedProject=projectFingerprint(project);
       setDashboardStatus('Layout, image, and controls exported to Home Assistant');showToast('Home Assistant dashboard updated');
     }catch(error){if(error.status===409)dashboardRevision=null;const message=error.status===409?'Dashboard changed since your last import. Import it before exporting again.':`Export failed: ${error.message||'Home Assistant is unavailable'}`;setDashboardStatus(message,true);showToast(message);}
     finally{setDashboardBusy(false);}
@@ -1005,8 +1073,8 @@
     menu.addEventListener('click',e=>{const b=e.target.closest('[data-export]');if(!b)return;showMenu(false);if(b.dataset.export==='png')exportPng();if(b.dataset.export==='json')exportJson();if(b.dataset.export==='yaml')exportHaYaml();});
     document.addEventListener('pointerdown',e=>{if(!e.target.closest('.menu-wrap'))showMenu(false);});
     document.getElementById('importButton').addEventListener('click',()=>document.getElementById('importFile').click());document.getElementById('importFile').addEventListener('change',e=>{importProject(e.target.files[0]);e.target.value='';});
-    document.getElementById('resetButton').addEventListener('click',async()=>{if(!await askConfirmation('Reset layout','Load the current Home Assistant layout? Your current browser draft can be exported as JSON first, and this change is undoable in this session.','Load current layout'))return;snapshot();project=restoreFixedGeometry(clone(dashboardDefaultProject||STARTER));selected=null;afterChange(dashboardDefaultProject?'Loaded current Home Assistant layout':'Loaded starting furnished plan');fitView();});
-    window.addEventListener('keydown',e=>{if(dashboardTransferBusy)return;const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo();return;}if(e.key===' '){e.preventDefault();spaceHeld=true;return;}if(e.key==='Escape'){const canceled=interaction;interaction=null;viewport.classList.remove('dragging');if(canceled?.snapshot&&history.length){project=history.pop();future=[];afterChange('Canceled drag');}clearPlacement();selected=null;renderInspector();updateHistoryButtons();draw();return;}if((e.key==='Delete'||e.key==='Backspace')&&selected){e.preventDefault();deleteSelected();return;}const shortcuts={v:'select',h:'pan',r:'room',w:'wall',e:'erase'};const shortcut=shortcuts[e.key.toLowerCase()];if(shortcut){setViewMode('design');setTool(shortcut);}});
+    document.getElementById('resetButton').addEventListener('click',async()=>{if(!await askConfirmation('Reset layout','Load the current Home Assistant layout? Your current browser draft can be exported as JSON first, and this change is undoable in this session.','Load current layout'))return;snapshot();project=restoreFixedGeometry(clone(dashboardDefaultProject||STARTER));selected=null;clearPlacement();afterChange(dashboardDefaultProject?'Loaded current Home Assistant layout':'Loaded starting furnished plan',{authoritative:true});fitView();});
+    window.addEventListener('keydown',e=>{if(dashboardTransferBusy)return;const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo();return;}if(e.key===' '){e.preventDefault();spaceHeld=true;return;}if(e.key==='Escape'){const canceled=interaction;interaction=null;viewport.classList.remove('dragging');if(canceled?.snapshot&&history.length){project=history.pop();future=[];afterChange('Canceled drag',{resetIdentity:true});}clearPlacement();selected=null;renderInspector();updateHistoryButtons();draw();return;}if((e.key==='Delete'||e.key==='Backspace')&&selected){e.preventDefault();deleteSelected();return;}const shortcuts={v:'select',h:'pan',r:'room',w:'wall',e:'erase'};const shortcut=shortcuts[e.key.toLowerCase()];if(shortcut){setViewMode('design');setTool(shortcut);}});
     window.addEventListener('keyup',e=>{if(e.key===' ')spaceHeld=false;});
     window.addEventListener('resize',fitView);
   }
@@ -1014,5 +1082,26 @@
   window.addEventListener('roomcraft-asset-loaded',()=>{draw();paintPalettePreviews();});
   reference.addEventListener('load',paintPalettePreviews);
   emptyShell.addEventListener('load',paintPalettePreviews);
+  window.RoomcraftEditorEngine=Object.freeze({
+    version:Engine.ENGINE_VERSION,
+    inspect(){
+      const layers=Engine.render.partitionSceneItems(project.items,window.RoomcraftInventory?.byType);
+      const roundTrip=Engine.io.verifyRoundTrip(project);
+      const commandLog=editorJournal.exportLog();
+      return Object.freeze({
+        engineVersion:Engine.ENGINE_VERSION,
+        schemaVersion:project.version,
+        referenceVersion:project.editableReferenceVersion,
+        projectHash:Engine.fingerprint(project),
+        renderPlanHash:layers.plan.hash,
+        commandLogHash:commandLog.hash,
+        commandCount:commandLog.commands.length,
+        checkpointCount:journalCheckpointCount,
+        roundTripStable:roundTrip.stable
+      });
+    },
+    exportCommandLog:()=>editorJournal.exportLog(),
+    renderPlan:()=>Engine.render.partitionSceneItems(project.items,window.RoomcraftInventory?.byType).plan
+  });
   renderCategoryOptions();bindEvents();renderPalette();renderSurfacePalette();renderWallPalette();renderRoomList();renderHotspotList();renderInspector();updateRestoreButton();updateRecoveryButton();updateHistoryButtons();setTool('select');fitView();draw();loadDashboardDefault();
 })();
