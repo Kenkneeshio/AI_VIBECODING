@@ -723,7 +723,9 @@ test('action-only ceiling fan never spins without a verified motor state', () =>
 test('electrical and indoor-air markers reveal live status without operating devices', () => {
   const electrical = new StatusPopup();
   electrical.setConfig({ type: 'custom:roomcraft-status-popup', roomcraft_status_kind: 'electrical',
-    title: 'Electrical', entities: [{ entity: 'sensor.main_power', name: 'Home power' }] });
+    title: 'Electrical', roomcraft_popup_direction: 'up',
+    entities: [{ entity: 'sensor.main_power', name: 'Home power' }] });
+  assert.equal(electrical._panel.attributes['data-direction'], 'up');
   electrical.hass = { states: {
     'sensor.main_power': { state: '3412', attributes: { unit_of_measurement: 'W', friendly_name: 'Main power' } },
   } };
@@ -731,6 +733,10 @@ test('electrical and indoor-air markers reveal live status without operating dev
   assert.match(electrical._rows.children[0].children[2].textContent, /3,412 W/);
   electrical._button.listeners.click();
   assert.equal(electrical._panel.hidden, false);
+  electrical.setConfig({ type: 'custom:roomcraft-status-popup', roomcraft_status_kind: 'electrical',
+    title: 'Electrical', roomcraft_popup_direction: 'down',
+    entities: [{ entity: 'sensor.main_power', name: 'Home power' }] });
+  assert.equal(electrical._panel.attributes['data-direction'], 'down');
 
   const air = new StatusPopup();
   air.setConfig({ type: 'custom:roomcraft-status-popup', roomcraft_status_kind: 'air', title: 'Indoor air',

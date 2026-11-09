@@ -12,6 +12,13 @@
   const sceneHeight = 864;
   const sceneLeft = 0;
   const sceneTop = 80;
+  const interfaceButtonTypes = new Set(['uiEdit', 'uiStatusAir', 'uiStatusElectrical']);
+  const interfaceButtonVars = {
+    '--roomcraft-control-bg': 'rgba(16, 40, 43, 0.88)',
+    '--roomcraft-control-border': 'rgba(216, 255, 240, 0.65)',
+    '--roomcraft-control-color': '#d8fff0',
+    '--roomcraft-control-shadow': '0 3px 10px rgba(7, 21, 24, 0.61)'
+  };
 
   function normalizeEntityOptions(raw) {
     if (!Array.isArray(raw)) return [];
@@ -162,12 +169,24 @@
       style: dimensions(item, 3)
     }));
     const findUi = type => items.find(item => item.type === type);
+    const interfaceStyle = (position, type) => {
+      const style = { ...dimensions(position, 12), ...(interfaceButtonTypes.has(type) ? interfaceButtonVars : {}) };
+      if (type === 'uiEdit') Object.assign(style, {
+        background: 'var(--roomcraft-control-bg)', border: '1px solid var(--roomcraft-control-border)',
+        'border-radius': '50%', padding: '0', color: 'var(--roomcraft-control-color)',
+        'box-shadow': 'var(--roomcraft-control-shadow)', 'box-sizing': 'border-box',
+        display: 'grid', 'place-items': 'center', '--mdc-icon-size': '24px'
+      });
+      return style;
+    };
     const uiElements = [
       ['uiTime', { type: 'state-label', entity: 'sensor.time' }],
       ['uiEdit', { type: 'icon', icon: 'mdi:pencil-ruler', title: 'Edit layout in Roomcraft', tap_action: { action: 'navigate', navigation_path: '/second-floor/studio' } }],
       ['uiStatusAir', { type: 'custom:roomcraft-status-popup', roomcraft_status_kind: 'air', title: 'Indoor air', entities: [] }],
       ['uiStatusElectrical', { type: 'custom:roomcraft-status-popup', roomcraft_status_kind: 'electrical', title: 'Electrical', entities: [] }]
-    ].flatMap(([type, element]) => { const position=findUi(type); return position?[{...element,style:dimensions(position,12)}]:[]; });
+    ].flatMap(([type, element]) => { const position=findUi(type); return position?[{...element,
+      ...(type.startsWith('uiStatus') ? { roomcraft_popup_direction: position.y > sceneTop + sceneHeight / 2 ? 'up' : 'down' } : {}),
+      style:interfaceStyle(position,type)}]:[]; });
     const menuPosition=findUi('uiMenu');
     const menu = {
       type: 'custom:roomcraft-entity-menu',

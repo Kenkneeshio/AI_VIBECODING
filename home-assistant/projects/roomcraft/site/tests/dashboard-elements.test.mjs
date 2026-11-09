@@ -30,13 +30,15 @@ test('dashboard interface items move retained chrome and the weather celestial a
     { type: 'icon', icon: 'mdi:pencil-ruler', tap_action: { action: 'navigate', navigation_path: '/second-floor/studio' }, style: { left: '94%', top: '5.3%' } },
     { type: 'custom:roomcraft-weather-outdoor', weather_entity: 'weather.house', style: { left: '50%', top: '50%', width: '100%', height: '100%' } },
     { type: 'custom:roomcraft-status-popup', roomcraft_status_kind: 'air', entities: [], style: { left: '91.9%', top: '8.2%' } },
+    { type: 'custom:roomcraft-status-popup', roomcraft_status_kind: 'electrical', entities: [], style: { left: '95%', top: '8.2%' } },
   ];
   const items = [
     { id: 'menu', type: 'uiMenu', x: 120, y: 140, w: 48, h: 48, rotation: 0 },
     { id: 'clock', type: 'uiTime', x: 1100, y: 150, w: 100, h: 44, rotation: 0 },
-    { id: 'edit', type: 'uiEdit', x: 1400, y: 150, w: 48, h: 48, rotation: 0 },
+    { id: 'edit', type: 'uiEdit', x: 1350, y: 864, w: 48, h: 48, rotation: 0 },
     { id: 'sun', type: 'uiWeatherOrb', x: 900, y: 130, w: 72, h: 72, rotation: 0 },
-    { id: 'air', type: 'uiStatusAir', x: 1320, y: 180, w: 52, h: 52, rotation: 0 },
+    { id: 'air', type: 'uiStatusAir', x: 1410, y: 864, w: 48, h: 48, rotation: 0 },
+    { id: 'electrical', type: 'uiStatusElectrical', x: 1470, y: 864, w: 48, h: 48, rotation: 0 },
   ];
   const result = mergeDashboardElements([], existing, items);
   const menu = result.find(element => element.roomcraft_menu);
@@ -44,10 +46,21 @@ test('dashboard interface items move retained chrome and the weather celestial a
   const edit = result.find(element => element.type === 'icon');
   const weather = result.find(element => element.type === 'custom:roomcraft-weather-outdoor');
   const air = result.find(element => element.roomcraft_status_kind === 'air');
+  const electrical = result.find(element => element.roomcraft_status_kind === 'electrical');
   assert.equal(menu.style.left, '7.81%');
   assert.equal(clock.style.left, '71.61%');
-  assert.equal(edit.style.left, '91.15%');
-  assert.equal(air.style.left, '85.94%');
+  assert.equal(edit.style.left, '87.89%');
+  assert.equal(air.style.left, '91.8%');
+  assert.equal(electrical.style.left, '95.7%');
+  for (const control of [edit, air, electrical]) {
+    assert.equal(control.style.top, '90.74%');
+    assert.equal(control.style.width, '3.13%');
+    assert.equal(control.style.height, '5.56%');
+    assert.equal(control.style['--roomcraft-control-bg'], 'rgba(16, 40, 43, 0.88)');
+  }
+  assert.equal(edit.style['border-radius'], '50%');
+  assert.equal(air.roomcraft_popup_direction, 'up');
+  assert.equal(electrical.roomcraft_popup_direction, 'up');
   assert.equal(weather.celestial_x, 900);
   assert.equal(weather.celestial_y, 50);
   assert.equal(weather.celestial_size, 72);

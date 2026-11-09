@@ -25,6 +25,27 @@ test('old object bindings keep automatic device actions', () => {
   assert.equal(c.effectiveHoldAction({ ...oldBlind, holdAction: 'toggle' }), 'toggle');
 });
 
+test('bottom interface controls export as one uniform upward-opening button row', () => {
+  const c = controls();
+  const elements = c.manualDashboardElements({ hotspots: [], items: [
+    { id: 'edit', type: 'uiEdit', x: 1350, y: 864, w: 48, h: 48, rotation: 0 },
+    { id: 'air', type: 'uiStatusAir', x: 1410, y: 864, w: 48, h: 48, rotation: 0 },
+    { id: 'power', type: 'uiStatusElectrical', x: 1470, y: 864, w: 48, h: 48, rotation: 0 },
+  ] });
+  const edit = elements.find(element => element.type === 'icon');
+  const air = elements.find(element => element.roomcraft_status_kind === 'air');
+  const power = elements.find(element => element.roomcraft_status_kind === 'electrical');
+  for (const element of [edit, air, power]) {
+    assert.equal(element.style.top, '90.74%');
+    assert.equal(element.style.width, '3.13%');
+    assert.equal(element.style.height, '5.56%');
+    assert.equal(element.style['--roomcraft-control-bg'], 'rgba(16, 40, 43, 0.88)');
+  }
+  assert.equal(edit.style['border-radius'], '50%');
+  assert.equal(air.roomcraft_popup_direction, 'up');
+  assert.equal(power.roomcraft_popup_direction, 'up');
+});
+
 test('vacuum bindings export an authenticated map camera and editor controls', () => {
   const c = controls();
   const vacuum = {

@@ -17,6 +17,13 @@ export const ROOMCRAFT_SCENE = "full-width-v1";
 const PREVIOUS_SCENE = "wall-to-wall-v1";
 const PREVIOUS_SCENE_BOUNDS = { width: 1472, height: 828, left: 20, top: 96 };
 const HEADER_TOP = "5.3%";
+const INTERFACE_BUTTON_TYPES = new Set(["uiEdit", "uiStatusAir", "uiStatusElectrical"]);
+const INTERFACE_BUTTON_VARS: JsonObject = Object.freeze({
+  "--roomcraft-control-bg": "rgba(16, 40, 43, 0.88)",
+  "--roomcraft-control-border": "rgba(216, 255, 240, 0.65)",
+  "--roomcraft-control-color": "#d8fff0",
+  "--roomcraft-control-shadow": "0 3px 10px rgba(7, 21, 24, 0.61)",
+});
 const ACTIONS = ["auto", "toggle", "activate", "more-info", "none"];
 const VISUAL_KINDS = ["light", "fan", "climate", "window", "door", "vacuum", "device", "none"];
 const LIGHT_FORMS = ["table_lamp", "bud_lamp", "cloud_floor_lamp", "bloom_ceiling", "star_pendant", "acorn_sconce"];
@@ -185,6 +192,17 @@ function uiStyle(item: JsonObject, zIndex = 12): JsonObject {
   };
 }
 
+function interfaceButtonStyle(item: JsonObject, nativeIcon = false): JsonObject {
+  const style = { ...uiStyle(item), ...INTERFACE_BUTTON_VARS };
+  if (nativeIcon) Object.assign(style, {
+    background: "var(--roomcraft-control-bg)", border: "1px solid var(--roomcraft-control-border)",
+    "border-radius": "50%", padding: "0", color: "var(--roomcraft-control-color)",
+    "box-shadow": "var(--roomcraft-control-shadow)", "box-sizing": "border-box",
+    display: "grid", "place-items": "center", "--mdc-icon-size": "24px",
+  });
+  return style;
+}
+
 function applyEditableUi(element: JsonObject, items: unknown): JsonObject {
   const result = structuredClone(element);
   let item: JsonObject | null = null;
@@ -202,7 +220,13 @@ function applyEditableUi(element: JsonObject, items: unknown): JsonObject {
     }
     return result;
   }
-  if (item) result.style = { ...(isObject(result.style) ? result.style : {}), ...uiStyle(item) };
+  if (item) {
+    const uniform = INTERFACE_BUTTON_TYPES.has(String(item.type));
+    result.style = { ...(isObject(result.style) ? result.style : {}),
+      ...(uniform ? interfaceButtonStyle(item, result.type === "icon") : uiStyle(item)) };
+    if (result.type === "custom:roomcraft-status-popup")
+      result.roomcraft_popup_direction = Number(item.y) > SCENE_TOP + SCENE_HEIGHT / 2 ? "up" : "down";
+  }
   return result;
 }
 

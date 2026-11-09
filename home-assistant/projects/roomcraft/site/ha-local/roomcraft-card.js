@@ -24,6 +24,13 @@ const ROOMCRAFT_SCENE = 'full-width-v1';
 const PREVIOUS_SCENE = 'wall-to-wall-v1';
 const PREVIOUS_SCENE_BOUNDS = { width: 1472, height: 828, left: 20, top: 96 };
 const HEADER_TOP = '5.3%';
+const INTERFACE_BUTTON_TYPES = new Set(['uiEdit', 'uiStatusAir', 'uiStatusElectrical']);
+const INTERFACE_BUTTON_VARS = Object.freeze({
+  '--roomcraft-control-bg': 'rgba(16, 40, 43, 0.88)',
+  '--roomcraft-control-border': 'rgba(216, 255, 240, 0.65)',
+  '--roomcraft-control-color': '#d8fff0',
+  '--roomcraft-control-shadow': '0 3px 10px rgba(7, 21, 24, 0.61)',
+});
 const CONTROL_ACTIONS = ['auto', 'toggle', 'activate', 'more-info', 'none'];
 const VISUAL_KINDS = ['light', 'fan', 'climate', 'window', 'door', 'vacuum', 'device', 'none'];
 const LIGHT_FORMS = ['table_lamp', 'bud_lamp', 'cloud_floor_lamp', 'bloom_ceiling', 'star_pendant', 'acorn_sconce'];
@@ -253,6 +260,17 @@ function uiStyle(item, zIndex = 12) {
   };
 }
 
+function interfaceButtonStyle(item, nativeIcon = false) {
+  const style = { ...uiStyle(item), ...INTERFACE_BUTTON_VARS };
+  if (nativeIcon) Object.assign(style, {
+    background: 'var(--roomcraft-control-bg)', border: '1px solid var(--roomcraft-control-border)',
+    'border-radius': '50%', padding: '0', color: 'var(--roomcraft-control-color)',
+    'box-shadow': 'var(--roomcraft-control-shadow)', 'box-sizing': 'border-box',
+    display: 'grid', 'place-items': 'center', '--mdc-icon-size': '24px',
+  });
+  return style;
+}
+
 function applyEditableUi(element, items) {
   const result = structuredClone(element);
   let item = null;
@@ -270,7 +288,13 @@ function applyEditableUi(element, items) {
     }
     return result;
   }
-  if (item) result.style = { ...(isObject(result.style) ? result.style : {}), ...uiStyle(item) };
+  if (item) {
+    const uniform = INTERFACE_BUTTON_TYPES.has(item.type);
+    result.style = { ...(isObject(result.style) ? result.style : {}),
+      ...(uniform ? interfaceButtonStyle(item, result.type === 'icon') : uiStyle(item)) };
+    if (result.type === 'custom:roomcraft-status-popup')
+      result.roomcraft_popup_direction = item.y > SCENE_TOP + SCENE_HEIGHT / 2 ? 'up' : 'down';
+  }
   return result;
 }
 
@@ -1257,6 +1281,7 @@ class RoomcraftStatusPopup extends HTMLElement {
     }
     this._config = config;
     if (!this._button) this._build();
+    this._panel.setAttribute('data-direction', config.roomcraft_popup_direction === 'up' ? 'up' : 'down');
     this._refresh();
   }
 
@@ -1266,10 +1291,10 @@ class RoomcraftStatusPopup extends HTMLElement {
     const style = document.createElement('style');
     style.textContent = `
       :host{display:block;position:relative;width:100%;height:100%;font:12px/1.25 system-ui,sans-serif;color:#eef8f3}
-      .marker{position:absolute;inset:0;width:100%;height:100%;display:grid;place-items:center;border:1px solid #d8fff0a6;border-radius:50%;background:#10282bd9;color:#d8fff0;box-shadow:0 3px 10px #0715189c,0 0 0 0 #49e0b000;cursor:pointer;-webkit-tap-highlight-color:transparent}.marker:active{transform:scale(.92)}.marker:focus-visible{outline:2px solid #fff;outline-offset:2px}
-      .glyph{font-size:25px;line-height:1;text-shadow:0 0 8px #77efd2}.marker[data-kind="electrical"] .glyph{animation:roomcraft-electric 1.7s steps(3,end) infinite}.marker[data-kind="air"] .glyph{animation:roomcraft-air 2.8s ease-in-out infinite}
+      .marker{position:absolute;inset:0;width:100%;height:100%;box-sizing:border-box;display:grid;place-items:center;border:1px solid var(--roomcraft-control-border,#d8fff0a6);border-radius:50%;background:var(--roomcraft-control-bg,#10282be0);color:var(--roomcraft-control-color,#d8fff0);box-shadow:var(--roomcraft-control-shadow,0 3px 10px #0715189c),0 0 0 0 #49e0b000;cursor:pointer;-webkit-tap-highlight-color:transparent}.marker:active{transform:scale(.92)}.marker:focus-visible{outline:2px solid #fff;outline-offset:2px}
+      .glyph{font-size:24px;line-height:1;text-shadow:0 0 8px #77efd2}.marker[data-kind="electrical"] .glyph{animation:roomcraft-electric 1.7s steps(3,end) infinite}.marker[data-kind="air"] .glyph{animation:roomcraft-air 2.8s ease-in-out infinite}
       .marker[data-severity="warn"]{border-color:#ffd16f;color:#ffe7ad;box-shadow:0 0 13px #eaa72f99}.marker[data-severity="alert"]{border-color:#ff8f77;color:#ffe1da;box-shadow:0 0 15px #ff5a3d9e}.marker[data-severity="unavailable"]{filter:grayscale(.8);opacity:.72}
-      .panel{position:absolute;z-index:12;top:calc(100% + 9px);right:0;width:238px;box-sizing:border-box;padding:10px;border:1px solid #9ed7c9;border-radius:13px;background:#10282bf2;box-shadow:0 13px 30px #0009;backdrop-filter:blur(8px)}.panel[hidden]{display:none}.head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 7px;color:#d9f5ec;font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.close{border:0;background:transparent;color:#b9d6cd;cursor:pointer;font-size:18px;line-height:1}
+      .panel{position:absolute;z-index:12;top:calc(100% + 9px);right:0;width:238px;box-sizing:border-box;padding:10px;border:1px solid #9ed7c9;border-radius:13px;background:#10282bf2;box-shadow:0 13px 30px #0009;backdrop-filter:blur(8px)}.panel[data-direction="up"]{top:auto;bottom:calc(100% + 9px)}.panel[hidden]{display:none}.head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 2px 7px;color:#d9f5ec;font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase}.close{border:0;background:transparent;color:#b9d6cd;cursor:pointer;font-size:18px;line-height:1}
       .rows{display:grid;gap:5px}.row{display:grid;grid-template-columns:8px minmax(0,1fr) auto;align-items:center;gap:7px;min-height:28px;padding:4px 6px;border:0;border-radius:8px;background:#244043;color:inherit;text-align:left;font:inherit;cursor:pointer}.row:active{filter:brightness(1.25)}.dot{width:7px;height:7px;border-radius:50%;background:#65dab2;box-shadow:0 0 7px #65dab2}.row[data-severity="warn"] .dot{background:#ffc963;box-shadow:0 0 7px #ffc963}.row[data-severity="alert"] .dot,.row[data-severity="unavailable"] .dot{background:#ff806a;box-shadow:0 0 7px #ff806a}.name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#d6e8e2}.value{color:#fff;font-weight:700;font-variant-numeric:tabular-nums}
       @keyframes roomcraft-electric{50%{text-shadow:0 0 14px #fff,0 0 24px #75e5ff;transform:translateY(-1px)}}@keyframes roomcraft-air{50%{transform:scale(1.09);opacity:.78}}@media(prefers-reduced-motion:reduce){.glyph{animation:none!important}}
     `;
@@ -1283,6 +1308,7 @@ class RoomcraftStatusPopup extends HTMLElement {
     button.addEventListener('click', () => this._setOpen(!this._open));
     const panel = document.createElement('section');
     panel.className = 'panel'; panel.hidden = true; panel.setAttribute('role', 'dialog');
+    panel.setAttribute('data-direction', this._config.roomcraft_popup_direction === 'up' ? 'up' : 'down');
     const head = document.createElement('header'); head.className = 'head';
     const title = document.createElement('span');
     title.textContent = this._config.title || (this._config.roomcraft_status_kind === 'electrical' ? 'Electrical' : 'Indoor air');

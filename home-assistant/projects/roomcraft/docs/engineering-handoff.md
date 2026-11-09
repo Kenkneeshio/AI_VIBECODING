@@ -15,6 +15,8 @@
 
 The default Home Assistant dashboard is an **owner profile preference**. It is not installed by this repository. The old Main Dashboard remains a reference for the curated control drawer; the `ishioho` project is a separate legacy prototype.
 
+The interface-control placement contract is a 48 × 48 bottom-right row in project space: `uiEdit` at `(1350, 864)`, `uiStatusAir` at `(1410, 864)`, and `uiStatusElectrical` at `(1470, 864)`. The full-width dashboard transform places all three at `top: 90.74%`, above the forecast strip. `object-controls.js`, `lib/dashboard-elements.ts`, and `ha-local/roomcraft-card.js` must keep their shared CSS-variable visual contract aligned. Status popups at this vertical position open upward; actions and severity classification remain unchanged. These items are owner-editable data, so do not add a recurring migration that overwrites later placement.
+
 ### Visual-correction contract and migration version 4
 
 The current source corrects a cross-layer visual regression without changing the 1536 × 1024 design space or 1536 × 864 presentation crop. Treat these details as one coordinated release:

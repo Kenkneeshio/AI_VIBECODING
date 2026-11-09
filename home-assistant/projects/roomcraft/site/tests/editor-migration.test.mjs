@@ -334,6 +334,21 @@ test('camera palette places an editable latest-event thumbnail', () => {
   assert.equal(camera.h, 110);
 });
 
+test('reference migration places the uniform interface controls in the bottom row', () => {
+  const editor = boot({ version: 2, editableReferenceVersion: 2, rooms: [], walls: [], items: [], hotspots: [] });
+  editor.dispatch('objectsPanel', 'click', {
+    target: { closest: () => ({ dataset: { template: 'cameraThumbnail' } }) }
+  });
+  editor.pointer('pointerdown', 260, 390);
+  const controls = Object.fromEntries(editor.read().items
+    .filter(item => ['uiEdit', 'uiStatusAir', 'uiStatusElectrical'].includes(item.type))
+    .map(item => [item.type, item]));
+  assert.deepEqual([controls.uiEdit.x, controls.uiEdit.y, controls.uiEdit.w, controls.uiEdit.h], [1350, 864, 48, 48]);
+  assert.deepEqual([controls.uiStatusAir.x, controls.uiStatusAir.y, controls.uiStatusAir.w, controls.uiStatusAir.h], [1410, 864, 48, 48]);
+  assert.deepEqual([controls.uiStatusElectrical.x, controls.uiStatusElectrical.y,
+    controls.uiStatusElectrical.w, controls.uiStatusElectrical.h], [1470, 864, 48, 48]);
+});
+
 test('office window fan can be placed away from a wall', () => {
   const editor = boot({ version: 2, editableReferenceVersion: 2, rooms: [], walls: [], items: [], hotspots: [] });
   editor.dispatch('objectsPanel', 'click', {

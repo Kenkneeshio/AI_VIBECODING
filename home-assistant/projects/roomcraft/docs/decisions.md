@@ -288,6 +288,14 @@
 
 **Consequence:** Layout v2 and current art remain compatible while the UI delegates through a stable facade. Equivalent inputs and edit sequences must produce the same project, IDs, command-log digest, render-plan digest, and release manifest. Future gesture-specific reducers, dashboard transforms, and art backends extend the same engine instead of creating parallel models.
 
+## 2026-11-09 — Put the interface-control family at the bottom
+
+**Decision:** Place Layout Studio, indoor-air, and electrical controls as one 48 × 48 bottom-right row above the forecast strip. Apply one visual contract across the native edit icon and custom status markers, and open status panels upward when their saved position is in the lower half of the scene.
+
+**Reason:** The former top-right triangle was visually inconsistent and competed with header/weather information. A regular bottom row is easier to find and touch while preserving the object-first dashboard language.
+
+**Consequence:** Both dashboard transports and manual YAML must derive geometry, shared CSS variables, and popup direction from the editable version-2 items. Current placement remains owner data and is updated explicitly; future imports must not reset it after reference migration 3 has already run.
+
 ## 2026-11-09 — Customer outcome is the first release input
 
 **Decision:** Apply the top-down release standard in [release-standard.md](release-standard.md) to every Roomcraft release, whether it changes code, art, Home Assistant integration, or documentation.

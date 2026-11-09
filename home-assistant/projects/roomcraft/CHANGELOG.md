@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-09 — Uniform bottom interface controls
+
+- Moved the editable Layout Studio shortcut, indoor-air summary, and electrical summary from the top-right cluster to one evenly spaced bottom-right row above the forecast strip. All three use the same 48 × 48 circular visual contract, icon scale, border, color, shadow, and touch feedback while retaining their existing actions and live severity states.
+- Status panels now choose their opening direction from the saved item position. The bottom-row air and electrical panels open upward, keeping their content within the wall-tablet viewport. New/reference-migrated projects receive the same deterministic positions; current owner layouts are updated as data rather than by repeating a migration.
+- Added transport, manual-YAML, migration, live-card reconfiguration, geometry, and style regression coverage. No room, wall, furniture, camera, device binding, rendered plan image, or household device state is changed by this release.
+
 ## 2026-11-09 — Detailed crafted furniture, authored sizes, and bed families
 
 - **Customer / problem / observable outcome:** Layout authors rejected the prior flat, toy-like treatment and needed furniture that reads as detailed, warm, believable miniature interiors while remaining easy to edit. The editor now offers 325 object choices, including an 88-entry crafted-miniature collection with visible construction, material, and depth cues. At 100% scale, upholstery has seams and piping, wood has directional grain and joinery, fixtures have glass/metal/fabric construction, and each object retains a clean transparent surround without room-floor pixels.

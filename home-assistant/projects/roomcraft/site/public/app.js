@@ -103,8 +103,8 @@
     { type: 'uiMenu', label: 'Device menu', icon: '☰', w: 48, h: 48, group: 'interface' },
     { type: 'uiTime', label: 'Clock', icon: '◷', w: 84, h: 42, group: 'interface' },
     { type: 'uiEdit', label: 'Edit layout button', icon: '✎', w: 48, h: 48, group: 'interface' },
-    { type: 'uiStatusAir', label: 'Indoor air status', icon: '◌', w: 50, h: 50, group: 'interface' },
-    { type: 'uiStatusElectrical', label: 'Electrical status', icon: 'ϟ', w: 50, h: 50, group: 'interface' },
+    { type: 'uiStatusAir', label: 'Indoor air status', icon: '◌', w: 48, h: 48, group: 'interface' },
+    { type: 'uiStatusElectrical', label: 'Electrical status', icon: 'ϟ', w: 48, h: 48, group: 'interface' },
     { type: 'plant', label: 'Flowers', icon: '✿', w: 44, h: 44, group: 'decor' },
     { type: 'floorPlant', label: 'Floor plant', icon: '❀', w: 72, h: 72, group: 'decor' },
     { type: 'artwork', label: 'Wall art', icon: '▧', w: 94, h: 56, group: 'decor' },
@@ -185,9 +185,9 @@
     item('ui-weather-orb','uiWeatherOrb','Sun / moon',1010,115,64,64),
     item('ui-device-menu','uiMenu','Device menu',80,126,48,48),
     item('ui-clock','uiTime','Clock',1275,126,84,42),
-    item('ui-edit-layout','uiEdit','Edit layout button',1444,126,48,48),
-    item('ui-status-air','uiStatusAir','Indoor air status',1412,151,50,50),
-    item('ui-status-electrical','uiStatusElectrical','Electrical status',1476,151,50,50)
+    item('ui-edit-layout','uiEdit','Edit layout button',1350,864,48,48),
+    item('ui-status-air','uiStatusAir','Indoor air status',1410,864,48,48),
+    item('ui-status-electrical','uiStatusElectrical','Electrical status',1470,864,48,48)
   ];
   // Furniture that was formerly baked into source-image fragments. Keeping it
   // as real items makes the reference layout accurate and independently
