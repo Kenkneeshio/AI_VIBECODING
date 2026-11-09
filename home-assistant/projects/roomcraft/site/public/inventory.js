@@ -34,7 +34,7 @@
   const icons = {
     'baby-toys':'◉','baby-activities':'✦','baby-mats':'▦','baby-safety':'▥',
     climbing:'▰',fireplace:'▤',balcony:'❀',fans:'✳',cleaning:'◉',
-    'toy-storage':'▥','play-furniture':'▣'
+    'toy-storage':'▥','play-furniture':'▣',living:'✿',bedroom:'☾',lighting:'✦'
   };
   const aliases = {
     'baby-safety':'safety wall',
@@ -53,7 +53,10 @@
         palette:{base:swatch[1],accent:swatch[2],detail:swatch[3],dark:swatch[4]},
         tags:`${options.tags||''} ${aliases[group]||''}`.trim(),
         ...(options.atlas&&index===0?{atlas:options.atlas}:{}),
-        ...(options.mount?{mount:options.mount}:{})
+        ...(options.mount?{mount:options.mount}:{}),
+        ...(options.visualKind?{visualKind:options.visualKind}:{}),
+        ...(options.lightForm?{lightForm:options.lightForm}:{}),
+        ...(options.renderLayer?{renderLayer:options.renderLayer}:{})
       });
     }
   }
@@ -141,6 +144,28 @@
   add('play-furniture','playFurniture','photoBolster','gray-bolster','Long gray floor bolster',126,43,['slate'],{tags:'photo 1977 living room baby soft support pillow'});
   add('play-furniture','playFurniture','lowTable','low-play-table','Low play table',127,79,['oak','white'],{tags:'baby play furniture'});
   add('play-furniture','playFurniture','lowShelf','low-play-shelf','Low play shelf',129,52,['oak','white'],{tags:'baby play furniture'});
+
+  // Original cozy-creature furniture. These rounded, toy-like recipes evoke a
+  // friendly dollhouse world without copying branded characters or game art.
+  const cuteTags='cute rounded toy-like cozy creature-world dollhouse original';
+  add('living','cuteFurniture','cloudSofa','cloud-sofa','Cloud-cushion sofa',175,120,['blush','mint'],{tags:`${cuteTags} sofa couch`});
+  add('living','cuteFurniture','petalDining','petal-dining-set','Petal dining set',168,112,['oak','cream'],{tags:`${cuteTags} dining table four chairs`});
+  add('living','cuteFurniture','acornChair','acorn-armchair','Acorn reading chair',88,88,['teddy','sage','blush'],{tags:`${cuteTags} armchair reading seat`});
+  add('living','cuteFurniture','lilyCoffee','lily-coffee-table','Lily-pad coffee table',110,70,['oak','white'],{tags:`${cuteTags} coffee table leaf`});
+  add('living','cuteFurniture','bubbleSide','bubble-side-table','Bubble side table',58,58,['mint','butter'],{tags:`${cuteTags} round side table`});
+  add('bedroom','cuteFurniture','moonBed','moon-bed','Moon-pillow bed',210,185,['lavender','sky','cream'],{tags:`${cuteTags} bedroom bed moon stars`});
+  add('bedroom','cuteFurniture','sproutDesk','sprout-desk','Sprout writing desk',180,84,['sage','oak'],{tags:`${cuteTags} office study desk leaf`});
+  add('bedroom','cuteFurniture','starNightstand','star-nightstand','Star-knob nightstand',58,56,['butter','lavender'],{tags:`${cuteTags} bedside table star`});
+  add('bedroom','cuteFurniture','honeyDresser','honey-dresser','Honeycomb dresser',125,60,['oak','peach'],{tags:`${cuteTags} bedroom storage dresser`});
+  add('bedroom','cuteFurniture','storyBookcase','story-bookcase','Storybook bookcase',64,156,['oak','mint'],{tags:`${cuteTags} book shelf storage`});
+
+  // Lighting carries an explicit live form so Home Assistant can redraw the
+  // same silhouette from real entity state instead of a frozen PNG.
+  add('lighting','cuteLight','budLamp','bud-table-lamp','Flower-bud table lamp',48,52,['mint','blush','butter'],{tags:`${cuteTags} lamp desk bedside flower`,visualKind:'light',lightForm:'bud_lamp'});
+  add('lighting','cuteLight','cloudFloorLamp','cloud-floor-lamp','Cloud-glow floor lamp',58,94,['cream','sky'],{tags:`${cuteTags} standing floor lamp cloud`,visualKind:'light',lightForm:'cloud_floor_lamp'});
+  add('lighting','cuteLight','bloomCeiling','bloom-ceiling-light','Bloom ceiling light',60,60,['white','butter','mint'],{tags:`${cuteTags} ceiling lamp flower`,visualKind:'light',lightForm:'bloom_ceiling',renderLayer:'ceiling-devices'});
+  add('lighting','cuteLight','starPendant','star-pendant','Twinkle-star pendant',72,72,['lavender','butter'],{tags:`${cuteTags} ceiling pendant star`,visualKind:'light',lightForm:'star_pendant',renderLayer:'ceiling-devices'});
+  add('lighting','cuteLight','acornSconce','acorn-wall-sconce','Acorn wall sconce',38,50,['oak','cream'],{tags:`${cuteTags} wall light acorn`,visualKind:'light',lightForm:'acorn_sconce',mount:'wall'});
 
   const byType=Object.fromEntries(templates.map(t=>[t.type,t]));
   window.RoomcraftInventory={groups,templates,byType};

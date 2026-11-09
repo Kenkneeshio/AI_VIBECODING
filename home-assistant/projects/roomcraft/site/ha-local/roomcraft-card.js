@@ -26,6 +26,7 @@ const PREVIOUS_SCENE_BOUNDS = { width: 1472, height: 828, left: 20, top: 96 };
 const HEADER_TOP = '5.3%';
 const CONTROL_ACTIONS = ['auto', 'toggle', 'activate', 'more-info', 'none'];
 const VISUAL_KINDS = ['light', 'fan', 'climate', 'window', 'door', 'vacuum', 'device', 'none'];
+const LIGHT_FORMS = ['table_lamp', 'bud_lamp', 'cloud_floor_lamp', 'bloom_ceiling', 'star_pendant', 'acorn_sconce'];
 const ACTIVATION_SERVICES = new Map([['scene', 'turn_on'], ['script', 'turn_on'], ['button', 'press']]);
 const DETAIL_VISIBILITY_EVENT = 'roomcraft-detail-visibility';
 const DETAIL_VISIBILITY_KEY = 'roomcraft.show-object-details.v1';
@@ -172,6 +173,7 @@ function validObjectControl(item) {
     (item.controlLabel === undefined || typeof item.controlLabel === 'string' && item.controlLabel.length <= 80) &&
     (item.controlIcon === undefined || item.controlIcon === '' || typeof item.controlIcon === 'string' && /^mdi:[a-z0-9-]+$/.test(item.controlIcon)) &&
     (item.visualKind === undefined || item.visualKind === 'auto' || VISUAL_KINDS.includes(item.visualKind)) &&
+    (item.lightForm === undefined || LIGHT_FORMS.includes(item.lightForm)) &&
     (item.tapAction === undefined || CONTROL_ACTIONS.includes(item.tapAction)) &&
     (item.holdAction === undefined || CONTROL_ACTIONS.includes(item.holdAction)) &&
     (item.tapEntityId === undefined || typeof item.tapEntityId === 'string' &&
@@ -216,10 +218,10 @@ function objectControlElements(items) {
       control_icon: item.controlIcon || '',
       control_zone: item.type === 'controlZone',
       roomcraft_visual_kind: visualKind,
-      // Every room light uses the same compact lamp language on the live plan.
-      // The underlying editable object can still be a pendant, ceiling fixture,
-      // or invisible zone, but the stateful artwork stays visually consistent.
-      ...(visualKind === 'light' ? { roomcraft_light_form: 'table_lamp' } : {}),
+      // Catalog lights retain their recognizable form while Home Assistant owns
+      // the truthful off/on/unavailable state and transparent hit target.
+      ...(visualKind === 'light' ? { roomcraft_light_form:
+        LIGHT_FORMS.includes(item.lightForm) ? item.lightForm : 'table_lamp' } : {}),
       ...(visualKind === 'device' && item.type === 'humidifier' ? { roomcraft_device_form: 'humidifier' } : {}),
       ...(visualKind === 'device' && item.type === 'airPurifier' ? { roomcraft_device_form: 'air_purifier' } : {}),
       ...(visualKind === 'window' ? { roomcraft_window_axis: item.w < item.h ? 'vertical' : 'horizontal' } : {}),
@@ -695,7 +697,7 @@ class RoomcraftObjectControl extends HTMLElement {
             !/^[a-z_]+\.[a-z0-9_]+$/.test(config.roomcraft_hold_entity))) ||
         (config.roomcraft_visual_kind !== undefined && config.roomcraft_visual_kind !== 'auto' &&
           !VISUAL_KINDS.includes(config.roomcraft_visual_kind)) ||
-        (config.roomcraft_light_form !== undefined && config.roomcraft_light_form !== 'table_lamp') ||
+        (config.roomcraft_light_form !== undefined && !LIGHT_FORMS.includes(config.roomcraft_light_form)) ||
         (config.roomcraft_device_form !== undefined && !['humidifier', 'air_purifier'].includes(config.roomcraft_device_form)) ||
         (config.roomcraft_window_axis !== undefined &&
           !['horizontal', 'vertical'].includes(config.roomcraft_window_axis)) ||
@@ -750,38 +752,46 @@ class RoomcraftObjectControl extends HTMLElement {
       .target[data-visual="light"][data-state="on"] .art{
         background:radial-gradient(circle at 40% 35%,#fff 0 10%,#fff4c8 11% 34%,#d8b56f 35% 48%,#7c6547 49% 57%,#ffd56b40 58% 72%,transparent 74%);
         box-shadow:0 0 11px 5px #ffd865a6,0 0 23px 11px #ffd86562}
-      .target[data-visual="light"][data-form="table_lamp"] .art{
-        inset:8% 18% 5%;height:auto;border-radius:0;overflow:visible;
-        background:none;backdrop-filter:none;box-shadow:none;filter:none;
-        transition:filter .18s}
-      /* A complete classic desk lamp: fabric shade, brass stem and weighted
-         base. The full button remains transparent and substantially larger. */
-      .target[data-visual="light"][data-form="table_lamp"] .art::before{
-        content:"";position:absolute;left:22%;top:2%;width:56%;height:34%;
-        border:1px solid #756249;border-radius:46% 46% 22% 22%/64% 64% 30% 30%;
-        background:linear-gradient(105deg,#8c7658 0 7%,#ead9b7 22%,#fff5dc 48%,#d2bb91 76%,#786349 100%);
-        box-shadow:inset 0 -3px 3px #6c543a45,0 2px 3px #15202766;
-        transform:rotate(-4deg);transform-origin:50% 86%;transition:background .18s,box-shadow .18s,filter .18s}
-      .target[data-visual="light"][data-form="table_lamp"] .art::after{
-        content:"";position:absolute;left:18%;right:18%;top:30%;bottom:1%;
-        background:
-          radial-gradient(ellipse at 50% 89%,#d8bc84 0 18%,#826745 19% 25%,transparent 27%),
-          radial-gradient(circle at 50% 9%,#d9c08a 0 6%,#806442 7% 10%,transparent 11%),
-          linear-gradient(90deg,transparent 45%,#685036 46%,#d9bd81 50%,#70563a 54%,transparent 55%);
-        filter:drop-shadow(0 2px 2px #15202773);transition:background .18s,filter .18s}
-      .target[data-visual="light"][data-form="table_lamp"][data-state="off"] .art{
-        background:none;backdrop-filter:none;box-shadow:none}
-      .target[data-visual="light"][data-form="table_lamp"][data-state="off"] .art::before{filter:saturate(.72) brightness(.82)}
-      .target[data-visual="light"][data-form="table_lamp"][data-state="on"] .art{
-        background:none;backdrop-filter:none;box-shadow:none}
-      .target[data-visual="light"][data-form="table_lamp"][data-state="on"] .art::before{
-        background:linear-gradient(105deg,#bd8e42 0 7%,#ffe3a0 22%,#fffdf0 48%,#ffd374 76%,#9b703a 100%);
-        border-color:#f5cd77;box-shadow:inset 0 -3px 3px #b1752f55,0 0 6px 3px #ffd56ca6,0 0 15px 7px #ffd56b61;filter:brightness(1.08)}
-      .target[data-visual="light"][data-form="table_lamp"][data-state="on"] .art::after{
-        background:
-          radial-gradient(ellipse at 50% 89%,#f0ca78 0 18%,#9e7438 19% 25%,transparent 27%),
-          radial-gradient(circle at 50% 9%,#ffe1a0 0 6%,#9d7138 7% 10%,transparent 11%),
-          linear-gradient(90deg,transparent 45%,#8b6334 46%,#f0c66f 50%,#8d6637 54%,transparent 55%)}
+      /* Original cozy-creature light recipes. The button itself stays fully
+         transparent; only these art layers change with real entity state. */
+      .target[data-visual="light"][data-form="table_lamp"] .art,
+      .target[data-visual="light"][data-form="bud_lamp"] .art{
+        inset:6% 13% 3%;height:auto;border-radius:0;background:none!important;box-shadow:none!important;overflow:visible}
+      .target[data-visual="light"][data-form="table_lamp"] .art::before,
+      .target[data-visual="light"][data-form="bud_lamp"] .art::before{
+        content:"";position:absolute;left:14%;top:1%;width:72%;height:43%;border:1px solid #7b6b7e;
+        border-radius:54% 54% 46% 46%/72% 72% 34% 34%;
+        background:radial-gradient(ellipse at 22% 48%,#f2c4cf 0 25%,transparent 27%),
+          radial-gradient(ellipse at 78% 48%,#cbbbe2 0 25%,transparent 27%),
+          radial-gradient(ellipse at 50% 44%,#fff1b8 0 31%,#d9bd76 33% 42%,transparent 44%);
+        filter:drop-shadow(0 2px 1px #2430394f);transition:filter .18s,box-shadow .18s}
+      .target[data-visual="light"][data-form="table_lamp"] .art::after,
+      .target[data-visual="light"][data-form="bud_lamp"] .art::after{
+        content:"";position:absolute;left:18%;right:18%;top:37%;bottom:0;
+        background:radial-gradient(ellipse at 50% 89%,#b8d2c1 0 19%,#607d70 20% 27%,transparent 29%),
+          linear-gradient(90deg,transparent 45%,#567467 46%,#a4c5b3 50%,#5a786b 54%,transparent 55%);
+        filter:drop-shadow(0 2px 1px #24303959)}
+      .target[data-visual="light"][data-form="table_lamp"][data-state="off"] .art::before,
+      .target[data-visual="light"][data-form="bud_lamp"][data-state="off"] .art::before{filter:saturate(.5) brightness(.65) drop-shadow(0 2px 1px #24303966)}
+      .target[data-visual="light"][data-form="table_lamp"][data-state="on"] .art::before,
+      .target[data-visual="light"][data-form="bud_lamp"][data-state="on"] .art::before{filter:brightness(1.14) drop-shadow(0 0 4px #ffd66f) drop-shadow(0 0 8px #ffd66f99)}
+      .target[data-visual="light"][data-form="cloud_floor_lamp"] .art{inset:1% 5%;border-radius:0;background:none!important;box-shadow:none!important;overflow:visible}
+      .target[data-visual="light"][data-form="cloud_floor_lamp"] .art::before{content:"";position:absolute;left:20%;top:4%;width:60%;height:43%;border:1px solid #7b7480;border-radius:48%;
+        background:radial-gradient(circle at 23% 62%,#f8f0dc 0 27%,transparent 29%),radial-gradient(circle at 48% 38%,#fff8e9 0 35%,transparent 37%),radial-gradient(circle at 77% 62%,#e0ebef 0 28%,transparent 30%),radial-gradient(ellipse at 50% 75%,#f6f0e4 0 48%,transparent 50%)}
+      .target[data-visual="light"][data-form="cloud_floor_lamp"] .art::after{content:"";position:absolute;left:21%;right:21%;top:43%;bottom:1%;background:radial-gradient(ellipse at 50% 93%,#b8d0c0 0 23%,#607a6e 24% 31%,transparent 33%),linear-gradient(90deg,transparent 45%,#5d7c6e 46%,#a9cab7 50%,#607f71 54%,transparent 55%)}
+      .target[data-visual="light"][data-form="cloud_floor_lamp"][data-state="off"] .art::before{filter:saturate(.4) brightness(.62)}
+      .target[data-visual="light"][data-form="cloud_floor_lamp"][data-state="on"] .art::before{filter:brightness(1.12) drop-shadow(0 0 6px #ffe18a) drop-shadow(0 0 11px #ffe18a99)}
+      .target[data-visual="light"][data-form="bloom_ceiling"] .art{inset:7%;border:1px solid #7e7281;border-radius:50%;background:radial-gradient(circle,#fff4bd 0 23%,transparent 25%),repeating-conic-gradient(#efc5ce 0 11.25deg,#c5dbc9 11.25deg 22.5deg);clip-path:polygon(50% 0,62% 19%,79% 7%,81% 31%,100% 50%,81% 62%,93% 79%,69% 81%,50% 100%,38% 81%,21% 93%,19% 69%,0 50%,19% 38%,7% 21%,31% 19%)}
+      .target[data-visual="light"][data-form="bloom_ceiling"][data-state="off"] .art{filter:saturate(.45) brightness(.58);box-shadow:0 2px 3px #18232b80}
+      .target[data-visual="light"][data-form="bloom_ceiling"][data-state="on"] .art{filter:brightness(1.13);box-shadow:0 0 7px 3px #ffd96fbd,0 0 15px 7px #ffd96f66}
+      .target[data-visual="light"][data-form="star_pendant"] .art{inset:5%;border:1px solid #756a7b;border-radius:0;clip-path:polygon(50% 0,61% 34%,98% 35%,68% 56%,79% 94%,50% 72%,21% 94%,32% 56%,2% 35%,39% 34%);background:linear-gradient(135deg,#fff3b8,#e6c987 48%,#c5b2df);box-shadow:none}
+      .target[data-visual="light"][data-form="star_pendant"][data-state="off"] .art{filter:saturate(.42) brightness(.58);box-shadow:0 2px 3px #18232b80}
+      .target[data-visual="light"][data-form="star_pendant"][data-state="on"] .art{filter:brightness(1.14);box-shadow:0 0 7px 3px #ffd96fbd,0 0 16px 8px #ffd96f66}
+      .target[data-visual="light"][data-form="acorn_sconce"] .art{inset:5% 12%;border:1px solid #735d4b;border-radius:48% 48% 54% 54%/37% 37% 63% 63%;background:linear-gradient(145deg,#fff0bd,#d6a677 54%,#9a684b);box-shadow:none}
+      .target[data-visual="light"][data-form="acorn_sconce"] .art::before{content:"";position:absolute;left:-2%;right:-2%;top:-3%;height:34%;border:1px solid #634c3d;border-radius:42% 42% 30% 30%;background:repeating-linear-gradient(45deg,#9a6a49 0 4px,#c89569 4px 8px)}
+      .target[data-visual="light"][data-form="acorn_sconce"] .art::after{content:"";position:absolute;left:45%;top:-18%;width:11%;height:20%;border-radius:50%;background:#647d59;transform:rotate(18deg)}
+      .target[data-visual="light"][data-form="acorn_sconce"][data-state="off"] .art{filter:saturate(.45) brightness(.58);box-shadow:0 2px 3px #18232b80}
+      .target[data-visual="light"][data-form="acorn_sconce"][data-state="on"] .art{filter:brightness(1.15);box-shadow:0 0 7px 3px #ffd96fbd,0 0 15px 7px #ffd96f66}
       .target[data-visual="fan"] .art{inset:0;border-radius:0;background:radial-gradient(ellipse at center,#172630e8 0 26%,#172630a6 49%,transparent 76%);backdrop-filter:none;box-shadow:none}
       .target[data-visual="fan"][data-state="on"] .art{background:radial-gradient(ellipse at center,#22303ad9 0 27%,#263c468c 48%,transparent 76%);backdrop-filter:none;box-shadow:none}
       .rotor{inset:7%;display:none;transform-origin:50% 50%}

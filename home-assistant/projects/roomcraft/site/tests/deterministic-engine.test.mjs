@@ -200,11 +200,16 @@ test('item partitioning produces stable layer buckets independent of input order
 test('shared scene partitioning preserves legacy order while using one layer policy', () => {
   const catalog = {
     'foam-mat': { type: 'foam-mat', artFamily: 'playMat' },
-    'fan-oak': { type: 'fan-oak', artFamily: 'ceilingFan' }
+    'fan-oak': { type: 'fan-oak', artFamily: 'ceilingFan' },
+    'bloom-light': { type: 'bloom-light', artFamily: 'cuteLight', renderLayer: 'ceiling-devices' },
+    'bad-layer': { type: 'bad-layer', artFamily: 'cuteLight', renderLayer: 'sky' }
   };
   assert.equal(engine.render.layerForItem({ type: 'rug' }, catalog), 'rugs');
   assert.equal(engine.render.layerForItem({ type: 'foam-mat' }, catalog), 'rugs');
   assert.equal(engine.render.layerForItem({ type: 'fan-oak' }, catalog), 'ceiling-devices');
+  assert.equal(engine.render.layerForItem({ type: 'bloom-light' }, catalog), 'ceiling-devices');
+  assert.throws(() => engine.render.layerForItem({ type: 'bad-layer' }, catalog),
+    error => error.code === 'INVALID_CATALOG_RENDER_LAYER');
   assert.equal(engine.render.layerForItem({ type: 'ceilingLight' }, catalog), 'ceiling-devices');
   assert.equal(engine.render.layerForItem({ type: 'window' }, catalog), 'openings');
   assert.equal(engine.render.layerForItem({ type: 'desk' }, catalog), 'furniture');

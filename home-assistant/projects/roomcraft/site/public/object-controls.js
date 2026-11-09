@@ -3,6 +3,7 @@
 
   const actions = new Set(['auto', 'toggle', 'activate', 'more-info', 'none']);
   const visualKinds = new Set(['auto', 'light', 'fan', 'climate', 'window', 'door', 'vacuum', 'device', 'none']);
+  const lightForms = new Set(['table_lamp', 'bud_lamp', 'cloud_floor_lamp', 'bloom_ceiling', 'star_pendant', 'acorn_sconce']);
   const iconPattern = /^mdi:[a-z0-9-]+$/i;
   const bindingKeys = new Set(['tapAction', 'holdAction', 'tapEntityId', 'holdEntityId',
     'controlLabel', 'controlIcon', 'visualKind', 'vacuumMapEntityId', 'vacuumPositionTransform']);
@@ -39,6 +40,7 @@
       && (!('controlLabel' in item) || (typeof item.controlLabel === 'string' && item.controlLabel.length <= 80))
       && (!('controlIcon' in item) || (typeof item.controlIcon === 'string' && (!item.controlIcon || iconPattern.test(item.controlIcon))))
       && (!('visualKind' in item) || visualKinds.has(item.visualKind))
+      && (!('lightForm' in item) || lightForms.has(item.lightForm))
       && (!('vacuumMapEntityId' in item) || typeof item.vacuumMapEntityId === 'string'
         && (!item.vacuumMapEntityId || /^camera\.[a-z0-9_]+$/i.test(item.vacuumMapEntityId)))
       && (!('vacuumPositionTransform' in item) || Array.isArray(item.vacuumPositionTransform)
@@ -98,6 +100,9 @@
     if (domain === 'light' || /light|lamp|sconce/.test(type) || /\b(light|lamp)\b/.test(label)) return 'light';
     return 'device';
   }
+  function lightForm(item) {
+    return lightForms.has(item.lightForm) ? item.lightForm : 'table_lamp';
+  }
 
   function manualDashboardElements(project) {
     const items = Array.isArray(project?.items) ? project.items : [];
@@ -134,7 +139,7 @@
       control_icon: item.controlIcon || '',
       control_zone: item.type === 'controlZone',
       roomcraft_visual_kind: visualKind(item),
-      ...(visualKind(item) === 'light' ? { roomcraft_light_form: 'table_lamp' } : {}),
+      ...(visualKind(item) === 'light' ? { roomcraft_light_form: lightForm(item) } : {}),
       ...(visualKind(item) === 'device' && item.type === 'humidifier' ? { roomcraft_device_form: 'humidifier' } : {}),
       ...(visualKind(item) === 'device' && item.type === 'airPurifier' ? { roomcraft_device_form: 'air_purifier' } : {}),
       ...(visualKind(item) === 'window' ? { roomcraft_window_axis: item.w < item.h ? 'vertical' : 'horizontal' } : {}),

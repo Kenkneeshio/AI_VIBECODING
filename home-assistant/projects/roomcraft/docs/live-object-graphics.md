@@ -15,6 +15,19 @@ Select a bound item in Studio. **Entity ID** is the state source; optional tap a
 | `unknown`, `unavailable`, missing, or an unrecognized state value | Neutral gray with **?** | The dashboard has no reliable normalized state; a prior bright appearance must not persist. |
 | Available `scene`, `script`, or `button` | Action-ready control, without a false state badge | Last-run metadata is not an on/off sensor. The label and accessible action remain available. |
 
+Validated light silhouettes are part of the version-2 item contract:
+
+| `lightForm` | Live silhouette |
+| --- | --- |
+| `table_lamp` | Safe default and compatibility fallback |
+| `bud_lamp` | Flower-bud table lamp |
+| `cloud_floor_lamp` | Cloud-shade floor lamp |
+| `bloom_ceiling` | Petal ceiling fixture |
+| `star_pendant` | Hanging star pendant |
+| `acorn_sconce` | Compact wall sconce |
+
+Both export transports preserve these forms. Unknown values are rejected at projection time and render with the safe `table_lamp` fallback; they never create a new state source. The whole hit target stays transparent, and each toggle retains the same 4-pixel red/green state dot.
+
 The same tap target remains on the object in every state. The object has no visible ON/OFF/OPEN/CLOSED text badge; its accessible name includes the current Home Assistant value and tap/hold actions, while the hover title shows the value. A tap gives a turquoise outline for 650 ms, a hold gives an amber outline, and keyboard focus has its own outline. A drag gesture on the dashboard does not run an action. A movable `controlZone` can cover an item that lacks its own state entity; it should not claim a false on/off state.
 
 ## Fan motion and accessibility

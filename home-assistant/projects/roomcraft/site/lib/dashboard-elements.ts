@@ -19,6 +19,7 @@ const PREVIOUS_SCENE_BOUNDS = { width: 1472, height: 828, left: 20, top: 96 };
 const HEADER_TOP = "5.3%";
 const ACTIONS = ["auto", "toggle", "activate", "more-info", "none"];
 const VISUAL_KINDS = ["light", "fan", "climate", "window", "door", "vacuum", "device", "none"];
+const LIGHT_FORMS = ["table_lamp", "bud_lamp", "cloud_floor_lamp", "bloom_ceiling", "star_pendant", "acorn_sconce"];
 
 function isObject(value: unknown): value is JsonObject {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -102,6 +103,7 @@ export function validObjectControl(item: unknown): item is JsonObject {
     (item.controlLabel === undefined || typeof item.controlLabel === "string" && item.controlLabel.length <= 80) &&
     (item.controlIcon === undefined || item.controlIcon === "" || typeof item.controlIcon === "string" && /^mdi:[a-z0-9-]+$/.test(item.controlIcon)) &&
     (item.visualKind === undefined || item.visualKind === "auto" || VISUAL_KINDS.includes(String(item.visualKind))) &&
+    (item.lightForm === undefined || LIGHT_FORMS.includes(String(item.lightForm))) &&
     (item.tapAction === undefined || ACTIONS.includes(String(item.tapAction))) &&
     (item.holdAction === undefined || ACTIONS.includes(String(item.holdAction))) &&
     (item.tapEntityId === undefined || typeof item.tapEntityId === "string" &&
@@ -150,7 +152,8 @@ export function objectControlElements(items: unknown): JsonObject[] {
         control_icon: item.controlIcon || "",
         control_zone: item.type === "controlZone",
         roomcraft_visual_kind: visualKind,
-        ...(visualKind === "light" ? { roomcraft_light_form: "table_lamp" } : {}),
+        ...(visualKind === "light" ? { roomcraft_light_form:
+          typeof item.lightForm === "string" && LIGHT_FORMS.includes(item.lightForm) ? item.lightForm : "table_lamp" } : {}),
         ...(visualKind === "device" && item.type === "humidifier" ? { roomcraft_device_form: "humidifier" } : {}),
         ...(visualKind === "device" && item.type === "airPurifier" ? { roomcraft_device_form: "air_purifier" } : {}),
         ...(visualKind === "window" ? { roomcraft_window_axis: Number(item.w) < Number(item.h) ? "vertical" : "horizontal" } : {}),

@@ -52,6 +52,8 @@ roomcraft/
 
 The image is a visual reference, not a dimensional survey. The layout coordinates use a 1536 × 1024 design canvas. Roomcraft keeps one shared level for connected upstairs rooms; exterior stairs descend from the lower-left landing toward the top-left of the illustration. Floor finishes vary by room. The furniture and object art is drawn in the plan's slightly raised perspective.
 
+The editor currently offers 271 object choices, including a 34-variant original cozy furniture and lighting collection with deterministic finish palettes and Home Assistant-aware live light silhouettes.
+
 ## Requirements
 
 - A Home Assistant dashboard with a `picture-elements` card in its floor-plan view.

@@ -1,5 +1,13 @@
 # Decision log
 
+## 2026-11-09 — Use original data-driven cozy creature-world art recipes
+
+**Decision:** Give furniture and lights stable catalog IDs, named palettes and forms, explicit render layers, and code-native vector recipes shared by editor previews and exports. Use broad rounded, toy-like, dollhouse qualities without copying a branded character, logo, recognizable silhouette, name, or game asset. Preserve each validated light silhouette through Home Assistant with `table_lamp`, `bud_lamp`, `cloud_floor_lamp`, `bloom_ceiling`, `star_pendant`, and `acorn_sconce` forms.
+
+**Reason:** A cohesive friendly visual language makes the layout easier to read and extend, but a direct franchise imitation would be neither reusable nor professionally maintainable. Data-driven recipes keep finish variants deterministic and let future engineers add forms without baking room floors or private state into the art.
+
+**Consequence:** `inventory.js` owns searchable recipes and stable metadata; `object-art.js` owns deterministic vector forms; the render contract owns layer placement; both dashboard bridges validate `lightForm`; and the live card alone adds truthful state treatment. Unknown light forms fall back to `table_lamp`. Furniture keeps an opaque semantic core, ceiling fixtures remain on `ceiling-devices`, and no renderer may use random marks, clock input, GPU-dependent blur, or copied franchise assets.
+
 ## 2026-11-09 — Keep floor, fixed structure, movable furniture, and live effects in distinct layers
 
 **Decision:** Author the office workstation, master rug, bedside furniture, desk lamps, humidifier, and baby-area furnishings as semantic objects in their correct layer. Use migration version 4 once to correct the known office geometry and add the missing credenza, nightstand, and lower dresser. Keep the dining set at its intended four chairs. Do not use broad raster crops or duplicate contact shadows to reconstruct movable furniture.

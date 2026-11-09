@@ -803,7 +803,7 @@ test('detail cards are positioned beside objects and move inward near the right 
   delete context.window.innerHeight;
 });
 
-test('a bound table lamp shades only its small lamp head and follows the light switch', () => {
+test('a bound table lamp keeps the cozy flower-bud silhouette and follows the light switch', () => {
   const object = new ObjectControl();
   object.setConfig({ type: 'custom:roomcraft-object-control', roomcraft_item_id: 'office-desk-lamp',
     entity: 'light.office', title: 'Office desk lamp', roomcraft_visual_kind: 'light',
@@ -811,12 +811,11 @@ test('a bound table lamp shades only its small lamp head and follows the light s
   const css = object.shadowRoot.children[0].textContent;
   assert.match(css, /\.target\{[^}]*background:transparent[^}]*appearance:none[^}]*-webkit-appearance:none/);
   assert.doesNotMatch(css, /\.hint\{/);
-  assert.match(css, /\[data-form="table_lamp"\] \.art\{[^}]*inset:8% 18% 5%[^}]*background:none/);
-  assert.match(css, /\[data-form="table_lamp"\] \.art::before\{[^}]*width:56%[^}]*height:34%[^}]*linear-gradient/);
-  assert.match(css, /\[data-form="table_lamp"\] \.art::after\{[^}]*radial-gradient\(ellipse at 50% 89%/);
-  assert.match(css, /\[data-form="table_lamp"\]\[data-state="off"\] \.art\{[^}]*background:none/);
-  assert.match(css, /\[data-form="table_lamp"\]\[data-state="off"\] \.art\{[^}]*backdrop-filter:none/);
-  assert.match(css, /\[data-form="table_lamp"\]\[data-state="on"\] \.art::before\{[^}]*0 0 15px 7px/);
+  assert.match(css, /\[data-form="table_lamp"\] \.art,\s*\.target\[data-visual="light"\]\[data-form="bud_lamp"\] \.art\{[^}]*inset:6% 13% 3%[^}]*background:none!important/);
+  assert.match(css, /\[data-form="table_lamp"\] \.art::before,\s*\.target\[data-visual="light"\]\[data-form="bud_lamp"\] \.art::before\{[^}]*width:72%[^}]*height:43%[^}]*radial-gradient/);
+  assert.match(css, /\[data-form="table_lamp"\] \.art::after,\s*\.target\[data-visual="light"\]\[data-form="bud_lamp"\] \.art::after\{[^}]*radial-gradient\(ellipse at 50% 89%/);
+  assert.match(css, /\[data-form="table_lamp"\]\[data-state="off"\] \.art::before,[^}]*saturate\(\.5\) brightness\(\.65\)/s);
+  assert.match(css, /\[data-form="table_lamp"\]\[data-state="on"\] \.art::before,[^}]*drop-shadow\(0 0 8px #ffd66f99\)/s);
   object.hass = { states: { 'light.office': { state: 'off' } } };
   assert.equal(object._button.attributes['data-form'], 'table_lamp');
   assert.equal(object._button.attributes['data-state'], 'off');
@@ -830,6 +829,24 @@ test('a bound table lamp shades only its small lamp head and follows the light s
   assert.throws(() => object.setConfig({ entity: 'light.office',
     roomcraft_light_form: 'giant_glow' }), /invalid device binding/i);
   object.disconnectedCallback();
+});
+
+test('cute light forms keep transparent controls and truthful state-only glow', () => {
+  const forms = ['bud_lamp', 'cloud_floor_lamp', 'bloom_ceiling', 'star_pendant', 'acorn_sconce'];
+  for (const form of forms) {
+    const object = new ObjectControl();
+    object.setConfig({ type: 'custom:roomcraft-object-control', entity: `light.${form}`,
+      title: form, roomcraft_visual_kind: 'light', roomcraft_light_form: form });
+    object.hass = { states: { [`light.${form}`]: { state: 'off' } } };
+    assert.equal(object._button.attributes['data-form'], form);
+    assert.equal(object._button.attributes['data-state'], 'off');
+    const css = object.shadowRoot.children[0].textContent;
+    assert.match(css, new RegExp(`data-form="${form}"`));
+    assert.match(css, new RegExp(`data-form="${form}"\\]\\[data-state="on"`));
+    object.hass = { states: { [`light.${form}`]: { state: 'on' } } };
+    assert.equal(object._button.attributes['data-state'], 'on');
+    object.disconnectedCallback();
+  }
 });
 
 test('a tap acknowledges the object itself without a visible state label or a drag action', async () => {
@@ -1174,7 +1191,7 @@ test('LAN bridge imports, exports, and retains unrelated HA elements/views', asy
   assert.equal(saved.views[0].cards[0].elements[2].style.top, '7%');
 });
 
-test('LAN bridge exports blind axes and table lamp form without shrinking touch targets', async () => {
+test('LAN bridge exports blind axes and validated light forms without shrinking touch targets', async () => {
   let saved = dashboard();
   const card = new Card();
   card.hass = { connected: true, user: { is_admin: true },
@@ -1193,12 +1210,16 @@ test('LAN bridge exports blind axes and table lamp form without shrinking touch 
       x: 600, y: 250, w: 72, h: 120, rotation: 0 },
     { id: 'office-desk-lamp', type: 'lamp', name: 'Office desk lamp', entityId: 'light.office',
       x: 900, y: 250, w: 48, h: 60, rotation: 0 },
+    { id: 'cute-bloom', type: 'lighting-bloom-ceiling-light-mint', name: 'Bloom ceiling light',
+      entityId: 'light.bloom', visualKind: 'light', lightForm: 'bloom_ceiling',
+      x: 1000, y: 250, w: 60, h: 60, rotation: 0 },
   ] };
   await card._writeDashboard({ project, revision: imported.revision, pngDataUrl: pngDataUrl() });
   const elements = saved.views[0].cards[0].elements;
   const horizontal = elements.find(element => element.roomcraft_item_id === 'top-blind');
   const vertical = elements.find(element => element.roomcraft_item_id === 'side-blind');
   const lamp = elements.find(element => element.roomcraft_item_id === 'office-desk-lamp');
+  const bloom = elements.find(element => element.roomcraft_item_id === 'cute-bloom');
   assert.equal(horizontal.roomcraft_window_axis, 'horizontal');
   assert.equal(vertical.roomcraft_window_axis, 'vertical');
   assert.equal(horizontal.style.width, '7.81%');
@@ -1207,6 +1228,7 @@ test('LAN bridge exports blind axes and table lamp form without shrinking touch 
   assert.equal(vertical.style.height, '13.89%');
   assert.equal(lamp.roomcraft_visual_kind, 'light');
   assert.equal(lamp.roomcraft_light_form, 'table_lamp');
+  assert.equal(bloom.roomcraft_light_form, 'bloom_ceiling');
 });
 
 test('LAN bridge removes Weather and Time words even on an already-current scene', async () => {

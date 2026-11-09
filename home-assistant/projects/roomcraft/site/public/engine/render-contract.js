@@ -208,6 +208,12 @@
       'Item layer resolution requires an item record');
     const descriptor = catalogEntry(catalogByType, item.type);
     const artFamily = descriptor && descriptor.artFamily;
+    if (descriptor && descriptor.renderLayer !== undefined) {
+      const explicitLayers = new Set(['rugs', 'furniture', 'ceiling-devices', 'openings']);
+      assert(explicitLayers.has(descriptor.renderLayer), 'INVALID_CATALOG_RENDER_LAYER',
+        `Catalog item ${item.type} uses unsupported render layer ${descriptor.renderLayer}`);
+      return descriptor.renderLayer;
+    }
     if (item.type === 'rug' || artFamily === 'playMat' || artFamily === 'floorMat') return 'rugs';
     if (item.type === 'ceilingLight' || item.type === 'pendantLight' || artFamily === 'ceilingFan') {
       return 'ceiling-devices';

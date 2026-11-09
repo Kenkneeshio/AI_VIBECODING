@@ -146,6 +146,23 @@ test('transparent control area produces no bitmap artwork', () => {
   }, { items: [] }, null, null, () => { throw new Error('Unexpected fallback art'); });
 });
 
+test('movable furniture and lights use floor-free vector art instead of source crops', () => {
+  class ImageStub { addEventListener() {} }
+  const window = {};
+  installRoomcraftEngine(window);
+  runInNewContext(rasterSource, { window, Image: ImageStub });
+  const fallbackTypes = [];
+  for (const type of ['sofa', 'table', 'chair', 'bed', 'desk', 'armchair', 'coffeeTable',
+    'sideTable', 'dresser', 'nightstand', 'bookcase', 'stool', 'lamp', 'ceilingLight',
+    'pendantLight', 'floorLamp', 'tableLamp', 'wallSconce']) {
+    window.RoomcraftRasterRenderer.drawItem({}, { id: `test-${type}`, type, x: 100, y: 100,
+      w: 80, h: 60, rotation: 0 }, { items: [] }, null, null, item => fallbackTypes.push(item.type));
+  }
+  assert.deepEqual(Array.from(fallbackTypes), ['sofa', 'table', 'chair', 'bed', 'desk', 'armchair',
+    'coffeeTable', 'sideTable', 'dresser', 'nightstand', 'bookcase', 'stool', 'lamp',
+    'ceilingLight', 'pendantLight', 'floorLamp', 'tableLamp', 'wallSconce']);
+});
+
 test('manual dashboard YAML carries window orientation and doorbell event sensors', () => {
   const c = controls();
   const elements = c.manualDashboardElements({
@@ -180,6 +197,18 @@ test('a bedroom-style desk lamp keeps a small stateful light shade', () => {
   assert.equal(element.roomcraft_visual_kind, 'light');
   assert.equal(element.roomcraft_light_form, 'table_lamp');
   assert.match(c.manualYaml({ items: [lamp], hotspots: [] }), /roomcraft_light_form: "table_lamp"/);
+});
+
+test('cute catalog lights preserve their live silhouette and reject unknown forms', () => {
+  const c = controls();
+  const forms = ['bud_lamp', 'cloud_floor_lamp', 'bloom_ceiling', 'star_pendant', 'acorn_sconce'];
+  const items = forms.map((lightForm, index) => ({ id: `cute-${index}`, type: `lighting-cute-${index}`,
+    name: `Cute light ${index}`, x: 400 + index * 80, y: 300, w: 60, h: 60, rotation: 0,
+    entityId: `light.example_${index}`, visualKind: 'light', lightForm }));
+  assert.deepEqual(Array.from(c.manualDashboardElements({ items, hotspots: [] })
+    .filter(element => element.type === 'custom:roomcraft-object-control')
+    .map(element => element.roomcraft_light_form)), forms);
+  assert.equal(c.validBinding({ ...items[0], lightForm: 'copied_character' }), false);
 });
 
 test('manual YAML keeps linked furniture and invisible zones as custom controls', () => {

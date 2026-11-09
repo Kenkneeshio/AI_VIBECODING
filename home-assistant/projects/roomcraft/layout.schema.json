@@ -86,6 +86,7 @@
         "controlLabel": { "type": "string", "maxLength": 80 },
         "controlIcon": { "type": "string", "pattern": "^(?:|mdi:[a-z0-9-]+)$" },
         "visualKind": { "enum": ["auto", "light", "fan", "climate", "window", "door", "vacuum", "device", "none"], "description": "Optional live object treatment; auto infers from the item and bound state entity." },
+        "lightForm": { "enum": ["table_lamp", "bud_lamp", "cloud_floor_lamp", "bloom_ceiling", "star_pendant", "acorn_sconce"], "description": "Optional validated live-light silhouette. Unknown or absent values fall back safely to table_lamp." },
         "tapAction": { "$ref": "#/$defs/objectAction" },
         "holdAction": { "$ref": "#/$defs/objectAction" },
         "tapEntityId": { "$ref": "#/$defs/optionalEntityId", "description": "Optional action target different from entityId." },

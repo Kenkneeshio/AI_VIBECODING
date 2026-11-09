@@ -23,6 +23,7 @@
     lamp:{ box:[1419,446,48,60], shapes:[['e',3,2,39,41],['e',13,34,22,22]] }
   };
   const prototype = {sofa:'i1',tv:'i2',table:'i3',desk:'i4',chair:'i5',bed:'i6',counter:'i7',tub:'i9',toilet:'i11',plant:'i13',lamp:'lamp'};
+  const vectorFurniture = new Set(['sofa','table','chair','bed','desk','armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','lamp','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce']);
   // The source art contains bright cyan exterior panes. Paint these fixed
   // openings as subdued top-down glazing after floor and furniture repairs.
   // User-placed windows are painted separately below and remain editable.
@@ -285,10 +286,10 @@
   }
   function drawItem(c,item,starter,original,shell,fallback) {
     if(item.type==='controlZone')return;
-    // The source bedroom-lamp crop also contains a few high-contrast pixels
-    // from the bedside furniture. Reusing it for movable lamps produces a
-    // false black "button" beside every fixture. Draw clean lamp art instead.
-    if(item.type==='lamp'||item.type==='desk'){fallback(item);return;}
+    // Movable furniture and lighting use deterministic vector recipes. Source
+    // crops carried floor pixels and fixed shadows, which broke the independent
+    // layer contract after resize or rotation.
+    if(vectorFurniture.has(item.type)){fallback(item);return;}
     if(item.type==='window'){
       drawGlazedWindow(c,item.x,item.y,item.w,item.h,item.rotation||0);
       return;

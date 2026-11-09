@@ -13,6 +13,14 @@ Roomcraft's 1536 × 1024 visual starting point was supplied for this project as 
 
 Preserve original source dimensions, transparency, and color alignment when replacing an asset. A new atlas should include a contact sheet or screenshot, a render comparison at 100% scale, and a note in the changelog. Check that a sprite's perspective, shadow direction, and wall attachment match the scene. Keep the reference PNG in source so future work can compare the rendered result without relying on an external attachment.
 
+## Original cozy furniture and light system
+
+The editor includes 34 original variants across 15 designs in two data-driven families: `cuteFurniture` and `cuteLight`. Furniture includes cloud-cushion sofas, petal dining sets, acorn chairs, lily and bubble tables, moon-pillow beds, sprout desks, star nightstands, honeycomb dressers, and storybook bookcases. Lights include flower-bud table lamps, cloud-glow floor lamps, bloom ceiling lights, twinkle-star pendants, and acorn sconces. Eleven named palettes supply blush, mint, oak, cream, teddy, sage, warm white, butter, lavender, sky, and peach finishes. These are generic original rounded/dollhouse motifs, not branded character art or extracted game assets.
+
+Every form uses the same slightly raised top-down perspective, opaque semantic core, layered highlight, and deterministic offset shadow. Existing movable furniture and lights use the same code-native vector language, so they can move without carrying source-floor pixels. Furniture remains on `furniture`; bloom and star ceiling fixtures declare `ceiling-devices`. Do not use `shadowBlur`, randomized marks, clock input, GPU-dependent filters, or floor-colored repair rectangles. A review pass must render every design at its default size and at 55% size rotated 27 degrees without clipping, floor bleed, or loss of its recognizable silhouette.
+
+An unbound light is decorative. A bound light is omitted from the static plan once and rendered as one live overlay in Home Assistant. The validated `lightForm` preserves its authored table, floor, ceiling, pendant, or sconce silhouette while the bound entity alone supplies off, on, or unavailable treatment. The transparent target and 4-pixel state dot remain separate from the visible art.
+
 ## Wall-mounted window quality check
 
 Windows are architectural openings, so their frame and glazing must follow the direction and apparent thickness of the wall they attach to. For a change to window artwork or snapping, inspect all of the following in Design mode **and** in the downloaded detailed PNG:
@@ -37,7 +45,7 @@ The static artwork stays neutral. Home Assistant draws bright, dark, or unknown 
 
 The public graphics show a fictionalized floor plan and are documentation/reference art. Do not add live camera frames, exact vacuum maps, household photos, or private access URLs to this folder.
 
-Moving bound fan and robot art is visible in Design mode but intentionally absent from the clean exported PNG. Home Assistant supplies one live rotor and one calibrated robot overlay, preventing a frozen duplicate. Stateful lights share a compact table-lamp head treatment while retaining their authored lamp/fixture silhouettes. Humidifier and air-purifier sprites are separate perspective-aware catalog objects; their mist/airflow is a runtime overlay, not baked art.
+Moving bound fan and robot art is visible in Design mode but intentionally absent from the clean exported PNG. Home Assistant supplies one live rotor and one calibrated robot overlay, preventing a frozen duplicate. Stateful lights preserve one of the six validated live silhouettes documented above; their entity alone supplies the glow and state treatment. Humidifier and air-purifier sprites are separate perspective-aware catalog objects; their mist/airflow is a runtime overlay, not baked art.
 
 The [live-binding workflow diagram](images/live-binding-flow.svg) uses fictional `example_*` entity IDs and a drawn camera placeholder. The [camera-state diagram](images/camera-state-flow.svg) shows a dated front-door still, idle garage preview, connecting state, and decoded live state. These vector manual graphics contain no device image, stream URL, or installed entity inventory.
 

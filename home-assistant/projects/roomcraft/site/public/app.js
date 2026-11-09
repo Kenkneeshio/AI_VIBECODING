@@ -126,6 +126,7 @@
   const wall = (id, x1, y1, x2, y2) => ({ id, x1, y1, x2, y2 });
   const item = (id, type, name, x, y, w, h, rotation = 0) => ({ id, type, name, x, y, w, h, rotation, entityId: '',
     ...(templateByType[type]?.visualKind?{visualKind:templateByType[type].visualKind}:{}),
+    ...(templateByType[type]?.lightForm?{lightForm:templateByType[type].lightForm}:{}),
     ...(type==='cameraThumbnail'?{previewMode:'event',imageEntityId:'',eventEntityIds:[]}:{}) });
   const validEntityId = value => /^[a-z_]+\.[a-z0-9_]+$/i.test(value||'');
   function clampLinkedItem(o){
@@ -854,7 +855,10 @@
     if(!o||o.type===type)return;
     const old=templateByType[o.type],next=templateByType[type];
     if(!old?.artFamily||old.type.slice(0,old.type.lastIndexOf('-'))!==type.slice(0,type.lastIndexOf('-')))return;
-    snapshot();if(o.name===old.label)o.name=next.label;o.type=type;afterChange('Changed color / finish');
+    snapshot();if(o.name===old.label)o.name=next.label;o.type=type;
+    if(next.lightForm)o.lightForm=next.lightForm;else delete o.lightForm;
+    if(next.visualKind)o.visualKind=next.visualKind;
+    afterChange('Changed color / finish');
   }
   function updateHotspotProperty(key,value){if(selected?.kind!=='hotspot')return;const h=project.hotspots.find(h=>h.id===selected.id);if(!h)return;let next=value;if(key==='left'||key==='top'){const n=Number(value);if(!Number.isFinite(n))return;next=`${Math.max(0,Math.min(100,n)).toFixed(2)}%`;}else if(key==='entity'){if(!/^[a-z_]+\.[a-z0-9_]+$/i.test(value)){showToast('Use an entity ID like light.living_room');renderInspector();return;}}else if(key==='tap'&& !['toggle','more-info'].includes(value))return;else if(key==='hold'&& !['none','more-info'].includes(value))return;else if(key!=='title'&&key!=='entity')return;
     const current=key==='left'||key==='top'?h.style[key]:key==='tap'?h.tap_action?.action:key==='hold'?h.hold_action?.action||'none':h[key];if(next===current)return;snapshot();if(key==='left'||key==='top')h.style[key]=next;else if(key==='tap')h.tap_action={action:next};else if(key==='hold'){if(next==='none')delete h.hold_action;else h.hold_action={action:next};}else h[key]=next;afterChange(`Updated ${h.title} control`);

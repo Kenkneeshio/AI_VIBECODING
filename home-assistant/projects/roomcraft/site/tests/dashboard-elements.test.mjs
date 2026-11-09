@@ -184,7 +184,7 @@ test('linked artwork replaces a duplicate icon and preserves curated menu sectio
   assert.deepEqual(result[1].bound_objects, [{ entity_id: 'light.bedroom', label: 'Bedside light', icon: 'mdi:lamp' }]);
 });
 
-test('all stateful lights share the compact table-lamp language', () => {
+test('stateful lights keep a safe default and preserve validated catalog silhouettes', () => {
   const base = { id: 'office-desk-lamp', type: 'tableLamp', name: 'Office desk lamp',
     x: 915, y: 245, w: 48, h: 60, rotation: 0, entityId: 'light.office' };
   const [lamp] = mergeDashboardElements([], [], [base]);
@@ -192,6 +192,10 @@ test('all stateful lights share the compact table-lamp language', () => {
   assert.equal(lamp.roomcraft_light_form, 'table_lamp');
   const [ceiling] = mergeDashboardElements([], [], [{ ...base, id: 'ceiling', type: 'ceilingLight' }]);
   assert.equal(ceiling.roomcraft_light_form, 'table_lamp');
+  const [cuteCeiling] = mergeDashboardElements([], [], [{ ...base, id: 'cute-ceiling',
+    type: 'lighting-bloom-ceiling-light-mint', lightForm: 'bloom_ceiling' }]);
+  assert.equal(cuteCeiling.roomcraft_light_form, 'bloom_ceiling');
+  assert.equal(validObjectControl({ ...base, lightForm: 'copied_character' }), false);
   const [nonLight] = mergeDashboardElements([], [], [{ ...base, visualKind: 'device' }]);
   assert.equal(nonLight.roomcraft_light_form, undefined);
   const [humidifier] = mergeDashboardElements([], [], [{ ...base, id: 'humidifier', type: 'humidifier',
