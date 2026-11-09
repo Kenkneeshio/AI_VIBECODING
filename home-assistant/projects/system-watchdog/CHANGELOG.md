@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0 — 2026-11-08
+
+- Added a responsive `custom:system-watchdog-card` resource that renders the eight verified health categories as a touch-first animated topology. Healthy, warning, critical, and unavailable states have distinct high-contrast treatments; reduced-motion mode disables animation.
+- Added bounded per-resource details and direct authenticated navigation to Home Assistant Integrations, Devices, and Entities. The interface is observational and cannot restart services or actuate devices.
+- Updated the dashboard installer to upload and content-version the module, register it idempotently, retain the native diagnostic entity list, back up the dashboard, and verify both dashboard and resource readback.
+- Added JavaScript tests for state normalization, issue bounds, metrics, and custom-element registration plus Python tests for view composition and resource registration.
+- Deployed the view to the private Second Floor dashboard. A 1920 × 1080 physical-tablet capture verified full-screen fit, current warning/healthy contrast, and touch details. No device state was changed during QA.
+
 ## 0.1.0 — 2026-11-08
 
 - Added HA core, integration, Roomcraft object, sensor, workstation, Codex, tablet, and tablet-app health categories.

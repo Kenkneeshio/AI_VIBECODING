@@ -24,3 +24,11 @@
 
 **Reason:** Real entity IDs and monitored household devices are installation data, not reusable public source. Git contains only placeholders and the generator.
 
+## 2026-11-08 — Animate observed topology, not recovery actions
+
+**Decision:** Render the eight existing watchdog categories as a custom animated topology. Animation, glow, metrics, and details derive only from the corresponding entity state and bounded attributes. Keep native entity rows as a fallback and link to Home Assistant's authenticated Integrations, Devices, and Entities pages.
+
+**Reason:** The owner requested animated interfaces for newly monitored resources. A health map makes relationships and warning scope visible on the wall tablet without inventing per-vendor connectivity or adding a dense control panel.
+
+**Consequence:** The card has no restart, repair, or device-service action. Unknown values become warning or unavailable, never healthy. Reduced-motion disables animation, and release acceptance includes dashboard/resource readback plus a physical-tablet fit and touch check.
+

@@ -21,5 +21,5 @@ Detect degraded Home Assistant infrastructure and frontend control paths early, 
 
 ## Acceptance
 
-The custom integration loads on HA 2026.10.4, all eleven entities exist, the authenticated heartbeat is accepted, the Windows scheduled task exits 0, the tablet renders `/second-floor/health`, and an actual unavailable object or setup-retry integration produces a bounded warning.
+The custom integration loads on HA 2026.10.4, all eleven entities exist, the authenticated heartbeat is accepted, and the Windows scheduled task exits 0. The `/second-floor/health` view now includes a content-versioned animated topology plus native diagnostics. A private 1920 × 1080 tablet check confirmed full-screen fit and touch details while the current unavailable object and setup-retry integration produced bounded, accurate warnings.
 
