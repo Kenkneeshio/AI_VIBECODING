@@ -72,6 +72,12 @@
     { type: 'garageDoor', label: 'Garage door control', icon: '▥', w: 116, h: 52, group: 'systems', visualKind: 'door' },
     { type: 'cameraThumbnail', label: 'Camera thumbnail', icon: '▣', w: 170, h: 110, group: 'security' },
     { type: 'controlZone', label: 'Invisible button area', icon: '▧', w: 120, h: 72, group: 'security' },
+    { type: 'uiWeatherOrb', label: 'Sun / moon', icon: '☀', w: 64, h: 64, group: 'interface' },
+    { type: 'uiMenu', label: 'Device menu', icon: '☰', w: 48, h: 48, group: 'interface' },
+    { type: 'uiTime', label: 'Clock', icon: '◷', w: 84, h: 42, group: 'interface' },
+    { type: 'uiEdit', label: 'Edit layout button', icon: '✎', w: 48, h: 48, group: 'interface' },
+    { type: 'uiStatusAir', label: 'Indoor air status', icon: '◌', w: 50, h: 50, group: 'interface' },
+    { type: 'uiStatusElectrical', label: 'Electrical status', icon: 'ϟ', w: 50, h: 50, group: 'interface' },
     { type: 'plant', label: 'Flowers', icon: '✿', w: 44, h: 44, group: 'decor' },
     { type: 'floorPlant', label: 'Floor plant', icon: '❀', w: 72, h: 72, group: 'decor' },
     { type: 'artwork', label: 'Wall art', icon: '▧', w: 94, h: 56, group: 'decor' },
@@ -83,7 +89,8 @@
     ...(window.RoomcraftInventory?.groups || []),
     ['living', 'Living & dining'], ['bedroom', 'Bedroom & storage'],
     ['utility', 'Kitchen & bath'], ['lighting', 'Lights & lamps'],
-    ['systems', 'Climate, doors & fans'], ['decor', 'Decor'], ['build', 'Build'], ['security', 'Cameras & controls']
+    ['systems', 'Climate, doors & fans'], ['decor', 'Decor'], ['build', 'Build'], ['security', 'Cameras & controls'],
+    ['interface', 'Dashboard interface']
   ];
   const templateByType = Object.fromEntries(templates.map(t => [t.type, t]));
 
@@ -146,6 +153,15 @@
     item('fixture-bath-two','ceilingLight','Bath 02 ceiling light',1260,700,58,58),
     item('fixture-closet','ceilingLight','Dressing nook ceiling light',1438,640,48,48)
   ];
+  const DEFAULT_INTERFACE_ITEMS = [
+    item('ui-weather-orb','uiWeatherOrb','Sun / moon',1010,115,64,64),
+    item('ui-device-menu','uiMenu','Device menu',80,126,48,48),
+    item('ui-clock','uiTime','Clock',1275,126,84,42),
+    item('ui-edit-layout','uiEdit','Edit layout button',1444,126,48,48),
+    item('ui-status-air','uiStatusAir','Indoor air status',1412,151,50,50),
+    item('ui-status-electrical','uiStatusElectrical','Electrical status',1476,151,50,50)
+  ];
+  const interfaceTypes = new Set(DEFAULT_INTERFACE_ITEMS.map(o=>o.type));
   const fixedRoomIds = new Set(STARTER.rooms.map(r => r.id));
   const fixedExteriorWallIds = new Set(['w1','w2','w3','w4','w5','w6','w7','w8','w9','w10','w11','w12']);
   const isFixedExteriorWall = w => !!w && fixedExteriorWallIds.has(w.id);
@@ -201,6 +217,10 @@
       }
       p.editableReferenceVersion=2;
     }
+    if(p.editableReferenceVersion<3){
+      for(const control of DEFAULT_INTERFACE_ITEMS)if(!p.items.some(i=>i.id===control.id||i.type===control.type))p.items.push(clone(control));
+      p.editableReferenceVersion=3;
+    }
     for(const o of p.items)clampLinkedItem(o);
     p.version=2;
     return p;
@@ -224,6 +244,7 @@
   let dashboardSource = location.pathname.startsWith('/local/roomcraft/')
     ? new URL('/second-floor/plan', location.origin).href : null;
   let dashboardPublishedProject = null;
+  let dashboardDefaultProject = null;
   let projectChangeSerial = 0;
   let entityOptions = [];
 
@@ -325,7 +346,12 @@
     c.save();c.translate(o.x,o.y);c.rotate(o.rotation*Math.PI/180);
     const x=-o.w/2,y=-o.h/2,w=o.w,h=o.h;
     c.shadowColor='#27372c30';c.shadowBlur=8;c.shadowOffsetY=5;
-    if(o.type==='rug'){
+    if(interfaceTypes.has(o.type)){
+      const glyph={uiWeatherOrb:'☀',uiMenu:'☰',uiTime:'12:34',uiEdit:'✎',uiStatusAir:'◌',uiStatusElectrical:'ϟ'}[o.type]||'•';
+      c.shadowColor='#07171d99';c.shadowBlur=10;c.shadowOffsetY=3;c.fillStyle=o.type==='uiWeatherOrb'?'#fff0a5':'#183336e8';
+      round(c,x,y,w,h,Math.min(14,h/2));c.fill();c.shadowColor='transparent';c.strokeStyle=o.type==='uiWeatherOrb'?'#ffd36b':'#d8e3d5';c.lineWidth=2;c.stroke();
+      c.fillStyle=o.type==='uiWeatherOrb'?'#9b671d':'#f5f7ee';c.font=`700 ${Math.max(12,Math.min(h*.5,w*.42))}px system-ui`;c.textAlign='center';c.textBaseline='middle';c.fillText(glyph,0,0);
+    }else if(o.type==='rug'){
       c.fillStyle='#f0dcc2';round(c,x,y,w,h,11);c.fill();c.shadowColor='transparent';c.strokeStyle='#cfb696';c.lineWidth=3;c.stroke();c.strokeStyle='#d6bf9f';c.lineWidth=1;for(let i=-w;i<w*2;i+=18){c.beginPath();c.moveTo(x+i,y+9);c.lineTo(x+i+25,y+h-9);c.stroke();}
     }else if(o.type==='sofa'){
       c.fillStyle='#ceb697';round(c,x,y,Math.min(w*.43,74),h,10);c.fill();round(c,x,y+h*.66,w,h*.34,10);c.fill();
@@ -415,6 +441,7 @@
         // HA renders bound fans and robots as live stateful objects. Keep their
         // art in Design mode, but omit a fixed fan/robot from the exported PNG
         // so motion and map tracking never create a second frozen copy.
+        if(clean&&interfaceTypes.has(o.type))return;
         if(clean&&validEntityId(o.entityId)&&(isFixtureControl(o)||['ceilingFan','robotVacuum'].includes(templateByType[o.type]?.artFamily)))return;
         drawObject(c,o);
       };
@@ -848,7 +875,7 @@
           return;
         }
       }
-      project=current;selected=null;afterChange('Loaded current Home Assistant layout');dashboardPublishedProject=JSON.stringify(project);fitView();
+      project=current;dashboardDefaultProject=clone(current);selected=null;afterChange('Loaded current Home Assistant layout');dashboardPublishedProject=JSON.stringify(project);fitView();
       const detail=hasEditable?'Current editable dashboard layout loaded':'Current dashboard controls loaded with the starting editable plan';
       setDashboardStatus(different?detail+' · previous browser draft available to recover':detail);
     }catch(error){
@@ -870,7 +897,7 @@
       if(!await askConfirmation('Import dashboard layout',`Import ${detail} from Home Assistant? This replaces the layout saved in this browser. You can undo the import during this session or export your current layout as JSON first.`,'Import layout')){
         setDashboardStatus('Dashboard import canceled');return;
       }
-      snapshot();project=restoreFixedGeometry(clone(next));dashboardRevision=data.revision;selected=null;clearPlacement();setViewMode('design');afterChange('Imported from Home Assistant dashboard');dashboardPublishedProject=JSON.stringify(project);fitView();
+      snapshot();project=restoreFixedGeometry(clone(next));dashboardDefaultProject=clone(project);dashboardRevision=data.revision;selected=null;clearPlacement();setViewMode('design');afterChange('Imported from Home Assistant dashboard');dashboardPublishedProject=JSON.stringify(project);fitView();
       const message=hasEditable?'Editable layout imported from dashboard':'Dashboard controls imported. Its image has no editable Roomcraft data, so the starting furnishings were used.';
       setDashboardStatus(message);showToast(message);
     }catch(error){const message=`Import failed: ${error.message||'Home Assistant is unavailable'}`;setDashboardStatus(message,true);showToast(message);}
@@ -894,6 +921,7 @@
       if(!saved.imageUrl)throw new Error('Dashboard save did not return an image URL');
       rememberDashboardSource(saved.source);
       dashboardRevision=saved.revision||null;
+      dashboardDefaultProject=clone(project);
       dashboardPublishedProject=JSON.stringify(project);
       setDashboardStatus('Layout, image, and controls exported to Home Assistant');showToast('Home Assistant dashboard updated');
     }catch(error){if(error.status===409)dashboardRevision=null;const message=error.status===409?'Dashboard changed since your last import. Import it before exporting again.':`Export failed: ${error.message||'Home Assistant is unavailable'}`;setDashboardStatus(message,true);showToast(message);}
@@ -936,7 +964,7 @@
     menu.addEventListener('click',e=>{const b=e.target.closest('[data-export]');if(!b)return;showMenu(false);if(b.dataset.export==='png')exportPng();if(b.dataset.export==='json')exportJson();if(b.dataset.export==='yaml')exportHaYaml();});
     document.addEventListener('pointerdown',e=>{if(!e.target.closest('.menu-wrap'))showMenu(false);});
     document.getElementById('importButton').addEventListener('click',()=>document.getElementById('importFile').click());document.getElementById('importFile').addEventListener('change',e=>{importProject(e.target.files[0]);e.target.value='';});
-    document.getElementById('resetButton').addEventListener('click',async()=>{if(!await askConfirmation('Reset layout','Load the starting furnished plan? Your current layout can be exported as JSON first, and this change is undoable in this session.','Reset layout'))return;snapshot();project=restoreFixedGeometry(clone(STARTER));selected=null;afterChange('Loaded starting furnished plan');fitView();});
+    document.getElementById('resetButton').addEventListener('click',async()=>{if(!await askConfirmation('Reset layout','Load the current Home Assistant layout? Your current browser draft can be exported as JSON first, and this change is undoable in this session.','Load current layout'))return;snapshot();project=restoreFixedGeometry(clone(dashboardDefaultProject||STARTER));selected=null;afterChange(dashboardDefaultProject?'Loaded current Home Assistant layout':'Loaded starting furnished plan');fitView();});
     window.addEventListener('keydown',e=>{if(dashboardTransferBusy)return;const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo();return;}if(e.key===' '){e.preventDefault();spaceHeld=true;return;}if(e.key==='Escape'){const canceled=interaction;interaction=null;viewport.classList.remove('dragging');if(canceled?.snapshot&&history.length){project=history.pop();future=[];afterChange('Canceled drag');}clearPlacement();selected=null;renderInspector();updateHistoryButtons();draw();return;}if((e.key==='Delete'||e.key==='Backspace')&&selected){e.preventDefault();deleteSelected();return;}const shortcuts={v:'select',h:'pan',r:'room',w:'wall',e:'erase'};const shortcut=shortcuts[e.key.toLowerCase()];if(shortcut){setViewMode('design');setTool(shortcut);}});
     window.addEventListener('keyup',e=>{if(e.key===' ')spaceHeld=false;});
     window.addEventListener('resize',fitView);

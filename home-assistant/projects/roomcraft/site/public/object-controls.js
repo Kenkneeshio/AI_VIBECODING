@@ -156,6 +156,14 @@
       ...(item.previewMode === 'event_live' ? { event_entities: item.eventEntityIds || [] } : {}),
       style: dimensions(item, 3)
     }));
+    const findUi = type => items.find(item => item.type === type);
+    const uiElements = [
+      ['uiTime', { type: 'state-label', entity: 'sensor.time' }],
+      ['uiEdit', { type: 'icon', icon: 'mdi:pencil-ruler', title: 'Edit layout in Roomcraft', tap_action: { action: 'navigate', navigation_path: '/second-floor/studio' } }],
+      ['uiStatusAir', { type: 'custom:roomcraft-status-popup', roomcraft_status_kind: 'air', title: 'Indoor air', entities: [] }],
+      ['uiStatusElectrical', { type: 'custom:roomcraft-status-popup', roomcraft_status_kind: 'electrical', title: 'Electrical', entities: [] }]
+    ].flatMap(([type, element]) => { const position=findUi(type); return position?[{...element,style:dimensions(position,12)}]:[]; });
+    const menuPosition=findUi('uiMenu');
     const menu = {
       type: 'custom:roomcraft-entity-menu',
       roomcraft_menu: true,
@@ -165,9 +173,9 @@
         entity_id: item.entityId, label: item.controlLabel || item.name || item.entityId,
         icon: item.controlIcon || ''
       })),
-      style: { left: '5.2%', top: '5.3%', 'z-index': 12 }
+      style: menuPosition ? dimensions(menuPosition,12) : { left: '5.2%', top: '5.3%', 'z-index': 12 }
     };
-    return [...independent, ...objects, ...cameras, menu];
+    return [...independent, ...objects, ...cameras, menu, ...uiElements];
   }
 
   function manualYaml(project) {

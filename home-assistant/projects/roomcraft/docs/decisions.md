@@ -1,5 +1,13 @@
 # Decision log
 
+## 2026-11-09 — Dashboard interface geometry is layout data
+
+**Decision:** Store the sun/moon anchor, clock, device menu, editor shortcut, indoor-air badge, and electrical badge as ordinary version-2 `items`, alongside the already-editable camera thumbnails. Keep weather telemetry and its full-screen exterior mask in Home Assistant; only the celestial anchor geometry belongs to the layout. The current dashboard project loaded by the editor is the reset/default target.
+
+**Reason:** Users should not need code changes to move interface art, and importing/exporting a layout must preserve the complete composition. Separating geometry from authenticated state keeps the editor portable without publishing private entities or freezing live values into the plan.
+
+**Consequence:** Both dashboard transports must map these item types identically. A project without them receives migration version 3 defaults once; intentional later removal is preserved. UI items never render into the clean plan PNG.
+
 ## 2026-11-09 — Bind animation and action to the same physical state
 
 **Decision:** Use the verified four-channel kitchen switch directly: channel 3 is the dining fan light and channel 4 is the dining fan motor. Each illustrated object toggles its channel, reads that channel for feedback, and opens native details on hold. Keep action scenes out of these two object bindings.

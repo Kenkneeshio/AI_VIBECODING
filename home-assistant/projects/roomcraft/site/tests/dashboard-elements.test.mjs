@@ -24,6 +24,36 @@ test('dashboard export replaces editable controls and retains independent overla
   assert.equal(existing[0].entity, 'light.old_lamp');
 });
 
+test('dashboard interface items move retained chrome and the weather celestial anchor', () => {
+  const existing = [
+    { type: 'state-label', entity: 'sensor.time', style: { left: '83%', top: '5.3%' } },
+    { type: 'icon', icon: 'mdi:pencil-ruler', tap_action: { action: 'navigate', navigation_path: '/second-floor/studio' }, style: { left: '94%', top: '5.3%' } },
+    { type: 'custom:roomcraft-weather-outdoor', weather_entity: 'weather.house', style: { left: '50%', top: '50%', width: '100%', height: '100%' } },
+    { type: 'custom:roomcraft-status-popup', roomcraft_status_kind: 'air', entities: [], style: { left: '91.9%', top: '8.2%' } },
+  ];
+  const items = [
+    { id: 'menu', type: 'uiMenu', x: 120, y: 140, w: 48, h: 48, rotation: 0 },
+    { id: 'clock', type: 'uiTime', x: 1100, y: 150, w: 100, h: 44, rotation: 0 },
+    { id: 'edit', type: 'uiEdit', x: 1400, y: 150, w: 48, h: 48, rotation: 0 },
+    { id: 'sun', type: 'uiWeatherOrb', x: 900, y: 130, w: 72, h: 72, rotation: 0 },
+    { id: 'air', type: 'uiStatusAir', x: 1320, y: 180, w: 52, h: 52, rotation: 0 },
+  ];
+  const result = mergeDashboardElements([], existing, items);
+  const menu = result.find(element => element.roomcraft_menu);
+  const clock = result.find(element => element.type === 'state-label');
+  const edit = result.find(element => element.type === 'icon');
+  const weather = result.find(element => element.type === 'custom:roomcraft-weather-outdoor');
+  const air = result.find(element => element.roomcraft_status_kind === 'air');
+  assert.equal(menu.style.left, '7.81%');
+  assert.equal(clock.style.left, '71.61%');
+  assert.equal(edit.style.left, '91.15%');
+  assert.equal(air.style.left, '85.94%');
+  assert.equal(weather.celestial_x, 900);
+  assert.equal(weather.celestial_y, 50);
+  assert.equal(weather.celestial_size, 72);
+  assert.equal(weather.style.width, '100%');
+});
+
 test('plan export leaves the separate studio and live views untouched', () => {
   const studio = { title: 'Layout Studio', path: 'studio', cards: [{ type: 'button', name: 'Open Roomcraft' }] };
   const live = { title: 'Live Home', path: 'live', cards: [{ type: 'entities', entities: ['sensor.example'] }] };

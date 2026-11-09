@@ -289,18 +289,37 @@
       if (config.moon_entity && !validEntityId(config.moon_entity, 'sensor')) {
         throw new Error('Invalid moon_entity.');
       }
+      if ((config.celestial_x !== undefined && (!Number.isFinite(config.celestial_x) || config.celestial_x < 0 || config.celestial_x > SCENE_WIDTH)) ||
+          (config.celestial_y !== undefined && (!Number.isFinite(config.celestial_y) || config.celestial_y < 0 || config.celestial_y > SCENE_HEIGHT)) ||
+          (config.celestial_size !== undefined && (!Number.isFinite(config.celestial_size) || config.celestial_size < 24 || config.celestial_size > 240))) {
+        throw new Error('Invalid celestial position.');
+      }
       const changed = this._config?.weather_entity !== config.weather_entity;
       this._config = {
         weather_entity: config.weather_entity,
         sun_entity: config.sun_entity || 'sun.sun',
         moon_entity: config.moon_entity || null,
+        celestial_x: config.celestial_x ?? 1010,
+        celestial_y: config.celestial_y ?? 35,
+        celestial_size: config.celestial_size ?? 64,
       };
+      this._positionCelestial();
       if (changed) {
         this._forecast = [];
         this._forecastFetchedAt = 0;
       }
       this._render();
       this._fetchForecast();
+    }
+
+    _positionCelestial() {
+      if (!this._config) return;
+      const x = this._config.celestial_x, y = this._config.celestial_y;
+      const scale = this._config.celestial_size / 64;
+      const transform = (baseX, baseY) => `translate(${x} ${y}) scale(${scale}) translate(${-baseX} ${-baseY})`;
+      if (typeof this.shadowRoot.querySelectorAll !== 'function') return;
+      for (const node of this.shadowRoot.querySelectorAll('.sun-disc,.sun-ray')) node.setAttribute('transform', transform(1010, 35));
+      for (const node of this.shadowRoot.querySelectorAll('.moon-dark,.moon-lit')) node.setAttribute('transform', transform(350, 35));
     }
 
     set hass(value) {

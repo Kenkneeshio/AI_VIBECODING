@@ -13,6 +13,7 @@ const EDITOR_URL = '/local/roomcraft/editor.html';
 const CAMERA_ELEMENT_TYPE = 'custom:roomcraft-camera-thumbnail';
 const OBJECT_ELEMENT_TYPE = 'custom:roomcraft-object-control';
 const MENU_ELEMENT_TYPE = 'custom:roomcraft-entity-menu';
+const UI_ITEM_TYPES = new Set(['uiWeatherOrb', 'uiMenu', 'uiTime', 'uiEdit', 'uiStatusAir', 'uiStatusElectrical']);
 const PLAN_WIDTH = 1536;
 const PLAN_HEIGHT = 1024;
 const SCENE_WIDTH = 1536;
@@ -238,6 +239,39 @@ function objectControlElements(items) {
   });
 }
 
+function uiItem(items, type) {
+  return Array.isArray(items) ? items.find(item => isObject(item) && item.type === type) : null;
+}
+
+function uiStyle(item, zIndex = 12) {
+  return {
+    left: percent(item.x - SCENE_LEFT, SCENE_WIDTH), top: percent(item.y - SCENE_TOP, SCENE_HEIGHT),
+    width: percent(item.w, SCENE_WIDTH), height: percent(item.h, SCENE_HEIGHT),
+    transform: `translate(-50%, -50%) rotate(${item.rotation || 0}deg)`, 'z-index': zIndex,
+  };
+}
+
+function applyEditableUi(element, items) {
+  const result = structuredClone(element);
+  let item = null;
+  if (result.type === 'state-label' && result.entity === 'sensor.time') item = uiItem(items, 'uiTime');
+  else if (result.type === 'icon' && result.icon === 'mdi:pencil-ruler' &&
+      result.tap_action?.navigation_path === '/second-floor/studio') item = uiItem(items, 'uiEdit');
+  else if (result.type === 'custom:roomcraft-status-popup' && result.roomcraft_status_kind === 'air') item = uiItem(items, 'uiStatusAir');
+  else if (result.type === 'custom:roomcraft-status-popup' && result.roomcraft_status_kind === 'electrical') item = uiItem(items, 'uiStatusElectrical');
+  else if (result.type === 'custom:roomcraft-weather-outdoor') {
+    item = uiItem(items, 'uiWeatherOrb');
+    if (item) {
+      result.celestial_x = Math.round(item.x - SCENE_LEFT);
+      result.celestial_y = Math.round(item.y - SCENE_TOP);
+      result.celestial_size = Math.round(Math.min(item.w, item.h));
+    }
+    return result;
+  }
+  if (item) result.style = { ...(isObject(result.style) ? result.style : {}), ...uiStyle(item) };
+  return result;
+}
+
 function entityMenuElement(items = [], existing = []) {
   const previous = existing.find(element => isObject(element) &&
     element.type === MENU_ELEMENT_TYPE && element.roomcraft_menu === true);
@@ -251,9 +285,10 @@ function entityMenuElement(items = [], existing = []) {
     .map(item => ({ entity_id: item.entityId,
       label: item.controlLabel || item.name || item.entityId,
       icon: item.controlIcon || '' }));
+  const position = uiItem(items, 'uiMenu');
   return { type: MENU_ELEMENT_TYPE, roomcraft_menu: true, title: 'Devices and sensors',
     sections, bound_objects: boundObjects,
-    style: { left: '5.2%', top: HEADER_TOP, 'z-index': 12 } };
+    style: position ? uiStyle(position) : { left: '5.2%', top: HEADER_TOP, 'z-index': 12 } };
 }
 
 function migrateHeaderChrome(element, previousScene) {
@@ -299,7 +334,7 @@ function updatePlanCard(config, image, hotspots, items = []) {
     delete element.id;
     return element;
   }), ...objects, ...cameraThumbnailElements(items), entityMenuElement(items, card.elements || []),
-    ...retained.map(element => migrateHeaderChrome(element, previousScene))];
+    ...retained.map(element => applyEditableUi(migrateHeaderChrome(element, previousScene), items))];
   return { next, card };
 }
 
@@ -321,6 +356,12 @@ function validateProject(project) {
     }
   }
   for (const item of project.items) {
+    if (isObject(item) && UI_ITEM_TYPES.has(item.type) &&
+        (![item.x, item.y, item.w, item.h, item.rotation ?? 0].every(Number.isFinite) ||
+          item.x < 0 || item.x > PLAN_WIDTH || item.y < 0 || item.y > PLAN_HEIGHT ||
+          item.w < 12 || item.h < 12 || item.w > PLAN_WIDTH || item.h > PLAN_HEIGHT)) {
+      throw new Error('The layout has an invalid dashboard interface item.');
+    }
     if (isObject(item) && item.type === 'cameraThumbnail' && !validCameraThumbnail(item)) {
       throw new Error('The layout has an invalid camera thumbnail.');
     }
@@ -693,6 +734,8 @@ class RoomcraftObjectControl extends HTMLElement {
       .target{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;border-radius:12px;background:transparent;color:transparent;box-shadow:none;appearance:none;-webkit-appearance:none;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
       .target:hover,.target:focus-visible{outline:2px solid #7ee8d2;outline-offset:1px}
       .target:active{filter:brightness(1.25)}
+      .target[data-toggleable="true"]::before{content:"";position:absolute;right:2px;top:2px;z-index:5;width:4px;height:4px;border-radius:50%;background:#e04444;box-shadow:0 0 0 1px #190b0bcc;pointer-events:none}
+      .target[data-toggleable="true"][data-state="on"]::before{background:#2fe176;box-shadow:0 0 0 1px #061a0dcc}
       .target[data-feedback]::after{content:"";position:absolute;inset:1px;z-index:2;border:3px solid #d9fff4;border-radius:12px;background:#b8fff035;box-shadow:0 0 0 3px #15313cbb,0 0 14px 5px #6eead5c9;pointer-events:none}
       .target[data-feedback="hold"]::after{border-color:#fff2bc;background:#ffe8a42d;box-shadow:0 0 0 3px #372a1fbb,0 0 14px 5px #ffd47bc9}
       .target[data-state="unavailable"]{cursor:help}
@@ -702,21 +745,24 @@ class RoomcraftObjectControl extends HTMLElement {
       .target[data-visual="none"] .art,.target[data-state="ready"] .art,
       .target[data-zone="true"][data-visual="device"] .art{display:none}
       .target[data-visual="light"][data-state="off"] .art{
-        background:radial-gradient(circle at 42% 37%,#f7efd9 0 18%,#d7c6a3 19% 48%,#716756 49% 60%,transparent 62%);
-        backdrop-filter:none;box-shadow:0 2px 3px #15202773}
+        background:radial-gradient(circle at 38% 32%,#f8f1df 0 9%,#d8c8a7 10% 36%,#8b765a 37% 49%,#4c4338 50% 58%,transparent 60%);
+        backdrop-filter:none;box-shadow:0 2px 4px #1520278c}
       .target[data-visual="light"][data-state="on"] .art{
-        background:radial-gradient(circle,#fffef2 0 15%,#ffe6a5e8 31%,#ffca68a0 50%,transparent 78%);
-        box-shadow:0 0 18px 9px #ffd865a6,0 0 34px 17px #ffd86562,inset 0 0 0 2px #fff8dd}
+        background:radial-gradient(circle at 40% 35%,#fff 0 10%,#fff4c8 11% 34%,#d8b56f 35% 48%,#7c6547 49% 57%,#ffd56b40 58% 72%,transparent 74%);
+        box-shadow:0 0 11px 5px #ffd865a6,0 0 23px 11px #ffd86562}
       .target[data-visual="light"][data-form="table_lamp"] .art{
-        inset:24% 30% auto;height:34%;border-radius:46% 46% 50% 50%;
+        inset:21% 28% auto;height:38%;border-radius:48% 48% 34% 34%;
         transition:background .18s,box-shadow .18s,backdrop-filter .18s}
+      .target[data-visual="light"][data-form="table_lamp"] .art::before{content:"";position:absolute;left:46%;top:72%;width:8%;height:76%;border-radius:4px;background:#756451;box-shadow:0 1px 1px #1a232777}
+      .target[data-visual="light"][data-form="table_lamp"] .art::after{content:"";position:absolute;left:24%;top:137%;width:52%;height:14%;border-radius:50%;background:#665747;box-shadow:0 2px 2px #15202773}
       .target[data-visual="light"][data-form="table_lamp"][data-state="off"] .art{
-        background:radial-gradient(circle at 42% 37%,#f7efd9 0 18%,#d7c6a3 19% 48%,#716756 49% 60%,transparent 62%);
+        background:linear-gradient(165deg,#f5ead2 0 18%,#cdb58c 19% 68%,#77644d 69% 82%,transparent 83%),linear-gradient(90deg,transparent 44%,#7b6b59 45% 55%,transparent 56%);
         backdrop-filter:none;box-shadow:0 2px 3px #15202773}
       .target[data-visual="light"][data-form="table_lamp"][data-state="on"] .art{
-        background:radial-gradient(ellipse at 45% 39%,#fff8dfeb 0 32%,#ffdd8dbe 55%,transparent 82%);
+        background:linear-gradient(165deg,#fff9e9 0 18%,#ffe4a4 19% 68%,#bc8849 69% 82%,transparent 83%),radial-gradient(ellipse at 50% 70%,#ffd97890 0 28%,transparent 70%);
         backdrop-filter:none;
         box-shadow:0 0 6px 2px #ffd46b9c,0 0 12px 5px #ffd46b59,inset 0 0 0 1px #fff5d4}
+      .target[data-visual="light"][data-form="table_lamp"][data-state="on"] .art::before{background:#b69560}.target[data-visual="light"][data-form="table_lamp"][data-state="on"] .art::after{background:#9c7848}
       .target[data-visual="fan"] .art{inset:0;border-radius:0;background:radial-gradient(ellipse at center,#172630e8 0 26%,#172630a6 49%,transparent 76%);backdrop-filter:none;box-shadow:none}
       .target[data-visual="fan"][data-state="on"] .art{background:radial-gradient(ellipse at center,#22303ad9 0 27%,#263c468c 48%,transparent 76%);backdrop-filter:none;box-shadow:none}
       .rotor{inset:7%;display:none;transform-origin:50% 50%}
@@ -933,6 +979,7 @@ class RoomcraftObjectControl extends HTMLElement {
     const label = this._config.title || state?.attributes?.friendly_name || this._config.entity;
     const tap = this._actionFor('tap');
     const hold = this._actionFor('hold');
+    this._button.setAttribute('data-toggleable', String(tap === 'toggle'));
     const describe = (action, gesture) => action === 'toggle' ? `${gesture} to toggle` :
       action === 'activate' ? `${gesture} to run` :
       action === 'vacuum-panel' ? `${gesture} for vacuum controls` :

@@ -170,6 +170,39 @@ export function objectControlElements(items: unknown): JsonObject[] {
     });
 }
 
+function uiItem(items: unknown, type: string): JsonObject | null {
+  return Array.isArray(items) ? items.find((item) => isObject(item) && item.type === type) ?? null : null;
+}
+
+function uiStyle(item: JsonObject, zIndex = 12): JsonObject {
+  return {
+    left: percent(Number(item.x) - SCENE_LEFT, SCENE_WIDTH), top: percent(Number(item.y) - SCENE_TOP, SCENE_HEIGHT),
+    width: percent(Number(item.w), SCENE_WIDTH), height: percent(Number(item.h), SCENE_HEIGHT),
+    transform: `translate(-50%, -50%) rotate(${item.rotation ?? 0}deg)`, "z-index": zIndex,
+  };
+}
+
+function applyEditableUi(element: JsonObject, items: unknown): JsonObject {
+  const result = structuredClone(element);
+  let item: JsonObject | null = null;
+  if (result.type === "state-label" && result.entity === "sensor.time") item = uiItem(items, "uiTime");
+  else if (result.type === "icon" && result.icon === "mdi:pencil-ruler" &&
+      isObject(result.tap_action) && result.tap_action.navigation_path === "/second-floor/studio") item = uiItem(items, "uiEdit");
+  else if (result.type === "custom:roomcraft-status-popup" && result.roomcraft_status_kind === "air") item = uiItem(items, "uiStatusAir");
+  else if (result.type === "custom:roomcraft-status-popup" && result.roomcraft_status_kind === "electrical") item = uiItem(items, "uiStatusElectrical");
+  else if (result.type === "custom:roomcraft-weather-outdoor") {
+    item = uiItem(items, "uiWeatherOrb");
+    if (item) {
+      result.celestial_x = Math.round(Number(item.x) - SCENE_LEFT);
+      result.celestial_y = Math.round(Number(item.y) - SCENE_TOP);
+      result.celestial_size = Math.round(Math.min(Number(item.w), Number(item.h)));
+    }
+    return result;
+  }
+  if (item) result.style = { ...(isObject(result.style) ? result.style : {}), ...uiStyle(item) };
+  return result;
+}
+
 export function entityMenuElement(items: unknown = [], existing: unknown = []): JsonObject {
   const previous = Array.isArray(existing) ? existing.find((element) => isObject(element) &&
     element.type === MENU_ELEMENT_TYPE && element.roomcraft_menu === true) : null;
@@ -184,13 +217,14 @@ export function entityMenuElement(items: unknown = [], existing: unknown = []): 
     .map((item) => ({ entity_id: item.entityId,
       label: item.controlLabel || item.name || item.entityId,
       icon: item.controlIcon || "" })) : [];
+  const position = uiItem(items, "uiMenu");
   return {
     type: MENU_ELEMENT_TYPE,
     roomcraft_menu: true,
     title: "Devices and sensors",
     sections,
     bound_objects: boundObjects,
-    style: { left: "5.2%", top: HEADER_TOP, "z-index": 12 },
+    style: position ? uiStyle(position) : { left: "5.2%", top: HEADER_TOP, "z-index": 12 },
   };
 }
 
@@ -264,7 +298,7 @@ export function mergeDashboardElements(hotspots: JsonObject[], existing: unknown
   });
   const retained = Array.isArray(existing)
     ? existing.filter((element) => isObject(element) && element.type !== "state-icon" && !isManagedElement(element))
-      .map((element) => migrateHeaderChrome(element, previousScene))
+      .map((element) => applyEditableUi(migrateHeaderChrome(element, previousScene), items))
     : [];
   return [...managed, ...objects, ...cameraThumbnailElements(items), entityMenuElement(items, existing), ...retained];
 }

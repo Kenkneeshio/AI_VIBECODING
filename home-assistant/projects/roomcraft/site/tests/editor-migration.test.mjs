@@ -87,11 +87,12 @@ test('migrates a saved plan into movable lamp and room fixtures without duplicat
   editor.pointer('pointermove', 1393, 516);
   editor.pointer('pointerup', 1393, 516);
   const migrated = editor.read();
-  assert.equal(migrated.editableReferenceVersion, 2);
+  assert.equal(migrated.editableReferenceVersion, 3);
   assert.equal(migrated.items.filter(i => i.id === 'i14').length, 1);
   assert.equal(migrated.items.filter(i => i.id.startsWith('fixture-')).length, 7);
   assert.equal(migrated.items.find(i => i.id === 'office-desk-lamp')?.type, 'lamp');
   assert.equal(migrated.items.some(i => i.id === 'fixture-study'), false);
+  assert.equal(migrated.items.filter(i => i.type.startsWith('ui')).length, 6);
   assert.equal(migrated.items.find(i => i.id === 'i14').x, 1393);
 
   const reopened = boot(migrated);

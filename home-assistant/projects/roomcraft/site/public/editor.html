@@ -97,7 +97,7 @@
           <p class="dashboard-transfer-status" id="dashboardTransferStatus" role="status" aria-live="polite">Transfer your layout with Home Assistant.</p>
           <div class="file-actions">
             <button type="button" class="footer-link" id="importButton">↥ Import layout JSON</button>
-            <button type="button" class="footer-link" id="resetButton">↺ Reset to starting plan</button>
+            <button type="button" class="footer-link" id="resetButton">↺ Reload current dashboard layout</button>
           </div>
         </div>
       </aside>
@@ -150,7 +150,7 @@
     <form method="dialog"><button class="dialog-close" aria-label="Close" value="cancel">×</button></form>
     <p class="eyebrow">HOW IT WORKS</p><h2>A little room to play.</h2>
     <p>Design begins with the furnished image originally used for your Home Assistant Second Floor dashboard. Unchanged areas keep its source pixels; movable objects use cutouts from that artwork. Reference shows the starting image.</p>
-    <ul><li><strong>Objects:</strong> search the catalog or choose a category, then click the plan to place one. Drag an object to move it, drag a corner to resize it, and use the Inspector for position, rotation, color, and device links.</li><li><strong>Artwork:</strong> choose Focus canvas to expand the plan; click the zoom percentage to inspect the art at actual size.</li><li><strong>Lights:</strong> each room has a movable fixture. Enter its Home Assistant light or switch entity in the Inspector so the fixture itself becomes the dashboard control.</li><li><strong>Camera:</strong> place a Camera thumbnail, assign camera and event-image entities, then drag and resize its frame. Latest event shows a still; Live uses a camera stream only when Home Assistant provides one.</li><li><strong>Floors and rooms:</strong> choose a finish, then click a room; drag room corners in Room mode.</li><li><strong>Walls:</strong> choose a finish and click any wall. Draw and move interior segments; exterior walls can be refinished while their illustrated outline stays fixed.</li><li><strong>Layouts:</strong> browser edits save locally. When connected, the current Home Assistant layout loads on opening; a different browser draft remains recoverable. Export to dashboard to keep your design as the official plan, or use JSON to move it between browsers.</li><li><strong>Home Assistant:</strong> Import from dashboard loads its saved editable layout. Export to dashboard sends this design, image, and controls to your Second Floor dashboard. Use the Dashboard button in the header to return; unpublished edits are saved as a browser draft. PNG and YAML downloads remain available for manual setup.</li></ul>
+    <ul><li><strong>Objects:</strong> search the catalog or choose a category, then click the plan to place one. Drag an object to move it, drag a corner to resize it, and use the Inspector for position, rotation, color, and device links.</li><li><strong>Dashboard interface:</strong> the sun/moon, clock, device menu, edit button, status badges, and all camera frames are ordinary editor items. Find them in Dashboard interface or Cameras & controls, then move, resize, rotate, duplicate, or remove them like furniture.</li><li><strong>Artwork:</strong> choose Focus canvas to expand the plan; click the zoom percentage to inspect the art at actual size.</li><li><strong>Lights:</strong> each room has a movable fixture. Enter its Home Assistant light or switch entity in the Inspector so the fixture itself becomes the dashboard control. A 4-pixel red/green dot shows the actual toggle state.</li><li><strong>Camera:</strong> place a Camera thumbnail, assign camera and event-image entities, then drag and resize its frame. Latest event shows a still; Live uses a camera stream only when Home Assistant provides one.</li><li><strong>Floors and rooms:</strong> choose a finish, then click a room; drag room corners in Room mode.</li><li><strong>Walls:</strong> choose a finish and click any wall. Draw and move interior segments; exterior walls can be refinished while their illustrated outline stays fixed.</li><li><strong>Layouts:</strong> browser edits save locally. When connected, the current Home Assistant layout loads on opening and is also the editor's reset target; a different browser draft remains recoverable. Export to dashboard to keep your design as the official plan, or use JSON to move it between browsers.</li><li><strong>Home Assistant:</strong> Import from dashboard loads its saved editable layout. Export to dashboard sends this design, image, and controls to your Second Floor dashboard. Use the Dashboard button in the header to return; unpublished edits are saved as a browser draft. PNG and YAML downloads remain available for manual setup.</li></ul>
     <button class="primary-button" value="cancel" onclick="this.closest('dialog').close()">Let's build</button>
   </dialog>
   <dialog id="confirmationDialog" class="app-dialog confirmation-dialog" aria-labelledby="confirmationTitle" aria-describedby="confirmationMessage">
@@ -164,10 +164,10 @@
   </dialog>
   <script src="ha-iframe-bridge.js?v=opener-bridge-20261031" defer></script>
   <script src="inventory.js?v=modular-controls-20261109" defer></script>
-  <script src="raster-renderer.js?v=clean-lamps-20261109" defer></script>
-  <script src="object-art.js?v=clean-lamps-20261109" defer></script>
-  <script src="object-controls.js?v=modular-controls-20261109" defer></script>
-  <script src="app.js?v=live-light-art-20261109" defer></script>
+  <script src="raster-renderer.js?v=clean-furniture-20261109b" defer></script>
+  <script src="object-art.js?v=clean-furniture-20261109b" defer></script>
+  <script src="object-controls.js?v=movable-dashboard-ui-20261109" defer></script>
+  <script src="app.js?v=movable-dashboard-ui-20261109" defer></script>
   <script src="responsive-inspector.js?v=dashboard-transfer-20261031" defer></script>
 </body>
 </html>

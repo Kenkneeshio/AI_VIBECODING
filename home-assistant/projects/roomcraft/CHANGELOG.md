@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-09 — Clean furniture, movable dashboard interface, and state dots
+
+- Replaced the source-PNG dining-table and office-desk crops with clean perspective-aware vector furniture. The dining set now has four chairs, including both near/bottom chairs; the office desk is a true L shape. Moving or resizing either object no longer carries neighboring floor pixels or produces ghost copies.
+- Refined all live light art into recognizable compact fixtures while keeping the entire control hit area transparent. Every object whose effective tap action is **toggle** now shows an unobtrusive 4-pixel state dot: green only for a verified on state and red for off, unknown, or unavailable. Scene/script/button artwork remains neutral and does not claim a toggle state.
+- Promoted dashboard chrome into the version-2 item model. The sun/moon anchor, clock, device menu, editor shortcut, indoor-air badge, electrical badge, and all camera thumbnails can now be moved, resized, rotated, duplicated, removed, imported, and exported through the same editor workflow as furniture. Weather masking remains full-screen; only its celestial anchor is movable.
+- Made the dashboard project loaded at startup the editor's reset/default target. Reset no longer silently returns to an obsolete compiled starter when a current Home Assistant layout is available.
+- Added migration version 3 and round-trip coverage for the six interface items, cloud and LAN style mapping, celestial geometry, state-dot truthfulness, clean light layering, and existing camera behavior. No private entity IDs, camera media, or live dashboard JSON were added to source.
+
 ## 2026-11-09 — Modular animated controls, status popups, and complete night mask
 
 - Refined overlapping fixture controls: inactive light layers are now transparent, the on-state lamp glow is smaller, and the dining fan-light center target is 42 × 42 so the surrounding blades remain easy to tap independently. Moved the window fan into the office and removed its wall-mount constraint so it can be positioned like the real freestanding appliance.

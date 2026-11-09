@@ -252,6 +252,10 @@
     c.restore();
   }
   function repairItem(c,id,original,shell) {
+    if((id==='i3'||id==='i4')&&ready(shell)){
+      const [x,y,w,h]=specs[id].box;
+      c.save();c.fillStyle=floorPattern(c,id==='i3'?'oak':'walnut',shell);c.fillRect(x,y,w,h);c.restore();return;
+    }
     if(id==='i14'&&ready(original)){
       // The lamp sits on a baked bedside table. Removing its pixels from the
       // empty shell would also punch a hole through the table. Clone a clean
@@ -269,7 +273,7 @@
     // The source bedroom-lamp crop also contains a few high-contrast pixels
     // from the bedside furniture. Reusing it for movable lamps produces a
     // false black "button" beside every fixture. Draw clean lamp art instead.
-    if(item.type==='lamp'){fallback(item);return;}
+    if(item.type==='lamp'||item.type==='table'||item.type==='desk'){fallback(item);return;}
     if(item.type==='window'){
       drawGlazedWindow(c,item.x,item.y,item.w,item.h,item.rotation||0);
       return;
@@ -327,14 +331,15 @@
     if(!ready(shell))return true;
     const baseById=new Map(starter.items.map(i=>[i.id,i]));
     const currentById=new Map(project.items.map(i=>[i.id,i]));
+    const cleanRedrawIds=new Set(['i3','i4','i5','i13']);
     const currentWalls=new Map(project.walls.map(w=>[w.id,w]));
     for(const base of starter.walls)if(!sameWall(base,currentWalls.get(base.id)))repairWall(c,base,wallFree);
-    for(const base of starter.items){const now=currentById.get(base.id);if(!sameVisual(base,now))repairItem(c,base.id,original,shell);}
+    for(const base of starter.items){const now=currentById.get(base.id);if(cleanRedrawIds.has(base.id)||!sameVisual(base,now))repairItem(c,base.id,original,shell);}
     const starterRooms=new Map(starter.rooms.map(r=>[r.id,r]));
     for(const room of project.rooms)if(!sameRoom(room,starterRooms.get(room.id)))paintRoom(c,room,starter,project,images);
     if(!sameVisual(starter.items.find(i=>i.id==='i1'),currentById.get('i1')))drawLivingRug(c);
     if(!sameVisual(starter.items.find(i=>i.id==='i6'),currentById.get('i6')))drawBedroomRug(c);
-    const changed=project.items.filter(item=>!sameVisual(item,baseById.get(item.id)));
+    const changed=project.items.filter(item=>cleanRedrawIds.has(item.id)||!sameVisual(item,baseById.get(item.id)));
     const isFloorLayer=item=>item.type==='rug'||['playMat','floorMat'].includes(window.RoomcraftInventory?.byType?.[item.type]?.artFamily);
     const isCeilingLayer=item=>item.type==='ceilingLight'||item.type==='pendantLight'||window.RoomcraftInventory?.byType?.[item.type]?.artFamily==='ceilingFan';
     const floorItems=changed.filter(isFloorLayer);

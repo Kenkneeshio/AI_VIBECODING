@@ -1,7 +1,7 @@
 /* Illustrated top-down art for objects that do not have a cutout in the PNG. */
 (() => {
   'use strict';
-  const supported=new Set(['armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','lamp','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce','thermostat','humidifier','airPurifier','windowFan','garageDoor','floorPlant','artwork','mirror','window']);
+  const supported=new Set(['table','desk','armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','lamp','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce','thermostat','humidifier','airPurifier','windowFan','garageDoor','floorPlant','artwork','mirror','window']);
   // These cells face the same near-top-down camera as the supplied plan.
   // Front-facing atlas pieces use the perspective-aware canvas art below.
   const atlas=new Image();
@@ -571,6 +571,30 @@
     c.save();c.translate(o.x,o.y);c.rotate((o.rotation||0)*Math.PI/180);
     c.shadowColor='transparent';
     switch(o.type){
+      case 'table':{
+        // A self-contained four-seat set. The previous source-image crop also
+        // carried floor pixels and dropped the near-side chairs when moved.
+        const chairW=Math.max(20,w*.23),chairH=Math.max(18,h*.24);
+        const chair=(cx,cy,rot=0)=>{c.save();c.translate(cx,cy);c.rotate(rot);raisedCase(c,-chairW/2,-chairH/2,chairW,chairH,7,4,'#584033');rr(c,-chairW/2,-chairH/2,chairW,chairH,7,'#726258','#473b36',1);rr(c,-chairW*.34,-chairH*.32,chairW*.68,chairH*.64,5,'#9b8a7c','#5d5048',.8);c.restore();};
+        chair(-w*.3,-h*.39);chair(w*.3,-h*.39);chair(-w*.3,h*.39,Math.PI);chair(w*.3,h*.39,Math.PI);
+        raisedCase(c,x+w*.08,y+h*.17,w*.84,h*.66,13,7,'#6c422c');
+        wood(c,x+w*.08,y+h*.17,w*.84,h*.66);c.shadowColor='transparent';
+        rr(c,x+w*.14,y+h*.23,w*.72,h*.54,10,null,'#e0ad7a',1.4);
+        rr(c,-w*.29,-h*.055,w*.58,h*.11,3,'#efe3c9','#c9b58f',.8);
+        disc(c,0,0,Math.min(w,h)*.09,'#e9e4ce','#b8aa8e',1);break;
+      }
+      case 'desk':{
+        // Clean L-shaped office desk drawn from geometry, not a PNG fragment.
+        const depth=Math.max(22,h*.42),returnW=Math.max(30,w*.24);
+        c.save();c.shadowColor='#1f2b2545';c.shadowBlur=8;c.shadowOffsetY=6;
+        rr(c,x,y,w,depth,5,'#6b452f');rr(c,x,y,returnW,h,5,'#6b452f');c.restore();
+        wood(c,x,y,w,depth);wood(c,x,y,returnW,h);c.shadowColor='transparent';
+        rr(c,x+returnW*.13,y+depth*.16,returnW*.66,h-depth*.28,3,'#533827','#8f6547',.8);
+        rr(c,x+w*.48,y+depth*.17,w*.27,depth*.55,3,'#27343a','#152329',1);
+        rr(c,x+w*.51,y+depth*.21,w*.21,depth*.42,2,'#72929b');
+        rr(c,x+w*.8,y+depth*.2,w*.13,depth*.5,3,'#d1b078','#70543b',.8);
+        disc(c,x+w*.86,y+depth*.45,Math.min(w,h)*.035,'#28363b');break;
+      }
       case 'armchair':{
         raisedCase(c,x,y,w,h,16,8,'#8a735b');
         rr(c,x,y,w,h,16,gradient(c,x,y,w,h,[[0,'#ecdbc4'],[.52,'#c6a786'],[1,'#9e8067']]),'#816d59',2);c.shadowColor='transparent';
