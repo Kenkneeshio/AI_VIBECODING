@@ -13,6 +13,20 @@ The [JSON Schema](../layout.schema.json) describes Roomcraft layout version 2 sh
 
 The editable project is 1536 × 1024. `x` and `y` are project pixels; room and item IDs should remain stable across edits. IDs created by the current editor are seeded and sequence-based; they never use time or randomness. The full-width dashboard image includes the entire source width x0–1536 and crops only y80–944, producing 1536 × 864 pixels at **the same source pixel scale**. Its exact 16:9 aspect fits a landscape tablet while leaving project geometry unchanged. A wall's absence of `finish` means graphite for compatibility with layouts saved before wall finishes were added. Catalog `type` values must match the installed editor inventory; JSON Schema cannot enumerate dynamically added inventory templates.
 
+## Catalog variants and persisted geometry
+
+Product-family metadata such as `collectionId`, `seriesId`, `designId`, `sizeId`, material, and display labels belongs to the installed catalog, not layout version 2. A placed item persists the selected catalog entry in `type` and its resolved authored footprint in `w` and `h`. This keeps old layouts portable even when the Inspector gains richer variant menus and avoids duplicating mutable catalog descriptions inside every saved project.
+
+The editor applies variant changes with three distinct contracts:
+
+| Inspector choice | Persisted result | Geometry rule |
+| --- | --- | --- |
+| **Style** | Destination catalog `type` plus compatible art/form metadata | Apply that product's authored `w` and `h` |
+| **Size** | Destination catalog `type` plus compatible art/form metadata | Apply that size entry's authored `w` and `h` |
+| **Color / finish** | Destination catalog `type` plus compatible art/form metadata | Preserve the placed item's current `w` and `h` |
+
+All three preserve the item ID, center, rotation, Home Assistant bindings, and a user-customized name. A catalog entry may have a different default label without overwriting a name the user deliberately changed. Legacy families that only expose finish variants retain finish-only behavior. Because `w` and `h` are already part of version 2, authored bed sizes and constructions require no schema migration. Changing the meaning of persisted dimensions, catalog `type`, or variant resolution would require a compatibility decision and HA/cloud round-trip tests.
+
 Home Assistant positions `picture-elements` controls by percentage of the **displayed image**. For an item center `(x, y)` and size `(w, h)` in project pixels, both dashboard transports use:
 
 ```text

@@ -15,3 +15,13 @@ test('dashboard artwork avoids GPU blur shadows that corrupt Android WebView exp
   assert.match(raster, /offset stroke is the shadow/);
   assert.match(app, /Layered offset fills replace canvas shadowBlur/);
 });
+
+test('crafted object recipes avoid nondeterministic and pixel-read rendering paths', () => {
+  for (const pattern of [/\.filter\s*=/, /\.getImageData\s*\(/, /\.putImageData\s*\(/,
+    /Math\.random\s*\(/, /new\s+Date\s*\(/, /Date\.now\s*\(/, /setTimeout\s*\(/, /setInterval\s*\(/]) {
+    assert.doesNotMatch(art, pattern, `object art must avoid ${pattern}`);
+  }
+  assert.match(art, /function clippedTexture/);
+  assert.match(art, /function fabricPanel/);
+  assert.match(art, /function woodPanel/);
+});

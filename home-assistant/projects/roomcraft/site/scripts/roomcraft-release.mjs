@@ -177,6 +177,7 @@ export function verifyReleasePolicy(siteRoot = SITE_ROOT) {
 
   const deterministicEditorSources = [
     join(siteRoot, 'public', 'app.js'),
+    join(siteRoot, 'public', 'catalog-variants.js'),
     join(siteRoot, 'public', 'inventory.js'),
     join(siteRoot, 'public', 'object-art.js'),
     join(siteRoot, 'public', 'object-controls.js'),

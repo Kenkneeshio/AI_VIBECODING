@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
@@ -10,44 +11,6 @@ const layoutSchemaUrl = new URL('../../layout.schema.json', import.meta.url);
 const layoutSchema = existsSync(fileURLToPath(layoutSchemaUrl))
   ? JSON.parse(readFileSync(layoutSchemaUrl, 'utf8'))
   : null;
-
-const palettes = {
-  blush: { base: '#dbb2a9', accent: '#f1d6cc', detail: '#fff1e4', dark: '#a67b79' },
-  mint: { base: '#95c8b5', accent: '#d6eee0', detail: '#f5f9e9', dark: '#4f8b7c' },
-  oak: { base: '#bd8b62', accent: '#e2b786', detail: '#f5dfb7', dark: '#74523c' },
-  cream: { base: '#e2d5bd', accent: '#f5eada', detail: '#fff9ec', dark: '#998972' },
-  teddy: { base: '#a98263', accent: '#cfab84', detail: '#ead5ae', dark: '#654c3d' },
-  sage: { base: '#9bb599', accent: '#dce8cc', detail: '#f5edcf', dark: '#5b755e' },
-  white: { base: '#e8e9de', accent: '#f8f8ee', detail: '#ffffff', dark: '#929990' },
-  butter: { base: '#e2c681', accent: '#f4e3af', detail: '#fff6dc', dark: '#a58a4e' },
-  lavender: { base: '#b6a8cf', accent: '#e4ddf0', detail: '#f6eff6', dark: '#756b9b' },
-  sky: { base: '#98c5d7', accent: '#d5ebf0', detail: '#f5f8f2', dark: '#557e91' },
-  peach: { base: '#e4ac94', accent: '#f6d5ba', detail: '#fff2dc', dark: '#ad7569' }
-};
-
-const recipes = [
-  ['living', 'cuteFurniture', 'cloudSofa', 'cloud-sofa', 175, 120, ['blush', 'mint'], 'sofa'],
-  ['living', 'cuteFurniture', 'petalDining', 'petal-dining-set', 168, 112, ['oak', 'cream'], 'dining'],
-  ['living', 'cuteFurniture', 'acornChair', 'acorn-armchair', 88, 88, ['teddy', 'sage', 'blush'], 'armchair'],
-  ['living', 'cuteFurniture', 'lilyCoffee', 'lily-coffee-table', 110, 70, ['oak', 'white'], 'coffee table'],
-  ['living', 'cuteFurniture', 'bubbleSide', 'bubble-side-table', 58, 58, ['mint', 'butter'], 'side table'],
-  ['bedroom', 'cuteFurniture', 'moonBed', 'moon-bed', 210, 185, ['lavender', 'sky', 'cream'], 'bed'],
-  ['bedroom', 'cuteFurniture', 'sproutDesk', 'sprout-desk', 180, 84, ['sage', 'oak'], 'desk'],
-  ['bedroom', 'cuteFurniture', 'starNightstand', 'star-nightstand', 58, 56, ['butter', 'lavender'], 'nightstand'],
-  ['bedroom', 'cuteFurniture', 'honeyDresser', 'honey-dresser', 125, 60, ['oak', 'peach'], 'dresser'],
-  ['bedroom', 'cuteFurniture', 'storyBookcase', 'story-bookcase', 64, 156, ['oak', 'mint'], 'bookcase'],
-  ['lighting', 'cuteLight', 'budLamp', 'bud-table-lamp', 48, 52, ['mint', 'blush', 'butter'], 'table lamp'],
-  ['lighting', 'cuteLight', 'cloudFloorLamp', 'cloud-floor-lamp', 58, 94, ['cream', 'sky'], 'floor lamp'],
-  ['lighting', 'cuteLight', 'bloomCeiling', 'bloom-ceiling-light', 60, 60, ['white', 'butter', 'mint'], 'ceiling light'],
-  ['lighting', 'cuteLight', 'starPendant', 'star-pendant', 72, 72, ['lavender', 'butter'], 'pendant'],
-  ['lighting', 'cuteLight', 'acornSconce', 'acorn-wall-sconce', 38, 50, ['oak', 'cream'], 'wall sconce']
-];
-
-const expected = recipes.flatMap(([group, artFamily, form, key, w, h, colors, semanticTag]) =>
-  colors.map(color => ({
-    type: `${group}-${key}-${color}`,
-    group, artFamily, form, w, h, color, semanticTag
-  })));
 
 function loadRuntime() {
   const window = { dispatchEvent() {} };
@@ -61,21 +24,41 @@ function loadRuntime() {
   return window;
 }
 
-function makeCanvas() {
-  let operations = 0;
-  const gradient = { addColorStop() { operations++; } };
+function traceCanvas() {
+  const trace = [];
+  let gradientId = 0;
+  const normalize = value => {
+    if (typeof value === 'number') return Number(value.toFixed(6));
+    if (Array.isArray(value)) return value.map(normalize);
+    if (value?.__gradient) return `gradient:${value.__gradient}`;
+    return value;
+  };
   const target = {};
   const canvas = new Proxy(target, {
     get(object, key) {
-      if (key === 'operationCount') return operations;
-      if (key === 'createLinearGradient' || key === 'createRadialGradient') {
-        return () => { operations++; return gradient; };
+      if (key === 'trace') return trace;
+      if (key === 'summary') {
+        return () => ({
+          operations: trace.length,
+          gradients: trace.filter(row => row[0] === 'gradient').length,
+          fills: trace.filter(row => row[0] === 'call' && ['fill', 'fillRect'].includes(row[1])).length,
+          strokes: trace.filter(row => row[0] === 'call' && ['stroke', 'strokeRect'].includes(row[1])).length,
+          saves: trace.filter(row => row[0] === 'call' && row[1] === 'save').length,
+          restores: trace.filter(row => row[0] === 'call' && row[1] === 'restore').length
+        });
       }
-      if (!(key in object)) object[key] = () => { operations++; };
+      if (key === 'createLinearGradient' || key === 'createRadialGradient') {
+        return (...args) => {
+          const id = ++gradientId;
+          trace.push(['gradient', key, id, ...args.map(normalize)]);
+          return { __gradient: id, addColorStop(stop, color) { trace.push(['stop', id, normalize(stop), color]); } };
+        };
+      }
+      if (!(key in object)) object[key] = (...args) => { trace.push(['call', String(key), ...args.map(normalize)]); };
       return object[key];
     },
     set(object, key, value) {
-      operations++;
+      trace.push(['set', String(key), normalize(value)]);
       object[key] = value;
       return true;
     }
@@ -83,73 +66,103 @@ function makeCanvas() {
   return canvas;
 }
 
-function renderPass(window, scale = 1, rotation = 0) {
-  const counts = new Map();
-  for (const descriptor of expected) {
-    const canvas = makeCanvas();
-    const object = {
-      id: `test-${descriptor.type}`,
-      type: descriptor.type,
-      name: descriptor.type,
-      x: 500,
-      y: 400,
-      w: descriptor.w * scale,
-      h: descriptor.h * scale,
-      rotation
-    };
-    assert.equal(window.RoomcraftObjectArt.draw(canvas, object), true,
-      `${descriptor.type} must have a vector render path`);
-    assert.ok(canvas.operationCount >= 20,
-      `${descriptor.type} must render as authored art rather than a placeholder`);
-    counts.set(descriptor.type, canvas.operationCount);
-  }
-  return counts;
+function render(window, descriptor, scale = 1, rotation = 0) {
+  const canvas = traceCanvas();
+  const object = {
+    id: `test-${descriptor.type}`,
+    type: descriptor.type,
+    name: descriptor.label,
+    x: 500,
+    y: 400,
+    w: descriptor.w * scale,
+    h: descriptor.h * scale,
+    rotation
+  };
+  assert.equal(window.RoomcraftObjectArt.draw(canvas, object), true,
+    `${descriptor.type} must have a vector render path`);
+  const summary = canvas.summary();
+  assert.equal(summary.saves, summary.restores, `${descriptor.type} must balance canvas state`);
+  assert.ok(summary.operations < 6000, `${descriptor.type} must stay within the Android-safe operation budget (${summary.operations})`);
+  return { trace: canvas.trace, summary };
 }
 
-test('cute furniture and light catalog is stable, complete, and original-data driven', () => {
+function geometryDigest(trace) {
+  const geometry = trace.filter(row => row[0] === 'call' && !['fill', 'stroke', 'save', 'restore', 'clip'].includes(row[1]));
+  return createHash('sha256').update(JSON.stringify(geometry)).digest('hex');
+}
+
+test('crafted miniature catalog is stable, data driven, and uses realistic material metadata', () => {
   const window = loadRuntime();
   const catalog = window.RoomcraftInventory.templates;
-  const catalogByType = new Map(catalog.map(entry => [entry.type, entry]));
-  const cuteEntries = catalog.filter(entry => entry.artFamily === 'cuteFurniture' || entry.artFamily === 'cuteLight');
+  const crafted = catalog.filter(entry => entry.collectionId === 'crafted-miniature-v1');
 
-  assert.equal(expected.length, 34);
-  assert.equal(cuteEntries.length, expected.length, 'the catalog must contain exactly the reviewed cute collection');
+  assert.equal(crafted.length, 88);
   assert.equal(new Set(catalog.map(entry => entry.type)).size, catalog.length, 'all inventory type IDs must be unique');
-
-  for (const descriptor of expected) {
-    const entry = catalogByType.get(descriptor.type);
-    assert.ok(entry, `missing stable catalog type ${descriptor.type}`);
-    assert.equal(entry.group, descriptor.group, `${descriptor.type} group`);
-    assert.equal(entry.artFamily, descriptor.artFamily, `${descriptor.type} art family`);
-    assert.equal(entry.form, descriptor.form, `${descriptor.type} art form`);
-    assert.equal(entry.w, descriptor.w, `${descriptor.type} default width`);
-    assert.equal(entry.h, descriptor.h, `${descriptor.type} default height`);
-    assert.deepEqual(JSON.parse(JSON.stringify(entry.palette)), palettes[descriptor.color],
-      `${descriptor.type} must use the named deterministic palette`);
-    for (const tag of ['cute', 'rounded', 'toy-like', 'cozy', 'creature-world', 'dollhouse', 'original']) {
-      assert.match(entry.tags, new RegExp(`\\b${tag.replace('-', '\\-')}\\b`, 'i'), `${descriptor.type} tag ${tag}`);
+  for (const entry of crafted) {
+    assert.ok(['cuteFurniture', 'cuteLight'].includes(entry.artFamily), entry.type);
+    for (const key of ['seriesId', 'designId', 'designLabel', 'sizeId', 'sizeLabel', 'finishId', 'finishLabel', 'material']) {
+      assert.equal(typeof entry[key], 'string', `${entry.type} ${key}`);
+      assert.ok(entry[key].length > 0, `${entry.type} ${key}`);
     }
-    const searchableText = `${entry.type} ${entry.label} ${entry.tags}`;
-    for (const token of descriptor.semanticTag.split(' ')) {
-      assert.match(searchableText, new RegExp(`\\b${token}\\b`, 'i'), `${descriptor.type} searchable semantic ${token}`);
+    for (const color of ['base', 'accent', 'detail', 'dark']) assert.match(entry.palette[color], /^#[0-9a-f]{6}$/i, `${entry.type} ${color}`);
+    for (const tag of ['detailed', 'realistic', 'crafted', 'miniature', 'dollhouse', 'original']) {
+      assert.match(entry.tags, new RegExp(`\\b${tag}\\b`, 'i'), `${entry.type} tag ${tag}`);
     }
+    assert.doesNotMatch(entry.tags, /toy-like|creature-world|pokemon|pokepia/i, `${entry.type} must not encode the rejected or branded direction`);
   }
+
+  for (const legacyType of [
+    'living-cloud-sofa-blush', 'living-petal-dining-set-oak', 'bedroom-moon-bed-lavender',
+    'bedroom-sprout-desk-sage', 'lighting-bud-table-lamp-mint'
+  ]) assert.ok(catalog.some(entry => entry.type === legacyType), `legacy stable type ${legacyType}`);
 });
 
-test('cute catalog art renders deterministically at default and compact rotated sizes', () => {
+test('every crafted recipe has deterministic material-rich geometry at four transforms', () => {
   const window = loadRuntime();
-  const first = renderPass(window);
-  const second = renderPass(window);
-  assert.deepEqual([...second], [...first], 'repeated vector renders must issue the same operations in the same order');
+  const crafted = window.RoomcraftInventory.templates.filter(entry => entry.collectionId === 'crafted-miniature-v1');
+  for (const descriptor of crafted) {
+    const baseline = render(window, descriptor);
+    const repeated = render(window, descriptor);
+    assert.deepEqual(repeated.trace, baseline.trace, `${descriptor.type} exact repeated trace`);
 
-  const compact = renderPass(window, 0.55, 27);
-  assert.equal(compact.size, expected.length);
-  for (const descriptor of expected) {
-    assert.ok(compact.get(descriptor.type) >= 20, `${descriptor.type} must remain authored at compact rotated size`);
+    const minimum = descriptor.seriesId === 'bed' ? 120 : descriptor.artFamily === 'cuteLight' ? 45 : 65;
+    assert.ok(baseline.summary.operations >= minimum,
+      `${descriptor.type} must exceed the detailed construction threshold (${baseline.summary.operations}/${minimum})`);
+    assert.ok(baseline.summary.gradients >= 1, `${descriptor.type} must include material lighting`);
+    assert.ok(baseline.summary.fills >= 4, `${descriptor.type} must contain layered solid construction`);
+    assert.ok(baseline.summary.strokes >= 2, `${descriptor.type} must include seams, grain, joinery, or highlights`);
+
+    for (const [scale, rotation] of [[.55, 27], [1.5, 90], [1, 180]]) {
+      const transformed = render(window, descriptor, scale, rotation);
+      assert.ok(transformed.summary.operations >= minimum, `${descriptor.type} ${scale}x ${rotation}deg richness`);
+    }
   }
 });
 
-test('the default movable furniture and light set uses the same authored vector language', () => {
+test('bed catalog exposes real sizes, distinct constructions, and monotonic authored footprints', () => {
+  const window = loadRuntime();
+  const beds = window.RoomcraftInventory.templates.filter(entry => entry.seriesId === 'bed');
+  assert.equal(beds.length, 42);
+  assert.deepEqual([...new Set(beds.map(entry => entry.sizeId))].sort(), ['crib', 'full', 'king', 'queen', 'toddler', 'twin']);
+  assert.deepEqual([...new Set(beds.map(entry => entry.form))].sort(), [
+    'bunkBed', 'canopyBed', 'cribBed', 'daybed', 'moonBed', 'platformBed', 'storageBed', 'toddlerBed', 'upholsteredBed'
+  ]);
+
+  const platform = beds.filter(entry => entry.designId === 'platform' && entry.finishId === 'oak');
+  const order = ['twin', 'full', 'queen', 'king'];
+  assert.deepEqual(Array.from(platform, entry => entry.sizeId), order);
+  for (let index = 1; index < platform.length; index++) {
+    assert.ok(platform[index].w * platform[index].h > platform[index - 1].w * platform[index - 1].h,
+      `${platform[index].sizeLabel} footprint must exceed ${platform[index - 1].sizeLabel}`);
+  }
+
+  const queen = beds.filter(entry => entry.sizeId === 'queen' && ['platform', 'upholstered', 'storage', 'canopy', 'moon-quilt'].includes(entry.designId));
+  const finishRepresentative = [...new Map(queen.map(entry => [entry.designId, entry])).values()];
+  const digests = finishRepresentative.map(entry => geometryDigest(render(window, entry).trace));
+  assert.equal(new Set(digests).size, finishRepresentative.length, 'queen constructions must not be renamed recolors');
+});
+
+test('the default movable furniture and light set uses the detailed authored renderer', () => {
   const window = loadRuntime();
   const sizes = {
     sofa: [165, 238], table: [165, 108], chair: [48, 48], bed: [210, 185], desk: [245, 156],
@@ -159,15 +172,15 @@ test('the default movable furniture and light set uses the same authored vector 
     wallSconce: [38, 50]
   };
   for (const [type, [w, h]] of Object.entries(sizes)) {
-    const canvas = makeCanvas();
-    assert.equal(window.RoomcraftObjectArt.draw(canvas,
-      { id: `default-${type}`, type, name: type, x: 500, y: 400, w, h, rotation: 0 }), true, type);
-    assert.ok(canvas.operationCount >= 18, `${type} must not fall back to flat placeholder art`);
+    const descriptor = { type, label: type, w, h };
+    const { summary } = render(window, descriptor);
+    assert.ok(summary.operations >= 42, `${type} must not fall back to flat placeholder art`);
+    assert.ok(summary.gradients >= 1, `${type} material lighting`);
   }
 });
 
 test('layout v2 documents every supported live light silhouette', () => {
-  if (!layoutSchema) return; // Standalone hosted source intentionally excludes project-level docs/schema.
+  if (!layoutSchema) return;
   assert.deepEqual(layoutSchema.$defs.item.properties.lightForm.enum, [
     'table_lamp',
     'bud_lamp',

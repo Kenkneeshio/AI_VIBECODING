@@ -752,44 +752,47 @@ class RoomcraftObjectControl extends HTMLElement {
       .target[data-visual="light"][data-state="on"] .art{
         background:radial-gradient(circle at 40% 35%,#fff 0 10%,#fff4c8 11% 34%,#d8b56f 35% 48%,#7c6547 49% 57%,#ffd56b40 58% 72%,transparent 74%);
         box-shadow:0 0 11px 5px #ffd865a6,0 0 23px 11px #ffd86562}
-      /* Original cozy-creature light recipes. The button itself stays fully
-         transparent; only these art layers change with real entity state. */
+      /* Crafted miniature fixtures. The button itself stays fully transparent;
+         only the constructed shade/base/glass layers change with entity state. */
       .target[data-visual="light"][data-form="table_lamp"] .art,
       .target[data-visual="light"][data-form="bud_lamp"] .art{
         inset:6% 13% 3%;height:auto;border-radius:0;background:none!important;box-shadow:none!important;overflow:visible}
       .target[data-visual="light"][data-form="table_lamp"] .art::before,
       .target[data-visual="light"][data-form="bud_lamp"] .art::before{
-        content:"";position:absolute;left:14%;top:1%;width:72%;height:43%;border:1px solid #7b6b7e;
-        border-radius:54% 54% 46% 46%/72% 72% 34% 34%;
-        background:radial-gradient(ellipse at 22% 48%,#f2c4cf 0 25%,transparent 27%),
-          radial-gradient(ellipse at 78% 48%,#cbbbe2 0 25%,transparent 27%),
-          radial-gradient(ellipse at 50% 44%,#fff1b8 0 31%,#d9bd76 33% 42%,transparent 44%);
-        filter:drop-shadow(0 2px 1px #2430394f);transition:filter .18s,box-shadow .18s}
+        content:"";position:absolute;left:14%;top:1%;width:72%;height:43%;border:1px solid #665e61;
+        border-radius:10% 10% 24% 24%/8% 8% 18% 18%;clip-path:polygon(15% 0,85% 0,100% 100%,0 100%);
+        background:repeating-linear-gradient(96deg,transparent 0 8%,#705e4b24 9% 11%,transparent 12% 18%),
+          linear-gradient(112deg,#fff8e8 0 12%,#e9d8bc 34%,#c8ad88 70%,#7b674e 100%);
+        box-shadow:inset 0 2px #fffdf0b8,inset 0 -3px #5f4d3b55;
+        filter:drop-shadow(0 3px 1px #24303959);transition:filter .18s,box-shadow .18s}
       .target[data-visual="light"][data-form="table_lamp"] .art::after,
       .target[data-visual="light"][data-form="bud_lamp"] .art::after{
         content:"";position:absolute;left:18%;right:18%;top:37%;bottom:0;
-        background:radial-gradient(ellipse at 50% 89%,#b8d2c1 0 19%,#607d70 20% 27%,transparent 29%),
-          linear-gradient(90deg,transparent 45%,#567467 46%,#a4c5b3 50%,#5a786b 54%,transparent 55%);
+        background:radial-gradient(ellipse at 50% 90%,#e1d0ae 0 18%,#92734c 19% 23%,#584737 24% 27%,transparent 29%),
+          radial-gradient(circle at 50% 18%,#f4e4b3 0 6%,#8a7047 7% 11%,transparent 12%),
+          linear-gradient(90deg,transparent 45%,#71583c 46%,#e0bf75 49%,#fff0ad 50%,#8b6b40 54%,transparent 55%);
         filter:drop-shadow(0 2px 1px #24303959)}
       .target[data-visual="light"][data-form="table_lamp"][data-state="off"] .art::before,
       .target[data-visual="light"][data-form="bud_lamp"][data-state="off"] .art::before{filter:saturate(.5) brightness(.65) drop-shadow(0 2px 1px #24303966)}
       .target[data-visual="light"][data-form="table_lamp"][data-state="on"] .art::before,
       .target[data-visual="light"][data-form="bud_lamp"][data-state="on"] .art::before{filter:brightness(1.14) drop-shadow(0 0 4px #ffd66f) drop-shadow(0 0 8px #ffd66f99)}
       .target[data-visual="light"][data-form="cloud_floor_lamp"] .art{inset:1% 5%;border-radius:0;background:none!important;box-shadow:none!important;overflow:visible}
-      .target[data-visual="light"][data-form="cloud_floor_lamp"] .art::before{content:"";position:absolute;left:20%;top:4%;width:60%;height:43%;border:1px solid #7b7480;border-radius:48%;
-        background:radial-gradient(circle at 23% 62%,#f8f0dc 0 27%,transparent 29%),radial-gradient(circle at 48% 38%,#fff8e9 0 35%,transparent 37%),radial-gradient(circle at 77% 62%,#e0ebef 0 28%,transparent 30%),radial-gradient(ellipse at 50% 75%,#f6f0e4 0 48%,transparent 50%)}
-      .target[data-visual="light"][data-form="cloud_floor_lamp"] .art::after{content:"";position:absolute;left:21%;right:21%;top:43%;bottom:1%;background:radial-gradient(ellipse at 50% 93%,#b8d0c0 0 23%,#607a6e 24% 31%,transparent 33%),linear-gradient(90deg,transparent 45%,#5d7c6e 46%,#a9cab7 50%,#607f71 54%,transparent 55%)}
+      .target[data-visual="light"][data-form="cloud_floor_lamp"] .art::before{content:"";position:absolute;left:14%;top:4%;width:72%;height:43%;border:1px solid #766b5e;border-radius:50% 50% 43% 43%;
+        background:repeating-linear-gradient(90deg,#fff8e8 0 7%,#d8c9ad 8% 10%,#eee2ca 11% 18%);box-shadow:inset 0 3px #fffdf4c7,inset 0 -4px #796b596b;filter:drop-shadow(0 3px 1px #24303952)}
+      .target[data-visual="light"][data-form="cloud_floor_lamp"] .art::after{content:"";position:absolute;left:19%;right:19%;top:42%;bottom:1%;background:radial-gradient(ellipse at 50% 93%,#d8c39b 0 22%,#8c6d45 23% 29%,#554536 30% 32%,transparent 34%),radial-gradient(circle at 50% 7%,#f0d99c 0 5%,#7e663f 6% 9%,transparent 10%),linear-gradient(90deg,transparent 46%,#72583a 47%,#e4c479 49%,#fff2af 50%,#8b6b40 54%,transparent 55%)}
       .target[data-visual="light"][data-form="cloud_floor_lamp"][data-state="off"] .art::before{filter:saturate(.4) brightness(.62)}
       .target[data-visual="light"][data-form="cloud_floor_lamp"][data-state="on"] .art::before{filter:brightness(1.12) drop-shadow(0 0 6px #ffe18a) drop-shadow(0 0 11px #ffe18a99)}
-      .target[data-visual="light"][data-form="bloom_ceiling"] .art{inset:7%;border:1px solid #7e7281;border-radius:50%;background:radial-gradient(circle,#fff4bd 0 23%,transparent 25%),repeating-conic-gradient(#efc5ce 0 11.25deg,#c5dbc9 11.25deg 22.5deg);clip-path:polygon(50% 0,62% 19%,79% 7%,81% 31%,100% 50%,81% 62%,93% 79%,69% 81%,50% 100%,38% 81%,21% 93%,19% 69%,0 50%,19% 38%,7% 21%,31% 19%)}
+      .target[data-visual="light"][data-form="bloom_ceiling"] .art{inset:8%;border:2px solid #675843;border-radius:50%;background:radial-gradient(circle at 38% 34%,#fffef7 0 8%,#ffedb2 9% 23%,#ddd4c2 24% 55%,#9eaa9e 56% 72%,#765e3d 73% 82%,#3f3933 83%);box-shadow:inset 0 0 0 2px #fffef2a8}
+      .target[data-visual="light"][data-form="bloom_ceiling"] .art::before{content:"";position:absolute;inset:12%;border-radius:50%;background:repeating-conic-gradient(from 22.5deg,transparent 0 43deg,#7565544f 44deg 45deg);box-shadow:inset 0 0 0 1px #7c6b565c}
       .target[data-visual="light"][data-form="bloom_ceiling"][data-state="off"] .art{filter:saturate(.45) brightness(.58);box-shadow:0 2px 3px #18232b80}
       .target[data-visual="light"][data-form="bloom_ceiling"][data-state="on"] .art{filter:brightness(1.13);box-shadow:0 0 7px 3px #ffd96fbd,0 0 15px 7px #ffd96f66}
-      .target[data-visual="light"][data-form="star_pendant"] .art{inset:5%;border:1px solid #756a7b;border-radius:0;clip-path:polygon(50% 0,61% 34%,98% 35%,68% 56%,79% 94%,50% 72%,21% 94%,32% 56%,2% 35%,39% 34%);background:linear-gradient(135deg,#fff3b8,#e6c987 48%,#c5b2df);box-shadow:none}
+      .target[data-visual="light"][data-form="star_pendant"] .art{inset:6%;border:1px solid #655b50;border-radius:0;clip-path:polygon(30% 3%,70% 3%,97% 30%,97% 70%,70% 97%,30% 97%,3% 70%,3% 30%);background:radial-gradient(circle at 42% 37%,#fffef5 0 8%,#ffe9a6 9% 25%,transparent 26%),conic-gradient(from 22.5deg,#fff9e3,#b7c5bf,#e5c98d,#d8cde0,#fff9e3);box-shadow:inset 0 0 0 3px #fffef27a}
+      .target[data-visual="light"][data-form="star_pendant"] .art::before{content:"";position:absolute;inset:0;background:repeating-conic-gradient(from 22.5deg,transparent 0 43deg,#6c5c4f52 44deg 45deg);clip-path:inherit}
       .target[data-visual="light"][data-form="star_pendant"][data-state="off"] .art{filter:saturate(.42) brightness(.58);box-shadow:0 2px 3px #18232b80}
       .target[data-visual="light"][data-form="star_pendant"][data-state="on"] .art{filter:brightness(1.14);box-shadow:0 0 7px 3px #ffd96fbd,0 0 16px 8px #ffd96f66}
-      .target[data-visual="light"][data-form="acorn_sconce"] .art{inset:5% 12%;border:1px solid #735d4b;border-radius:48% 48% 54% 54%/37% 37% 63% 63%;background:linear-gradient(145deg,#fff0bd,#d6a677 54%,#9a684b);box-shadow:none}
-      .target[data-visual="light"][data-form="acorn_sconce"] .art::before{content:"";position:absolute;left:-2%;right:-2%;top:-3%;height:34%;border:1px solid #634c3d;border-radius:42% 42% 30% 30%;background:repeating-linear-gradient(45deg,#9a6a49 0 4px,#c89569 4px 8px)}
-      .target[data-visual="light"][data-form="acorn_sconce"] .art::after{content:"";position:absolute;left:45%;top:-18%;width:11%;height:20%;border-radius:50%;background:#647d59;transform:rotate(18deg)}
+      .target[data-visual="light"][data-form="acorn_sconce"] .art{inset:5% 12%;border:1px solid #665847;border-radius:45% 45% 52% 52%/30% 30% 70% 70%;background:repeating-linear-gradient(90deg,#fff9e8 0 10%,#d5c4a3 11% 15%,#f2e5cc 16% 25%);box-shadow:inset 0 3px #fffef4b5,inset 0 -4px #6d5b4766}
+      .target[data-visual="light"][data-form="acorn_sconce"] .art::before{content:"";position:absolute;left:5%;right:5%;top:-9%;height:31%;border:1px solid #5f4c35;border-radius:38% 38% 26% 26%;background:linear-gradient(120deg,#f5d995,#b98a45 47%,#74542f)}
+      .target[data-visual="light"][data-form="acorn_sconce"] .art::after{content:"";position:absolute;left:44%;top:-23%;width:12%;height:22%;border-radius:35%;background:linear-gradient(90deg,#705433,#e0b96c,#6a4d30)}
       .target[data-visual="light"][data-form="acorn_sconce"][data-state="off"] .art{filter:saturate(.45) brightness(.58);box-shadow:0 2px 3px #18232b80}
       .target[data-visual="light"][data-form="acorn_sconce"][data-state="on"] .art{filter:brightness(1.15);box-shadow:0 0 7px 3px #ffd96fbd,0 0 15px 7px #ffd96f66}
       .target[data-visual="fan"] .art{inset:0;border-radius:0;background:radial-gradient(ellipse at center,#172630e8 0 26%,#172630a6 49%,transparent 76%);backdrop-filter:none;box-shadow:none}

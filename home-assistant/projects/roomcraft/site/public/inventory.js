@@ -52,6 +52,14 @@
         artFamily,form,
         palette:{base:swatch[1],accent:swatch[2],detail:swatch[3],dark:swatch[4]},
         tags:`${options.tags||''} ${aliases[group]||''}`.trim(),
+        ...(options.collectionId?{collectionId:options.collectionId}:{}),
+        ...(options.seriesId?{seriesId:options.seriesId}:{}),
+        ...(options.designId?{designId:options.designId}:{}),
+        ...(options.designLabel?{designLabel:options.designLabel}:{}),
+        ...(options.sizeId?{sizeId:options.sizeId}:{}),
+        ...(options.sizeLabel?{sizeLabel:options.sizeLabel}:{}),
+        ...(options.material?{material:options.material}:{}),
+        ...(options.seriesId?{finishId:color,finishLabel:swatch[0]}:{}),
         ...(options.atlas&&index===0?{atlas:options.atlas}:{}),
         ...(options.mount?{mount:options.mount}:{}),
         ...(options.visualKind?{visualKind:options.visualKind}:{}),
@@ -145,27 +153,59 @@
   add('play-furniture','playFurniture','lowTable','low-play-table','Low play table',127,79,['oak','white'],{tags:'baby play furniture'});
   add('play-furniture','playFurniture','lowShelf','low-play-shelf','Low play shelf',129,52,['oak','white'],{tags:'baby play furniture'});
 
-  // Original cozy-creature furniture. These rounded, toy-like recipes evoke a
-  // friendly dollhouse world without copying branded characters or game art.
-  const cuteTags='cute rounded toy-like cozy creature-world dollhouse original';
-  add('living','cuteFurniture','cloudSofa','cloud-sofa','Cloud-cushion sofa',175,120,['blush','mint'],{tags:`${cuteTags} sofa couch`});
-  add('living','cuteFurniture','petalDining','petal-dining-set','Petal dining set',168,112,['oak','cream'],{tags:`${cuteTags} dining table four chairs`});
-  add('living','cuteFurniture','acornChair','acorn-armchair','Acorn reading chair',88,88,['teddy','sage','blush'],{tags:`${cuteTags} armchair reading seat`});
-  add('living','cuteFurniture','lilyCoffee','lily-coffee-table','Lily-pad coffee table',110,70,['oak','white'],{tags:`${cuteTags} coffee table leaf`});
-  add('living','cuteFurniture','bubbleSide','bubble-side-table','Bubble side table',58,58,['mint','butter'],{tags:`${cuteTags} round side table`});
-  add('bedroom','cuteFurniture','moonBed','moon-bed','Moon-pillow bed',210,185,['lavender','sky','cream'],{tags:`${cuteTags} bedroom bed moon stars`});
-  add('bedroom','cuteFurniture','sproutDesk','sprout-desk','Sprout writing desk',180,84,['sage','oak'],{tags:`${cuteTags} office study desk leaf`});
-  add('bedroom','cuteFurniture','starNightstand','star-nightstand','Star-knob nightstand',58,56,['butter','lavender'],{tags:`${cuteTags} bedside table star`});
-  add('bedroom','cuteFurniture','honeyDresser','honey-dresser','Honeycomb dresser',125,60,['oak','peach'],{tags:`${cuteTags} bedroom storage dresser`});
-  add('bedroom','cuteFurniture','storyBookcase','story-bookcase','Storybook bookcase',64,156,['oak','mint'],{tags:`${cuteTags} book shelf storage`});
+  // Original crafted-miniature furniture. Directional depth, believable
+  // construction and material recipes keep the collection warm without using
+  // franchise characters, logos, extracted game assets or copied silhouettes.
+  const craftedTags='detailed realistic crafted miniature dollhouse warm original material-rich';
+  const variant=(seriesId,designId,designLabel,sizeId,sizeLabel,material)=>({
+    collectionId:'crafted-miniature-v1',seriesId,designId,designLabel,sizeId,sizeLabel,material
+  });
+  add('living','cuteFurniture','cloudSofa','cloud-sofa','Tailored sectional sofa',175,120,['blush','mint'],{...variant('sofa','sectional','Sectional','three-seat','3 seat','upholstery'),tags:`${craftedTags} sofa couch sectional stitched piping`});
+  add('living','cuteFurniture','tailoredSofa','tailored-sofa','Tailored three-seat sofa',170,88,['sage','cream','charcoal'],{...variant('sofa','tailored','Tailored sofa','three-seat','3 seat','upholstery'),tags:`${craftedTags} sofa couch three seat stitched upholstery`});
+  add('living','cuteFurniture','tailoredLoveseat','tailored-loveseat','Tailored loveseat',126,86,['blush','sage'],{...variant('sofa','tailored','Tailored sofa','loveseat','Loveseat','upholstery'),tags:`${craftedTags} sofa couch loveseat two seat stitched upholstery`});
+  add('living','cuteFurniture','chaiseSofa','upholstered-chaise','Upholstered chaise',88,148,['cream','lavender'],{...variant('sofa','chaise','Chaise lounge','chaise','Chaise','upholstery'),tags:`${craftedTags} sofa chaise lounge stitched upholstery`});
+  add('living','cuteFurniture','petalDining','petal-dining-set','Oval four-seat dining set',168,112,['oak','cream'],{...variant('dining','oval','Oval dining','four-seat','4 seat','wood'),tags:`${craftedTags} dining table four chairs upholstered beveled wood`});
+  add('living','cuteFurniture','roundDining','round-dining-set','Round four-seat dining set',142,142,['oak','walnut'],{...variant('dining','round','Round dining','four-seat','4 seat','wood'),tags:`${craftedTags} dining table four chairs round pedestal wood`});
+  add('living','cuteFurniture','rectDining','rectangular-dining-set','Rectangular six-seat dining set',205,122,['oak','white'],{...variant('dining','rectangular','Rectangular dining','six-seat','6 seat','wood'),tags:`${craftedTags} dining table six chairs rectangular wood`});
+  add('living','cuteFurniture','acornChair','acorn-armchair','Piped reading armchair',88,88,['teddy','sage','blush'],{...variant('armchair','piped','Piped armchair','standard','Standard','upholstery'),tags:`${craftedTags} armchair reading seat upholstered piping`});
+  add('living','cuteFurniture','lilyCoffee','lily-coffee-table','Beveled oval coffee table',110,70,['oak','white'],{...variant('coffee-table','oval','Oval top','standard','Standard','wood'),tags:`${craftedTags} coffee table beveled wood joinery`});
+  add('living','cuteFurniture','bubbleSide','bubble-side-table','Stone-top side table',58,58,['mint','butter'],{...variant('side-table','stone','Stone top','standard','Standard','stone'),tags:`${craftedTags} round side table stone pedestal`});
+
+  // Bed size is authored geometry, not a stretched color choice. Stable IDs
+  // preserve old layouts while the Size and Style selectors can replace the
+  // footprint for newly chosen constructions.
+  add('bedroom','cuteFurniture','moonBed','moon-bed','Moon-quilt queen bed',210,185,['lavender','sky','cream'],{...variant('bed','moon-quilt','Moon quilt','queen','Queen','upholstery'),tags:`${craftedTags} bedroom bed queen quilted upholstered moon embroidery`});
+  add('bedroom','cuteFurniture','cribBed','crafted-crib','Slatted crib',92,142,['cream','sage'],{...variant('bed','crib','Slatted crib','crib','Crib','wood'),tags:`${craftedTags} bedroom baby crib slatted fitted mattress`});
+  add('bedroom','cuteFurniture','toddlerBed','crafted-toddler-bed','Low toddler bed',105,158,['sky','blush'],{...variant('bed','toddler','Low toddler','toddler','Toddler','upholstery'),tags:`${craftedTags} bedroom toddler bed low guard rail`});
+  add('bedroom','cuteFurniture','platformBed','platform-bed-twin','Low platform twin bed',120,196,['oak','walnut','white'],{...variant('bed','platform','Low platform','twin','Twin','wood'),tags:`${craftedTags} bedroom bed twin low platform wood`});
+  add('bedroom','cuteFurniture','platformBed','platform-bed-full','Low platform full bed',158,198,['oak','walnut','white'],{...variant('bed','platform','Low platform','full','Full','wood'),tags:`${craftedTags} bedroom bed full double low platform wood`});
+  add('bedroom','cuteFurniture','platformBed','platform-bed-queen','Low platform queen bed',188,205,['oak','walnut','white'],{...variant('bed','platform','Low platform','queen','Queen','wood'),tags:`${craftedTags} bedroom bed queen low platform wood`});
+  add('bedroom','cuteFurniture','platformBed','platform-bed-king','Low platform king bed',226,205,['oak','walnut','white'],{...variant('bed','platform','Low platform','king','King','wood'),tags:`${craftedTags} bedroom bed king low platform wood`});
+  add('bedroom','cuteFurniture','upholsteredBed','upholstered-bed-full','Arched upholstered full bed',158,198,['blush','lavender','cream'],{...variant('bed','upholstered','Arched upholstered','full','Full','upholstery'),tags:`${craftedTags} bedroom bed full double arched headboard tufted`});
+  add('bedroom','cuteFurniture','upholsteredBed','upholstered-bed-queen','Arched upholstered queen bed',188,205,['blush','lavender','cream'],{...variant('bed','upholstered','Arched upholstered','queen','Queen','upholstery'),tags:`${craftedTags} bedroom bed queen arched headboard tufted`});
+  add('bedroom','cuteFurniture','upholsteredBed','upholstered-bed-king','Arched upholstered king bed',226,205,['blush','lavender','cream'],{...variant('bed','upholstered','Arched upholstered','king','King','upholstery'),tags:`${craftedTags} bedroom bed king arched headboard tufted`});
+  add('bedroom','cuteFurniture','storageBed','storage-bed-full','Drawer storage full bed',158,198,['oak','walnut'],{...variant('bed','storage','Drawer storage','full','Full','wood'),tags:`${craftedTags} bedroom bed full double storage drawers wood`});
+  add('bedroom','cuteFurniture','storageBed','storage-bed-queen','Drawer storage queen bed',188,205,['oak','walnut'],{...variant('bed','storage','Drawer storage','queen','Queen','wood'),tags:`${craftedTags} bedroom bed queen storage drawers wood`});
+  add('bedroom','cuteFurniture','storageBed','storage-bed-king','Drawer storage king bed',226,205,['oak','walnut'],{...variant('bed','storage','Drawer storage','king','King','wood'),tags:`${craftedTags} bedroom bed king storage drawers wood`});
+  add('bedroom','cuteFurniture','canopyBed','canopy-bed-queen','Four-poster canopy queen bed',188,205,['white','brass'],{...variant('bed','canopy','Four-poster canopy','queen','Queen','wood metal'),tags:`${craftedTags} bedroom bed queen four poster canopy`});
+  add('bedroom','cuteFurniture','canopyBed','canopy-bed-king','Four-poster canopy king bed',226,205,['white','brass'],{...variant('bed','canopy','Four-poster canopy','king','King','wood metal'),tags:`${craftedTags} bedroom bed king four poster canopy`});
+  add('bedroom','cuteFurniture','daybed','upholstered-daybed','Upholstered twin daybed',196,105,['sage','cream'],{...variant('bed','daybed','Upholstered daybed','twin','Twin','upholstery'),tags:`${craftedTags} bedroom bed twin daybed sofa bolsters`});
+  add('bedroom','cuteFurniture','bunkBed','slatted-bunk-bed','Slatted twin bunk bed',120,196,['oak','white'],{...variant('bed','bunk','Slatted bunk','twin','Twin bunk','wood'),tags:`${craftedTags} bedroom bed twin bunk ladder rails`});
+
+  add('bedroom','cuteFurniture','sproutDesk','sprout-desk','Crafted writing desk',180,84,['sage','oak'],{...variant('desk','writing','Writing desk','compact','Compact','wood'),tags:`${craftedTags} office study desk writing wood drawers`});
+  add('bedroom','cuteFurniture','cornerDesk','corner-desk','Corner workstation',190,146,['sage','oak'],{...variant('desk','corner','Corner workstation','large','Large','wood'),tags:`${craftedTags} office study desk corner return drawers`});
+  add('bedroom','cuteFurniture','secretaryDesk','secretary-desk','Secretary writing desk',110,78,['oak','walnut'],{...variant('desk','secretary','Secretary desk','compact','Compact','wood'),tags:`${craftedTags} office study desk secretary cubbies wood`});
+  add('bedroom','cuteFurniture','starNightstand','star-nightstand','Brass-knob nightstand',58,56,['butter','lavender'],{...variant('nightstand','two-drawer','Two drawer','standard','Standard','wood'),tags:`${craftedTags} bedside table brass knob drawer`});
+  add('bedroom','cuteFurniture','honeyDresser','honey-dresser','Six-drawer dresser',125,60,['oak','peach'],{...variant('dresser','six-drawer','Six drawer','wide','Wide','wood'),tags:`${craftedTags} bedroom storage dresser drawers joinery`});
+  add('bedroom','cuteFurniture','storyBookcase','story-bookcase','Framed bookcase',64,156,['oak','mint'],{...variant('bookcase','framed','Framed bookcase','tall','Tall','wood'),tags:`${craftedTags} book shelf storage joinery`});
 
   // Lighting carries an explicit live form so Home Assistant can redraw the
   // same silhouette from real entity state instead of a frozen PNG.
-  add('lighting','cuteLight','budLamp','bud-table-lamp','Flower-bud table lamp',48,52,['mint','blush','butter'],{tags:`${cuteTags} lamp desk bedside flower`,visualKind:'light',lightForm:'bud_lamp'});
-  add('lighting','cuteLight','cloudFloorLamp','cloud-floor-lamp','Cloud-glow floor lamp',58,94,['cream','sky'],{tags:`${cuteTags} standing floor lamp cloud`,visualKind:'light',lightForm:'cloud_floor_lamp'});
-  add('lighting','cuteLight','bloomCeiling','bloom-ceiling-light','Bloom ceiling light',60,60,['white','butter','mint'],{tags:`${cuteTags} ceiling lamp flower`,visualKind:'light',lightForm:'bloom_ceiling',renderLayer:'ceiling-devices'});
-  add('lighting','cuteLight','starPendant','star-pendant','Twinkle-star pendant',72,72,['lavender','butter'],{tags:`${cuteTags} ceiling pendant star`,visualKind:'light',lightForm:'star_pendant',renderLayer:'ceiling-devices'});
-  add('lighting','cuteLight','acornSconce','acorn-wall-sconce','Acorn wall sconce',38,50,['oak','cream'],{tags:`${cuteTags} wall light acorn`,visualKind:'light',lightForm:'acorn_sconce',mount:'wall'});
+  add('lighting','cuteLight','budLamp','bud-table-lamp','Pleated ceramic table lamp',48,52,['mint','blush','butter'],{...variant('table-light','pleated-ceramic','Pleated ceramic','table','Table','ceramic brass fabric'),tags:`${craftedTags} lamp desk bedside pleated shade ceramic`,visualKind:'light',lightForm:'bud_lamp'});
+  add('lighting','cuteLight','cloudFloorLamp','cloud-floor-lamp','Linen globe floor lamp',58,94,['cream','sky'],{...variant('floor-light','linen-globe','Linen globe','floor','Floor','brass linen'),tags:`${craftedTags} standing floor lamp linen globe`,visualKind:'light',lightForm:'cloud_floor_lamp'});
+  add('lighting','cuteLight','bloomCeiling','bloom-ceiling-light','Faceted glass ceiling light',60,60,['white','butter','mint'],{...variant('ceiling-light','faceted-flush','Faceted flush mount','ceiling','Ceiling','glass brass'),tags:`${craftedTags} ceiling lamp faceted frosted glass flush mount`,visualKind:'light',lightForm:'bloom_ceiling',renderLayer:'ceiling-devices'});
+  add('lighting','cuteLight','starPendant','star-pendant','Faceted glass pendant',72,72,['lavender','butter'],{...variant('pendant-light','faceted-glass','Faceted glass','ceiling','Ceiling','glass brass'),tags:`${craftedTags} ceiling pendant faceted glass`,visualKind:'light',lightForm:'star_pendant',renderLayer:'ceiling-devices'});
+  add('lighting','cuteLight','acornSconce','acorn-wall-sconce','Fluted brass wall sconce',38,50,['oak','cream'],{...variant('wall-light','fluted-brass','Fluted brass','wall','Wall','brass glass'),tags:`${craftedTags} wall light fluted brass glass`,visualKind:'light',lightForm:'acorn_sconce',mount:'wall'});
 
   const byType=Object.fromEntries(templates.map(t=>[t.type,t]));
   window.RoomcraftInventory={groups,templates,byType};

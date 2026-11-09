@@ -784,10 +784,19 @@
   function hotspotField(label,key,value,type='text'){return `<div class="field"><label for="hotspot-${key}">${label}</label><input id="hotspot-${key}" data-hotspot-prop="${key}" type="${type}" value="${htmlEscape(value)}" ${type==='number'?'step="0.01" min="0" max="100"':''}></div>`;}
   function variantField(t,type){
     if(!t.artFamily)return '';
+    const variants=window.RoomcraftCatalogVariants;
+    if(t.seriesId&&variants){
+      const fields=[['style','Style','designLabel'],['size','Size','sizeLabel'],['finish','Color / finish','finishLabel']];
+      return fields.map(([kind,label,labelKey])=>{
+        const choices=variants.choices(templates,t,kind);
+        if(choices.length<2)return '';
+        return `<div class="field"><label for="prop-catalog-${kind}">${label}</label><select id="prop-catalog-${kind}" data-variant data-variant-kind="${kind}">${choices.map(v=>`<option value="${htmlEscape(v.type)}" ${v.type===type?'selected':''}>${htmlEscape(v[labelKey]||v.label)}</option>`).join('')}</select></div>`;
+      }).join('');
+    }
     const stem=type.slice(0,type.lastIndexOf('-'));
-    const variants=templates.filter(v=>v.type.startsWith(stem+'-')&&v.type.slice(0,v.type.lastIndexOf('-'))===stem);
-    if(variants.length<2)return '';
-    return `<div class="field"><label for="prop-catalog-variant">Color / finish</label><select id="prop-catalog-variant" data-variant>${variants.map(v=>`<option value="${htmlEscape(v.type)}" ${v.type===type?'selected':''}>${htmlEscape(v.label.split(' · ').at(-1))}</option>`).join('')}</select></div>`;
+    const legacy=variants?.legacyFinishChoices(templates,t)||templates.filter(v=>v.type.startsWith(stem+'-')&&v.type.slice(0,v.type.lastIndexOf('-'))===stem);
+    if(legacy.length<2)return '';
+    return `<div class="field"><label for="prop-catalog-variant">Color / finish</label><select id="prop-catalog-variant" data-variant data-variant-kind="finish">${legacy.map(v=>`<option value="${htmlEscape(v.type)}" ${v.type===type?'selected':''}>${htmlEscape(v.label.split(' · ').at(-1))}</option>`).join('')}</select></div>`;
   }
   function renderInspector(){const root=document.getElementById('inspectorContent');if(!selected){root.innerHTML=`<div class="empty-inspector"><div class="empty-art">⌂</div><h3>A blank canvas for ideas.</h3><p>Select an object, control, room, or wall to see its settings. The starting furnished image is one click away in Reference view.</p><button class="secondary-button" id="openHelpButton" type="button" style="margin-top:19px">How to use the builder</button></div>`;return;}
     if(selected.kind==='item'){const o=project.items.find(o=>o.id===selected.id);if(!o){selected=null;renderInspector();return;}const t=templateByType[o.type];root.innerHTML=window.RoomcraftObjectControls.renderInspector(o,t,field,variantField,htmlEscape,entityOptions);return;}
@@ -849,15 +858,22 @@
     if(selected.kind==='item')clampLinkedItem(target);
     afterChange(`Updated ${key}`);
   }
-  function updateVariant(type){
+  function updateVariant(type,kind='finish'){
     if(selected?.kind!=='item'||!templateByType[type])return;
-    const o=project.items.find(i=>i.id===selected.id);
+    const index=project.items.findIndex(i=>i.id===selected.id),o=project.items[index];
     if(!o||o.type===type)return;
     const old=templateByType[o.type],next=templateByType[type];
+    const variants=window.RoomcraftCatalogVariants;
+    if(old?.seriesId&&variants){
+      const replacement=variants.apply(o,old,next,kind);
+      if(!replacement)return;
+      snapshot();project.items[index]=replacement;
+      afterChange(`Changed ${kind}`);return;
+    }
     if(!old?.artFamily||old.type.slice(0,old.type.lastIndexOf('-'))!==type.slice(0,type.lastIndexOf('-')))return;
     snapshot();if(o.name===old.label)o.name=next.label;o.type=type;
     if(next.lightForm)o.lightForm=next.lightForm;else delete o.lightForm;
-    if(next.visualKind)o.visualKind=next.visualKind;
+    if(next.visualKind)o.visualKind=next.visualKind;else delete o.visualKind;
     afterChange('Changed color / finish');
   }
   function updateHotspotProperty(key,value){if(selected?.kind!=='hotspot')return;const h=project.hotspots.find(h=>h.id===selected.id);if(!h)return;let next=value;if(key==='left'||key==='top'){const n=Number(value);if(!Number.isFinite(n))return;next=`${Math.max(0,Math.min(100,n)).toFixed(2)}%`;}else if(key==='entity'){if(!/^[a-z_]+\.[a-z0-9_]+$/i.test(value)){showToast('Use an entity ID like light.living_room');renderInspector();return;}}else if(key==='tap'&& !['toggle','more-info'].includes(value))return;else if(key==='hold'&& !['none','more-info'].includes(value))return;else if(key!=='title'&&key!=='entity')return;
@@ -1056,7 +1072,7 @@
     document.getElementById('surfacePalette').addEventListener('click',e=>{const b=e.target.closest('[data-surface]');if(!b)return;setViewMode('design');setTool('room');pendingSurface=b.dataset.surface;renderSurfacePalette();showToast(`Click a room to paint ${surfaceById[pendingSurface].name}`);});
     document.getElementById('wallPalette').addEventListener('click',e=>{const b=e.target.closest('[data-wall-finish]');if(!b)return;setViewMode('design');setTool('select');pendingWallFinish=b.dataset.wallFinish;renderWallPalette();showToast(`Click a wall to paint ${wallFinishById[pendingWallFinish].name}`);});
     document.getElementById('roomList').addEventListener('click',e=>{const b=e.target.closest('[data-room]');if(!b)return;setViewMode('design');setTool('room');select('room',b.dataset.room);});
-    document.getElementById('inspectorContent').addEventListener('change',e=>{const el=e.target.closest('[data-prop]');if(el)updateProperty(el.dataset.prop,el.value);const v=e.target.closest('[data-variant]');if(v)updateVariant(v.value);const h=e.target.closest('[data-hotspot-prop]');if(h)updateHotspotProperty(h.dataset.hotspotProp,h.value);});
+    document.getElementById('inspectorContent').addEventListener('change',e=>{const el=e.target.closest('[data-prop]');if(el)updateProperty(el.dataset.prop,el.value);const v=e.target.closest('[data-variant]');if(v)updateVariant(v.value,v.dataset.variantKind||'finish');const h=e.target.closest('[data-hotspot-prop]');if(h)updateHotspotProperty(h.dataset.hotspotProp,h.value);});
     document.getElementById('inspectorContent').addEventListener('click',e=>{const a=e.target.closest('[data-action]');if(a){if(a.dataset.action==='delete')deleteSelected();if(a.dataset.action==='duplicate')duplicateSelected();if(a.dataset.action==='rotate')rotateSelected();}if(e.target.id==='openHelpButton')document.getElementById('helpDialog').showModal();});
     document.getElementById('newRoomButton').addEventListener('click',addRoom);
     document.getElementById('designModeButton').addEventListener('click',()=>setViewMode('design'));

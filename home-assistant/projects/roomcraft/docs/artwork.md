@@ -13,13 +13,33 @@ Roomcraft's 1536 × 1024 visual starting point was supplied for this project as 
 
 Preserve original source dimensions, transparency, and color alignment when replacing an asset. A new atlas should include a contact sheet or screenshot, a render comparison at 100% scale, and a note in the changelog. Check that a sprite's perspective, shadow direction, and wall attachment match the scene. Keep the reference PNG in source so future work can compare the rendered result without relying on an external attachment.
 
-## Original cozy furniture and light system
+## Detailed crafted-miniature furniture and light system
 
-The editor includes 34 original variants across 15 designs in two data-driven families: `cuteFurniture` and `cuteLight`. Furniture includes cloud-cushion sofas, petal dining sets, acorn chairs, lily and bubble tables, moon-pillow beds, sprout desks, star nightstands, honeycomb dressers, and storybook bookcases. Lights include flower-bud table lamps, cloud-glow floor lamps, bloom ceiling lights, twinkle-star pendants, and acorn sconces. Eleven named palettes supply blush, mint, oak, cream, teddy, sage, warm white, butter, lavender, sky, and peach finishes. These are generic original rounded/dollhouse motifs, not branded character art or extracted game assets.
+The editor includes an 88-entry `crafted-miniature-v1` collection within the existing compatibility recipe families, `cuteFurniture` and `cuteLight`. Those internal recipe names are stable identifiers, not the visual direction. The visible art is detailed, warm, and materially believable: upholstery has panels, seams, piping, cushions, and woven texture; wood has directional grain, edge treatment, joinery, legs, and hardware; case furniture has framed fronts and working-looking drawers or doors; fixtures separate fabric, ceramic, glass, brass, and frosted-light components. Forms remain original and generic. Do not copy a branded character, game asset, logo, or recognizable commercial silhouette.
 
-Every form uses the same slightly raised top-down perspective, opaque semantic core, layered highlight, and deterministic offset shadow. Existing movable furniture and lights use the same code-native vector language, so they can move without carrying source-floor pixels. Furniture remains on `furniture`; bloom and star ceiling fixtures declare `ceiling-devices`. Do not use `shadowBlur`, randomized marks, clock input, GPU-dependent filters, or floor-colored repair rectangles. A review pass must render every design at its default size and at 55% size rotated 27 degrees without clipping, floor bleed, or loss of its recognizable silhouette.
+Catalog metadata separates a product **series** from its **design**, **size**, **material**, and **finish**. The Inspector uses those fields to offer independent Style, Size, and Color / finish menus. A Style or Size choice selects the destination catalog entry and applies its authored width and depth. A Finish choice changes material/color while preserving the placed item's current dimensions, center, rotation, binding, and custom name. Do not infer a new footprint by multiplying one drawing uniformly.
 
-An unbound light is decorative. A bound light is omitted from the static plan once and rendered as one live overlay in Home Assistant. The validated `lightForm` preserves its authored table, floor, ceiling, pendant, or sconce silhouette while the bound entity alone supplies off, on, or unavailable treatment. The transparent target and 4-pixel state dot remain separate from the visible art.
+### Bed family contract
+
+The 42 bed entries cover nine construction families and six size classes:
+
+| Construction | Authored sizes | Required visible differences |
+| --- | --- | --- |
+| Quilted bed | Queen | Upholstered/quilted surface and distinct head treatment |
+| Crib | Crib | Slatted enclosure and fitted infant mattress |
+| Toddler bed | Toddler | Low rails and child-scale proportions |
+| Low platform | Twin, full, queen, king | Low frame, exposed wood structure, size-appropriate mattress |
+| Arched upholstered | Full, queen, king | Shaped padded headboard, seams/tufting, upholstered surround |
+| Drawer storage | Full, queen, king | Framed base and visible drawer fronts/hardware |
+| Four-poster canopy | Queen, king | Four posts and connecting canopy rails |
+| Upholstered daybed | Twin | Side/back rails, sofa-like orientation, bolsters |
+| Slatted bunk | Twin bunk | Two sleep levels, guard rail, ladder, and credible clearance |
+
+Finish combinations produce the 42 catalog entries. Size IDs are `crib`, `toddler`, `twin`, `full`, `queen`, and `king`; “twin bunk” remains a twin footprint with a construction-specific display label. For a shared construction, larger adult size classes must have monotonically larger authored widths and appropriate depths. At equal nominal size, construction geometry and render traces must remain distinct. Tests should compare metadata and drawing operations rather than accepting labels alone.
+
+Every furniture form draws in the item's actual local width and height, brackets canvas state with balanced `save`/`restore`, and uses deterministic highlights, material marks, and offset contact shadows. Furniture remains on `furniture`; ceiling fixtures declare `ceiling-devices`. Never use executable canvas `shadowBlur`, `filter`, pixel reads, timers, randomized marks, clock input, or floor-colored repair rectangles. A renderer review must cover default geometry plus compact, rotated, large, and quarter-turn cases; assert no clipping, floor bleed, transform leak, performance runaway, or loss of the construction's recognizable silhouette.
+
+An unbound light is decorative. A bound light is omitted from the static plan once and rendered as one live overlay in Home Assistant. The validated `lightForm` preserves its authored table, floor, ceiling, pendant, or sconce construction while the bound entity alone supplies off, on, or unavailable treatment. The transparent target and 4-pixel state dot remain separate from the visible art. Live CSS art must match the material hierarchy of the editor/export art closely enough that the object does not change identity when it becomes interactive.
 
 ## Wall-mounted window quality check
 

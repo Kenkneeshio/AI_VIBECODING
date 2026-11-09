@@ -803,7 +803,7 @@ test('detail cards are positioned beside objects and move inward near the right 
   delete context.window.innerHeight;
 });
 
-test('a bound table lamp keeps the cozy flower-bud silhouette and follows the light switch', () => {
+test('a bound table lamp keeps the crafted pleated-shade silhouette and follows the light switch', () => {
   const object = new ObjectControl();
   object.setConfig({ type: 'custom:roomcraft-object-control', roomcraft_item_id: 'office-desk-lamp',
     entity: 'light.office', title: 'Office desk lamp', roomcraft_visual_kind: 'light',
@@ -812,8 +812,8 @@ test('a bound table lamp keeps the cozy flower-bud silhouette and follows the li
   assert.match(css, /\.target\{[^}]*background:transparent[^}]*appearance:none[^}]*-webkit-appearance:none/);
   assert.doesNotMatch(css, /\.hint\{/);
   assert.match(css, /\[data-form="table_lamp"\] \.art,\s*\.target\[data-visual="light"\]\[data-form="bud_lamp"\] \.art\{[^}]*inset:6% 13% 3%[^}]*background:none!important/);
-  assert.match(css, /\[data-form="table_lamp"\] \.art::before,\s*\.target\[data-visual="light"\]\[data-form="bud_lamp"\] \.art::before\{[^}]*width:72%[^}]*height:43%[^}]*radial-gradient/);
-  assert.match(css, /\[data-form="table_lamp"\] \.art::after,\s*\.target\[data-visual="light"\]\[data-form="bud_lamp"\] \.art::after\{[^}]*radial-gradient\(ellipse at 50% 89%/);
+  assert.match(css, /\[data-form="table_lamp"\] \.art::before,\s*\.target\[data-visual="light"\]\[data-form="bud_lamp"\] \.art::before\{[^}]*width:72%[^}]*height:43%[^}]*clip-path:polygon[^}]*repeating-linear-gradient/);
+  assert.match(css, /\[data-form="table_lamp"\] \.art::after,\s*\.target\[data-visual="light"\]\[data-form="bud_lamp"\] \.art::after\{[^}]*radial-gradient\(ellipse at 50% 90%/);
   assert.match(css, /\[data-form="table_lamp"\]\[data-state="off"\] \.art::before,[^}]*saturate\(\.5\) brightness\(\.65\)/s);
   assert.match(css, /\[data-form="table_lamp"\]\[data-state="on"\] \.art::before,[^}]*drop-shadow\(0 0 8px #ffd66f99\)/s);
   object.hass = { states: { 'light.office': { state: 'off' } } };
@@ -831,7 +831,7 @@ test('a bound table lamp keeps the cozy flower-bud silhouette and follows the li
   object.disconnectedCallback();
 });
 
-test('cute light forms keep transparent controls and truthful state-only glow', () => {
+test('crafted light forms keep transparent controls and truthful state-only glow', () => {
   const forms = ['bud_lamp', 'cloud_floor_lamp', 'bloom_ceiling', 'star_pendant', 'acorn_sconce'];
   for (const form of forms) {
     const object = new ObjectControl();

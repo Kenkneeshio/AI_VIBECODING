@@ -52,7 +52,7 @@ roomcraft/
 
 The image is a visual reference, not a dimensional survey. The layout coordinates use a 1536 × 1024 design canvas. Roomcraft keeps one shared level for connected upstairs rooms; exterior stairs descend from the lower-left landing toward the top-left of the illustration. Floor finishes vary by room. The furniture and object art is drawn in the plan's slightly raised perspective.
 
-The editor currently offers 271 object choices, including a 34-variant original cozy furniture and lighting collection with deterministic finish palettes and Home Assistant-aware live light silhouettes.
+The editor currently offers 325 object choices. Its 88-entry crafted-miniature collection uses deterministic material recipes, authored proportions, joinery, upholstery, hardware, and Home Assistant-aware live-light silhouettes. Beds are a real product family rather than one stretched sprite: 42 catalog variants span crib, toddler, platform, upholstered, storage, canopy, daybed, bunk, and quilted constructions; twin, full, queen, king, crib, and toddler footprints; and material-appropriate finishes.
 
 ## Requirements
 

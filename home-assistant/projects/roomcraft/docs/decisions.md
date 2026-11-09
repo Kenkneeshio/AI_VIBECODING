@@ -1,6 +1,16 @@
 # Decision log
 
+## 2026-11-09 — Model furniture as crafted products with authored variants
+
+**Decision:** Supersede the flat/toy-like interpretation of the original cozy recipes with detailed, realistic miniature construction while preserving stable catalog and layout IDs. Model a furniture family with explicit collection, series, design, size, material, and finish metadata. Style and Size select a catalog product and apply its authored width/depth; Finish preserves user geometry while changing material/color. Render each product in its actual local dimensions with deterministic material, seam, joinery, hardware, leg, bevel, highlight, and shadow operations. Treat beds as a matrix of distinct constructions and real footprints, including crib, toddler, twin, full, queen, and king variants.
+
+**Reason:** A single stretched silhouette cannot communicate whether a bed is a crib, storage bed, canopy, daybed, or bunk, and non-uniform canvas scaling makes furniture look distorted. Layout authors need believable options that both look intentional and occupy credible space. Separating product identity from finish also prevents a color change from unexpectedly resizing a carefully placed object.
+
+**Consequence:** Layout version 2 does not change: the selected stable catalog `type` plus persisted `w` and `h` remain the portable authored result, while catalog variant metadata stays in source. `inventory.js` owns variant relationships and authored footprints; `catalog-variants.js` owns deterministic choice resolution and update semantics; `object-art.js` owns material-aware drawing. The old `cuteFurniture` and `cuteLight` strings remain compatibility recipe-family names only. Tests must prove deterministic ordering, stable IDs, finish-preserved custom geometry, authored size/style geometry, distinct bed construction traces, monotonic shared-family footprints, balanced canvas state, bounded operations, and Android-safe rendering.
+
 ## 2026-11-09 — Use original data-driven cozy creature-world art recipes
+
+**Status:** Superseded in visual direction by “Model furniture as crafted products with authored variants.” Stable IDs, original-art restrictions, and data-driven ownership remain in force.
 
 **Decision:** Give furniture and lights stable catalog IDs, named palettes and forms, explicit render layers, and code-native vector recipes shared by editor previews and exports. Use broad rounded, toy-like, dollhouse qualities without copying a branded character, logo, recognizable silhouette, name, or game asset. Preserve each validated light silhouette through Home Assistant with `table_lamp`, `bud_lamp`, `cloud_floor_lamp`, `bloom_ceiling`, `star_pendant`, and `acorn_sconce` forms.
 

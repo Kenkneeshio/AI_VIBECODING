@@ -199,7 +199,7 @@ test('a bedroom-style desk lamp keeps a small stateful light shade', () => {
   assert.match(c.manualYaml({ items: [lamp], hotspots: [] }), /roomcraft_light_form: "table_lamp"/);
 });
 
-test('cute catalog lights preserve their live silhouette and reject unknown forms', () => {
+test('crafted catalog lights preserve their live silhouette and reject unknown forms', () => {
   const c = controls();
   const forms = ['bud_lamp', 'cloud_floor_lamp', 'bloom_ceiling', 'star_pendant', 'acorn_sconce'];
   const items = forms.map((lightForm, index) => ({ id: `cute-${index}`, type: `lighting-cute-${index}`,
