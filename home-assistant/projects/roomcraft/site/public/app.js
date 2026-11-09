@@ -68,7 +68,7 @@
     { type: 'thermostat', label: 'Wall thermostat / AC', icon: '◴', w: 48, h: 54, group: 'systems', mount: 'wall', visualKind: 'climate' },
     { type: 'humidifier', label: 'Floor humidifier', icon: '♨', w: 46, h: 58, group: 'systems', visualKind: 'device' },
     { type: 'airPurifier', label: 'Air purifier', icon: '≋', w: 48, h: 62, group: 'systems', visualKind: 'device' },
-    { type: 'windowFan', label: 'Window fan', icon: '✣', w: 46, h: 46, group: 'systems', mount: 'wall', visualKind: 'fan' },
+    { type: 'windowFan', label: 'Window fan', icon: '✣', w: 46, h: 46, group: 'systems', visualKind: 'fan' },
     { type: 'garageDoor', label: 'Garage door control', icon: '▥', w: 116, h: 52, group: 'systems', visualKind: 'door' },
     { type: 'cameraThumbnail', label: 'Camera thumbnail', icon: '▣', w: 170, h: 110, group: 'security' },
     { type: 'controlZone', label: 'Invisible button area', icon: '▧', w: 120, h: 72, group: 'security' },

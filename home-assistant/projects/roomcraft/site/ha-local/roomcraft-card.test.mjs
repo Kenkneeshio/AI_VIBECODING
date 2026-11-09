@@ -809,9 +809,10 @@ test('a bound table lamp shades only its small lamp head and follows the light s
     entity: 'light.office', title: 'Office desk lamp', roomcraft_visual_kind: 'light',
     roomcraft_light_form: 'table_lamp' });
   const css = object.shadowRoot.children[0].textContent;
-  assert.match(css, /\[data-form="table_lamp"\] \.art\{[^}]*height:58%/);
-  assert.match(css, /\[data-form="table_lamp"\]\[data-state="off"\] \.art\{[^}]*brightness\(\.35\)/);
-  assert.match(css, /\[data-form="table_lamp"\]\[data-state="on"\] \.art\{[^}]*0 0 8px 3px/);
+  assert.match(css, /\[data-form="table_lamp"\] \.art\{[^}]*height:34%/);
+  assert.match(css, /\[data-form="table_lamp"\]\[data-state="off"\] \.art\{[^}]*background:transparent/);
+  assert.match(css, /\[data-form="table_lamp"\]\[data-state="off"\] \.art\{[^}]*box-shadow:none/);
+  assert.match(css, /\[data-form="table_lamp"\]\[data-state="on"\] \.art\{[^}]*0 0 6px 2px/);
   object.hass = { states: { 'light.office': { state: 'off' } } };
   assert.equal(object._button.attributes['data-form'], 'table_lamp');
   assert.equal(object._button.attributes['data-state'], 'off');

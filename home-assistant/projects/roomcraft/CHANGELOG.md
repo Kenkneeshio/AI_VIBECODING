@@ -2,6 +2,7 @@
 
 ## 2026-11-09 — Modular animated controls, status popups, and complete night mask
 
+- Refined overlapping fixture controls: inactive light layers are now transparent, the on-state lamp glow is smaller, and the dining fan-light center target is 42 × 42 so the surrounding blades remain easy to tap independently. Moved the window fan into the office and removed its wall-mount constraint so it can be positioned like the real freestanding appliance.
 - Rebound the dining ceiling fan and fan light to the verified third and fourth channels of the physical four-channel kitchen switch. The artwork itself now toggles the same stateful entity that drives its glow or rotation; scenes are no longer used for these two controls. The fan stays still when channel 4 is off, and the center light glows only when channel 3 is on.
 - Added consistent table-lamp live artwork for the verified living, dining, kitchen ceiling, kitchen track, kitchen counter, hallway, office, master, and fan-light controls. Added a dedicated dining air-purifier object and master-bath humidifier object. Purifier airflow and humidifier mist animate only while their own HA entity reports on; unavailable devices remain neutral.
 - Made the Dreame object smaller and friendlier, kept its authenticated map panel and calibrated position tracking, and omitted its fixed copy from exported PNGs. The live object is now the only robot on the dashboard and animates only during verified cleaning/returning activity.

@@ -147,6 +147,18 @@ test('camera palette places an editable latest-event thumbnail', () => {
   assert.equal(camera.h, 110);
 });
 
+test('office window fan can be placed away from a wall', () => {
+  const editor = boot({ version: 2, editableReferenceVersion: 2, rooms: [], walls: [], items: [], hotspots: [] });
+  editor.dispatch('objectsPanel', 'click', {
+    target: { closest: () => ({ dataset: { template: 'windowFan' } }) }
+  });
+  editor.pointer('pointerdown', 1015, 335);
+  const fan = editor.read().items.find(i => i.type === 'windowFan');
+  assert.ok(fan);
+  assert.equal(fan.x, 1015);
+  assert.equal(fan.y, 335);
+});
+
 test('existing objects gain configurable dashboard button actions without a migration', () => {
   const editor = boot({
     version: 2, editableReferenceVersion: 2, rooms: [], walls: [], hotspots: [],

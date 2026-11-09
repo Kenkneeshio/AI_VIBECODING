@@ -702,22 +702,19 @@ class RoomcraftObjectControl extends HTMLElement {
       .target[data-visual="none"] .art,.target[data-state="ready"] .art,
       .target[data-zone="true"][data-visual="device"] .art{display:none}
       .target[data-visual="light"][data-state="off"] .art{
-        background:radial-gradient(circle,#14222b 0 25%,#182731e8 43%,#111e28a8 66%,transparent 84%);
-        backdrop-filter:brightness(.22) saturate(.3);box-shadow:inset 0 0 0 2px #7d8c97,0 2px 9px #05141b99}
+        background:transparent;backdrop-filter:none;box-shadow:none}
       .target[data-visual="light"][data-state="on"] .art{
         background:radial-gradient(circle,#fffef2 0 15%,#ffe6a5e8 31%,#ffca68a0 50%,transparent 78%);
         box-shadow:0 0 18px 9px #ffd865a6,0 0 34px 17px #ffd86562,inset 0 0 0 2px #fff8dd}
       .target[data-visual="light"][data-form="table_lamp"] .art{
-        inset:7% 17% auto;height:58%;border-radius:46% 46% 50% 50%;
+        inset:24% 30% auto;height:34%;border-radius:46% 46% 50% 50%;
         transition:background .18s,box-shadow .18s,backdrop-filter .18s}
       .target[data-visual="light"][data-form="table_lamp"][data-state="off"] .art{
-        background:radial-gradient(ellipse at 45% 39%,#1d2730bb 0 39%,#101a2399 67%,transparent 83%);
-        backdrop-filter:brightness(.35) saturate(.42);
-        box-shadow:inset 0 0 0 1px #74838a,0 1px 4px #07131a99}
+        background:transparent;backdrop-filter:none;box-shadow:none}
       .target[data-visual="light"][data-form="table_lamp"][data-state="on"] .art{
         background:radial-gradient(ellipse at 45% 39%,#fff8dfeb 0 32%,#ffdd8dbe 55%,transparent 82%);
         backdrop-filter:none;
-        box-shadow:0 0 8px 3px #ffd46b9c,0 0 16px 7px #ffd46b59,inset 0 0 0 1px #fff5d4}
+        box-shadow:0 0 6px 2px #ffd46b9c,0 0 12px 5px #ffd46b59,inset 0 0 0 1px #fff5d4}
       .target[data-visual="fan"] .art{inset:0;border-radius:0;background:radial-gradient(ellipse at center,#172630e8 0 26%,#172630a6 49%,transparent 76%);backdrop-filter:none;box-shadow:none}
       .target[data-visual="fan"][data-state="on"] .art{background:radial-gradient(ellipse at center,#22303ad9 0 27%,#263c468c 48%,transparent 76%);backdrop-filter:none;box-shadow:none}
       .rotor{inset:7%;display:none;transform-origin:50% 50%}

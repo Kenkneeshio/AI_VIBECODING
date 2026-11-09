@@ -85,7 +85,7 @@ On the live **Floor Plan**, open the top-left device menu and use **Show object 
 
 The furnished scene includes bedside and office desk lamps plus room light fixtures as editable objects. The office has one physical desk lamp, drawn with the same raised lamp style as the bedroom; it is the single office light control. The previous separate study ceiling fixture duplicated that light and has been removed. These objects can be moved, resized, or removed without changing the original PNG. A fixture with no entity binding is artwork only.
 
-The dining ceiling fan and its center light are two independent controls. Tap the blades to toggle the verified motor channel; hold for native details. Tap the center lamp to toggle the verified light channel. The blades rotate in low-frame-rate steps only while the motor channel reports on, and the center glows only while the light channel reports on. Reduced-motion preference stops animation without changing state. The old ceiling-fan entity and scene controls are historical and are not used by these artworks.
+The dining ceiling fan and its center light are two independent controls. Tap the blades to toggle the verified motor channel; hold for native details. Tap the small center lamp to toggle the verified light channel. Its compact transparent target leaves the surrounding blades available for the fan. The blades rotate in low-frame-rate steps only while the motor channel reports on, and the center adds a glow only while the light channel reports on. Reduced-motion preference stops animation without changing state. The old ceiling-fan entity and scene controls are historical and are not used by these artworks.
 
 The master humidifier and dining air purifier use the same object-first pattern. Their illustrated appliances are the buttons; mist or airflow appears only while that appliance reports on. The small air and lightning markers at the top open indoor-quality and electrical panels. Those panels are informational: tapping a row opens Home Assistant details and never toggles equipment.
 
@@ -97,7 +97,7 @@ The current plan includes these additional editable controls. Select one to insp
 | --- | --- |
 | Office desk lamp | One bedroom-style lamp on the study desk; the only office light control |
 | Hallway thermostat / AC | At the hall wall; climate treatment |
-| Office window fan | At the study window; fan treatment driven by its switch |
+| Office window fan | Freestanding in the office; it is not wall-locked and its fan treatment is driven by its switch |
 | Garage door control tile | On the exterior balcony below the garage camera; door/open treatment |
 | Garage camera thumbnail | On the open balcony tile; idle event preview, tap to start its own authenticated stream |
 
