@@ -110,6 +110,9 @@
     o.w=Math.max(12,Math.min(W,o.w));o.h=Math.max(12,Math.min(H,o.h));
   }
   const isFixtureControl = o => templateByType[o.type]?.group==='lighting'||templateByType[o.type]?.artFamily==='ceilingFan';
+  const matchesKnownGeometry = (o, variants, tolerance=2) => !!o && variants.some(v =>
+    ['x','y','w','h'].every(key=>Math.abs(o[key]-v[key])<=tolerance) &&
+    Math.abs((((o.rotation||0)%360)+360)%360-(v.rotation||0))<=tolerance);
   const hotspotStyle = (left, top) => ({ left: `${left}%`, top: `${top}%`, background: 'rgba(24, 29, 35, 0.82)', 'border-radius': '50%', padding: '8px', '--paper-item-icon-color': '#f9f5e8', '--paper-item-icon-active-color': '#ffcc66' });
   const hotspot = (id, entity, title, left, top, tap, hold = null) => ({ id, type: 'state-icon', entity, title, tap_action: { action: tap }, ...(hold ? { hold_action: { action: hold } } : {}), style: hotspotStyle(left, top) });
   // Live entity IDs are imported from Home Assistant, never committed to source.
@@ -133,7 +136,7 @@
     ],
     items: [
       item('i1','sofa','L sofa',493,333,164,238),item('i2','tv','Living TV',755,351,27,163),item('i3','table','Dining table',458,664,172,108),
-      item('i4','desk','Study desk',924,278,196,85),item('i5','chair','Desk chair',975,322,47,47),item('i6','bed','Queen bed',1331,373,213,194),
+      item('i4','desk','Study desk',930,312,245,156),item('i5','chair','Desk chair',978,310,47,47),item('i6','bed','Queen bed',1331,373,213,194),
       item('i7','counter','Kitchen counter',667,675,56,234),item('i8','counter','Kitchen island',825,675,59,235),
       item('i9','tub','Bathtub',902,728,60,130),item('i10','tub','Bathtub',1148,728,60,130),item('i11','toilet','Toilet',1056,745,45,58),
       item('i12','toilet','Toilet',1148,611,45,58),item('i13','plant','Table flowers',460,654,32,32),
@@ -160,6 +163,14 @@
     item('ui-edit-layout','uiEdit','Edit layout button',1444,126,48,48),
     item('ui-status-air','uiStatusAir','Indoor air status',1412,151,50,50),
     item('ui-status-electrical','uiStatusElectrical','Electrical status',1476,151,50,50)
+  ];
+  // Furniture that was formerly baked into source-image fragments. Keeping it
+  // as real items makes the reference layout accurate and independently
+  // editable without carrying floor pixels or clipped crop edges.
+  const REFERENCE_FURNITURE_V4 = [
+    item('office-credenza','dresser','Office credenza',869,445,124,45),
+    item('master-nightstand','nightstand','Master humidifier table',1443,479,80,58),
+    item('master-low-dresser','dresser','Master lower dresser',1443,529,80,44)
   ];
   const interfaceTypes = new Set(DEFAULT_INTERFACE_ITEMS.map(o=>o.type));
   const fixedRoomIds = new Set(STARTER.rooms.map(r => r.id));
@@ -220,6 +231,29 @@
     if(p.editableReferenceVersion<3){
       for(const control of DEFAULT_INTERFACE_ITEMS)if(!p.items.some(i=>i.id===control.id||i.type===control.type))p.items.push(clone(control));
       p.editableReferenceVersion=3;
+    }
+    if(p.editableReferenceVersion<4){
+      const desk=p.items.find(i=>i.id==='i4');
+      // Correct only the two shipped shallow-desk variants. A desk the owner
+      // has already moved, resized, or rotated is a real edit and must survive
+      // this one-time visual-reference migration.
+      if(matchesKnownGeometry(desk,[
+        {x:923,y:273,w:196,h:85,rotation:0},
+        {x:924,y:278,w:196,h:85,rotation:0}
+      ]))Object.assign(desk,{x:930,y:312,w:245,h:156,rotation:0});
+      const chair=p.items.find(i=>i.id==='i5');
+      if(matchesKnownGeometry(chair,[
+        {x:978,y:310,w:47,h:47,rotation:0},
+        {x:975,y:322,w:47,h:47,rotation:0}
+      ]))Object.assign(chair,{x:978,y:310,w:47,h:47,rotation:0});
+      for(const furniture of REFERENCE_FURNITURE_V4){
+        const present=p.items.some(i=>i.id===furniture.id||
+          (i.type===furniture.type&&Math.hypot(i.x-furniture.x,i.y-furniture.y)<36));
+        // Put support furniture below lamps, chairs, and controls in both the
+        // paint order and reverse-order hit testing.
+        if(!present)p.items.unshift(clone(furniture));
+      }
+      p.editableReferenceVersion=4;
     }
     for(const o of p.items)clampLinkedItem(o);
     p.version=2;
@@ -345,11 +379,14 @@
     if(window.RoomcraftObjectArt?.draw(c,o)) return;
     c.save();c.translate(o.x,o.y);c.rotate(o.rotation*Math.PI/180);
     const x=-o.w/2,y=-o.h/2,w=o.w,h=o.h;
-    c.shadowColor='#27372c30';c.shadowBlur=8;c.shadowOffsetY=5;
     if(interfaceTypes.has(o.type)){
       const glyph={uiWeatherOrb:'☀',uiMenu:'☰',uiTime:'12:34',uiEdit:'✎',uiStatusAir:'◌',uiStatusElectrical:'ϟ'}[o.type]||'•';
-      c.shadowColor='#07171d99';c.shadowBlur=10;c.shadowOffsetY=3;c.fillStyle=o.type==='uiWeatherOrb'?'#fff0a5':'#183336e8';
-      round(c,x,y,w,h,Math.min(14,h/2));c.fill();c.shadowColor='transparent';c.strokeStyle=o.type==='uiWeatherOrb'?'#ffd36b':'#d8e3d5';c.lineWidth=2;c.stroke();
+      // Layered offset fills replace canvas shadowBlur. Android WebView could
+      // corrupt the blurred camera/menu tiles into a black-magenta fragment.
+      c.fillStyle='rgba(7,23,29,.16)';round(c,x+3,y+5,w,h,Math.min(14,h/2));c.fill();
+      c.fillStyle='rgba(7,23,29,.24)';round(c,x+2,y+3,w,h,Math.min(14,h/2));c.fill();
+      c.fillStyle=o.type==='uiWeatherOrb'?'#fff0a5':'#183336e8';
+      round(c,x,y,w,h,Math.min(14,h/2));c.fill();c.strokeStyle=o.type==='uiWeatherOrb'?'#ffd36b':'#d8e3d5';c.lineWidth=2;c.stroke();
       c.fillStyle=o.type==='uiWeatherOrb'?'#9b671d':'#f5f7ee';c.font=`700 ${Math.max(12,Math.min(h*.5,w*.42))}px system-ui`;c.textAlign='center';c.textBaseline='middle';c.fillText(glyph,0,0);
     }else if(o.type==='rug'){
       c.fillStyle='#f0dcc2';round(c,x,y,w,h,11);c.fill();c.shadowColor='transparent';c.strokeStyle='#cfb696';c.lineWidth=3;c.stroke();c.strokeStyle='#d6bf9f';c.lineWidth=1;for(let i=-w;i<w*2;i+=18){c.beginPath();c.moveTo(x+i,y+9);c.lineTo(x+i+25,y+h-9);c.stroke();}
@@ -379,7 +416,9 @@
     }else if(o.type==='lamp'){
       c.fillStyle='#d2b987';c.beginPath();c.arc(0,0,Math.min(w,h)*.46,0,Math.PI*2);c.fill();c.shadowColor='transparent';c.fillStyle='#fff8d9';c.beginPath();c.arc(0,0,Math.min(w,h)*.34,0,Math.PI*2);c.fill();
     }else if(o.type==='cameraThumbnail'){
-      c.fillStyle='#17262d';round(c,x,y,w,h,10);c.fill();c.shadowColor='transparent';
+      c.fillStyle='rgba(7,23,29,.18)';round(c,x+3,y+5,w,h,10);c.fill();
+      c.fillStyle='rgba(7,23,29,.26)';round(c,x+2,y+3,w,h,10);c.fill();
+      c.fillStyle='#17262d';round(c,x,y,w,h,10);c.fill();
       const glass=c.createLinearGradient(x,y,x+w,y+h);glass.addColorStop(0,'#3c5c69');glass.addColorStop(1,'#15262c');c.fillStyle=glass;round(c,x+5,y+5,w-10,h-10,7);c.fill();
       c.strokeStyle='rgba(202,227,226,.54)';c.lineWidth=1.5;c.stroke();
       c.fillStyle='#e5f2e9';c.beginPath();c.arc(0,-5,Math.min(w,h)*.17,0,Math.PI*2);c.fill();
@@ -442,7 +481,9 @@
         // art in Design mode, but omit a fixed fan/robot from the exported PNG
         // so motion and map tracking never create a second frozen copy.
         if(clean&&interfaceTypes.has(o.type))return;
-        if(clean&&validEntityId(o.entityId)&&(isFixtureControl(o)||['ceilingFan','robotVacuum'].includes(templateByType[o.type]?.artFamily)))return;
+        if(clean&&validEntityId(o.entityId)&&(isFixtureControl(o)||
+          ['ceilingFan','robotVacuum'].includes(templateByType[o.type]?.artFamily)||
+          ['humidifier','airPurifier'].includes(o.type)))return;
         drawObject(c,o);
       };
       if(!raster?.draw(c,project,STARTER,{original:reference,shell:emptyShell,wallFree:wallFreeShell},drawDynamicObject)){

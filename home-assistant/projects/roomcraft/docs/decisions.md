@@ -1,5 +1,13 @@
 # Decision log
 
+## 2026-11-09 — Keep floor, fixed structure, movable furniture, and live effects in distinct layers
+
+**Decision:** Author the office workstation, master rug, bedside furniture, desk lamps, humidifier, and baby-area furnishings as semantic objects in their correct layer. Use migration version 4 once to correct the known office geometry and add the missing credenza, nightstand, and lower dresser. Keep the dining set at its intended four chairs. Do not use broad raster crops or duplicate contact shadows to reconstruct movable furniture.
+
+**Reason:** Raster furniture fragments carried perspective-baked floor, shadows, and clipped neighboring pixels. When combined with authored objects, they produced a shallow incorrect desk, a skewed rug, floor bleed, and some dark tabs. Android raw-export comparison showed that the remaining isolated bars—with impossible magenta and green pixels—were WebView/GPU corruption triggered by canvas `shadowBlur`, not valid scene content. Separate semantic objects and deterministic shadows preserve clean floors, movable geometry, stateful controls, and a consistent overhead perspective across browsers.
+
+**Consequence:** Editor export and the HA live card must share the polished desk-lamp form, while HA alone supplies its truthful on-state glow and 4-pixel state dot. Humidifier mist remains state-driven runtime art. The editor, object-art, and raster renderers use layered offset shapes rather than canvas `shadowBlur`; exterior window replacements overdraw the complete old sill/reveal. Migration additions are placed beneath live controls and must not be reapplied after version 4, so later user positioning remains authoritative. Any future furniture correction should change the semantic object or explicit migration rather than patching the base floor image.
+
 ## 2026-11-09 — Dashboard interface geometry is layout data
 
 **Decision:** Store the sun/moon anchor, clock, device menu, editor shortcut, indoor-air badge, and electrical badge as ordinary version-2 `items`, alongside the already-editable camera thumbnails. Keep weather telemetry and its full-screen exterior mask in Home Assistant; only the celestial anchor geometry belongs to the layout. The current dashboard project loaded by the editor is the reset/default target.

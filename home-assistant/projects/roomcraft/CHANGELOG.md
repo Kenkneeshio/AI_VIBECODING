@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-11-09 — Office, master suite, and fixture visual-regression correction
+
+- Rebuilt the office workstation as one deep U-shaped desk with two usable returns, drawer pedestals, centered equipment, the correct chair bay, and a separate movable credenza. Migration version 4 updates the known office desk/chair geometry and adds the missing support furniture without disturbing unrelated user objects.
+- Replaced the perspective-baked master rug with authored, axis-aligned artwork centered beneath the bed. Added separate movable master nightstand and lower-dresser objects so furniture no longer has to be carried in a broad raster crop.
+- Reworked the shared table/desk-lamp art into a polished overhead fixture with a tapered fabric shade, brass stem and collar, weighted base, and localized warm glow. The live artwork retains its transparent hit area and truthful 4-pixel state dot.
+- Reworked the master humidifier into a recognizable translucent tank, nozzle, control, and base. Mist remains a live effect shown only while the humidifier's own entity reports on.
+- Removed duplicate hard contact shadows from the baby-area furnishings, inset and lightened the activity-table legs, and removed the clipped bedside raster fragment. Android export testing then isolated the remaining bars—with impossible magenta and green pixels—as WebView/GPU corruption triggered by canvas `shadowBlur`. All three plan renderers now use deterministic layered offset shapes instead of GPU blur, so the marks are not devices or status indicators and cannot reappear from driver-dependent shadow rasterization.
+- Extended exterior window replacements across the complete old source sill and reveal. The narrow dark source tabs no longer protrude beside the corrected perspective-aware windows.
+- Kept the dining set at exactly four chairs. This is the intended current layout, not a regression to remove during the correction.
+- Added migration, Android-shadow, and rendering regression coverage. The corrected release passes 44 Site tests, 50 Home Assistant JavaScript tests, three Python tests, TypeScript, production build, and whitespace validation. A newly exported Android raw PNG and fresh 1920 × 1080 live-tablet capture are clean: no corrupted black/color bars, clipped sill tabs, skewed master rug, or cross-layer bedside fragments.
+- Installed and read back the matching Home Assistant editor/card resources, exported migration version 4 from the wall tablet, and published restricted-audience Site v39 from Site source `c6dcb647a0dbe09b6a73213f40b187674bd7d7aa`. No household device was operated during visual QA.
+
 ## 2026-11-09 — Professional object silhouettes, rugs, desk, and garage state art
 
 - Replaced color-key transparency holes with an authored opaque-core silhouette plus the source artwork's feathered shadow edge. Pale upholstery, beds, porcelain fixtures, counters, and walnut furniture no longer reveal the room floor through their material.

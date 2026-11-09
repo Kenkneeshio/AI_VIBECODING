@@ -25,9 +25,12 @@
   // openings as subdued top-down glazing after floor and furniture repairs.
   // User-placed windows are painted separately below and remain editable.
   const exteriorWindows = [
-    [461,201,76,26,0],[728,201,72,26,0],
-    [866.5,201,65,26,0],[962.5,201,67,26,0],
-    [1227,177,78,26,0],[1340,177,76,26,0],
+    // Horizontal replacements deliberately cover the old source sill and its
+    // isolated lower hardware tabs. Their continuous lower rail is the only
+    // dark edge left visible, so every window reads as one coherent opening.
+    [461,203,82,34,0],[728,203,78,34,0],
+    [866.5,203,71,34,0],[962.5,203,73,34,0],
+    [1227,179,84,34,0],[1340,179,82,34,0],
     [400,316.5,107,28,90],[303.5,709,138,29,90]
   ];
   const floorSamples = {
@@ -38,8 +41,6 @@
   for(const image of Object.values(extraTextures))image.addEventListener('load',()=>{floorLayers.clear();window.dispatchEvent(new Event('roomcraft-asset-loaded'));});
   const rugImage=new Image();
   rugImage.addEventListener('load',()=>window.dispatchEvent(new Event('roomcraft-asset-loaded')));
-  const bedroomRugImage=new Image();
-  bedroomRugImage.addEventListener('load',()=>window.dispatchEvent(new Event('roomcraft-asset-loaded')));
   const fixedDecor = {
     great:[['r',466,245,147,213,13],['r',695,672,106,127,5]],
     study:[['r',807,281,50,108,5],['r',1001,233,58,144,5],['r',807,423,124,45,6],['e',899,350,82,78]],
@@ -54,7 +55,10 @@
   const fixedLayerDecor = {
     great:[['r',695,672,106,127,5]],
     study:[],
-    bedroom:[['r',1403,449,80,103,8],['r',1395,197,75,92,8],['r',1143,352,52,122,5]],
+    // The lower bedside stack is now two editable vector pieces. Keeping its
+    // old broad crop here clipped the burgundy cabinet and left a purple/black
+    // tab beneath the humidifier.
+    bedroom:[['r',1395,197,75,92,8],['r',1143,352,52,122,5]],
     'bath-one':fixedDecor['bath-one'],
     'bath-two':fixedDecor['bath-two']
   };
@@ -223,9 +227,9 @@
       c.moveTo(w.x1+ox,w.y1+oy);c.lineTo(w.x2+ox,w.y2+oy);c.stroke();
     };
     c.save();c.lineCap='square';c.lineJoin='miter';
-    c.shadowColor='rgba(31,27,23,.27)';c.shadowBlur=14;c.shadowOffsetX=5;c.shadowOffsetY=9;
+    // The offset stroke is the shadow. Avoid canvas shadowBlur: several
+    // Android WebView/driver combinations turn it into isolated black bars.
     stroke(3,15,35,palette.shadow);
-    c.shadowColor='transparent';c.shadowBlur=0;c.shadowOffsetX=0;c.shadowOffsetY=0;
     stroke(3,14,34,palette.side);
     stroke(2,10,34,palette.bevel);
     stroke(1,6,32,palette.edge);
@@ -244,9 +248,8 @@
     const gx=left+5,gy=top+5,gw=w-10,gh=h-11;
     // The long axis follows the wall; the short axis is its thickness. No
     // vertical facade or glowing cyan band is visible from this viewpoint.
-    c.shadowColor='rgba(10,17,22,.32)';c.shadowBlur=3;c.shadowOffsetX=0;c.shadowOffsetY=2;
+    c.fillStyle='rgba(10,17,22,.20)';c.fillRect(left+1,top+3,w,h);
     c.fillStyle='#17242c';c.fillRect(left,top,w,h);
-    c.shadowColor='transparent';c.shadowBlur=0;c.shadowOffsetX=0;c.shadowOffsetY=0;
     c.fillStyle='#41515a';c.fillRect(left+2,top+2,w-4,h-4);
     c.fillStyle='#122632';c.fillRect(gx-1,gy-1,gw+2,gh+2);
     const glass=c.createLinearGradient(0,gy,0,gy+gh);
@@ -302,7 +305,8 @@
     const sx=item.w/base.w,sy=item.h/base.h;
     c.save();c.translate(item.x,item.y);c.rotate((item.rotation||0)*Math.PI/180);c.scale(sx,sy);
     c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
-    c.shadowColor='rgba(39,30,23,.20)';c.shadowBlur=11;c.shadowOffsetX=3;c.shadowOffsetY=7;
+    // Source sprites already contain their natural contact shadow. Adding a
+    // GPU canvas blur here caused colored edge corruption on the wall tablet.
     c.drawImage(sprite,spec.box[0]-base.x,spec.box[1]-base.y);
     c.restore();
   }
@@ -313,20 +317,37 @@
     c.drawImage(rugImage,120,105,1210,885,-207/2,-142/2,207,142);c.restore();
   }
   function drawBedroomRug(c){
-    if(!bedroomRugImage.src)bedroomRugImage.src='assets/bedroom-rug-sprite.png';
-    if(!bedroomRugImage.complete||!bedroomRugImage.naturalWidth)return;
-    // Preserve the source rug's 0.87 aspect ratio and center it under the bed.
-    // The previous 215×223 draw stretched it horizontally and offset it left.
-    c.drawImage(bedroomRugImage,85,80,1010,1160,1234,297,194,223);
+    // A straight authored rug replaces the photographed crop, whose baked
+    // perspective made the lower edge look skewed after scaling. It is centered
+    // on the bed footprint and remains strictly aligned with the room axes.
+    const x=1204,y=288,w=254,h=240,r=10;
+    c.save();
+    c.beginPath();c.roundRect(x+2,y+5,w,h,r);c.fillStyle='rgba(78,54,31,.15)';c.fill();
+    c.beginPath();c.roundRect(x,y,w,h,r);
+    const fill=c.createLinearGradient(x,y,x+w,y+h);
+    fill.addColorStop(0,'#fbf1da');fill.addColorStop(.48,'#ead6af');fill.addColorStop(1,'#c7a878');
+    c.fillStyle=fill;c.fill();
+    c.lineWidth=3;c.strokeStyle='#f6e8c9';c.stroke();
+    c.beginPath();c.roundRect(x+8,y+8,w-16,h-16,7);c.lineWidth=1.5;c.strokeStyle='rgba(157,119,70,.46)';c.stroke();
+    // Small symmetric flowers echo the reference without importing its skew.
+    const flowers=[[x+24,y+29],[x+24,y+h-29],[x+w-24,y+29],[x+w-24,y+h-29],
+      [x+24,y+h*.5],[x+w-24,y+h*.5]];
+    for(const [cx,cy] of flowers){
+      c.fillStyle='rgba(178,139,83,.72)';
+      for(let i=0;i<6;i++){const a=i*Math.PI/3;c.beginPath();c.ellipse(cx+Math.cos(a)*6,cy+Math.sin(a)*6,3.2,5.2,a,0,Math.PI*2);c.fill();}
+      c.beginPath();c.arc(cx,cy,3,0,Math.PI*2);c.fillStyle='#f6e8bd';c.fill();
+    }
+    c.restore();
   }
   function drawOfficeRug(c){
     c.save();
-    c.shadowColor='rgba(65,42,28,.22)';c.shadowBlur=7;c.shadowOffsetY=4;
+    c.beginPath();c.ellipse(942,393,41,39,0,0,Math.PI*2);
+    c.fillStyle='rgba(65,42,28,.14)';c.fill();
     c.beginPath();c.ellipse(940,389,41,39,0,0,Math.PI*2);
     const fill=c.createRadialGradient(927,375,3,940,389,42);
     fill.addColorStop(0,'#fff4d9');fill.addColorStop(.58,'#ead6ac');fill.addColorStop(.88,'#c7aa7d');fill.addColorStop(1,'#8d704e');
     c.fillStyle=fill;c.fill();
-    c.shadowColor='transparent';c.lineWidth=2;c.strokeStyle='#f3e2bf';c.stroke();
+    c.lineWidth=2;c.strokeStyle='#f3e2bf';c.stroke();
     c.beginPath();c.ellipse(940,389,34,32,0,0,Math.PI*2);c.lineWidth=1;c.strokeStyle='rgba(142,105,69,.34)';c.stroke();
     c.restore();
   }
@@ -343,12 +364,6 @@
       s.drawImage(original,d.x,d.y,w,h,0,0,w,h);
       s.globalCompositeOperation='destination-in';s.drawImage(maskFor(spec),0,0);
       p.globalCompositeOperation='destination-over';p.drawImage(solid,0,0);
-      // The bedside table belongs to the fixed room layer, but its lamp is a
-      // separate editable/live object. Remove only that lamp from the crop.
-      if(roomId==='bedroom'&&shape[1]===1403&&shape[2]===449){
-        p.globalCompositeOperation='destination-out';
-        p.drawImage(maskFor(specs.i14),specs.i14.box[0]-d.x,specs.i14.box[1]-d.y);
-      }
       c.drawImage(patch,d.x,d.y);
     }
   }
@@ -362,7 +377,7 @@
   }
   function prepareExport(project,starter,images){
     const tasks=[waitForImage(images.original),waitForImage(images.shell),waitForImage(images.wallFree),
-      waitForImage(rugImage,'assets/rug-sprite.png'),waitForImage(bedroomRugImage,'assets/bedroom-rug-sprite.png')];
+      waitForImage(rugImage,'assets/rug-sprite.png')];
     for(const id of ['terrazzo','sage'])if(project.rooms.some(r=>r.surface===id))tasks.push(waitForImage(extraTextures[id],`assets/${id}-tile.png`));
     return Promise.all(tasks);
   }

@@ -20,7 +20,7 @@ function recordingCanvas() {
     restore() { operations.push(['restore']); },
     translate(x, y) { operations.push(['translate', x, y]); },
     rotate(angle) { operations.push(['rotate', angle]); },
-    beginPath() {}, ellipse() {}, fill() {}, stroke() {},
+    beginPath() {}, roundRect() {}, ellipse() {}, arc() {}, fill() {}, stroke() {},
     drawImage(image) { operations.push(['image', image.name]); },
     fillRect(x, y, width, height) {
       operations.push(['fill', this.fillStyle, x, y, width, height]);
@@ -49,8 +49,8 @@ test('the seamless empty shell is the floor layer beneath subdued exterior glazi
   const positions = canvas.operations.filter(([kind]) => kind === 'translate')
     .map(([, x, y]) => [x, y]);
   assert.deepEqual(positions, [
-    [461, 201], [728, 201], [866.5, 201], [962.5, 201],
-    [1227, 177], [1340, 177], [400, 316.5], [303.5, 709],
+    [461, 203], [728, 203], [866.5, 203], [962.5, 203],
+    [1227, 179], [1340, 179], [400, 316.5], [303.5, 709],
   ]);
   const rotations = canvas.operations.filter(([kind]) => kind === 'rotate')
     .map(([, angle]) => angle);

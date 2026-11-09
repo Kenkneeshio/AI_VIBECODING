@@ -751,18 +751,37 @@ class RoomcraftObjectControl extends HTMLElement {
         background:radial-gradient(circle at 40% 35%,#fff 0 10%,#fff4c8 11% 34%,#d8b56f 35% 48%,#7c6547 49% 57%,#ffd56b40 58% 72%,transparent 74%);
         box-shadow:0 0 11px 5px #ffd865a6,0 0 23px 11px #ffd86562}
       .target[data-visual="light"][data-form="table_lamp"] .art{
-        inset:18% 27% auto;height:46%;border-radius:50%;
-        transition:background .18s,box-shadow .18s,backdrop-filter .18s}
-      .target[data-visual="light"][data-form="table_lamp"] .art::before{content:"";position:absolute;left:46%;top:78%;width:8%;height:59%;border-radius:4px;background:linear-gradient(90deg,#5a4b3e,#aa9475 46%,#6d5b49);box-shadow:1px 1px 2px #1a232777}
-      .target[data-visual="light"][data-form="table_lamp"] .art::after{content:"";position:absolute;left:28%;top:126%;width:44%;height:17%;border-radius:50%;background:radial-gradient(ellipse at 40% 30%,#a69376,#5d4d40 72%);box-shadow:0 2px 3px #15202773}
+        inset:8% 18% 5%;height:auto;border-radius:0;overflow:visible;
+        background:none;backdrop-filter:none;box-shadow:none;filter:none;
+        transition:filter .18s}
+      /* A complete classic desk lamp: fabric shade, brass stem and weighted
+         base. The full button remains transparent and substantially larger. */
+      .target[data-visual="light"][data-form="table_lamp"] .art::before{
+        content:"";position:absolute;left:22%;top:2%;width:56%;height:34%;
+        border:1px solid #756249;border-radius:46% 46% 22% 22%/64% 64% 30% 30%;
+        background:linear-gradient(105deg,#8c7658 0 7%,#ead9b7 22%,#fff5dc 48%,#d2bb91 76%,#786349 100%);
+        box-shadow:inset 0 -3px 3px #6c543a45,0 2px 3px #15202766;
+        transform:rotate(-4deg);transform-origin:50% 86%;transition:background .18s,box-shadow .18s,filter .18s}
+      .target[data-visual="light"][data-form="table_lamp"] .art::after{
+        content:"";position:absolute;left:18%;right:18%;top:30%;bottom:1%;
+        background:
+          radial-gradient(ellipse at 50% 89%,#d8bc84 0 18%,#826745 19% 25%,transparent 27%),
+          radial-gradient(circle at 50% 9%,#d9c08a 0 6%,#806442 7% 10%,transparent 11%),
+          linear-gradient(90deg,transparent 45%,#685036 46%,#d9bd81 50%,#70563a 54%,transparent 55%);
+        filter:drop-shadow(0 2px 2px #15202773);transition:background .18s,filter .18s}
       .target[data-visual="light"][data-form="table_lamp"][data-state="off"] .art{
-        background:radial-gradient(circle at 34% 28%,#fffaf0 0 8%,#eadbbf 9% 35%,#c4aa81 59%,#806a50 78%,#594b40 83%,transparent 86%);
-        backdrop-filter:none;box-shadow:0 3px 4px #15202773,inset 0 0 0 1px #f5e9d0}
+        background:none;backdrop-filter:none;box-shadow:none}
+      .target[data-visual="light"][data-form="table_lamp"][data-state="off"] .art::before{filter:saturate(.72) brightness(.82)}
       .target[data-visual="light"][data-form="table_lamp"][data-state="on"] .art{
-        background:radial-gradient(circle at 34% 28%,#fff 0 9%,#fff5d0 10% 36%,#ffd982 58%,#c48c48 78%,#725338 83%,transparent 86%);
-        backdrop-filter:none;
-        box-shadow:0 0 7px 2px #ffd46bad,0 0 15px 6px #ffd46b66,inset 0 0 0 1px #fffdf0}
-      .target[data-visual="light"][data-form="table_lamp"][data-state="on"] .art::before{background:#b69560}.target[data-visual="light"][data-form="table_lamp"][data-state="on"] .art::after{background:#9c7848}
+        background:none;backdrop-filter:none;box-shadow:none}
+      .target[data-visual="light"][data-form="table_lamp"][data-state="on"] .art::before{
+        background:linear-gradient(105deg,#bd8e42 0 7%,#ffe3a0 22%,#fffdf0 48%,#ffd374 76%,#9b703a 100%);
+        border-color:#f5cd77;box-shadow:inset 0 -3px 3px #b1752f55,0 0 6px 3px #ffd56ca6,0 0 15px 7px #ffd56b61;filter:brightness(1.08)}
+      .target[data-visual="light"][data-form="table_lamp"][data-state="on"] .art::after{
+        background:
+          radial-gradient(ellipse at 50% 89%,#f0ca78 0 18%,#9e7438 19% 25%,transparent 27%),
+          radial-gradient(circle at 50% 9%,#ffe1a0 0 6%,#9d7138 7% 10%,transparent 11%),
+          linear-gradient(90deg,transparent 45%,#8b6334 46%,#f0c66f 50%,#8d6637 54%,transparent 55%)}
       .target[data-visual="fan"] .art{inset:0;border-radius:0;background:radial-gradient(ellipse at center,#172630e8 0 26%,#172630a6 49%,transparent 76%);backdrop-filter:none;box-shadow:none}
       .target[data-visual="fan"][data-state="on"] .art{background:radial-gradient(ellipse at center,#22303ad9 0 27%,#263c468c 48%,transparent 76%);backdrop-filter:none;box-shadow:none}
       .rotor{inset:7%;display:none;transform-origin:50% 50%}
@@ -823,7 +842,22 @@ class RoomcraftObjectControl extends HTMLElement {
       .target[data-visual="device"] .art{inset:3%;border-radius:12px}
       .target[data-visual="device"][data-state="off"] .art{background:#14212ca8;backdrop-filter:brightness(.3);box-shadow:inset 0 0 0 3px #84939a}
       .target[data-visual="device"][data-state="on"] .art{background:#a6efd278;box-shadow:inset 0 0 0 3px #d8fff0,0 0 13px 5px #5feab68a}
-      .target[data-visual="device"][data-form="humidifier"] .art::before,.target[data-visual="device"][data-form="humidifier"] .art::after{content:"";position:absolute;left:42%;top:-24%;width:17%;height:32%;border:2px solid #d8fff0;border-width:0 2px;border-radius:50%;opacity:0}
+      .target[data-visual="device"][data-form="humidifier"] .art{
+        inset:4% 15% 3%;border:1.5px solid #9fc8ca;border-radius:38% 38% 18% 18%/23% 23% 15% 15%;
+        background:
+          radial-gradient(circle at 50% 84%,#9ff4df 0 3%,#315e60 4% 6%,transparent 7%),
+          radial-gradient(ellipse at 50% 6%,#f4fffb 0 8%,#819fa0 9% 12%,transparent 13%),
+          linear-gradient(180deg,#e8f4f1 0 17%,#a8d1d2 18% 58%,#6ea3aa 59% 72%,#263e49 73% 100%);
+        box-shadow:inset 0 0 0 2px #effff7aa,inset 0 -5px 5px #152d376b,0 3px 6px #07161b8f;
+        backdrop-filter:none;transition:background .18s,box-shadow .18s,filter .18s}
+      .target[data-visual="device"][data-form="humidifier"][data-state="off"] .art{filter:brightness(.7) saturate(.58)}
+      .target[data-visual="device"][data-form="humidifier"][data-state="on"] .art{
+        background:
+          radial-gradient(circle at 50% 84%,#d9fff2 0 3%,#2d8a77 4% 6%,transparent 7%),
+          radial-gradient(ellipse at 50% 6%,#fff 0 8%,#88c9c4 9% 12%,transparent 13%),
+          linear-gradient(180deg,#f2fffa 0 17%,#bde8e3 18% 58%,#78c8be 59% 72%,#2c5b61 73% 100%);
+        filter:none;box-shadow:inset 0 0 0 2px #f1fffaaa,inset 0 -5px 5px #1f5c5b66,0 0 11px 4px #77e9cd72,0 3px 6px #07161b8f}
+      .target[data-visual="device"][data-form="humidifier"] .art::before,.target[data-visual="device"][data-form="humidifier"] .art::after{content:"";position:absolute;left:39%;top:-34%;width:22%;height:38%;border:2px solid #d8fff0;border-width:0 2px;border-radius:50%;opacity:0}
       .target[data-visual="device"][data-form="humidifier"][data-state="on"] .art::before{opacity:.8;animation:roomcraft-mist 2.4s ease-out infinite}
       .target[data-visual="device"][data-form="humidifier"][data-state="on"] .art::after{opacity:.6;animation:roomcraft-mist 2.4s 1.15s ease-out infinite}
       .target[data-visual="device"][data-form="air_purifier"] .art::before{content:"";position:absolute;left:20%;right:20%;top:26%;height:3px;border-radius:99px;background:#c9fff0;box-shadow:0 9px #9cebd7,0 18px #70d7c0;opacity:.22}

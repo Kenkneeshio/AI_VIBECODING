@@ -811,10 +811,12 @@ test('a bound table lamp shades only its small lamp head and follows the light s
   const css = object.shadowRoot.children[0].textContent;
   assert.match(css, /\.target\{[^}]*background:transparent[^}]*appearance:none[^}]*-webkit-appearance:none/);
   assert.doesNotMatch(css, /\.hint\{/);
-  assert.match(css, /\[data-form="table_lamp"\] \.art\{[^}]*height:46%/);
-  assert.match(css, /\[data-form="table_lamp"\]\[data-state="off"\] \.art\{[^}]*radial-gradient/);
+  assert.match(css, /\[data-form="table_lamp"\] \.art\{[^}]*inset:8% 18% 5%[^}]*background:none/);
+  assert.match(css, /\[data-form="table_lamp"\] \.art::before\{[^}]*width:56%[^}]*height:34%[^}]*linear-gradient/);
+  assert.match(css, /\[data-form="table_lamp"\] \.art::after\{[^}]*radial-gradient\(ellipse at 50% 89%/);
+  assert.match(css, /\[data-form="table_lamp"\]\[data-state="off"\] \.art\{[^}]*background:none/);
   assert.match(css, /\[data-form="table_lamp"\]\[data-state="off"\] \.art\{[^}]*backdrop-filter:none/);
-  assert.match(css, /\[data-form="table_lamp"\]\[data-state="on"\] \.art\{[^}]*0 0 7px 2px/);
+  assert.match(css, /\[data-form="table_lamp"\]\[data-state="on"\] \.art::before\{[^}]*0 0 15px 7px/);
   object.hass = { states: { 'light.office': { state: 'off' } } };
   assert.equal(object._button.attributes['data-form'], 'table_lamp');
   assert.equal(object._button.attributes['data-state'], 'off');
@@ -1012,6 +1014,12 @@ test('humidifier and purifier forms animate only from their own on state', () =>
     const object = new ObjectControl();
     object.setConfig({ entity: entry.entity, title: entry.form,
       roomcraft_visual_kind: 'device', roomcraft_device_form: entry.form });
+    const css = object.shadowRoot.children[0].textContent;
+    if (entry.form === 'humidifier') {
+      assert.match(css, /\[data-form="humidifier"\] \.art\{[^}]*border-radius:38% 38% 18% 18%[^}]*radial-gradient/);
+      assert.match(css, /\[data-form="humidifier"\]\[data-state="off"\] \.art\{[^}]*brightness\(\.7\)/);
+      assert.match(css, /\[data-form="humidifier"\]\[data-state="on"\] \.art\{[^}]*0 0 11px 4px/);
+    }
     object.hass = { states: { [entry.entity]: { state: 'off' } } };
     assert.equal(object._button.attributes['data-form'], entry.form);
     assert.equal(object._button.attributes['data-state'], 'off');

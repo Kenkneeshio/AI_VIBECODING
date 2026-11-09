@@ -87,12 +87,17 @@ test('migrates a saved plan into movable lamp and room fixtures without duplicat
   editor.pointer('pointermove', 1393, 516);
   editor.pointer('pointerup', 1393, 516);
   const migrated = editor.read();
-  assert.equal(migrated.editableReferenceVersion, 3);
+  assert.equal(migrated.editableReferenceVersion, 4);
   assert.equal(migrated.items.filter(i => i.id === 'i14').length, 1);
   assert.equal(migrated.items.filter(i => i.id.startsWith('fixture-')).length, 7);
   assert.equal(migrated.items.find(i => i.id === 'office-desk-lamp')?.type, 'lamp');
   assert.equal(migrated.items.some(i => i.id === 'fixture-study'), false);
   assert.equal(migrated.items.filter(i => i.type.startsWith('ui')).length, 6);
+  assert.deepEqual(
+    migrated.items.filter(i => ['office-credenza','master-nightstand','master-low-dresser'].includes(i.id))
+      .map(i => i.id).sort(),
+    ['master-low-dresser','master-nightstand','office-credenza']
+  );
   assert.equal(migrated.items.find(i => i.id === 'i14').x, 1393);
 
   const reopened = boot(migrated);
@@ -117,6 +122,48 @@ test('a deliberately removed migrated lamp is not respawned on a later load', ()
   reopened.pointer('pointermove', 675, 345);
   reopened.pointer('pointerup', 675, 345);
   assert.equal(reopened.read().items.some(i => i.id === 'i14'), false);
+});
+
+test('v4 corrects only the shipped shallow office layouts', () => {
+  for (const variant of [
+    { desk: [923, 273, 196, 85], chair: [978, 310, 47, 47] },
+    { desk: [924, 278, 196, 85], chair: [975, 322, 47, 47] }
+  ]) {
+    const editor = boot({
+      version: 2, editableReferenceVersion: 3, rooms: [], walls: [], hotspots: [],
+      items: [
+        { id: 'i4', type: 'desk', name: 'Study desk', x: variant.desk[0], y: variant.desk[1], w: variant.desk[2], h: variant.desk[3], rotation: 0, entityId: '' },
+        { id: 'i5', type: 'chair', name: 'Desk chair', x: variant.chair[0], y: variant.chair[1], w: variant.chair[2], h: variant.chair[3], rotation: 0, entityId: '' }
+      ]
+    });
+    // Persist the migrated in-memory project by moving an unrelated v4 support
+    // item; the editor deliberately does not rewrite storage just by opening.
+    editor.pointer('pointerdown', 1443, 529);
+    editor.pointer('pointermove', 1447, 529);
+    editor.pointer('pointerup', 1447, 529);
+    const migrated = editor.read();
+    const desk = migrated.items.find(i => i.id === 'i4');
+    const chair = migrated.items.find(i => i.id === 'i5');
+    assert.deepEqual([desk.x, desk.y, desk.w, desk.h, desk.rotation], [930, 312, 245, 156, 0]);
+    assert.deepEqual([chair.x, chair.y, chair.w, chair.h, chair.rotation], [978, 310, 47, 47, 0]);
+  }
+});
+
+test('v4 preserves an owner-customized office desk and chair', () => {
+  const customDesk = { id: 'i4', type: 'desk', name: 'Study desk', x: 890, y: 350, w: 220, h: 132, rotation: 90, entityId: '' };
+  const customChair = { id: 'i5', type: 'chair', name: 'Desk chair', x: 1020, y: 370, w: 52, h: 48, rotation: 15, entityId: '' };
+  const editor = boot({
+    version: 2, editableReferenceVersion: 3, rooms: [], walls: [], hotspots: [],
+    items: [customDesk, customChair]
+  });
+  editor.pointer('pointerdown', 1443, 529);
+  editor.pointer('pointermove', 1447, 529);
+  editor.pointer('pointerup', 1447, 529);
+  const migrated = editor.read();
+  const desk = migrated.items.find(i => i.id === 'i4');
+  const chair = migrated.items.find(i => i.id === 'i5');
+  assert.deepEqual([desk.x, desk.y, desk.w, desk.h, desk.rotation], [890, 350, 220, 132, 90]);
+  assert.deepEqual([chair.x, chair.y, chair.w, chair.h, chair.rotation], [1020, 370, 52, 48, 15]);
 });
 
 test('the lamp corner handle resizes from the opposite anchored corner', () => {
@@ -160,8 +207,10 @@ test('office window fan can be placed away from a wall', () => {
   assert.equal(fan.y, 335);
 });
 
-test('clean export omits bound light art so the transparent live control renders it once', () => {
-  assert.match(source, /clean&&validEntityId\(o\.entityId\)&&\(isFixtureControl\(o\)\|\|\['ceilingFan','robotVacuum'\]/);
+test('clean export omits bound stateful art so the live control renders it once', () => {
+  assert.match(source, /clean&&validEntityId\(o\.entityId\)/);
+  assert.match(source, /isFixtureControl\(o\)\|\|\s*\['ceilingFan','robotVacuum'\]/);
+  assert.match(source, /\['humidifier','airPurifier'\]\.includes\(o\.type\)/);
 });
 
 test('existing objects gain configurable dashboard button actions without a migration', () => {

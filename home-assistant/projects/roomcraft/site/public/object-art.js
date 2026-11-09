@@ -57,8 +57,12 @@
   function oval(c,x,y,rx,ry,fill,stroke,width=1){c.beginPath();c.ellipse(x,y,rx,ry,0,0,Math.PI*2);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke();}}
   function gradient(c,x,y,w,h,colors){const g=c.createLinearGradient(x,y,x+w*.28,y+h);for(const [stop,color] of colors)g.addColorStop(stop,color);return g;}
   function raisedCase(c,x,y,w,h,r=8,depth=7,color='#735a46'){
-    c.save();c.shadowColor='#1f2b2545';c.shadowBlur=9;c.shadowOffsetX=2;c.shadowOffsetY=7;
-    rr(c,x+2,y+depth,w-2,h,r,color);c.restore();
+    // Android WebView occasionally rasterizes canvas shadowBlur as hard black
+    // bars with a stray magenta/green edge pixel. Layered translucent shapes
+    // give the same soft-looking depth and export identically on every GPU.
+    rr(c,x+4,y+depth+5,w-4,h,r,'rgba(31,43,37,.10)');
+    rr(c,x+3,y+depth+2,w-3,h,r,'rgba(31,43,37,.16)');
+    rr(c,x+2,y+depth,w-2,h,r,color);
     c.fillStyle='#302b2530';c.beginPath();c.moveTo(x+w-3,y+h*.2);c.lineTo(x+w+1,y+h*.2+depth);c.lineTo(x+w+1,y+h-depth);c.lineTo(x+w-3,y+h-depth);c.closePath();c.fill();
   }
   function stitch(c,x,y,w,h,r=8){c.save();c.strokeStyle='#fff9e65e';c.lineWidth=1;c.setLineDash([2.3,3.8]);c.beginPath();c.roundRect(x,y,w,h,r);c.stroke();c.restore();}
@@ -85,8 +89,8 @@
     const sideways=angle>45&&angle<135;
     const w=sideways?o.h:o.w,h=sideways?o.w:o.h;
     c.save();c.translate(o.x+3,o.y+6);
-    c.shadowColor='rgba(31,30,26,.25)';c.shadowBlur=9;c.shadowOffsetX=2;c.shadowOffsetY=3;
-    oval(c,0,0,w*.43,h*.43,'rgba(39,38,32,.13)');c.restore();
+    oval(c,2,3,w*.43,h*.43,'rgba(39,38,32,.055)');
+    oval(c,0,0,w*.40,h*.40,'rgba(39,38,32,.09)');c.restore();
   }
   function cushion(c,x,y,w,h,r,p){
     contact(c,x,y,w,h,r);rr(c,x+2,y+6,w,h,r,p.dark);
@@ -141,7 +145,8 @@
     switch(family){
       case 'softToy':{
         if(f==='photoBunnyPlush'){
-          contact(c,-30,-43,60,86,25);
+          // drawCatalog already paints one soft world shadow. A second hard
+          // rectangle escaped the plush silhouette as a black dash.
           for(const x of [-14,14]){oval(c,x,-29,10,21,p.dark);oval(c,x,-31,8,18,p.base,p.dark,1.2);oval(c,x,-33,4,12,'#d9abb1');}
           oval(c,0,20,27,25,p.dark);oval(c,0,17,25,23,p.base,p.dark,1.4);
           for(const x of [-20,20])oval(c,x,34,10,8,p.detail,p.dark,1);
@@ -227,8 +232,9 @@
           break;
         }
         if(f==='photoActivityTable'){
-          contact(c,-46,-36,92,75,8);
-          for(const x of [-34,31])for(const y of [-28,26])rr(c,x,y,7,17,2,'#5087b5','#35536f',.8);
+          // Keep the feet tucked beneath the tabletop so they read as legs,
+          // not isolated black tabs at dashboard scale.
+          for(const x of [-27,20])for(const y of [-24,22])rr(c,x,y,7,15,2,'#7da8c3','#527286',.7);
           rr(c,-45,-36,90,72,15,'#6f8997','#4e6875',1.4);
           rr(c,-43,-39,86,68,13,'#f4eee1','#9a927f',1.5);
           rr(c,-35,-31,70,53,9,'#cce0c6','#8cae95',.9);
@@ -304,7 +310,7 @@
           c.restore();stitch(c,-43,-36,86,72,4);break;
         }
         if(f==='photoCheckerMat'){
-          contact(c,-47,-40,94,80,4);rr(c,-47,-40,94,80,5,'#8e8374','#61564d',1.3);
+          rr(c,-47,-40,94,80,5,'#8e8374','#61564d',1.3);
           c.save();c.beginPath();c.roundRect(-44,-37,88,73,3);c.clip();
           const colors=['#e7ddc8','#a99b8a','#5c554f','#c9bba5','#eee8d9'];
           for(let row=0;row<4;row++)for(let col=0;col<5;col++){
@@ -492,7 +498,7 @@
         break;
       }
       case 'ceilingFan':{
-        c.save();c.shadowColor='rgba(45,39,32,.16)';c.shadowBlur=5;c.shadowOffsetX=2;c.shadowOffsetY=3;
+        c.save();
         const blades=f==='three'?3:f==='four'?4:5;
         for(let i=0;i<blades;i++){c.save();c.rotate(i*Math.PI*2/blades);
           if(f==='palm')leaf(c,0,-29,14,25,0,p.base);
@@ -536,7 +542,8 @@
       }
       case 'playFurniture':{
         if(f==='photoBearChair'){
-          contact(c,-42,-41,84,83,19);
+          // The shared soft contact shadow is enough; the former second hard
+          // shadow protruded at the lower-right as a stray black pixel.
           for(const x of [-25,25]){disc(c,x,-30,14,'#956d50','#72513f',1);disc(c,x,-30,9,'#ccac84','#8a664c',1);}
           rr(c,-40,-31,80,72,19,'#8d694e','#644a39',1.7);
           oval(c,0,-7,31,29,'#b9946d','#785c46',1.7);
@@ -584,15 +591,16 @@
         disc(c,0,0,Math.min(w,h)*.09,'#e9e4ce','#b8aa8e',1);break;
       }
       case 'desk':{
-        // One continuous top makes the footprint read as a real L rather than
-        // two overlapping rectangles. The short return is deep enough for a
-        // drawer pedestal but leaves an obvious open chair bay.
-        const depth=Math.max(24,h*.39),returnW=Math.max(38,w*.25),drop=6;
-        const outline=[[x,y],[x+w,y],[x+w,y+depth],[x+returnW,y+depth],
-          [x+returnW,y+h],[x,y+h]];
+        // The real office has a wraparound/U workstation: a long wall top and
+        // two equal returns around the chair. Keep it one continuous surface
+        // so it never reads as disconnected crop fragments or a generic L.
+        const depth=Math.max(22,h*.34),returnW=Math.max(30,w*.18),drop=6;
+        const outline=[[x,y],[x+w,y],[x+w,y+h],[x+w-returnW,y+h],
+          [x+w-returnW,y+depth],[x+returnW,y+depth],[x+returnW,y+h],[x,y+h]];
         const shifted=outline.map(([px,py])=>[px+2,py+drop]);
-        c.save();c.shadowColor='rgba(30,27,22,.27)';c.shadowBlur=10;c.shadowOffsetY=5;
-        poly(c,shifted,'#5a3828','#3f2b22',1.2);c.restore();
+        // A translucent offset footprint reads as a furniture shadow without
+        // invoking the Android canvas blur path that produced random pixels.
+        poly(c,shifted,'rgba(70,48,36,.30)');
         const top=gradient(c,x,y,w,h,[[0,'#cf9767'],[.34,'#a96f4a'],[1,'#76503a']]);
         poly(c,outline,top,'#61412f',1.8);
         c.save();c.beginPath();c.moveTo(outline[0][0],outline[0][1]);for(const [px,py] of outline.slice(1))c.lineTo(px,py);c.closePath();c.clip();
@@ -605,14 +613,20 @@
         // Continuous bevel follows both arms and clarifies the inside corner.
         poly(c,outline,null,'rgba(255,225,185,.46)',1.2);
         rr(c,x+6,y+depth+6,returnW-12,h-depth-13,4,'#6f4935','#4b3328',1);
+        rr(c,x+w-returnW+6,y+depth+6,returnW-12,h-depth-13,4,'#6f4935','#4b3328',1);
         for(let row=1;row<3;row++){
           const yy=y+depth+6+(h-depth-13)*row/3;c.beginPath();c.moveTo(x+8,yy);c.lineTo(x+returnW-8,yy);c.strokeStyle='#3f2e27aa';c.lineWidth=.8;c.stroke();
+          c.beginPath();c.moveTo(x+w-returnW+8,yy);c.lineTo(x+w-8,yy);c.stroke();
         }
-        for(let row=0;row<3;row++)rr(c,x+returnW*.38,y+depth+10+row*(h-depth-13)/3,returnW*.24,2,1,'#c3a173');
+        for(let row=0;row<3;row++){
+          const yy=y+depth+10+row*(h-depth-13)/3;
+          rr(c,x+returnW*.38,yy,returnW*.24,2,1,'#c3a173');
+          rr(c,x+w-returnW*.62,yy,returnW*.24,2,1,'#c3a173');
+        }
         // Monitor, keyboard, mouse and grommet are scaled to the long arm.
-        rr(c,x+w*.47,y+depth*.13,w*.25,depth*.5,3,'#253138','#152228',1.1);
-        rr(c,x+w*.495,y+depth*.18,w*.20,depth*.39,2,gradient(c,x+w*.495,y+depth*.18,w*.20,depth*.39,[[0,'#91aeb2'],[1,'#496a75']]));
-        rr(c,x+w*.44,y+depth*.7,w*.3,Math.max(4,depth*.13),2,'#d8c6aa','#745744',.7);
+        rr(c,x+w*.37,y+depth*.12,w*.26,depth*.5,3,'#253138','#152228',1.1);
+        rr(c,x+w*.395,y+depth*.17,w*.21,depth*.39,2,gradient(c,x+w*.395,y+depth*.17,w*.21,depth*.39,[[0,'#91aeb2'],[1,'#496a75']]));
+        rr(c,x+w*.34,y+depth*.7,w*.32,Math.max(4,depth*.13),2,'#d8c6aa','#745744',.7);
         oval(c,x+w*.82,y+depth*.56,Math.max(4,w*.025),Math.max(5,depth*.12),'#d9bf92','#6c513e',.8);
         disc(c,x+w*.9,y+depth*.25,Math.max(3,Math.min(w,h)*.035),'#4b3c33','#d3b07e',.7);break;
       }
@@ -684,11 +698,37 @@
       }
       case 'lamp':
       case 'tableLamp':{
-        c.shadowColor='transparent';glow(c,Math.min(w,h)*.58);
-        disc(c,0,3,Math.min(w,h)*.43,'#80684e','#5c4c40',1.5);
-        disc(c,0,0,Math.min(w,h)*.38,'#f8e7bf','#a88a65',2);
-        disc(c,0,0,Math.min(w,h)*.24,'#fff4d4','#d4b88a',1);
-        disc(c,-w*.1,-h*.11,Math.min(w,h)*.07,'#fff9e7cc');break;
+        // A complete classic desk lamp rather than a bare glowing orb. The
+        // gently tapered shade, slim brass stem and weighted oval base follow
+        // the same near-overhead perspective as the furniture below it.
+        c.shadowColor='transparent';
+        const shadeY=-h*.21,shadeH=Math.max(11,h*.25),topW=w*.4,bottomW=w*.66;
+        const light=c.createRadialGradient(0,shadeY,1,0,shadeY,Math.min(w,h)*.58);
+        light.addColorStop(0,'#fff6c999');light.addColorStop(.48,'#ffd77635');light.addColorStop(1,'#ffd77600');
+        disc(c,0,shadeY,Math.min(w,h)*.58,light);
+        // Cast shadow and weighted brass base.
+        oval(c,2,h*.29,w*.27,h*.1,'rgba(42,35,28,.2)');
+        const base=c.createRadialGradient(-w*.07,h*.24,1,0,h*.28,w*.3);
+        base.addColorStop(0,'#efd59c');base.addColorStop(.48,'#b18d55');base.addColorStop(1,'#604a34');
+        oval(c,0,h*.26,w*.26,h*.1,base,'#59452f',1.1);
+        oval(c,-w*.06,h*.235,w*.09,h*.028,'rgba(255,244,208,.5)');
+        // The slim stem leans by a few pixels in plan view, then meets a small
+        // collar under the shade.
+        c.save();c.translate(-w*.025,h*.04);c.rotate(-.055);
+        rr(c,-w*.035,-h*.08,w*.07,h*.32,Math.max(1,w*.025),
+          gradient(c,-w*.035,-h*.08,w*.07,h*.32,[[0,'#72583a'],[.47,'#e1c27f'],[1,'#7d603c']]),'#665039',.65);
+        c.restore();
+        disc(c,0,shadeY+shadeH*.45,Math.max(2,Math.min(w,h)*.055),'#d9b875','#6e5436',.7);
+        // Tapered fabric shade with elliptical upper/lower rims and a soft
+        // highlight makes the silhouette legible even at dashboard scale.
+        const shade=gradient(c,-bottomW/2,shadeY-shadeH/2,bottomW,shadeH,
+          [[0,'#8c7659'],[.22,'#ead9b8'],[.52,'#fff4d8'],[.78,'#cfb58c'],[1,'#776249']]);
+        poly(c,[[-topW/2,shadeY-shadeH/2],[topW/2,shadeY-shadeH/2],
+          [bottomW/2,shadeY+shadeH/2],[-bottomW/2,shadeY+shadeH/2]],shade,'#725d46',1.1);
+        oval(c,0,shadeY-shadeH/2,topW/2,Math.max(2,shadeH*.11),'#ead9ba','#776249',.8);
+        c.beginPath();c.ellipse(0,shadeY+shadeH/2,bottomW/2,Math.max(2.4,shadeH*.13),0,0,Math.PI);
+        c.strokeStyle='#7b6246';c.lineWidth=1.1;c.stroke();
+        oval(c,-bottomW*.16,shadeY-shadeH*.13,bottomW*.07,shadeH*.18,'rgba(255,252,235,.55)');break;
       }
       case 'wallSconce':{
         rr(c,-w*.45,-h*.43,w*.9,h*.86,6,'#897965','#5c554b',2);c.shadowColor='transparent';glow(c,Math.min(w,h)*.7);oval(c,0,0,w*.34,h*.36,'#f0d49d','#b89462',2);oval(c,-w*.09,-h*.1,w*.08,h*.09,'#fff8df');break;
@@ -704,15 +744,31 @@
         break;
       }
       case 'humidifier':{
-        // Compact raised floor appliance seen from the plan's near-overhead camera.
-        const g=c.createLinearGradient(-24,-30,22,30);g.addColorStop(0,'#f5f8f5');g.addColorStop(.52,'#d8e1df');g.addColorStop(1,'#9aaba9');
-        raisedCase(c,-22,-28,44,54,13,6,'#7c8d8b');
-        rr(c,-22,-28,44,54,13,g,'#728381',1.3);
-        oval(c,0,-21,15,6,'#eaf3f1','#748785',1);
-        oval(c,0,-21,8,3,'#9eb7b3');
-        rr(c,-15,-8,30,22,8,'#d2ddda','#82928f',.9);
-        for(const x of [-8,0,8])disc(c,x,4,1.6,'#63b7a9');
-        c.strokeStyle='rgba(255,255,255,.72)';c.lineWidth=1.3;c.beginPath();c.moveTo(-14,-14);c.lineTo(10,-20);c.stroke();
+        // A translucent water tank, top mist outlet, illuminated control and
+        // weighted base make this unmistakably a humidifier from overhead.
+        const bx=x+w*.12,by=y+h*.1,bw=w*.76,bh=h*.82,r=Math.max(6,w*.16);
+        raisedCase(c,bx+1,by+2,bw-2,bh-2,r,5,'#547477');
+        const shell=c.createLinearGradient(bx,by,bx+bw,by+bh);
+        shell.addColorStop(0,'#f4fffb');shell.addColorStop(.34,'#cfe5e1');shell.addColorStop(.7,'#8bb8b8');shell.addColorStop(1,'#476a70');
+        rr(c,bx,by,bw,bh,r,shell,'#648184',1.2);
+        // Clear upper reservoir with a visible water line.
+        const tankY=by+h*.11,tankH=bh*.5;
+        const water=c.createLinearGradient(0,tankY,0,tankY+tankH);
+        water.addColorStop(0,'rgba(236,255,251,.9)');water.addColorStop(.38,'rgba(176,225,222,.82)');water.addColorStop(1,'rgba(92,166,169,.9)');
+        rr(c,bx+3,tankY,bw-6,tankH,Math.max(4,r-3),water,'rgba(234,255,250,.8)',.8);
+        c.save();c.beginPath();c.roundRect(bx+4,tankY+2,bw-8,tankH-4,Math.max(3,r-4));c.clip();
+        c.strokeStyle='rgba(245,255,252,.72)';c.lineWidth=1.2;
+        c.beginPath();c.moveTo(bx+5,tankY+tankH*.62);c.bezierCurveTo(bx+bw*.33,tankY+tankH*.55,bx+bw*.62,tankY+tankH*.69,bx+bw-5,tankY+tankH*.6);c.stroke();
+        c.restore();
+        // Raised outlet and small dark aperture on the lid.
+        oval(c,0,by+h*.055,bw*.31,h*.07,'#eafff9','#668286',1);
+        oval(c,0,by+h*.055,bw*.14,h*.03,'#6f9091','#39575b',.7);
+        // Stable base, intake slots and a mint control light.
+        const baseY=by+bh*.72;
+        rr(c,bx+2,baseY,bw-4,bh*.27,Math.max(4,r*.65),'#314f57','#203b42',.9);
+        for(let i=0;i<3;i++)rr(c,bx+bw*.2+i*bw*.2,baseY+bh*.16,bw*.11,1.2,1,'#8db3b1');
+        disc(c,0,baseY+bh*.12,Math.max(1.8,w*.045),'#a4ffe3','#3a756a',.7);
+        rr(c,bx+bw*.13,by+bh*.12,bw*.08,tankH*.58,2,'rgba(255,255,255,.42)');
         break;
       }
       case 'airPurifier':{
