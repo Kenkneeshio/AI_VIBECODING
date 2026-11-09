@@ -46,7 +46,7 @@ No primary room light was verified for either bathroom, the dressing nook, or th
 | Ceiling fan motor | Fan artwork: tap activates `scene.ceiling_fan_on_scene`; hold activates `scene.ceiling_fan_off` | Bind `switch.ceiling_fan` as the displayed state, with the two scenes as separate tap/hold targets. Do not infer speed control or assume the switch affects only the motor. |
 | Ceiling-fan light | Center light area: tap activates `scene.ceiling_fan_light_toggle` | This scene toggles the light without reporting its current on/off state. Label the action **Toggle light**, not **Light on/off**. |
 | Air filter or humidifier | Open the appliance's control | Mode, humidity, and nearby environmental readouts. |
-| Robot vacuum | Open status and action panel | Start, pause, return to base, battery, and authenticated map; live plan position waits for calibration. |
+| Robot vacuum | Tap the illustrated robot to open its nearby panel; hold for native details | Current state, authenticated map, Start, Pause, Dock, Locate, and room cleaning when the map supplies room identifiers. The map shows live robot position; placing that position directly on the illustrated plan still waits for calibration. |
 | Front-door camera thumbnail | Open native camera details on tap | Show its actual latest-event image and date; do not claim live playback. |
 | Garage camera thumbnail | Tap while idle to request a stream; hold/right-click for details | Show preview or connecting until a decoded frame plays, then **LIVE**. One camera failure must not affect the other. |
 | Garage door | Open a clearly labeled Security control | Current cover state and an intentional open/close action. |
@@ -66,7 +66,7 @@ The drawer preserves the six curated groups in the [Main Dashboard map](main-das
 | Lighting | Lights, switches, three blind zones, fan, and scenes | The actual light and window objects remain tappable. |
 | Security and Control | Cameras, motion, door sensors, and garage control | Front-door and garage thumbnails are on the plan; detailed cards remain in this group. |
 | Energy | Power and energy charts | No dense chart layer over the room drawing. |
-| Robot Vacuum | Dreame map, status, controls, and maintenance | Robot art opens detail; live location needs calibration. |
+| Robot Vacuum | Dreame map, status, controls, and maintenance | Robot art opens the compact map/action panel. The authenticated map shows live location; only an additional illustrated-plan marker needs calibration. |
 
 The Studio edit link remains a separate entry on the plan. Search and availability come from Home Assistant's registry, so refresh or reimport after entity changes. The drawer has shipped; fit and touch behavior on the target tablet still need an on-device check. Keep the old Main Dashboard as a reference while validating the curated views.
 

@@ -15,14 +15,14 @@ This page distinguishes what the current second-floor dashboard does from extens
 | Live device graphics | Bound lights, fan, AC, windows, and door/garage controls use high-contrast active/inactive treatments from HA state. Unknown or unrecognized values stay neutral; scenes remain action-ready. The fan alone has stepped motion. | Check appearance, accessible actions, reduced motion, and unavailable behavior on the physical tablet; keep broader environment animation optional |
 | Garage door | Native HA cover card is present in Live Home | Verify actual open/closed/unavailable state and the command path on device |
 | Cameras | The current plan has separate front-door event-gated, overhead auto-live, and garage tap-live `cameraThumbnail` items. A private tablet capture showed the doorbell still and decoded overhead and garage feeds. | Observe or safely simulate a real doorbell 60-second event window/still fallback, longer playback, and independent unavailable behavior without copying media or URLs to public assets |
-| Vacuum live location | Vacuum map provides position and calibration points | Calibrate map-to-plan transform; hide marker when map or position is stale |
+| Vacuum controls and live location | On-plan robot opens current state, authenticated map, Start/Pause/Dock/Locate, and map-supplied room cleaning. The map itself shows live robot position and reports stale imagery after 20 minutes. | Calibrate a separate map-to-plan transform only if a moving marker is needed directly on the illustrated home; hide that marker when map identity, calibration, or position is stale |
 | General scene animation | Planned | Motion respects user preference and does not obscure controls |
 
 ## Delivery order
 
 1. **Stable model and authoring.** Keep a single editable layout, migration path, strong import/export validation, and visual regression fixtures.
 2. **Authenticated Studio shell.** The HA-hosted custom card now owns dashboard transfer through the signed-in user's session. Keep its behavior aligned with the owner-private cloud bridge and test tablet sizing.
-3. **Device state and commands.** Native HA cards show time, weather, lights, fan, garage, and vacuum map. Roomcraft object overlays now supply room-bound visual state without changing layout geometry; extend the same adapter pattern only with verified sources and safe native actions.
+3. **Device state and commands.** Native HA cards show time, weather, lights, fan, garage, and vacuum map. Roomcraft object overlays now supply room-bound visual state without changing layout geometry. The vacuum object adds an authenticated map and explicit actions, with no command on render or panel open; extend the same adapter pattern only with verified sources and safe native actions.
 4. **Vacuum calibration.** Provide a graphical matching workflow between the vacuum map and plan, record map identity, and test the transform against known positions.
 5. **Camera and motion.** Event-gated doorbell attempts, overhead auto-live playback, tap-start garage media, stepped fan motion, and exterior weather animation are installed. Test stream recovery, a real doorbell event, forecast accuracy across a day/night transition, and tablet performance with reduced motion.
 

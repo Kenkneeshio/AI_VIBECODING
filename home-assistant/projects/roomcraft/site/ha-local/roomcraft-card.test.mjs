@@ -627,6 +627,48 @@ test('the object artwork is the light control, with details on hold', async () =
   object.disconnectedCallback();
 });
 
+test('vacuum artwork opens map controls and calls safe vacuum and room services', async () => {
+  const object = new ObjectControl();
+  object.setConfig({ type: 'custom:roomcraft-object-control', roomcraft_item_id: 'vacuum',
+    entity: 'vacuum.l10s_ultra', title: 'L10s Ultra', roomcraft_visual_kind: 'vacuum',
+    roomcraft_vacuum_map_entity: 'camera.l10s_ultra_map' });
+  const calls = [];
+  object.hass = {
+    states: {
+      'vacuum.l10s_ultra': { state: 'docked', attributes: { friendly_name: 'L10s Ultra' } },
+      'camera.l10s_ultra_map': { state: 'map-v1', last_updated: new Date().toISOString(),
+        attributes: { entity_picture: '/api/camera_proxy/camera.l10s_ultra_map?token=x', rooms: {
+          7: { room_id: 7, name: 'Living Room', order: 1 },
+          3: { room_id: 3, name: 'Kitchen', order: 2 },
+        } } },
+    },
+    hassUrl: path => `http://ha.test${path}`,
+    callService: (...args) => { calls.push(args); return Promise.resolve(); },
+  };
+  assert.equal(object._button.attributes['data-visual'], 'vacuum');
+  assert.match(object._button.attributes['aria-label'], /Tap for vacuum controls/);
+  object._activate('tap');
+  assert.equal(object._vacuumPanel.hidden, false);
+  assert.match(object._vacuumMapImage.src, /camera\.l10s_ultra_map/);
+  assert.equal(object._vacuumRooms.children.length, 2);
+  object._runVacuumService('start');
+  object._runVacuumService('pause');
+  object._runVacuumService('return_to_base');
+  object._runVacuumService('locate');
+  object._cleanVacuumRoom(7);
+  await Promise.resolve();
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [
+    ['vacuum', 'start', { entity_id: 'vacuum.l10s_ultra' }],
+    ['vacuum', 'pause', { entity_id: 'vacuum.l10s_ultra' }],
+    ['vacuum', 'return_to_base', { entity_id: 'vacuum.l10s_ultra' }],
+    ['vacuum', 'locate', { entity_id: 'vacuum.l10s_ultra' }],
+    ['dreame_vacuum', 'vacuum_clean_segment', { segments: [7] }, { entity_id: 'vacuum.l10s_ultra' }],
+  ]);
+  assert.equal(object._vacuumPanel.hidden, true);
+  assert.match(object.shadowRoot.children[0].textContent, /roomcraft-vacuum-pulse/);
+  object.disconnectedCallback();
+});
+
 test('the dashboard menu toggles live object and camera details without changing controls', () => {
   const object = new ObjectControl();
   object.setConfig({ entity: 'light.study', title: 'Study lamp' });
@@ -1124,4 +1166,3 @@ test('popup editor receives only its own same-origin dashboard response', async 
   assert.equal(replies[0].message.ok, true);
   assert.equal(replies[0].message.data.project.version, 2);
 });
-

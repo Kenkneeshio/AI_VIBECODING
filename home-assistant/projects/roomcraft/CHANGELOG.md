@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-08 — On-plan vacuum controls and live map
+
+- Added a dedicated robot-vacuum live graphic and an object-anchored control panel. Tapping the illustrated robot now opens its current state, authenticated map, Start, Pause, Dock, Locate, and map-supplied room-cleaning actions; holding the robot still opens native Home Assistant details.
+- Added the optional `vacuumMapEntityId` layout binding and matching editor field, validation, dashboard import/export, schema, TypeScript bridge, and regression tests. Map images and changing vacuum state remain authenticated runtime data and are never saved in layout JSON or public assets.
+- The map freshness indicator becomes stale after 20 minutes. Reduced-motion mode removes the robot pulse. Room cleaning uses the Dreame segment service only when the bound map exposes room identifiers; unsupported actions remain hidden or disabled.
+- Deployed the card and a bound robot object to the private Second Floor dashboard after taking a private backup. Browser QA verified the panel and room list without sending a physical vacuum command. Plan-coordinate tracking remains a separate calibration feature; the authenticated map already shows the vacuum's live location.
+
 ## 2026-11-08 — Official device web portals
 
 - Added official Dreame web control and TP-Link Deco local-management links to the authenticated Home Assistant device drawer so the wall tablet can reach them even when Google Play marks the native app incompatible.

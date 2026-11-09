@@ -18,7 +18,7 @@ const PREVIOUS_SCENE = "wall-to-wall-v1";
 const PREVIOUS_SCENE_BOUNDS = { width: 1472, height: 828, left: 20, top: 96 };
 const HEADER_TOP = "5.3%";
 const ACTIONS = ["auto", "toggle", "activate", "more-info", "none"];
-const VISUAL_KINDS = ["light", "fan", "climate", "window", "door", "device", "none"];
+const VISUAL_KINDS = ["light", "fan", "climate", "window", "door", "vacuum", "device", "none"];
 
 function isObject(value: unknown): value is JsonObject {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -108,6 +108,8 @@ export function validObjectControl(item: unknown): item is JsonObject {
       (item.tapEntityId === "" || /^[a-z_]+\.[a-z0-9_]+$/.test(item.tapEntityId))) &&
     (item.holdEntityId === undefined || typeof item.holdEntityId === "string" &&
       (item.holdEntityId === "" || /^[a-z_]+\.[a-z0-9_]+$/.test(item.holdEntityId))) &&
+    (item.vacuumMapEntityId === undefined || typeof item.vacuumMapEntityId === "string" &&
+      (item.vacuumMapEntityId === "" || /^camera\.[a-z0-9_]+$/.test(item.vacuumMapEntityId))) &&
     [item.x, item.y, item.w, item.h, item.rotation ?? 0].every((value) => typeof value === "number" && Number.isFinite(value)) &&
     Number(item.x) >= 0 && Number(item.x) <= PLAN_WIDTH &&
     Number(item.y) >= 0 && Number(item.y) <= PLAN_HEIGHT &&
@@ -121,6 +123,7 @@ export function objectVisualKind(item: JsonObject): string {
   const entity = String(item.entityId || "").toLowerCase();
   const label = String(item.controlLabel || item.name || "").toLowerCase();
   const domain = entity.split(".")[0];
+  if (domain === "vacuum" || type.includes("robotvacuum") || /\b(robot )?vacuum\b/.test(label)) return "vacuum";
   if (domain === "fan" || (type.includes("fan") && !label.includes("fan light")) ||
       (domain === "switch" && /\bfan\b/.test(label) && !/\blight\b/.test(label))) return "fan";
   if (domain === "climate" || /\b(air conditioner|thermostat|a\/c)\b/.test(label)) return "climate";
@@ -151,6 +154,7 @@ export function objectControlElements(items: unknown): JsonObject[] {
         roomcraft_hold_action: item.holdAction || "auto",
         ...(item.tapEntityId ? { roomcraft_tap_entity: item.tapEntityId } : {}),
         ...(item.holdEntityId ? { roomcraft_hold_entity: item.holdEntityId } : {}),
+        ...(item.vacuumMapEntityId ? { roomcraft_vacuum_map_entity: item.vacuumMapEntityId } : {}),
         style: {
           left: percent((item.x as number) - SCENE_LEFT, SCENE_WIDTH), top: percent((item.y as number) - SCENE_TOP, SCENE_HEIGHT),
           width: percent(item.w as number, SCENE_WIDTH), height: percent(item.h as number, SCENE_HEIGHT),

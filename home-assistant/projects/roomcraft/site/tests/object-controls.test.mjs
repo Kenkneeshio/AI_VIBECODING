@@ -24,6 +24,28 @@ test('old object bindings keep automatic device actions', () => {
   assert.equal(c.effectiveHoldAction({ ...oldBlind, holdAction: 'toggle' }), 'toggle');
 });
 
+test('vacuum bindings export an authenticated map camera and editor controls', () => {
+  const c = controls();
+  const vacuum = {
+    id: 'vacuum', type: 'cleaning-round-robot-vac-white', name: 'Robot vacuum',
+    x: 760, y: 500, w: 76, h: 76, rotation: 0,
+    entityId: 'vacuum.example', vacuumMapEntityId: 'camera.example_map'
+  };
+  assert.equal(c.validBinding(vacuum), true);
+  assert.equal(c.visualKind(vacuum), 'vacuum');
+  assert.equal(c.validBinding({ ...vacuum, vacuumMapEntityId: 'https://invalid.example' }), false);
+  assert.equal(c.propertyUpdate('vacuumMapEntityId', ' camera.example_map ').value, 'camera.example_map');
+  const element = c.manualDashboardElements({ items: [vacuum], hotspots: [] })[0];
+  assert.equal(element.roomcraft_visual_kind, 'vacuum');
+  assert.equal(element.roomcraft_vacuum_map_entity, 'camera.example_map');
+  const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+  const inspector = c.renderInspector(vacuum, { icon: '◉', label: 'Robot vacuum' },
+    () => '', () => '', escape, [{ entity_id: 'camera.example_map', domain: 'camera', name: 'Map', area: '' }]);
+  assert.match(inspector, /Vacuum map camera/);
+  assert.match(inspector, /start, pause, dock, locate, room-cleaning, and live-map controls/);
+});
+
 test('a fan can show its switch state while tap and hold run separate scenes', () => {
   const c = controls();
   const fan = {

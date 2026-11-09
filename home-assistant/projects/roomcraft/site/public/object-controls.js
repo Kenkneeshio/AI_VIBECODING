@@ -2,10 +2,10 @@
   'use strict';
 
   const actions = new Set(['auto', 'toggle', 'activate', 'more-info', 'none']);
-  const visualKinds = new Set(['auto', 'light', 'fan', 'climate', 'window', 'door', 'device', 'none']);
+  const visualKinds = new Set(['auto', 'light', 'fan', 'climate', 'window', 'door', 'vacuum', 'device', 'none']);
   const iconPattern = /^mdi:[a-z0-9-]+$/i;
   const bindingKeys = new Set(['tapAction', 'holdAction', 'tapEntityId', 'holdEntityId',
-    'controlLabel', 'controlIcon', 'visualKind']);
+    'controlLabel', 'controlIcon', 'visualKind', 'vacuumMapEntityId']);
   const entityPattern = /^[a-z_]+\.[a-z0-9_]+$/i;
   const sceneWidth = 1536;
   const sceneHeight = 864;
@@ -38,7 +38,9 @@
         && (!item.holdEntityId || entityPattern.test(item.holdEntityId)))
       && (!('controlLabel' in item) || (typeof item.controlLabel === 'string' && item.controlLabel.length <= 80))
       && (!('controlIcon' in item) || (typeof item.controlIcon === 'string' && (!item.controlIcon || iconPattern.test(item.controlIcon))))
-      && (!('visualKind' in item) || visualKinds.has(item.visualKind));
+      && (!('visualKind' in item) || visualKinds.has(item.visualKind))
+      && (!('vacuumMapEntityId' in item) || typeof item.vacuumMapEntityId === 'string'
+        && (!item.vacuumMapEntityId || /^camera\.[a-z0-9_]+$/i.test(item.vacuumMapEntityId)));
   }
 
   function propertyUpdate(key, rawValue) {
@@ -52,6 +54,10 @@
     }
     if (key === 'tapEntityId' || key === 'holdEntityId') {
       return !value || entityPattern.test(value) ? { valid: true, value: value || undefined } : { valid: false };
+    }
+    if (key === 'vacuumMapEntityId') {
+      return !value || /^camera\.[a-z0-9_]+$/i.test(value)
+        ? { valid: true, value: value || undefined } : { valid: false };
     }
     if (key === 'controlLabel') return value.length <= 80 ? { valid: true, value: value || undefined } : { valid: false };
     return !value || iconPattern.test(value) ? { valid: true, value: value || undefined } : { valid: false };
@@ -74,6 +80,7 @@
     const entity = String(item.entityId || '').toLowerCase();
     const label = String(item.controlLabel || item.name || '').toLowerCase();
     const domain = entity.split('.')[0];
+    if (domain === 'vacuum' || type.includes('robotvacuum') || /\b(robot )?vacuum\b/.test(label)) return 'vacuum';
     if (domain === 'fan' || (type.includes('fan') && !label.includes('fan light')) ||
         (domain === 'switch' && /\bfan\b/.test(label) && !/\blight\b/.test(label))) return 'fan';
     if (domain === 'climate' || /\b(air conditioner|thermostat|a\/c)\b/.test(label)) return 'climate';
@@ -125,6 +132,7 @@
       roomcraft_hold_action: item.holdAction || 'auto',
       ...(item.tapEntityId ? { roomcraft_tap_entity: item.tapEntityId } : {}),
       ...(item.holdEntityId ? { roomcraft_hold_entity: item.holdEntityId } : {}),
+      ...(item.vacuumMapEntityId ? { roomcraft_vacuum_map_entity: item.vacuumMapEntityId } : {}),
       style: dimensions(item, 4)
     }));
     const cameras = items.filter(item => item.type === 'cameraThumbnail').map(item => ({
@@ -253,12 +261,16 @@
           + '<option value="mdi:robot-vacuum"><option value="mdi:power"></datalist></div>')
         + actionField('tapAction', 'Tap action', item.tapAction, 'Automatic for device')
         + '<div class="field"><label for="prop-visualKind">Live graphic</label><select id="prop-visualKind" data-prop="visualKind">'
-        + [['auto','Automatic'],['light','Light or lamp'],['fan','Ceiling fan'],['climate','Air conditioning'],['window','Window or blinds'],['door','Door or garage'],['device','General device'],['none','No state graphic']]
+        + [['auto','Automatic'],['light','Light or lamp'],['fan','Ceiling fan'],['climate','Air conditioning'],['window','Window or blinds'],['door','Door or garage'],['vacuum','Robot vacuum'],['device','General device'],['none','No state graphic']]
           .map(([value,label]) => '<option value="' + value + '"' + ((item.visualKind || 'auto') === value ? ' selected' : '') + '>' + label + '</option>').join('')
         + '</select></div>'
         + entityField('Tap target (optional)', 'tapEntityId', item.tapEntityId || '', entityOptions, null, escape)
         + actionField('holdAction', 'Hold action', item.holdAction, 'Default · open device details')
         + entityField('Hold target (optional)', 'holdEntityId', item.holdEntityId || '', entityOptions, null, escape)
+        + (visualKind(item) === 'vacuum'
+          ? entityField('Vacuum map camera', 'vacuumMapEntityId', item.vacuumMapEntityId || '', entityOptions, 'camera', escape)
+            + '<p class="field-hint">Tap the vacuum to open start, pause, dock, locate, room-cleaning, and live-map controls. The authenticated map stays out of exported artwork.</p>'
+          : '')
         + '<p class="field-hint">Search available devices by name or enter an entity ID. Automatic tap toggles lights, switches, and fans; runs scenes, scripts, and buttons; and opens details for other devices. The object name is the button label unless you set one above.'
         + ' Optional tap and hold targets let this object show one entity’s state while running a different scene, script, or button.'
         + ' The live graphic follows the main entity. Choose Fan to spin when that switch is on.'
