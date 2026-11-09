@@ -978,6 +978,32 @@ test('light, window, door, and climate overlays use their own live states', () =
   }
 });
 
+test('garage door art follows closed, open, opening, closing, and unavailable cover states', () => {
+  const object = new ObjectControl();
+  object.setConfig({ entity: 'cover.garage_door', title: 'Garage door',
+    roomcraft_visual_kind: 'door' });
+  const css = object.shadowRoot.children[0].textContent;
+  assert.match(css, /\[data-visual="door"\]\[data-door-form="garage"\] \.art\{[^}]*repeating-linear-gradient\(90deg/);
+  assert.match(css, /\[data-entity-state="open"\] \.art\{[^}]*scaleY\(\.24\)/);
+  assert.match(css, /\[data-entity-state="opening"\] \.art\{[^}]*roomcraft-door-opening/);
+  assert.match(css, /\[data-entity-state="closing"\] \.art\{[^}]*roomcraft-door-closing/);
+  assert.match(css, /prefers-reduced-motion:reduce/);
+  assert.match(css, /\[data-visual="door"\] \.art\{animation:none/);
+  for (const [value, visual] of [
+    ['closed', 'off'], ['open', 'on'], ['opening', 'on'], ['closing', 'off'],
+    ['unavailable', 'unavailable'],
+  ]) {
+    object.hass = { states: { 'cover.garage_door': { state: value } } };
+    assert.equal(object._button.attributes['data-visual'], 'door');
+    assert.equal(object._button.attributes['data-door-form'], 'garage');
+    assert.equal(object._button.attributes['data-state'], visual);
+    assert.equal(object._button.attributes['data-entity-state'], value);
+  }
+  assert.equal(object._button.attributes['data-toggleable'], 'true');
+  assert.match(css, /\[data-toggleable="true"\]::before\{[^}]*width:4px[^}]*height:4px/);
+  object.disconnectedCallback();
+});
+
 test('humidifier and purifier forms animate only from their own on state', () => {
   for (const entry of [
     { entity: 'humidifier.master', form: 'humidifier' },

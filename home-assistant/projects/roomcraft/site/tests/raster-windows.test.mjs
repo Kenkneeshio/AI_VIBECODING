@@ -20,6 +20,7 @@ function recordingCanvas() {
     restore() { operations.push(['restore']); },
     translate(x, y) { operations.push(['translate', x, y]); },
     rotate(angle) { operations.push(['rotate', angle]); },
+    beginPath() {}, ellipse() {}, fill() {}, stroke() {},
     drawImage(image) { operations.push(['image', image.name]); },
     fillRect(x, y, width, height) {
       operations.push(['fill', this.fillStyle, x, y, width, height]);
@@ -27,6 +28,10 @@ function recordingCanvas() {
     createLinearGradient() {
       const stops = [];
       operations.push(['gradient', stops]);
+      return { addColorStop(offset, color) { stops.push([offset, color]); } };
+    },
+    createRadialGradient() {
+      const stops = [];
       return { addColorStop(offset, color) { stops.push([offset, color]); } };
     },
   };

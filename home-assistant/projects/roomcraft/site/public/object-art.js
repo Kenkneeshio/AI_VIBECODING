@@ -293,15 +293,15 @@
       case 'playMat':{
         if(f==='photoLeafMat'){
           contact(c,-47,-40,94,80,7);rr(c,-47,-40,94,80,7,'#777c7a','#555b59',1.3);
-          rr(c,-44,-39,88,74,5,gradient(c,-44,-39,88,74,[[0,'#c0c2bd'],[.5,'#9fa5a1'],[1,'#858e8a']]),'#d6d6cd',1.2);
-          c.save();c.beginPath();c.roundRect(-43,-38,86,72,4);c.clip();
+          rr(c,-44,-37,88,74,5,gradient(c,-44,-37,88,74,[[0,'#c0c2bd'],[.5,'#9fa5a1'],[1,'#858e8a']]),'#d6d6cd',1.2);
+          c.save();c.beginPath();c.roundRect(-43,-36,86,72,4);c.clip();
           for(const [x,y,dir] of [[-28,-25,1],[8,-27,-1],[-32,7,-1],[7,8,1]]){
             c.strokeStyle='rgba(240,240,229,.62)';c.lineWidth=1.4;c.beginPath();c.moveTo(x-9,y+11);c.quadraticCurveTo(x+2,y-5,x+23,y-13);c.stroke();
             for(let j=0;j<3;j++){const lx=x+j*9,ly=y+5-j*5;
               leaf(c,lx,ly,4.5,8,dir*(.8+j*.28),'rgba(232,235,224,.59)');
               leaf(c,lx+7,ly-5,4,7,-dir*(.5+j*.24),'rgba(218,224,215,.56)');}
           }
-          c.restore();stitch(c,-43,-38,86,72,4);break;
+          c.restore();stitch(c,-43,-36,86,72,4);break;
         }
         if(f==='photoCheckerMat'){
           contact(c,-47,-40,94,80,4);rr(c,-47,-40,94,80,5,'#8e8374','#61564d',1.3);
@@ -315,20 +315,20 @@
           c.restore();rr(c,-44,-37,88,73,3,null,'#e8ddcb',1.4);break;
         }
         const round=f==='round';
-        contact(c,-46,-39,92,78,round?40:12);
-        if(round)oval(c,0,0,44,38,p.dark,p.dark,1);
-        else rr(c,-46,-39,92,78,12,p.dark);
-        c.save();c.beginPath();if(round)c.ellipse(0,-3,42,35,0,0,Math.PI*2);else c.roundRect(-44,-39,88,72,11);c.clip();
-        c.fillStyle=topGradient(c,-44,-39,88,72,p);c.fillRect(-46,-40,92,80);
+        if(round){oval(c,2,5,44,38,'rgba(39,38,32,.14)');oval(c,0,0,44,38,p.dark,p.dark,1);}
+        else contact(c,-46,-39,92,78,12);
+        if(!round)rr(c,-46,-39,92,78,12,p.dark);
+        c.save();c.beginPath();if(round)c.ellipse(0,0,42,35,0,0,Math.PI*2);else c.roundRect(-44,-36,88,72,11);c.clip();
+        c.fillStyle=topGradient(c,-44,-36,88,72,p);c.fillRect(-46,-39,92,78);
         if(f==='puzzle'||f==='foam'){
           const colors=[p.base,p.accent,p.detail,'#94b6aa','#e1b4a2','#d9cc91'];
-          for(let row=0;row<3;row++)for(let col=0;col<4;col++){rr(c,-44+col*22,-39+row*24,22,24,2,colors[(row*4+col)%colors.length],'rgba(67,59,47,.18)',.8);}
+          for(let row=0;row<3;row++)for(let col=0;col<4;col++){rr(c,-44+col*22,-36+row*24,22,24,2,colors[(row*4+col)%colors.length],'rgba(67,59,47,.18)',.8);}
         }else{
           for(let i=0;i<12;i++){const x=-35+(i%4)*23,y=-27+Math.floor(i/4)*23;disc(c,x,y,6,i%3?p.accent:p.detail,'rgba(255,255,255,.45)',1);}
           if(f==='tummy'){c.beginPath();c.moveTo(-37,-4);c.bezierCurveTo(-9,-22,9,17,37,-5);c.strokeStyle='rgba(255,255,255,.54)';c.lineWidth=5;c.stroke();}
         }
         c.restore();c.strokeStyle='rgba(255,250,233,.72)';c.lineWidth=2;
-        c.beginPath();if(round)c.ellipse(0,-3,42,35,0,0,Math.PI*2);else c.roundRect(-44,-39,88,72,11);c.stroke();
+        c.beginPath();if(round)c.ellipse(0,0,42,35,0,0,Math.PI*2);else c.roundRect(-44,-36,88,72,11);c.stroke();
         break;
       }
       case 'foamBlock':{
@@ -584,16 +584,37 @@
         disc(c,0,0,Math.min(w,h)*.09,'#e9e4ce','#b8aa8e',1);break;
       }
       case 'desk':{
-        // Clean L-shaped office desk drawn from geometry, not a PNG fragment.
-        const depth=Math.max(22,h*.42),returnW=Math.max(30,w*.24);
-        c.save();c.shadowColor='#1f2b2545';c.shadowBlur=8;c.shadowOffsetY=6;
-        rr(c,x,y,w,depth,5,'#6b452f');rr(c,x,y,returnW,h,5,'#6b452f');c.restore();
-        wood(c,x,y,w,depth);wood(c,x,y,returnW,h);c.shadowColor='transparent';
-        rr(c,x+returnW*.13,y+depth*.16,returnW*.66,h-depth*.28,3,'#533827','#8f6547',.8);
-        rr(c,x+w*.48,y+depth*.17,w*.27,depth*.55,3,'#27343a','#152329',1);
-        rr(c,x+w*.51,y+depth*.21,w*.21,depth*.42,2,'#72929b');
-        rr(c,x+w*.8,y+depth*.2,w*.13,depth*.5,3,'#d1b078','#70543b',.8);
-        disc(c,x+w*.86,y+depth*.45,Math.min(w,h)*.035,'#28363b');break;
+        // One continuous top makes the footprint read as a real L rather than
+        // two overlapping rectangles. The short return is deep enough for a
+        // drawer pedestal but leaves an obvious open chair bay.
+        const depth=Math.max(24,h*.39),returnW=Math.max(38,w*.25),drop=6;
+        const outline=[[x,y],[x+w,y],[x+w,y+depth],[x+returnW,y+depth],
+          [x+returnW,y+h],[x,y+h]];
+        const shifted=outline.map(([px,py])=>[px+2,py+drop]);
+        c.save();c.shadowColor='rgba(30,27,22,.27)';c.shadowBlur=10;c.shadowOffsetY=5;
+        poly(c,shifted,'#5a3828','#3f2b22',1.2);c.restore();
+        const top=gradient(c,x,y,w,h,[[0,'#cf9767'],[.34,'#a96f4a'],[1,'#76503a']]);
+        poly(c,outline,top,'#61412f',1.8);
+        c.save();c.beginPath();c.moveTo(outline[0][0],outline[0][1]);for(const [px,py] of outline.slice(1))c.lineTo(px,py);c.closePath();c.clip();
+        for(let i=1;i<8;i++){
+          const yy=y+(i/8)*h;c.beginPath();c.moveTo(x+4,yy);
+          c.bezierCurveTo(x+w*.34,yy+(i%2?2:-2),x+w*.66,yy-1,x+w-4,yy+1);
+          c.strokeStyle=i%2?'rgba(255,220,175,.25)':'rgba(75,40,29,.22)';c.lineWidth=1;c.stroke();
+        }
+        c.restore();
+        // Continuous bevel follows both arms and clarifies the inside corner.
+        poly(c,outline,null,'rgba(255,225,185,.46)',1.2);
+        rr(c,x+6,y+depth+6,returnW-12,h-depth-13,4,'#6f4935','#4b3328',1);
+        for(let row=1;row<3;row++){
+          const yy=y+depth+6+(h-depth-13)*row/3;c.beginPath();c.moveTo(x+8,yy);c.lineTo(x+returnW-8,yy);c.strokeStyle='#3f2e27aa';c.lineWidth=.8;c.stroke();
+        }
+        for(let row=0;row<3;row++)rr(c,x+returnW*.38,y+depth+10+row*(h-depth-13)/3,returnW*.24,2,1,'#c3a173');
+        // Monitor, keyboard, mouse and grommet are scaled to the long arm.
+        rr(c,x+w*.47,y+depth*.13,w*.25,depth*.5,3,'#253138','#152228',1.1);
+        rr(c,x+w*.495,y+depth*.18,w*.20,depth*.39,2,gradient(c,x+w*.495,y+depth*.18,w*.20,depth*.39,[[0,'#91aeb2'],[1,'#496a75']]));
+        rr(c,x+w*.44,y+depth*.7,w*.3,Math.max(4,depth*.13),2,'#d8c6aa','#745744',.7);
+        oval(c,x+w*.82,y+depth*.56,Math.max(4,w*.025),Math.max(5,depth*.12),'#d9bf92','#6c513e',.8);
+        disc(c,x+w*.9,y+depth*.25,Math.max(3,Math.min(w,h)*.035),'#4b3c33','#d3b07e',.7);break;
       }
       case 'armchair':{
         raisedCase(c,x,y,w,h,16,8,'#8a735b');

@@ -53,7 +53,7 @@
   // layers and the furniture itself is drawn from project.items.
   const fixedLayerDecor = {
     great:[['r',695,672,106,127,5]],
-    study:fixedDecor.study,
+    study:[],
     bedroom:[['r',1403,449,80,103,8],['r',1395,197,75,92,8],['r',1143,352,52,122,5]],
     'bath-one':fixedDecor['bath-one'],
     'bath-two':fixedDecor['bath-two']
@@ -125,7 +125,10 @@
         const db=Math.abs(subject.data[i+2]-background[i+2]);
         const difference=Math.max((dr+dg+db)/3,Math.max(dr,dg,db)*.68);
         const edge=Math.max(0,Math.min(1,(difference-6)/22));
-        subject.data[i+3]=Math.round(subject.data[i+3]*edge);
+        // The difference edge keeps the natural source shadow. The authored
+        // silhouette is the opaque material core, preventing pale upholstery,
+        // porcelain, and walnut surfaces from becoming holes in the object.
+        subject.data[i+3]=Math.max(Math.round(subject.data[i+3]*edge),shape[i+3]);
       }
       c.putImageData(subject,0,0);
       return canvas;
@@ -136,8 +139,12 @@
     return canvas;
   }
   function ensureCache(original,shell) {
-    if(cacheImage!==original){sprites.clear();cacheImage=original;}
-    if(cacheShell!==shell){repairs.clear();cacheShell=shell;}
+    const sourceChanged=cacheImage!==original,shellChanged=cacheShell!==shell;
+    if(sourceChanged||shellChanged){
+      sprites.clear();paintMasks.clear();floorLayers.clear();
+      cacheImage=original;cacheShell=shell;
+    }
+    if(shellChanged)repairs.clear();
   }
   function sourceSprite(id,original,shell,repair=false) {
     ensureCache(original,shell);const map=repair?repairs:sprites;
@@ -276,7 +283,7 @@
     // The source bedroom-lamp crop also contains a few high-contrast pixels
     // from the bedside furniture. Reusing it for movable lamps produces a
     // false black "button" beside every fixture. Draw clean lamp art instead.
-    if(item.type==='lamp'){fallback(item);return;}
+    if(item.type==='lamp'||item.type==='desk'){fallback(item);return;}
     if(item.type==='window'){
       drawGlazedWindow(c,item.x,item.y,item.w,item.h,item.rotation||0);
       return;
@@ -308,7 +315,20 @@
   function drawBedroomRug(c){
     if(!bedroomRugImage.src)bedroomRugImage.src='assets/bedroom-rug-sprite.png';
     if(!bedroomRugImage.complete||!bedroomRugImage.naturalWidth)return;
-    c.drawImage(bedroomRugImage,85,80,1010,1160,1200,297,215,223);
+    // Preserve the source rug's 0.87 aspect ratio and center it under the bed.
+    // The previous 215×223 draw stretched it horizontally and offset it left.
+    c.drawImage(bedroomRugImage,85,80,1010,1160,1234,297,194,223);
+  }
+  function drawOfficeRug(c){
+    c.save();
+    c.shadowColor='rgba(65,42,28,.22)';c.shadowBlur=7;c.shadowOffsetY=4;
+    c.beginPath();c.ellipse(940,389,41,39,0,0,Math.PI*2);
+    const fill=c.createRadialGradient(927,375,3,940,389,42);
+    fill.addColorStop(0,'#fff4d9');fill.addColorStop(.58,'#ead6ac');fill.addColorStop(.88,'#c7aa7d');fill.addColorStop(1,'#8d704e');
+    c.fillStyle=fill;c.fill();
+    c.shadowColor='transparent';c.lineWidth=2;c.strokeStyle='#f3e2bf';c.stroke();
+    c.beginPath();c.ellipse(940,389,34,32,0,0,Math.PI*2);c.lineWidth=1;c.strokeStyle='rgba(142,105,69,.34)';c.stroke();
+    c.restore();
   }
   function drawFixedDecor(c,original,shell){
     if(typeof document==='undefined'||!ready(original)||!ready(shell))return;
@@ -317,6 +337,12 @@
       const patch=makeCanvas(w,h),p=patch.getContext('2d');
       p.drawImage(original,d.x,d.y,w,h,0,0,w,h);
       p.globalCompositeOperation='destination-in';p.drawImage(d.mask,0,0);
+      // Preserve exact reference pixels in the tight authored silhouette. This
+      // supplies an opaque core without introducing a second art style.
+      const solid=makeCanvas(w,h),s=solid.getContext('2d'),spec=decorSpecs.get(shape);
+      s.drawImage(original,d.x,d.y,w,h,0,0,w,h);
+      s.globalCompositeOperation='destination-in';s.drawImage(maskFor(spec),0,0);
+      p.globalCompositeOperation='destination-over';p.drawImage(solid,0,0);
       // The bedside table belongs to the fixed room layer, but its lamp is a
       // separate editable/live object. Remove only that lamp from the crop.
       if(roomId==='bedroom'&&shape[1]===1403&&shape[2]===449){
@@ -354,17 +380,12 @@
     for(const base of starter.walls)if(!sameWall(base,currentWalls.get(base.id)))repairWall(c,base,wallFree);
     const starterRooms=new Map(starter.rooms.map(r=>[r.id,r]));
     for(const room of project.rooms)if(!sameRoom(room,starterRooms.get(room.id)))paintRoom(c,room,starter,project,images);
-    drawLivingRug(c);drawBedroomRug(c);drawFixedDecor(c,original,shell);
+    drawLivingRug(c);drawBedroomRug(c);drawOfficeRug(c);drawFixedDecor(c,original,shell);
     const changed=project.items;
     const isFloorLayer=item=>item.type==='rug'||['playMat','floorMat'].includes(window.RoomcraftInventory?.byType?.[item.type]?.artFamily);
     const isCeilingLayer=item=>item.type==='ceilingLight'||item.type==='pendantLight'||window.RoomcraftInventory?.byType?.[item.type]?.artFamily==='ceilingFan';
     const floorItems=changed.filter(isFloorLayer);
     for(const item of floorItems)drawItem(c,item,starter,original,shell,fallback);
-    // Mats sit beneath furniture: redraw unchanged source items they overlap.
-    for(const mat of floorItems)for(const item of project.items){
-      if(isFloorLayer(item)||!sameVisual(item,baseById.get(item.id)))continue;
-      if(Math.abs(item.x-mat.x)<(item.w+mat.w)/2&&Math.abs(item.y-mat.y)<(item.h+mat.h)/2)drawItem(c,item,starter,original,shell,fallback);
-    }
     for(const item of changed.filter(i=>!isFloorLayer(i)&&!isCeilingLayer(i)&&i.type!=='window'))drawItem(c,item,starter,original,shell,fallback);
     // Ceiling fixtures remain visible above movable furniture, independent of insertion order.
     for(const item of changed.filter(isCeilingLayer))drawItem(c,item,starter,original,shell,fallback);

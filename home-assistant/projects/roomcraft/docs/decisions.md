@@ -238,6 +238,14 @@
 
 **Consequence:** Source-backed furniture must be extracted against `empty-shell.png`; new non-movable room details need an explicit transparent fixed-decor layer. Tests must assert that the shell—not the furnished reference—is the renderer's base image.
 
+## 2026-11-09 — Furniture uses opaque semantic cores
+
+**Decision:** Combine each source-backed object's authored silhouette as an opaque material core with color-difference alpha only at its shadow/edge. Do not stack a second generic object illustration beneath a source sprite.
+
+**Reason:** Color distance alone removes pale or floor-colored material pixels, while a second illustration introduces mismatched outlines and duplicated details. The semantic core preserves exact reference pixels and prevents floor bleed without mixing art styles.
+
+**Consequence:** Every source-backed furniture family needs a tight shape specification. Complex furniture that cannot be represented by a tight silhouette—such as the office L desk—uses one purpose-built vector layer instead of disconnected source fragments.
+
 ## 2026-10-31 — In-page confirmation for destructive edits
 
 **Decision:** Use an editor-owned confirmation dialog for reset and dashboard overwrite actions, and keep the top Export menu operable during dashboard transfer.

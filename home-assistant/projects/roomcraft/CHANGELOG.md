@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-09 — Professional object silhouettes, rugs, desk, and garage state art
+
+- Replaced color-key transparency holes with an authored opaque-core silhouette plus the source artwork's feathered shadow edge. Pale upholstery, beds, porcelain fixtures, counters, and walnut furniture no longer reveal the room floor through their material.
+- Removed the obsolete mat-overlap redraw pass that could paint furniture and shadows twice. Sprite and paint caches now invalidate when either the furnished source or clean shell changes.
+- Rebuilt the office desk as one coherent top-down L with a unified wood surface, drawers, open chair bay, monitor, keyboard, mouse, and cable grommet. Removed the separately keyed office desk fragments that made the old assembly look disconnected.
+- Normalized the rug layer: the office rug is an opaque centered floor object, the bedroom rug keeps its source aspect ratio and centers under the bed, and catalog round/leaf mats now keep symmetric borders and patterns.
+- Added entity-driven sectional garage-door art with panels, rails, handle, distinct closed/open/opening/closing/unavailable states, reduced-motion behavior, transparent hit area, and the existing 4-pixel state dot. Ordinary entry-door controls keep their separate art.
+- Installed after private dashboard backups and exported the unchanged 45-item current project. A fresh 1920 × 1080 wall-tablet capture verified the desk, three rugs, opaque object materials, seamless floors, closed garage-door state, 19 object controls, three cameras, weather layer, and full-screen fit without operating a physical device.
+
 ## 2026-11-09 — Seamless floor and furniture layer correction
 
 - Replaced furniture-sized floor repairs with a true layer stack: the clean architectural shell supplies uninterrupted room floors, room-wide surface changes paint beneath objects, and rugs, fixed cabinetry, movable furniture, live controls, walls, and windows render in separate ordered layers.
