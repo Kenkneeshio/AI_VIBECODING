@@ -774,6 +774,12 @@ class RoomcraftObjectControl extends HTMLElement {
       .target[data-state="unavailable"]{cursor:help}
       .target[data-state="unavailable"]:focus-visible{outline-color:#f8c36b}
       .art,.rotor,.blade,.hub{position:absolute;pointer-events:none;box-sizing:border-box}
+      :host([data-renderer="storybook"]){transition:none}
+      :host([data-renderer="storybook"]) .art{display:none!important}
+      :host([data-renderer="storybook"][data-offset]) .target{
+        border:1px solid #73597280;background:radial-gradient(circle,#f9e9cf9c 0 3px,transparent 4px);
+      }
+      :host([data-renderer="storybook"]) .target[data-state="unavailable"]::before{background:#7d718c}
       .art{inset:5%;border-radius:50%;opacity:1;transition:background .18s,box-shadow .18s,filter .18s}
       .target[data-visual="none"] .art,.target[data-state="ready"] .art,
       .target[data-zone="true"][data-visual="device"] .art{display:none}
@@ -1116,6 +1122,7 @@ class RoomcraftObjectControl extends HTMLElement {
   }
 
   _refreshVacuumPosition() {
+    if (this.getAttribute?.('data-renderer') === 'storybook') return;
     if (controlVisualKind(this._config || {}) !== 'vacuum') return;
     const transform = this._config.roomcraft_vacuum_position_transform;
     const mapState = this._hass?.states?.[this._config.roomcraft_vacuum_map_entity];
@@ -1187,8 +1194,10 @@ class RoomcraftObjectControl extends HTMLElement {
     this._acknowledge(kind);
     if (action === 'vacuum-panel') { this._toggleVacuumPanel(); return; }
     const targetId = this._targetFor(kind);
+    const targetState = this._hass.states?.[targetId]?.state;
     if (['toggle', 'activate'].includes(action) &&
-        ['unavailable', 'unknown'].includes(this._hass.states?.[targetId]?.state)) {
+        (['unavailable', 'unknown'].includes(targetState) ||
+          !targetState && this.getAttribute?.('data-renderer') === 'storybook')) {
       action = 'more-info';
     }
     if (action === 'toggle' || action === 'activate') {
@@ -1839,6 +1848,7 @@ class RoomcraftCameraThumbnail extends HTMLElement {
     const frame = document.createElement('button');
     frame.type = 'button';
     frame.className = 'frame';
+    frame.setAttribute('part', 'frame');
     frame.addEventListener('click', () => {
       if (this._held) { this._held = false; return; }
       this._activateCamera();

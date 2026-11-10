@@ -6,6 +6,7 @@ const scripts = dirname(fileURLToPath(import.meta.url));
 const steps = [
   [join(scripts, 'roomcraft-release.mjs'), '--verify'],
   [join(scripts, 'run-framework.mjs'), 'build'],
+  [join(scripts, 'build-storybook.mjs')],
   [join(scripts, 'roomcraft-release.mjs'), '--write', '--check']
 ];
 

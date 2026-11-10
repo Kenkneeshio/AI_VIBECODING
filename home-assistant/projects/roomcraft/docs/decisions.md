@@ -1,5 +1,11 @@
 # Decision log
 
+## Storybook uses the published layout and the existing device controls
+
+Household operators can try a consistent 3D art style on a separate Home Assistant panel. The renderer derives walls, floor finishes, furniture, device placements, and interaction anchors from layout v2. The supported camera is orthographic and fixed, so object positions stay familiar. The preview infers height and cutaway depth from deterministic recipes. Layout v2 stores no measured heights or generalized 3D asset metadata.
+
+Scene construction, geometry recipes, device pose, and the Home Assistant adapter have separate modules. Reusing the published plan's existing device gestures and camera modes lets Studio retain one source of truth. Home Assistant supplies live state to the panel and keeps media outside the WebGL scene. The bundle is served by Home Assistant, built from pinned dependencies, and does not ship credentials or private layout data. Animation is driven by explicit time and HA state. The floor plan is available as the fallback for WebGL and layout errors.
+
 ## 2026-11-09 — Version editor assets as a unit and draw fixtures from scene records
 
 The editor's stylesheet, scripts, and art share a content-derived cache key. Home Assistant serves static assets with a long cache lifetime. Keeping the same renderer URL across releases let a browser combine current project data with a renderer that still drew removed furnishings. The release gate checks the key against the public asset tree, and the Design renderer uses the empty shell or the procedural fallback while its assets load. The furnished image belongs to the Reference view.

@@ -23,6 +23,21 @@ class FakeAPI:
 
 
 class InstallResourceTests(unittest.TestCase):
+    def test_storybook_preserves_plan_data_and_is_idempotent(self):
+        plan = {"path": "plan", "cards": [{"type": "picture-elements", "elements": [
+            {"type": "icon", "title": "Edit layout in Roomcraft",
+             "tap_action": {"action": "navigate", "navigation_path": "/second-floor/studio"}}
+        ]}]}
+        original = {"views": [plan, {"path": "studio"}], "roomcraft_layout": {"version": 2}}
+        result = install.update_dashboard(original, "abc", storybook=True)
+        self.assertEqual(result["views"][0], plan)
+        self.assertEqual(result["roomcraft_layout"], original["roomcraft_layout"])
+        self.assertEqual(result["views"][-1]["path"], "storybook")
+        self.assertEqual(install.update_dashboard(result, "abc", storybook=True), result)
+        result["views"][-1]["title"] = "Different view"
+        with self.assertRaisesRegex(RuntimeError, "different view"):
+            install.update_dashboard(result, "abc", storybook=True)
+
     def test_new_weather_module_is_registered_while_current_card_is_kept(self):
         api = FakeAPI()
         existing = [{"id": "card", "url": "/local/roomcraft/roomcraft-card.js?v=abc", "type": "module"}]

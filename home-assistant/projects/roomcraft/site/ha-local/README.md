@@ -49,6 +49,12 @@ Place the weather element once in the plan's picture-elements `elements` array. 
     z-index: 2
 ```
 
+## Storybook preview
+
+Run `npm ci` and `npm run build` from `site/`, then add `--storybook` to the installer command. Open **Second Floor → Storybook** at `/second-floor/storybook`. It reads the published v2 layout and plan bindings. Change the layout in Studio, publish it, then reopen the preview. The 3D bundle is local to Home Assistant and loaded as a versioned module. Compatible browsers need WebGL 2. Use the **Floor plan** link if the renderer cannot open. The original plan remains the first view.
+
+Check the fan motor and light as separate touch targets, the dimmer with occupancy on and off, day/night and adverse weather, and all three camera tile modes. Verify the physical tablet separately, including frame pacing and a longer run with the camera feeds. Use read-only checks or synthetic states to test animations without operating devices. Restore the installer dashboard backup to remove the Storybook tab.
+
 ## Verification
 
 1. Open the local Studio URL in a fresh browser and sign into Home Assistant. Use its new-tab button if the embedded frame stays blank.

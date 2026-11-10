@@ -181,3 +181,9 @@ The installer records a private backup. To roll back, restore that dashboard JSO
 | 4 | **Refine vacuum calibration without exposing private geometry.** The generic affine runtime and a private Dreame-to-plan calibration are installed. Add a graphical matching workflow and map-identity guard, then revalidate matched points whenever the vacuum map or illustrated plan changes. Keep coefficients in the private dashboard, not public examples. See the [roadmap](roadmap.md). |
 
 For each follow-on change, record the data source, offline behavior, accessible interaction, security boundary, tests, and rollback in the existing [changelog](../CHANGELOG.md) and [decision log](decisions.md). Keep the work queue here and in the roadmap until a team chooses how to track implementation; no new issue or ticket is required just to preserve this handoff.
+
+## Storybook 3D preview
+
+The Home Assistant-only Storybook panel is installed with `ha-local/install.py --storybook` after `npm run build`. The panel reads the published plan and layout with the signed-in `hass` session. Its control and camera elements are the existing HA custom elements, with geometry supplied by `storybook-scene.mjs` and live state supplied by `storybook-state.mjs`. Device and furniture art live in their respective `storybook-*.mjs` modules. The checked-in 2D editor and layout v2 remain the editing surface. Reopen Storybook after a Studio publish to read the new layout.
+
+Before promoting the preview, compare the current tablet against its 2D baseline for frame pacing, idle power, camera behavior and input accuracy. Live entity bindings belong to the private HA config. For rollback, restore the private installer dashboard backup via Lovelace, then verify the original plan. The ordinary plan can also be opened directly from the preview.

@@ -20,6 +20,7 @@ from urllib.request import urlopen
 
 REMOTE_STATIC = "/config/www/roomcraft"
 RESOURCE_NAMES = ("roomcraft-card.js", "roomcraft-weather-outdoor.js")
+STORYBOOK_RESOURCE = "roomcraft-storybook.js"
 DASHBOARD_PATH = "second-floor"
 
 
@@ -45,13 +46,17 @@ def copy_assets(host: str, user: str, key: Path, public: Path, modules: tuple[Pa
         run("scp", "-r", *ssh_options, str(path), f"{target}:{REMOTE_STATIC}/")
     for module in modules:
         run("scp", *ssh_options, str(module), f"{target}:{REMOTE_STATIC}/{module.name}")
-    for name in ("editor.html", *RESOURCE_NAMES, "ha-iframe-bridge.js"):
+    for name in ("editor.html", "ha-iframe-bridge.js"):
         with urlopen(f"http://{host}:8123/local/roomcraft/{name}", timeout=15) as response:
             if response.status != 200 or not response.read(128):
                 raise RuntimeError(f"Home Assistant did not serve {name}")
+    for module in modules:
+        with urlopen(f"http://{host}:8123/local/roomcraft/{module.name}", timeout=15) as response:
+            if response.status != 200 or response.read() != module.read_bytes():
+                raise RuntimeError(f"Home Assistant served unexpected bytes for {module.name}")
 
 
-def update_dashboard(config: dict, version: str) -> dict:
+def update_dashboard(config: dict, version: str, storybook: bool = False) -> dict:
     next_config = json.loads(json.dumps(config))
     views = next_config.get("views")
     if not isinstance(views, list):
@@ -71,12 +76,24 @@ def update_dashboard(config: dict, version: str) -> dict:
     if not isinstance(edit_icon, dict):
         raise RuntimeError("The Roomcraft edit icon is missing")
     edit_icon["tap_action"] = {"action": "navigate", "navigation_path": "/second-floor/studio"}
+    if storybook:
+        storybook_view = {
+            "title": "Storybook", "path": "storybook", "icon": "mdi:book-open-variant",
+            "type": "panel",
+            "cards": [{"type": "custom:roomcraft-storybook-card", "dashboard": DASHBOARD_PATH}],
+        }
+        existing_storybook = next((view for view in views if view.get("path") == "storybook"), None)
+        if existing_storybook is None:
+            views.append(storybook_view)
+        elif existing_storybook != storybook_view:
+            raise RuntimeError("The storybook path already contains a different view")
     return next_config
 
 
-def register_resources(api, resources: list[dict], version: str) -> list[str]:
+def register_resources(api, resources: list[dict], version: str,
+                       names: tuple[str, ...] = RESOURCE_NAMES) -> list[str]:
     """Reconcile each Roomcraft module independently and return expected URLs."""
-    resource_urls = [f"/local/roomcraft/{name}?v={version}" for name in RESOURCE_NAMES]
+    resource_urls = [f"/local/roomcraft/{name}?v={version}" for name in names]
     for resource_url in resource_urls:
         resource_path = resource_url.split("?", 1)[0]
         existing = next((item for item in resources
@@ -98,6 +115,7 @@ def main() -> int:
     parser.add_argument("--management-root", type=Path, help="Directory with private ha_manage.py API adapter")
     parser.add_argument("--backup-dir", type=Path, help="Private backup directory outside this source checkout")
     parser.add_argument("--assets-only", action="store_true", help="Copy/verify assets without changing HA config")
+    parser.add_argument("--storybook", action="store_true", help="Enable the opt-in Storybook panel from the built 3D bundle")
     args = parser.parse_args()
     if not re.fullmatch(r"[A-Za-z0-9._:-]+", args.host) or not re.fullmatch(r"[A-Za-z0-9_-]+", args.ssh_user):
         parser.error("host or SSH user contains unsupported characters")
@@ -109,12 +127,14 @@ def main() -> int:
     project = Path(__file__).resolve().parents[1]
     public = project / "public"
     modules = tuple(Path(__file__).resolve().with_name(name) for name in RESOURCE_NAMES)
+    if args.storybook:
+        modules += (project / "dist" / "ha-local" / STORYBOOK_RESOURCE,)
     if not (public / "editor.html").is_file() or any(not module.is_file() for module in modules):
         raise RuntimeError("Roomcraft editor assets are missing")
     version = source_digest(public, modules)
-    copy_assets(args.host, args.ssh_user, args.ssh_key, public, modules)
-    print(f"Static editor assets verified at http://{args.host}:8123/local/roomcraft/editor.html")
     if args.assets_only:
+        copy_assets(args.host, args.ssh_user, args.ssh_key, public, modules)
+        print(f"Static editor assets verified at http://{args.host}:8123/local/roomcraft/editor.html")
         print("Dashboard and resources unchanged (--assets-only).")
         return 0
 
@@ -123,13 +143,14 @@ def main() -> int:
 
     with API() as api:
         current = api.call("lovelace/config", url_path=DASHBOARD_PATH)
-        next_config = update_dashboard(current, version)
+        next_config = update_dashboard(current, version, args.storybook)
         args.backup_dir.mkdir(parents=True, exist_ok=True)
         backup = args.backup_dir / f"second-floor-before-roomcraft-lan-{datetime.now().strftime('%Y%m%d-%H%M%S-%f')}.json"
         backup.write_text(json.dumps(current, indent=2), encoding="utf-8")
 
+        copy_assets(args.host, args.ssh_user, args.ssh_key, public, modules)
         resources = api.call("lovelace/resources")
-        resource_urls = register_resources(api, resources, version)
+        resource_urls = register_resources(api, resources, version, tuple(module.name for module in modules))
 
         latest = api.call("lovelace/config", url_path=DASHBOARD_PATH)
         if latest != current:
@@ -147,6 +168,8 @@ def main() -> int:
 
     print(f"Private dashboard backup: {backup}")
     print(f"Roomcraft LAN editor: http://{args.host}:8123/second-floor/studio")
+    if args.storybook:
+        print(f"Roomcraft Storybook: http://{args.host}:8123/second-floor/storybook")
     print("HA dashboard and card/weather resources read-back verified.")
     return 0
 

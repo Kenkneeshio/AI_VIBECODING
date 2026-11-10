@@ -1,5 +1,10 @@
 # Changelog
 
+## Storybook 3D preview
+
+- Added an opt-in Home Assistant Storybook panel that renders the published layout as a warm orthographic miniature. It reuses the layout and the existing device and camera actions. Studio continues to author and publish the layout.
+- The panel gives the fan, light, and dimmer independent animated states. It also projects blinds, the garage, climate, the robot, local weather, and authenticated camera tiles into the scene. Layout JSON and the original plan remain the recovery path.
+
 ## 2026-11-10 — Presence-aware wall switch object
 
 - Added a movable wall-mounted presence dimmer to the Systems catalog. Its detailed switch plate remains the transparent tap target for the bound light while three attached dots animate only when an independently bound binary occupancy sensor reports `on`.
