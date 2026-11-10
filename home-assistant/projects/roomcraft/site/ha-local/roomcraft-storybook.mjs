@@ -23,7 +23,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         .bar button{border:0;background:transparent;border-radius:8px;cursor:pointer}
         a:hover,.bar button:hover{text-decoration:underline}
         :focus-visible{outline:2px solid #74516f;outline-offset:2px}
-        .stage{position:relative;min-height:272px;height:calc(100dvh - 118px);max-height:1100px;isolation:isolate}
+        .stage{position:relative;min-height:272px;height:calc(100dvh - 118px);isolation:isolate}
         canvas{display:block;width:100%;height:100%}
         .overlay{position:absolute;inset:0;pointer-events:none}
         .device,.camera{position:absolute;transform:translate(-50%,-50%);pointer-events:auto}
@@ -64,6 +64,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.weather = this.shadowRoot.querySelector('.weather');
     this.status = this.shadowRoot.querySelector('.status');
     this.resizeObserver = new ResizeObserver(() => this.resize());
+    this.onViewportResize = () => this.resize();
     this.motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
     this.onMotionChange = () => this.schedule();
     this.onVisibility = () => {
@@ -104,6 +105,8 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   connectedCallback() {
     this.resizeObserver.observe(this.stage);
+    window.addEventListener('resize', this.onViewportResize);
+    window.visualViewport?.addEventListener('resize', this.onViewportResize);
     document.addEventListener('visibilitychange', this.onVisibility);
     this.motionPreference.addEventListener('change', this.onMotionChange);
     this.load();
@@ -111,6 +114,8 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   disconnectedCallback() {
     this.resizeObserver.disconnect();
+    window.removeEventListener('resize', this.onViewportResize);
+    window.visualViewport?.removeEventListener('resize', this.onViewportResize);
     document.removeEventListener('visibilitychange', this.onVisibility);
     this.motionPreference.removeEventListener('change', this.onMotionChange);
     this.reset();
@@ -159,6 +164,10 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   resize() {
     if (!this.scene) return;
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const available = Math.max(272, Math.floor(viewportHeight - this.stage.getBoundingClientRect().top));
+    const fit = `${available}px`;
+    if (this.stage.style.height !== fit) this.stage.style.height = fit;
     const {width, height} = this.stage.getBoundingClientRect();
     if (!width || !height || width === this.width && height === this.height) return;
     this.width = width;
