@@ -25,11 +25,12 @@
     'master-bedroom-bench': { box:[1143,352,52,122], shapes:[['r',3,3,46,116,5]] },
     'bath-one-fixtures': { box:[1020,681,73,117], shapes:[['r',3,2,67,112,8]] },
     'bath-two-vanity': { box:[1195,755,202,44], shapes:[['r',3,2,196,39,5]] },
+    'living-wall-unit': { box:[529,169,139,43], shapes:[['r',2,1,135,40,4]] },
     lamp:{ box:[1419,446,48,60], shapes:[['e',3,2,39,41],['e',13,34,22,22]] }
   };
   const prototype = {sofa:'i1',tv:'i2',table:'i3',desk:'i4',chair:'i5',bed:'i6',counter:'i7',tub:'i9',toilet:'i11',plant:'i13',lamp:'lamp',
     kitchenWorktop:'kitchen-worktop',storageCabinet:'master-storage-cabinet',bedroomBench:'master-bedroom-bench',
-    bathFixtures:'bath-one-fixtures',doubleVanity:'bath-two-vanity'};
+    bathFixtures:'bath-one-fixtures',doubleVanity:'bath-two-vanity',wallUnit:'living-wall-unit'};
   const vectorFurniture = new Set(['sofa','table','chair','bed','desk','armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','lamp','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce']);
   // The source art contains bright cyan exterior panes. Paint these fixed
   // openings as subdued top-down glazing after floor and furniture repairs.
@@ -366,6 +367,9 @@
     // each one with a continuous wall segment first; editable window items are
     // then the sole source of visible glazing.
     for(const [x,y,w,,rotation] of referenceWindowOpenings)drawWindowWallRepair(c,x,y,w,rotation);
+    // The lavender wall-mounted unit is also baked into both shell PNGs.
+    // Repair it as architecture first; its v6 item is the only visible owner.
+    drawWindowWallRepair(c,598.5,190.5,139,0);
     const layers=Engine.render.orderSceneItems(project.items,window.RoomcraftInventory?.byType);
     for(const item of layers.floorItems)drawItem(c,item,starter,original,shell,fallback);
     for(const item of layers.regularItems)drawItem(c,item,starter,original,shell,fallback);

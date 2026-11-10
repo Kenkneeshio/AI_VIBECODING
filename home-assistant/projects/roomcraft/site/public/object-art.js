@@ -1222,16 +1222,21 @@
         break;
       }
       case 'garageDoor':{
-        // A compact exterior control tile, rather than a fictitious interior door.
-        raisedCase(c,x,y,w,h-5,5,6,'#24343d');
-        rr(c,x,y,w,h-5,5,gradient(c,x,y,w,h,[[0,'#435965'],[.5,'#283b45'],[1,'#172832']]),'#0c1d26',1.6);
-        rr(c,x+5,y+5,w-10,h-16,2,'#182a34','#72909b',.8);
-        for(let i=0;i<5;i++){
-          const yy=y+7+i*(h-20)/5;
-          rr(c,x+8,yy,w-16,(h-24)/5,1,i%2?'#5a7480':'#6e8890','#18303b',.5);
-          rr(c,x+9,yy+1,w-18,1,0,'#d3e3dc88');
-        }
-        rr(c,x+4,y+4,3,h-15,1,'#b9ccd0');rr(c,x+w-7,y+4,3,h-15,1,'#b9ccd0');
+        // Detached miniature garage: driveway, building shell, hipped roof,
+        // paneled door, porch lamp, and two shrubs read clearly from above.
+        rr(c,x+w*.12,y+h*.69,w*.76,h*.29,5,'#c9c4b5','#817d73',1);
+        for(let i=0;i<4;i++)rr(c,x+w*(.18+i*.17),y+h*.72,w*.11,h*.22,2,i%2?'#b6b2a5':'#d9d4c6');
+        raisedCase(c,x+w*.08,y+h*.13,w*.84,h*.63,8,7,'#23353d');
+        rr(c,x+w*.09,y+h*.16,w*.82,h*.57,7,'#e4d9c4','#6e6255',1.5);
+        c.beginPath();c.moveTo(x+w*.05,y+h*.27);c.lineTo(0,y);c.lineTo(x+w*.95,y+h*.27);c.lineTo(x+w*.84,y+h*.43);c.lineTo(x+w*.16,y+h*.43);c.closePath();
+        c.fillStyle=gradient(c,x,y,w,h*.45,[[0,'#9b6b55'],[.48,'#c18a69'],[1,'#6f4c42']]);c.fill();c.strokeStyle='#563d38';c.lineWidth=1.5;c.stroke();
+        c.beginPath();c.moveTo(0,y+h*.03);c.lineTo(0,y+h*.39);c.strokeStyle='rgba(255,224,184,.42)';c.lineWidth=1.2;c.stroke();
+        const dx=x+w*.2,dy=y+h*.43,dw=w*.6,dh=h*.28;
+        rr(c,dx,dy,dw,dh,3,'#d9ded8','#52646a',1.4);
+        for(let row=1;row<4;row++){c.beginPath();c.moveTo(dx+3,dy+row*dh/4);c.lineTo(dx+dw-3,dy+row*dh/4);c.strokeStyle='#8fa09f';c.lineWidth=.8;c.stroke();}
+        for(let col=1;col<4;col++){c.beginPath();c.moveTo(dx+col*dw/4,dy+2);c.lineTo(dx+col*dw/4,dy+dh-2);c.strokeStyle='rgba(113,132,132,.55)';c.lineWidth=.6;c.stroke();}
+        disc(c,x+w*.84,y+h*.5,3,'#ffd477','#6d5735',.7);
+        for(const sx of [x+w*.11,x+w*.89]){disc(c,sx,y+h*.69,8,'#315f44','#24483a',1);disc(c,sx-2,y+h*.65,5,'#5e9156');}
         break;
       }
       case 'floorPlant':{

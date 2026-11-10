@@ -16,7 +16,7 @@ from pathlib import Path
 import sys
 
 TARGET_DASHBOARD = "second-floor"
-TARGET_VERSION = 5
+TARGET_VERSION = 6
 
 
 def _item(item_id, item_type, name, x, y, width, height, rotation=0, **extra):
@@ -41,6 +41,7 @@ REFERENCE_ITEMS = (
     _item("window-bedroom-north-two", "window", "Bedroom north window 02", 1340, 179, 82, 34),
     _item("window-living-west", "window", "Living west window", 400, 316.5, 107, 28, 90),
     _item("window-dining-west", "window", "Dining west window", 303.5, 709, 138, 29, 90),
+    _item("living-wall-unit", "wallUnit", "Living wall-mounted unit", 598.5, 190.5, 139, 43),
 )
 
 
@@ -60,12 +61,26 @@ def migrate_dashboard(current):
     if project.get("version") != 2 or not isinstance(project.get("items"), list):
         raise MigrationError("The Roomcraft layout version is unsupported.")
     reference_version = project.get("editableReferenceVersion", 0)
-    if not isinstance(reference_version, int) or reference_version not in {4, TARGET_VERSION}:
+    if not isinstance(reference_version, int) or reference_version not in {4, 5, TARGET_VERSION}:
         raise MigrationError("The editable reference version is unsupported.")
     if reference_version >= TARGET_VERSION:
         return result
     present = {item.get("id") for item in project["items"] if isinstance(item, dict)}
     project["items"].extend(deepcopy(item) for item in REFERENCE_ITEMS if item["id"] not in present)
+    fan = next((item for item in project["items"] if item.get("type") == "fans-fan-light-white" and
+                "dining ceiling fan" in item.get("name", "").lower()), None)
+    if fan:
+        fan["type"] = "fans-five-blade-fan-white"
+    fan_light = next((item for item in project["items"] if item.get("type") == "controlZone" and
+                      "dining fan light" in item.get("name", "").lower() and
+                      abs(item.get("x", 0) - 445) < 32 and abs(item.get("y", 0) - 682) < 32), None)
+    if fan_light:
+        fan_light.update(type="ceilingLight", visualKind="light", lightForm="bloom_ceiling", w=46, h=46)
+    garage = next((item for item in project["items"] if item.get("type") == "garageDoor" and
+                   "garage door" in item.get("name", "").lower()), None)
+    if garage and all(abs(garage.get(key, 0) - value) <= 3 for key, value in
+                      {"x": 306, "y": 106, "w": 116, "h": 52, "rotation": 0}.items()):
+        garage.update(x=306, y=112, w=132, h=92)
     project["editableReferenceVersion"] = TARGET_VERSION
     return result
 

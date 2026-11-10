@@ -1008,10 +1008,10 @@ test('garage door art follows closed, open, opening, closing, and unavailable co
   object.setConfig({ entity: 'cover.garage_door', title: 'Garage door',
     roomcraft_visual_kind: 'door' });
   const css = object.shadowRoot.children[0].textContent;
-  assert.match(css, /\[data-visual="door"\]\[data-door-form="garage"\] \.art\{[^}]*repeating-linear-gradient\(90deg/);
-  assert.match(css, /\[data-entity-state="open"\] \.art\{[^}]*scaleY\(\.24\)/);
-  assert.match(css, /\[data-entity-state="opening"\] \.art\{[^}]*roomcraft-door-opening/);
-  assert.match(css, /\[data-entity-state="closing"\] \.art\{[^}]*roomcraft-door-closing/);
+  assert.match(css, /\[data-visual="door"\]\[data-door-form="garage"\] \.art::before\{[^}]*clip-path:polygon/);
+  assert.match(css, /\[data-entity-state="open"\] \.art::after\{[^}]*scaleY\(\.22\)/);
+  assert.match(css, /\[data-entity-state="opening"\] \.art::after\{[^}]*scaleY\(\.48\)/);
+  assert.match(css, /\[data-entity-state="closing"\] \.art::after\{[^}]*scaleY\(\.76\)/);
   assert.match(css, /prefers-reduced-motion:reduce/);
   assert.match(css, /\[data-visual="door"\] \.art\{animation:none/);
   for (const [value, visual] of [

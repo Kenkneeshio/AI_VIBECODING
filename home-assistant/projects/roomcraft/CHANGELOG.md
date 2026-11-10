@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-09 — Empty-shell audit, split fan controls, and detached garage
+
+- Audited both supplied shell PNGs and found the final non-architectural remnant: a lavender wall-mounted unit embedded above the living-room wall. Reference migration version 6 now makes it an ordinary `wallUnit` item and deterministically repairs the wall beneath it. The empty-scene render repairs eight source windows plus this unit before drawing item layers.
+- **Remove all objects** and **Restore reference layout** now always return to Design view. Reference view intentionally remains the furnished source PNG, but can no longer make a successful clear operation look as though objects survived.
+- Split the dining ceiling fixture into two independently editable and controllable items: a motor-only five-blade fan and a smaller visible ceiling-light object at its hub. The former invisible fan-light zone keeps its existing light-switch binding; the fan keeps its existing motor-switch binding. Their transparent hit regions, state dots, glow, and fan rotation remain state-specific.
+- Replaced the flat garage-door tile with a detailed detached-garage miniature: driveway apron, building shell, hipped roof, paneled animated door, lamp, and shrubs. The current cover binding remains unchanged; only the door panel changes height for open/opening/closing states.
+- Added migration parity, deletion persistence, split-control, detached-garage state-art, shell-repair, and no-console-error coverage. Local browser QA rendered the complete 65-item scene with separate fan/light art and the detached garage.
+
 ## 2026-11-09 — Fully removable reference layout
 
 - **Customer / problem / observable outcome:** Several rugs, windows, kitchen/bath fixtures, and bedroom furnishings were painted outside the scene model, so deleting objects could leave those visuals behind. Every visible reference furnishing is now an ordinary editable item. An empty object scene visibly contains architecture only; moving or deleting an object changes the same layer that draws it.

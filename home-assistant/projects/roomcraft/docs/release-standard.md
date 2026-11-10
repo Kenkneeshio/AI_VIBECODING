@@ -73,7 +73,7 @@ Use the GitHub Roomcraft pull-request template or copy this structure into the r
 
 ## Change and rollback rules
 
-- Preserve layout version 2, reference migration version 5, the 1536 × 1024 project space, and current customer geometry unless a versioned decision explicitly changes them.
+- Preserve layout version 2, reference migration version 6, the 1536 × 1024 project space, and current customer geometry unless a versioned decision explicitly changes them.
 - Generated artifacts are outputs, never hand-edited sources. CI regenerates the release manifest and verifies its immediate readback. When a generated artifact is intentionally committed, its release procedure must additionally regenerate it and require a clean Git diff.
 - A migration is pure, sequential, idempotent, and customization-preserving before it can ship.
 - An art change declares its layer and export owner; one visual must not be emitted by both the static PNG and live Home Assistant layer.

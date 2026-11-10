@@ -89,6 +89,7 @@
     { type: 'kitchenWorktop', label: 'Kitchen appliance worktop', icon: '▦', w: 106, h: 127, group: 'utility' },
     { type: 'bathFixtures', label: 'Bathroom fixture group', icon: '◫', w: 73, h: 117, group: 'utility' },
     { type: 'doubleVanity', label: 'Double-sink vanity', icon: '▥', w: 202, h: 44, group: 'utility' },
+    { type: 'wallUnit', label: 'Wall-mounted unit', icon: '▰', w: 139, h: 43, group: 'systems', mount: 'wall' },
     { type: 'tub', label: 'Bathtub', icon: '▢', w: 65, h: 128, group: 'utility' },
     { type: 'toilet', label: 'Toilet', icon: '◍', w: 46, h: 60, group: 'utility' },
     { type: 'lamp', label: 'Bedside lamp', icon: '☼', w: 40, h: 40, group: 'lighting' },
@@ -222,12 +223,18 @@
     item('window-living-west','window','Living west window',400,316.5,107,28,90),
     item('window-dining-west','window','Dining west window',303.5,709,138,29,90)
   ];
+  // Last non-architectural feature discovered in the supplied "empty" PNG.
+  // The renderer repairs the wall beneath it, so this item is its only owner.
+  const REFERENCE_SCENE_ITEMS_V6 = [
+    item('living-wall-unit','wallUnit','Living wall-mounted unit',598.5,190.5,139,43)
+  ];
   const COMPLETE_REFERENCE_ITEMS = [
     ...STARTER.items,
     ...DEFAULT_ROOM_FIXTURES,
     ...DEFAULT_INTERFACE_ITEMS,
     ...REFERENCE_FURNITURE_V4,
-    ...REFERENCE_SCENE_ITEMS_V5
+    ...REFERENCE_SCENE_ITEMS_V5,
+    ...REFERENCE_SCENE_ITEMS_V6
   ];
   const interfaceTypes = new Set(DEFAULT_INTERFACE_ITEMS.map(o=>o.type));
   const fixedRoomIds = new Set(STARTER.rooms.map(r => r.id));
@@ -278,6 +285,18 @@
         if(!state.items.some(current=>current.id===referenceItem.id))state.items.push(clone(referenceItem));
       }
       return state;
+    }},
+    {id:'reference-v6-last-shell-object',from:5,to:6,apply(state){
+      for(const referenceItem of REFERENCE_SCENE_ITEMS_V6){
+        if(!state.items.some(current=>current.id===referenceItem.id))state.items.push(clone(referenceItem));
+      }
+      const fan=state.items.find(current=>current.type==='fans-fan-light-white'&&/dining ceiling fan/i.test(current.name||''));
+      if(fan)fan.type='fans-five-blade-fan-white';
+      const fanLight=state.items.find(current=>current.type==='controlZone'&&/dining fan light/i.test(current.name||'')&&Math.hypot(current.x-445,current.y-682)<32);
+      if(fanLight)Object.assign(fanLight,{type:'ceilingLight',visualKind:'light',lightForm:'bloom_ceiling',w:46,h:46});
+      const garage=state.items.find(current=>current.type==='garageDoor'&&/garage door/i.test(current.name||''));
+      if(matchesKnownGeometry(garage,[{x:306,y:106,w:116,h:52,rotation:0}],3))Object.assign(garage,{x:306,y:112,w:132,h:92});
+      return state;
     }}
   ];
 
@@ -319,7 +338,7 @@
     for(const r of STARTER.rooms)if(fixedRoomIds.has(r.id)&&!rooms.has(r.id))next.rooms.push(clone(r));
     for(const w of STARTER.walls)if(fixedExteriorWallIds.has(w.id)){if(walls.has(w.id)){const current=walls.get(w.id);current.x1=w.x1;current.y1=w.y1;current.x2=w.x2;current.y2=w.y2;}else next.walls.push(clone(w));}
     if(!Array.isArray(next.hotspots))next.hotspots=clone(DEFAULT_HOTSPOTS);
-    next=clone(Engine.migrations.run(next,REFERENCE_MIGRATIONS,5,{versionKey:'editableReferenceVersion'}).project);
+    next=clone(Engine.migrations.run(next,REFERENCE_MIGRATIONS,6,{versionKey:'editableReferenceVersion'}).project);
     for(const o of next.items)clampLinkedItem(o);
     next.version=2;
     return Engine.normalizeScene(next);
@@ -923,11 +942,11 @@
   function addRoom(){snapshot();const r=room(uid('r'),'New room','terrazzo',[[570,420],[790,420],[790,580],[570,580]],[580,440]);project.rooms.push(r);setTool('room');select('room',r.id);setPanel('rooms');afterChange('Added editable room');showToast('Drag the corner handles to reshape your room');}
   function missingReferenceItems(){const present=new Set(project.items.map(i=>i.id));return COMPLETE_REFERENCE_ITEMS.filter(i=>!present.has(i.id));}
   function updateRestoreButton(){const button=document.getElementById('restoreFurnishingsButton');if(!button)return;const count=missingReferenceItems().length;button.disabled=count===0;button.textContent=count?`↺ Restore ${count} missing reference object${count===1?'':'s'}`:'✓ Complete reference layout is present';button.title=count?'Add every missing reference object while keeping your floors, rooms, and new objects':'Every reference object is already in this design';const clear=document.getElementById('clearObjectsButton');if(clear){clear.disabled=project.items.length===0;clear.textContent=project.items.length?`Remove all objects (${project.items.length})`:'No objects to remove';}}
-  function restoreReferenceItems(){const missing=missingReferenceItems();if(!missing.length){showToast('All reference furniture is present');return;}snapshot();project.items.push(...missing.map(clone));selected=null;clearPlacement();afterChange(`Restored ${missing.length} reference object${missing.length===1?'':'s'}`);showToast('Original furnishings restored; other edits kept');}
+  function restoreReferenceItems(){const missing=missingReferenceItems();if(!missing.length){showToast('All reference furniture is present');return;}snapshot();project.items.push(...missing.map(clone));selected=null;clearPlacement();setViewMode('design');afterChange(`Restored ${missing.length} reference object${missing.length===1?'':'s'}`);showToast('Original furnishings restored in Design view; other edits kept');}
   async function clearAllObjects(){
     if(!project.items.length){showToast('There are no objects to remove');return;}
     if(!await askConfirmation('Remove all objects',`Remove all ${project.items.length} objects? Floors, rooms, and walls stay in place.`,'Remove objects'))return;
-    snapshot();project.items=[];selected=null;clearPlacement();afterChange('Removed all objects');showToast('All objects removed; floors, rooms, and walls were kept');
+    snapshot();project.items=[];selected=null;clearPlacement();setViewMode('design');afterChange('Removed all objects');showToast('All objects removed in Design view; floors, rooms, and walls were kept');
   }
   function download(name,type,content){const blob=content instanceof Blob?content:new Blob([content],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);}
   function exportJson(){download('roomcraft-editable-layout.json','application/json',JSON.stringify(Engine.canonicalize(project),null,2));showToast('Editable layout JSON downloaded');}

@@ -54,7 +54,9 @@ Place a bed, then use **Style** to compare constructions and **Size** to choose 
 
 Windows and wall-mounted objects snap near walls. If the editor asks you to click closer to a wall, move the pointer to the intended wall segment and try again. After placing a window, zoom to 100% and check that its long edge, frame depth, and shadow follow that wall. Drag it along the wall if it needs repositioning. Use **Select** to drag an item. Use **Erase** or the Inspector's remove action to delete it.
 
-**Remove all objects** clears furniture, rugs, windows, fixtures, lights, and interface objects while keeping room boundaries, floor finishes, and walls. The confirmation dialog shows the exact object count. **Restore reference layout** adds every missing reference object through the same engine while preserving extra objects and structural edits. After a deletion is saved, reopening the editor does not recreate it automatically; restoration is always explicit.
+**Remove all objects** clears furniture, rugs, windows, fixtures, lights, and interface objects while keeping room boundaries, floor finishes, and walls. The confirmation dialog shows the exact object count, and the editor returns to **Design** so the furnished read-only Reference image cannot be mistaken for the cleared result. **Restore reference layout** adds every missing reference object through the same engine, returns to Design, and preserves extra objects and structural edits. After a deletion is saved, reopening the editor does not recreate it automatically; restoration is always explicit.
+
+The dining ceiling fan and its center light are separate objects even though they occupy one physical fixture. Select the small center light to move or configure the light switch; select a blade or outer fan area for the motor. Each object's own Home Assistant switch alone controls its status dot and animation. The exterior garage is also an editable detached-garage object; its cover state animates only the paneled door.
 
 The [window artwork comparison](images/window-perspective-comparison.png) shows why the lower, recessed glazing is the Design view's target for the original openings.
 

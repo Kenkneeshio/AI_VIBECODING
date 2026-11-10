@@ -1,5 +1,13 @@
 # Decision log
 
+## 2026-11-09 — Audit the shell and separate physical controls
+
+**Decision:** Maintain an explicit list of every non-architectural feature inherited from the supplied shell images. Repair those pixels as architecture below the scene, then represent the feature as an item. Version 6 converts the last lavender wall unit. A combined physical fixture uses one item per independently controlled circuit: the dining fan motor is a five-blade fan item and its light is a separate ceiling-light item at the hub. Garage-door state is represented by a detached-garage object whose door panel—not its whole building—animates.
+
+**Reason:** A visually empty project is only trustworthy when its base contains architecture alone. Reference mode also cannot be allowed to masquerade as the editable result. Likewise, one combined fan graphic over two switches creates overlapping hit regions and ambiguous state feedback, while collapsing an entire garage graphic to show an open door makes the building look physically impossible.
+
+**Consequence:** Clear and restore force Design view. Source windows and the wall unit have deterministic repair recipes and ordinary scene records. Fan and light retain independent entity IDs, state dots, touch feedback, selection, movement, and animation. The detached garage retains the current cover entity, but state CSS transforms only its door pseudo-element. Empty-scene, migration, and live-state tests are required for future shell or combined-device changes.
+
 ## 2026-11-09 — Every removable visual is a scene item
 
 **Decision:** Treat the clean architectural shell as structure only. Rugs, windows, furniture, fixtures, lights, controls, and decorative objects must be represented by version-2 `items` and rendered exclusively from the shared scene partition. Use reference migration version 5 once to convert the remaining three rugs, eight original windows, and five source-backed furnishing groups into items. Cover the old PNG window apertures with deterministic wall repair beneath the opening layer; do not treat that repair as an object.

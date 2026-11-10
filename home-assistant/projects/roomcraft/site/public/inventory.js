@@ -134,7 +134,7 @@
 
   add('fans','ceilingFan','three','three-blade-fan','Three-blade ceiling fan',150,150,['oak','white','charcoal'],{atlas:'ceilingFan',tags:'ceiling fan'});
   add('fans','ceilingFan','four','four-blade-fan','Four-blade ceiling fan',155,155,['white','walnut','brass'],{tags:'ceiling fan'});
-  add('fans','ceilingFan','five','five-blade-fan','Five-blade ceiling fan',160,160,['oak','charcoal'],{tags:'ceiling fan'});
+  add('fans','ceilingFan','five','five-blade-fan','Five-blade ceiling fan',160,160,['oak','white','charcoal'],{tags:'ceiling fan'});
   add('fans','ceilingFan','light','fan-light','Ceiling fan with light',158,158,['white','brass'],{tags:'ceiling fan light'});
   add('fans','ceilingFan','palm','palm-fan','Palm-leaf ceiling fan',168,168,['forest'],{tags:'ceiling fan'});
 

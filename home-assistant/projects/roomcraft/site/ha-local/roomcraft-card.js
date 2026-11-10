@@ -839,13 +839,12 @@ class RoomcraftObjectControl extends HTMLElement {
       .target[data-visual="window"][data-axis="vertical"] .art{inset:7% auto;left:50%;width:clamp(8px,22%,18px);transform:translateX(-50%)}
       .target[data-visual="door"] .art{inset:6%;border-radius:7px}
       .target[data-visual="door"][data-door-form="garage"] .art{
-        inset:8% 3%;overflow:visible;border:1px solid #40545a;border-radius:5px;
-        background:linear-gradient(180deg,#edf2eb 0 12%,transparent 13%),
-          repeating-linear-gradient(90deg,#cbd8d2 0 23%,#a6b8b2 23% 24%,#718982 24% 25%);
-        box-shadow:inset 0 0 0 2px #eaf0ea,inset 0 -5px 7px #526b6869,0 3px 7px #07131a8c;
-        transform-origin:50% 4%;transition:transform .45s ease,filter .25s,box-shadow .25s}
-      .target[data-visual="door"][data-door-form="garage"] .art::before{content:"";position:absolute;inset:-4% -3%;border:2px solid #33464d;border-width:0 2px;border-radius:3px;box-shadow:inset 1px 0 #dce7e2,inset -1px 0 #dce7e2}
-      .target[data-visual="door"][data-door-form="garage"] .art::after{content:"";position:absolute;left:46%;top:43%;width:8%;height:14%;border-radius:40%;background:radial-gradient(circle at 40% 30%,#eaf1ed,#5c706d 72%);box-shadow:0 1px 2px #13232899}
+        inset:2%;overflow:visible;border:0;border-radius:8px;
+        background:linear-gradient(90deg,transparent 0 12%,#d4d0c2 12% 88%,transparent 88%) bottom/100% 31% no-repeat,
+          linear-gradient(180deg,#eadfcb,#cbbda7) 14% 28%/72% 50% no-repeat;
+        box-shadow:0 4px 7px #07131a80;transition:filter .25s,box-shadow .25s}
+      .target[data-visual="door"][data-door-form="garage"] .art::before{content:"";position:absolute;left:5%;top:5%;width:90%;height:47%;clip-path:polygon(50% 0,100% 48%,88% 100%,12% 100%,0 48%);background:linear-gradient(145deg,#d39a75,#9b6a56 52%,#69483f);border-radius:8px;filter:drop-shadow(0 2px 1px #26343d99);box-shadow:inset 0 1px #f0c19b80}
+      .target[data-visual="door"][data-door-form="garage"] .art::after{content:"";position:absolute;left:22%;top:48%;width:56%;height:28%;transform-origin:50% 0;border:1px solid #52666b;border-radius:3px;background:repeating-linear-gradient(0deg,#d8dfd9 0 20%,#879b98 21% 23%,#c5d1cc 24% 25%);box-shadow:inset 0 0 0 2px #eef2eb,0 2px 3px #13232888;transition:transform .45s ease,filter .25s,box-shadow .25s}
       .target[data-visual="window"][data-state="off"] .art{
         background:repeating-linear-gradient(to bottom,#263b47 0 3px,#101e29 3px 7px);box-shadow:inset 0 0 0 2px #6c818c,0 2px 7px #07131a99}
       .target[data-visual="window"][data-axis="vertical"][data-state="off"] .art{background:repeating-linear-gradient(to right,#263b47 0 3px,#101e29 3px 7px)}
@@ -853,10 +852,10 @@ class RoomcraftObjectControl extends HTMLElement {
         background:linear-gradient(to bottom,#c5dce0b8,#6c99a8a6 48%,#a9cbd1b8);
         box-shadow:inset 0 0 0 1.5px #d4e5e1,inset 0 2px 3px #e7f0e48a,0 1px 3px #0b1d27a8}
       .target[data-visual="window"][data-axis="vertical"][data-state="on"] .art{background:linear-gradient(to right,#c5dce0b8,#6c99a8a6 48%,#a9cbd1b8)}
-      .target[data-visual="door"][data-door-form="garage"][data-entity-state="closed"] .art{transform:scaleY(1);filter:saturate(.72) brightness(.82)}
-      .target[data-visual="door"][data-door-form="garage"][data-entity-state="open"] .art{transform:scaleY(.24);filter:brightness(1.12);box-shadow:inset 0 0 0 2px #e5eee8,0 2px 5px #07131a8c,0 7px 0 -1px #21363c}
-      .target[data-visual="door"][data-door-form="garage"][data-entity-state="opening"] .art{transform:scaleY(.48);filter:brightness(1.08);animation:roomcraft-door-opening 1.25s ease-in-out infinite alternate}
-      .target[data-visual="door"][data-door-form="garage"][data-entity-state="closing"] .art{transform:scaleY(.76);filter:saturate(.78);animation:roomcraft-door-closing 1.25s ease-in-out infinite alternate}
+      .target[data-visual="door"][data-door-form="garage"][data-entity-state="closed"] .art::after{transform:scaleY(1);filter:saturate(.78) brightness(.9)}
+      .target[data-visual="door"][data-door-form="garage"][data-entity-state="open"] .art::after{transform:scaleY(.22);filter:brightness(1.12);box-shadow:inset 0 0 0 2px #e5eee8,0 5px 0 #21363c}
+      .target[data-visual="door"][data-door-form="garage"][data-entity-state="opening"] .art::after{transform:scaleY(.48);filter:brightness(1.08)}
+      .target[data-visual="door"][data-door-form="garage"][data-entity-state="closing"] .art::after{transform:scaleY(.76);filter:saturate(.82)}
       .target[data-visual="door"][data-door-form="entry"][data-state="off"] .art{background:linear-gradient(145deg,#101b27dd,#24313bd9);box-shadow:inset 0 0 0 3px #6c818c,0 2px 8px #07131a99}
       .target[data-visual="door"][data-door-form="entry"][data-state="on"] .art{background:linear-gradient(145deg,#d8ffc2bb,#54c87fab 45%,#e3ffccaa);box-shadow:inset 0 0 0 3px #edffe8,0 0 13px 5px #8bef9ca6}
       .target[data-visual="climate"] .art{inset:5%;border-radius:12px}

@@ -57,7 +57,10 @@ function boot(savedProject, dashboardRequest, options = {}) {
     naturalWidth = 0;
     addEventListener() {}
   }
-  const window = { addEventListener() {}, location, RoomcraftInventory: { templates: [], groups: [] },
+  const window = { addEventListener() {}, location, RoomcraftInventory: { templates: [
+    {type:'fans-fan-light-white',label:'Ceiling fan with light · White',w:158,h:158,group:'fans',artFamily:'ceilingFan',form:'light',visualKind:'fan'},
+    {type:'fans-five-blade-fan-white',label:'Five-blade ceiling fan · White',w:160,h:160,group:'fans',artFamily:'ceilingFan',form:'five',visualKind:'fan'}
+  ], groups: [] },
     ...(dashboardRequest ? { RoomcraftDashboardBridge: { request: dashboardRequest } } : {}) };
   window.top = window;
   installRoomcraftEngine(window);
@@ -226,7 +229,7 @@ test('migrates a saved plan into movable lamp and room fixtures without duplicat
   editor.pointer('pointermove', 1393, 516);
   editor.pointer('pointerup', 1393, 516);
   const migrated = editor.read();
-  assert.equal(migrated.editableReferenceVersion, 5);
+  assert.equal(migrated.editableReferenceVersion, 6);
   assert.equal(migrated.items.filter(i => i.id === 'i14').length, 1);
   assert.equal(migrated.items.filter(i => i.id.startsWith('fixture-')).length, 7);
   assert.equal(migrated.items.find(i => i.id === 'office-desk-lamp')?.type, 'lamp');
@@ -240,6 +243,7 @@ test('migrates a saved plan into movable lamp and room fixtures without duplicat
   assert.equal(migrated.items.filter(i => i.type === 'rug').length, 3);
   assert.equal(migrated.items.filter(i => i.type === 'window').length, 8);
   assert.ok(migrated.items.some(i => i.id === 'kitchen-worktop'));
+  assert.ok(migrated.items.some(i => i.id === 'living-wall-unit'));
   assert.equal(migrated.items.find(i => i.id === 'i14').x, 1393);
 
   const reopened = boot(migrated);
@@ -258,7 +262,7 @@ test('remove all objects stays empty after reload and restore rebuilds the compl
   editor.dispatch('confirmationAccept', 'click', {});
   await removing;
   const empty = editor.read();
-  assert.equal(empty.editableReferenceVersion, 5);
+  assert.equal(empty.editableReferenceVersion, 6);
   assert.equal(empty.items.length, 0);
 
   const reopened = boot(empty);
@@ -270,6 +274,30 @@ test('remove all objects stays empty after reload and restore rebuilds the compl
   assert.ok(restored.items.some(i => i.id === 'kitchen-worktop'));
   assert.ok(restored.items.some(i => i.id === 'fixture-living'));
   assert.ok(restored.items.some(i => i.id === 'ui-edit-layout'));
+  assert.ok(restored.items.some(i => i.id === 'living-wall-unit'));
+});
+
+test('v6 owns the final shell object and separates fan, fan light, and detached garage', () => {
+  const v5 = { version: 2, editableReferenceVersion: 5, rooms: [], walls: [], hotspots: [], items: [
+    {id:'fan',type:'fans-fan-light-white',name:'Dining ceiling fan',x:445,y:682,w:124,h:124,rotation:0,entityId:'switch.fan'},
+    {id:'fan-light',type:'controlZone',name:'Dining fan light',x:445,y:682,w:42,h:42,rotation:0,entityId:'switch.light'},
+    {id:'garage',type:'garageDoor',name:'Garage door',x:306,y:106,w:116,h:52,rotation:0,entityId:'cover.garage'}
+  ] };
+  const editor=boot(v5);
+  editor.pointer('pointerdown',598.5,190.5);
+  editor.pointer('pointermove',599.5,190.5);
+  editor.pointer('pointerup',599.5,190.5);
+  const migrated = editor.read();
+  assert.equal(migrated.editableReferenceVersion, 6);
+  assert.equal(migrated.items.filter(i => i.id === 'living-wall-unit').length, 1);
+  assert.equal(migrated.items.find(i=>i.id==='fan').type,'fans-five-blade-fan-white');
+  assert.deepEqual(
+    ['type','visualKind','lightForm','w','h'].map(key=>migrated.items.find(i=>i.id==='fan-light')[key]),
+    ['ceilingLight','light','bloom_ceiling',46,46]
+  );
+  assert.deepEqual(['x','y','w','h'].map(key=>migrated.items.find(i=>i.id==='garage')[key]),[306,112,132,92]);
+  migrated.items = migrated.items.filter(i => i.id !== 'living-wall-unit');
+  assert.equal(boot(migrated).read().items.some(i => i.id === 'living-wall-unit'), false);
 });
 
 test('a deliberately removed migrated lamp is not respawned on a later load', () => {

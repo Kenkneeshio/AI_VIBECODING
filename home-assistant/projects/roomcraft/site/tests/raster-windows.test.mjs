@@ -53,7 +53,7 @@ test('the seamless empty shell repairs source openings but renders no windows wi
   const positions = canvas.operations.filter(([kind]) => kind === 'translate')
     .map(([, x, y]) => [x, y]);
   assert.deepEqual(positions, []);
-  assert.equal(canvas.operations.filter(([kind]) => kind === 'moveTo').length, 8 * 8);
+  assert.equal(canvas.operations.filter(([kind]) => kind === 'moveTo').length, 9 * 8);
   const glassStops = canvas.operations.flatMap(([kind, stops]) =>
     kind === 'gradient' ? stops.map(([, color]) => color) : []);
   assert.ok(!glassStops.includes('#547586'), 'no glass is rendered unless a window item exists');
