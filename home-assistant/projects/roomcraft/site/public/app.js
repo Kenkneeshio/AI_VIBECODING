@@ -82,8 +82,13 @@
     { type: 'dresser', label: 'Dresser', icon: '▥', w: 122, h: 58, group: 'bedroom' },
     { type: 'nightstand', label: 'Nightstand', icon: '▣', w: 56, h: 54, group: 'bedroom' },
     { type: 'bookcase', label: 'Bookcase', icon: '▤', w: 58, h: 156, group: 'bedroom' },
+    { type: 'bedroomBench', label: 'Bedroom bench', icon: '▰', w: 52, h: 122, group: 'bedroom' },
+    { type: 'storageCabinet', label: 'Storage cabinet', icon: '▥', w: 75, h: 92, group: 'bedroom' },
     { type: 'counter', label: 'Counter', icon: '▥', w: 62, h: 190, group: 'utility' },
     { type: 'stool', label: 'Bar stool', icon: '◉', w: 42, h: 42, group: 'utility' },
+    { type: 'kitchenWorktop', label: 'Kitchen appliance worktop', icon: '▦', w: 106, h: 127, group: 'utility' },
+    { type: 'bathFixtures', label: 'Bathroom fixture group', icon: '◫', w: 73, h: 117, group: 'utility' },
+    { type: 'doubleVanity', label: 'Double-sink vanity', icon: '▥', w: 202, h: 44, group: 'utility' },
     { type: 'tub', label: 'Bathtub', icon: '▢', w: 65, h: 128, group: 'utility' },
     { type: 'toilet', label: 'Toilet', icon: '◍', w: 46, h: 60, group: 'utility' },
     { type: 'lamp', label: 'Bedside lamp', icon: '☼', w: 40, h: 40, group: 'lighting' },
@@ -197,6 +202,33 @@
     item('master-nightstand','nightstand','Master humidifier table',1443,479,80,58),
     item('master-low-dresser','dresser','Master lower dresser',1443,529,80,44)
   ];
+  // Reference art that used to be painted unconditionally by the raster
+  // renderer. Every visible, removable thing now has one scene record.
+  const REFERENCE_SCENE_ITEMS_V5 = [
+    Object.assign(item('rug-living','rug','Living room rug',541,351,207,142,90),{rugStyle:'classic'}),
+    Object.assign(item('rug-bedroom','rug','Bedroom floral rug',1331,408,254,240),{rugStyle:'bedroom-floral'}),
+    Object.assign(item('rug-office','rug','Office round rug',940,389,82,78),{rugStyle:'office-round'}),
+    item('kitchen-worktop','kitchenWorktop','Kitchen appliance worktop',748,735.5,106,127),
+    item('master-storage-cabinet','storageCabinet','Master storage cabinet',1432.5,243,75,92),
+    item('master-bedroom-bench','bedroomBench','Master bedroom bench',1169,413,52,122),
+    item('bath-one-fixtures','bathFixtures','Bath 01 fixture group',1056.5,739.5,73,117),
+    item('bath-two-vanity','doubleVanity','Bath 02 double-sink vanity',1296,777,202,44),
+    item('window-living-north','window','Living north window',461,203,82,34),
+    item('window-great-north','window','Great room north window',728,203,78,34),
+    item('window-office-north-one','window','Office north window 01',866.5,203,71,34),
+    item('window-office-north-two','window','Office north window 02',962.5,203,73,34),
+    item('window-bedroom-north-one','window','Bedroom north window 01',1227,179,84,34),
+    item('window-bedroom-north-two','window','Bedroom north window 02',1340,179,82,34),
+    item('window-living-west','window','Living west window',400,316.5,107,28,90),
+    item('window-dining-west','window','Dining west window',303.5,709,138,29,90)
+  ];
+  const COMPLETE_REFERENCE_ITEMS = [
+    ...STARTER.items,
+    ...DEFAULT_ROOM_FIXTURES,
+    ...DEFAULT_INTERFACE_ITEMS,
+    ...REFERENCE_FURNITURE_V4,
+    ...REFERENCE_SCENE_ITEMS_V5
+  ];
   const interfaceTypes = new Set(DEFAULT_INTERFACE_ITEMS.map(o=>o.type));
   const fixedRoomIds = new Set(STARTER.rooms.map(r => r.id));
   const fixedExteriorWallIds = new Set(['w1','w2','w3','w4','w5','w6','w7','w8','w9','w10','w11','w12']);
@@ -240,6 +272,12 @@
         if(!present)state.items.unshift(clone(furniture));
       }
       return state;
+    }},
+    {id:'reference-v5-all-visuals-are-items',from:4,to:5,apply(state){
+      for(const referenceItem of REFERENCE_SCENE_ITEMS_V5){
+        if(!state.items.some(current=>current.id===referenceItem.id))state.items.push(clone(referenceItem));
+      }
+      return state;
     }}
   ];
 
@@ -281,7 +319,7 @@
     for(const r of STARTER.rooms)if(fixedRoomIds.has(r.id)&&!rooms.has(r.id))next.rooms.push(clone(r));
     for(const w of STARTER.walls)if(fixedExteriorWallIds.has(w.id)){if(walls.has(w.id)){const current=walls.get(w.id);current.x1=w.x1;current.y1=w.y1;current.x2=w.x2;current.y2=w.y2;}else next.walls.push(clone(w));}
     if(!Array.isArray(next.hotspots))next.hotspots=clone(DEFAULT_HOTSPOTS);
-    next=clone(Engine.migrations.run(next,REFERENCE_MIGRATIONS,4,{versionKey:'editableReferenceVersion'}).project);
+    next=clone(Engine.migrations.run(next,REFERENCE_MIGRATIONS,5,{versionKey:'editableReferenceVersion'}).project);
     for(const o of next.items)clampLinkedItem(o);
     next.version=2;
     return Engine.normalizeScene(next);
@@ -883,9 +921,14 @@
   function duplicateSelected(){if(selected?.kind!=='item')return;const o=project.items.find(i=>i.id===selected.id);if(!o)return;snapshot();const n=clone(o);n.id=uid('i');n.x+=26;n.y+=26;if(n.type==='cameraThumbnail'){n.x=Math.min(W,n.x);n.y=Math.min(H,n.y);}clampLinkedItem(n);n.name=`${o.name} copy`;project.items.push(n);select('item',n.id);afterChange('Duplicated object');}
   function rotateSelected(){if(selected?.kind!=='item')return;const o=project.items.find(i=>i.id===selected.id);if(!o)return;snapshot();o.rotation=(o.rotation+90)%360;afterChange('Rotated object');}
   function addRoom(){snapshot();const r=room(uid('r'),'New room','terrazzo',[[570,420],[790,420],[790,580],[570,580]],[580,440]);project.rooms.push(r);setTool('room');select('room',r.id);setPanel('rooms');afterChange('Added editable room');showToast('Drag the corner handles to reshape your room');}
-  function missingReferenceItems(){const present=new Set(project.items.map(i=>i.id));return STARTER.items.filter(i=>!present.has(i.id));}
-  function updateRestoreButton(){const button=document.getElementById('restoreFurnishingsButton');if(!button)return;const count=missingReferenceItems().length;button.disabled=count===0;button.textContent=count?`↺ Restore ${count} missing reference object${count===1?'':'s'}`:'✓ All reference furniture is present';button.title=count?'Add missing original furnishings while keeping your floors, rooms, and new objects':'All original furnishings are already in this design';}
+  function missingReferenceItems(){const present=new Set(project.items.map(i=>i.id));return COMPLETE_REFERENCE_ITEMS.filter(i=>!present.has(i.id));}
+  function updateRestoreButton(){const button=document.getElementById('restoreFurnishingsButton');if(!button)return;const count=missingReferenceItems().length;button.disabled=count===0;button.textContent=count?`↺ Restore ${count} missing reference object${count===1?'':'s'}`:'✓ Complete reference layout is present';button.title=count?'Add every missing reference object while keeping your floors, rooms, and new objects':'Every reference object is already in this design';const clear=document.getElementById('clearObjectsButton');if(clear){clear.disabled=project.items.length===0;clear.textContent=project.items.length?`Remove all objects (${project.items.length})`:'No objects to remove';}}
   function restoreReferenceItems(){const missing=missingReferenceItems();if(!missing.length){showToast('All reference furniture is present');return;}snapshot();project.items.push(...missing.map(clone));selected=null;clearPlacement();afterChange(`Restored ${missing.length} reference object${missing.length===1?'':'s'}`);showToast('Original furnishings restored; other edits kept');}
+  async function clearAllObjects(){
+    if(!project.items.length){showToast('There are no objects to remove');return;}
+    if(!await askConfirmation('Remove all objects',`Remove all ${project.items.length} objects? Floors, rooms, and walls stay in place.`,'Remove objects'))return;
+    snapshot();project.items=[];selected=null;clearPlacement();afterChange('Removed all objects');showToast('All objects removed; floors, rooms, and walls were kept');
+  }
   function download(name,type,content){const blob=content instanceof Blob?content:new Blob([content],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);}
   function exportJson(){download('roomcraft-editable-layout.json','application/json',JSON.stringify(Engine.canonicalize(project),null,2));showToast('Editable layout JSON downloaded');}
   async function renderDetailedPng(){
@@ -1066,6 +1109,7 @@
     document.getElementById('objectSearch').addEventListener('input',()=>{document.getElementById('objectsPanel').scrollTop=0;document.getElementById('inventoryStrip').scrollLeft=0;renderPalette();});
     document.getElementById('objectCategory').addEventListener('change',()=>{document.getElementById('objectsPanel').scrollTop=0;document.getElementById('inventoryStrip').scrollLeft=0;renderPalette();});
     document.getElementById('restoreFurnishingsButton').addEventListener('click',restoreReferenceItems);
+    document.getElementById('clearObjectsButton').addEventListener('click',clearAllObjects);
     document.getElementById('recoverDraftButton').addEventListener('click',recoverPreviousDraft);
     document.getElementById('returnPreRecoveryButton').addEventListener('click',returnPreRecoveryLayout);
     document.getElementById('hotspotList').addEventListener('click',e=>{const linked=e.target.closest('[data-control-item]');if(linked){setViewMode('design');setTool('select');select('item',linked.dataset.controlItem);setStatus('Drag this linked object or edit its entity in the Inspector');return;}const b=e.target.closest('[data-hotspot]');if(!b)return;setViewMode('design');setTool('select');select('hotspot',b.dataset.hotspot);setStatus('Drag this Home Assistant control or edit it in the Inspector');});

@@ -1,5 +1,13 @@
 # Decision log
 
+## 2026-11-09 — Every removable visual is a scene item
+
+**Decision:** Treat the clean architectural shell as structure only. Rugs, windows, furniture, fixtures, lights, controls, and decorative objects must be represented by version-2 `items` and rendered exclusively from the shared scene partition. Use reference migration version 5 once to convert the remaining three rugs, eight original windows, and five source-backed furnishing groups into items. Cover the old PNG window apertures with deterministic wall repair beneath the opening layer; do not treat that repair as an object.
+
+**Reason:** Unconditional renderer calls created two sources of truth. Deleting the editor record could not remove a rug or furnishing that the raster renderer painted again on every frame, and original windows had no records at all. A single scene model makes selection, move, resize, rotation, deletion, import/export, undo/redo, and restoration agree.
+
+**Consequence:** `project.items` is the complete inventory of removable visuals. **Remove all objects** may empty that collection while preserving rooms, floors, and walls. **Restore reference layout** derives only from the versioned reference item registry. Migration 5 is one-time and idempotent: after its marker is saved, intentionally deleted objects never respawn on load. New renderer work must include an empty-scene regression proving that no removable visual is painted outside the item pipeline.
+
 ## 2026-11-09 — Model furniture as crafted products with authored variants
 
 **Decision:** Supersede the flat/toy-like interpretation of the original cozy recipes with detailed, realistic miniature construction while preserving stable catalog and layout IDs. Model a furniture family with explicit collection, series, design, size, material, and finish metadata. Style and Size select a catalog product and apply its authored width/depth; Finish preserves user geometry while changing material/color. Render each product in its actual local dimensions with deterministic material, seam, joinery, hardware, leg, bevel, highlight, and shadow operations. Treat beds as a matrix of distinct constructions and real footprints, including crib, toddler, twin, full, queen, and king variants.

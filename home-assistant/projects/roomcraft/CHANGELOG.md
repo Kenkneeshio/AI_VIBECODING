@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-09 — Fully removable reference layout
+
+- **Customer / problem / observable outcome:** Several rugs, windows, kitchen/bath fixtures, and bedroom furnishings were painted outside the scene model, so deleting objects could leave those visuals behind. Every visible reference furnishing is now an ordinary editable item. An empty object scene visibly contains architecture only; moving or deleting an object changes the same layer that draws it.
+- Added deterministic reference migration version 5 for three rugs, eight exterior windows, the kitchen appliance worktop, master storage cabinet and bench, bath fixture group, and double vanity. The migration runs once. A later deletion stays deleted after reload.
+- Added **Remove all objects**, which preserves rooms, floors, and walls, plus a complete **Restore reference layout** action that rebuilds all starter furniture, fixtures, rugs, windows, and movable interface elements through the engine without overwriting unrelated additions.
+- The raster renderer now repairs the old PNG window openings as architecture and draws glazing only from window items. Removed unconditional rug/fixed-furniture/window painting and retained the deterministic floor/furniture/ceiling/opening layer order.
+- Added end-to-end migration, deletion persistence, full restore, empty-scene, and editable-window regression coverage. Local browser QA rendered the full reference scene without console warnings or errors.
+
 ## 2026-11-09 — Uniform bottom interface controls
 
 - Moved the editable Layout Studio shortcut, indoor-air summary, and electrical summary from the top-right cluster to one evenly spaced bottom-right row above the forecast strip. All three use the same 48 × 48 circular visual contract, icon scale, border, color, shadow, and touch feedback while retaining their existing actions and live severity states.

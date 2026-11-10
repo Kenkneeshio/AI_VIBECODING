@@ -226,7 +226,7 @@ test('migrates a saved plan into movable lamp and room fixtures without duplicat
   editor.pointer('pointermove', 1393, 516);
   editor.pointer('pointerup', 1393, 516);
   const migrated = editor.read();
-  assert.equal(migrated.editableReferenceVersion, 4);
+  assert.equal(migrated.editableReferenceVersion, 5);
   assert.equal(migrated.items.filter(i => i.id === 'i14').length, 1);
   assert.equal(migrated.items.filter(i => i.id.startsWith('fixture-')).length, 7);
   assert.equal(migrated.items.find(i => i.id === 'office-desk-lamp')?.type, 'lamp');
@@ -237,6 +237,9 @@ test('migrates a saved plan into movable lamp and room fixtures without duplicat
       .map(i => i.id).sort(),
     ['master-low-dresser','master-nightstand','office-credenza']
   );
+  assert.equal(migrated.items.filter(i => i.type === 'rug').length, 3);
+  assert.equal(migrated.items.filter(i => i.type === 'window').length, 8);
+  assert.ok(migrated.items.some(i => i.id === 'kitchen-worktop'));
   assert.equal(migrated.items.find(i => i.id === 'i14').x, 1393);
 
   const reopened = boot(migrated);
@@ -246,6 +249,27 @@ test('migrates a saved plan into movable lamp and room fixtures without duplicat
   assert.equal(reopened.read().items.filter(i => i.id === 'i14').length, 1);
   assert.equal(reopened.read().items.filter(i => i.id.startsWith('fixture-')).length, 7);
   assert.equal(reopened.read().items.filter(i => i.id === 'office-desk-lamp').length, 1);
+});
+
+test('remove all objects stays empty after reload and restore rebuilds the complete reference scene', async () => {
+  const editor = boot({ version: 2, editableReferenceVersion: 4, rooms: [], walls: [], items: [], hotspots: [] });
+  const removing = editor.dispatch('clearObjectsButton', 'click', {});
+  await new Promise(resolve => setImmediate(resolve));
+  editor.dispatch('confirmationAccept', 'click', {});
+  await removing;
+  const empty = editor.read();
+  assert.equal(empty.editableReferenceVersion, 5);
+  assert.equal(empty.items.length, 0);
+
+  const reopened = boot(empty);
+  assert.equal(reopened.read().items.length, 0, 'v5 must not respawn deliberately removed objects');
+  reopened.dispatch('restoreFurnishingsButton', 'click', {});
+  const restored = reopened.read();
+  assert.equal(restored.items.filter(i => i.type === 'rug').length, 3);
+  assert.equal(restored.items.filter(i => i.type === 'window').length, 8);
+  assert.ok(restored.items.some(i => i.id === 'kitchen-worktop'));
+  assert.ok(restored.items.some(i => i.id === 'fixture-living'));
+  assert.ok(restored.items.some(i => i.id === 'ui-edit-layout'));
 });
 
 test('a deliberately removed migrated lamp is not respawned on a later load', () => {

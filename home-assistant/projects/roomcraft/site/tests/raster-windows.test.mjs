@@ -23,6 +23,8 @@ function recordingCanvas() {
     translate(x, y) { operations.push(['translate', x, y]); },
     rotate(angle) { operations.push(['rotate', angle]); },
     beginPath() {}, roundRect() {}, ellipse() {}, arc() {}, fill() {}, stroke() {},
+    moveTo(x, y) { operations.push(['moveTo', x, y]); },
+    lineTo(x, y) { operations.push(['lineTo', x, y]); },
     drawImage(image) { operations.push(['image', image.name]); },
     fillRect(x, y, width, height) {
       operations.push(['fill', this.fillStyle, x, y, width, height]);
@@ -40,7 +42,7 @@ function recordingCanvas() {
   return context;
 }
 
-test('the seamless empty shell is the floor layer beneath subdued exterior glazing', () => {
+test('the seamless empty shell repairs source openings but renders no windows without scene items', () => {
   const raster = renderer();
   const canvas = recordingCanvas();
   const original = { name: 'original', complete: true, naturalWidth: 1536 };
@@ -50,21 +52,11 @@ test('the seamless empty shell is the floor layer beneath subdued exterior glazi
   assert.deepEqual(canvas.operations.filter(([kind]) => kind === 'image'), [['image', 'shell']]);
   const positions = canvas.operations.filter(([kind]) => kind === 'translate')
     .map(([, x, y]) => [x, y]);
-  assert.deepEqual(positions, [
-    [461, 203], [728, 203], [866.5, 203], [962.5, 203],
-    [1227, 179], [1340, 179], [400, 316.5], [303.5, 709],
-  ]);
-  const rotations = canvas.operations.filter(([kind]) => kind === 'rotate')
-    .map(([, angle]) => angle);
-  assert.deepEqual(rotations.slice(0, 6), Array(6).fill(0));
-  assert.ok(rotations.slice(6).every(angle => Math.abs(angle - Math.PI / 2) < 1e-10));
-  const paintColors = canvas.operations.flatMap(([kind, value]) =>
-    kind === 'fill' && typeof value === 'string' ? [value] : []);
+  assert.deepEqual(positions, []);
+  assert.equal(canvas.operations.filter(([kind]) => kind === 'moveTo').length, 8 * 8);
   const glassStops = canvas.operations.flatMap(([kind, stops]) =>
     kind === 'gradient' ? stops.map(([, color]) => color) : []);
-  assert.ok(paintColors.includes('#17242c'), 'dark recess covers the source cyan');
-  assert.ok(glassStops.includes('#547586'), 'glazing remains visibly blue but subdued');
-  assert.ok(!paintColors.concat(glassStops).some(color => /#(?:78b4d0|8bc3d9|9bc8d5)/i.test(color)));
+  assert.ok(!glassStops.includes('#547586'), 'no glass is rendered unless a window item exists');
 });
 
 test('a new editable window is painted above fixed openings at its own wall angle', () => {
@@ -79,7 +71,7 @@ test('a new editable window is painted above fixed openings at its own wall angl
   const positions = canvas.operations.filter(([kind]) => kind === 'translate')
     .map(([, x, y]) => [x, y]);
   assert.deepEqual(positions.at(-1), [900, 400]);
-  assert.equal(positions.length, 9);
+  assert.equal(positions.length, 1);
   assert.ok(Math.abs(canvas.operations.filter(([kind]) => kind === 'rotate').at(-1)[1] - Math.PI / 2) < 1e-10);
 });
 

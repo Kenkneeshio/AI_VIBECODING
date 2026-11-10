@@ -20,14 +20,21 @@
     i12:{ box:[1109,583,79,60], shapes:[['r',5,3,69,54,16]] },
     i13:{ box:[435,624,51,56], shapes:[['e',3,3,45,50]] },
     i14: { box:[1419,446,48,60], shapes:[['e',3,2,39,41],['e',13,34,22,22]] },
+    'kitchen-worktop': { box:[695,672,106,127], shapes:[['r',3,3,99,121,5]] },
+    'master-storage-cabinet': { box:[1395,197,75,92], shapes:[['r',3,3,69,86,7]] },
+    'master-bedroom-bench': { box:[1143,352,52,122], shapes:[['r',3,3,46,116,5]] },
+    'bath-one-fixtures': { box:[1020,681,73,117], shapes:[['r',3,2,67,112,8]] },
+    'bath-two-vanity': { box:[1195,755,202,44], shapes:[['r',3,2,196,39,5]] },
     lamp:{ box:[1419,446,48,60], shapes:[['e',3,2,39,41],['e',13,34,22,22]] }
   };
-  const prototype = {sofa:'i1',tv:'i2',table:'i3',desk:'i4',chair:'i5',bed:'i6',counter:'i7',tub:'i9',toilet:'i11',plant:'i13',lamp:'lamp'};
+  const prototype = {sofa:'i1',tv:'i2',table:'i3',desk:'i4',chair:'i5',bed:'i6',counter:'i7',tub:'i9',toilet:'i11',plant:'i13',lamp:'lamp',
+    kitchenWorktop:'kitchen-worktop',storageCabinet:'master-storage-cabinet',bedroomBench:'master-bedroom-bench',
+    bathFixtures:'bath-one-fixtures',doubleVanity:'bath-two-vanity'};
   const vectorFurniture = new Set(['sofa','table','chair','bed','desk','armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','lamp','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce']);
   // The source art contains bright cyan exterior panes. Paint these fixed
   // openings as subdued top-down glazing after floor and furniture repairs.
   // User-placed windows are painted separately below and remain editable.
-  const exteriorWindows = [
+  const referenceWindowOpenings = [
     // Horizontal replacements deliberately cover the old source sill and its
     // isolated lower hardware tabs. Their continuous lower rail is the only
     // dark edge left visible, so every window reads as one coherent opening.
@@ -44,30 +51,9 @@
   for(const image of Object.values(extraTextures))image.addEventListener('load',()=>{floorLayers.clear();window.dispatchEvent(new Event('roomcraft-asset-loaded'));});
   const rugImage=new Image();
   rugImage.addEventListener('load',()=>window.dispatchEvent(new Event('roomcraft-asset-loaded')));
-  const fixedDecor = {
-    great:[['r',466,245,147,213,13],['r',695,672,106,127,5]],
-    study:[['r',807,281,50,108,5],['r',1001,233,58,144,5],['r',807,423,124,45,6],['e',899,350,82,78]],
-    bedroom:[['r',1200,297,213,224,15],['r',1403,449,80,103,8],['r',1395,197,75,92,8],['r',1143,352,52,122,5]],
-    'bath-one':[['r',1020,681,73,117,8]],
-    'bath-two':[['r',1195,755,202,44,5]]
-  };
-  // These source-only details are not represented by movable project items.
-  // They are composited above the clean shell as transparent cutouts. Large
-  // sofa/bed regions are intentionally excluded: their rugs have dedicated
-  // layers and the furniture itself is drawn from project.items.
-  const fixedLayerDecor = {
-    great:[['r',695,672,106,127,5]],
-    study:[],
-    // The lower bedside stack is now two editable vector pieces. Keeping its
-    // old broad crop here clipped the burgundy cabinet and left a purple/black
-    // tab beneath the humidifier.
-    bedroom:[['r',1395,197,75,92,8],['r',1143,352,52,122,5]],
-    'bath-one':fixedDecor['bath-one'],
-    'bath-two':fixedDecor['bath-two']
-  };
   const fixedExteriorWalls=new Set(['w1','w2','w3','w4','w5','w6','w7','w8','w9','w10','w11','w12']);
   let cacheImage = null, cacheShell = null;
-  const sprites = new Map(), repairs = new Map(), masks = new Map(), paintMasks = new Map(), decorSpecs = new Map(), wallPaintMasks = new Map(), floorLayers = new Map();
+  const sprites = new Map(), repairs = new Map(), masks = new Map(), paintMasks = new Map(), wallPaintMasks = new Map(), floorLayers = new Map();
   const wallRepairs = new Map();
   const ready = image => image?.complete && image.naturalWidth >= W;
   function makeCanvas(w,h) { const c=document.createElement('canvas');c.width=w;c.height=h;return c; }
@@ -93,13 +79,6 @@
       alpha.data[i+3]=Math.round(alpha.data[i+3]*Math.max(0,Math.min(1,(d-low)/(high-low))));
     }
     c.putImageData(alpha,0,0);paintMasks.set(spec,out);return out;
-  }
-  function decorMask(shape,roomId,original,shell){
-    if(!decorSpecs.has(shape)){
-      const [type,x,y,w,h,r]=shape;
-      decorSpecs.set(shape,{box:[x,y,w,h],shapes:[[type,0,0,w,h,r]],diff:roomId==='study'?[30,65]:[13,35]});
-    }
-    const spec=decorSpecs.get(shape);return {mask:maskForPaint(spec,original,shell),x:spec.box[0],y:spec.box[1]};
   }
   function wallPaintMask(w,original,wallFree){
     if(wallPaintMasks.has(w.id))return wallPaintMasks.get(w.id);
@@ -295,6 +274,8 @@
       return;
     }
     if(item.type==='rug'){
+      if(item.rugStyle==='bedroom-floral'){drawBedroomRug(c,item);return;}
+      if(item.rugStyle==='office-round'){drawOfficeRug(c,item);return;}
       if(!rugImage.src)rugImage.src='assets/rug-sprite.png';
       if(!rugImage.complete||!rugImage.naturalWidth){fallback(item);return;}
       c.save();c.translate(item.x,item.y);c.rotate((item.rotation||0)*Math.PI/180);
@@ -313,18 +294,12 @@
     c.drawImage(sprite,spec.box[0]-base.x,spec.box[1]-base.y);
     c.restore();
   }
-  function drawLivingRug(c){
-    if(!rugImage.src)rugImage.src='assets/rug-sprite.png';
-    if(!rugImage.complete||!rugImage.naturalWidth)return;
-    c.save();c.translate(541,351);c.rotate(Math.PI/2);
-    c.drawImage(rugImage,120,105,1210,885,-207/2,-142/2,207,142);c.restore();
-  }
-  function drawBedroomRug(c){
+  function drawBedroomRug(c,item){
     // A straight authored rug replaces the photographed crop, whose baked
     // perspective made the lower edge look skewed after scaling. It is centered
     // on the bed footprint and remains strictly aligned with the room axes.
-    const x=1204,y=288,w=254,h=240,r=10;
-    c.save();
+    const x=-item.w/2,y=-item.h/2,w=item.w,h=item.h,r=Math.max(4,Math.min(10,w*.04));
+    c.save();c.translate(item.x,item.y);c.rotate((item.rotation||0)*Math.PI/180);
     c.beginPath();c.roundRect(x+2,y+5,w,h,r);c.fillStyle='rgba(78,54,31,.15)';c.fill();
     c.beginPath();c.roundRect(x,y,w,h,r);
     const fill=c.createLinearGradient(x,y,x+w,y+h);
@@ -342,33 +317,22 @@
     }
     c.restore();
   }
-  function drawOfficeRug(c){
-    c.save();
-    c.beginPath();c.ellipse(942,393,41,39,0,0,Math.PI*2);
+  function drawOfficeRug(c,item){
+    const rx=item.w/2,ry=item.h/2;
+    c.save();c.translate(item.x,item.y);c.rotate((item.rotation||0)*Math.PI/180);
+    c.beginPath();c.ellipse(2,4,rx,ry,0,0,Math.PI*2);
     c.fillStyle='rgba(65,42,28,.14)';c.fill();
-    c.beginPath();c.ellipse(940,389,41,39,0,0,Math.PI*2);
-    const fill=c.createRadialGradient(927,375,3,940,389,42);
+    c.beginPath();c.ellipse(0,0,rx,ry,0,0,Math.PI*2);
+    const fill=c.createRadialGradient(-rx*.32,-ry*.36,3,0,0,Math.max(rx,ry));
     fill.addColorStop(0,'#fff4d9');fill.addColorStop(.58,'#ead6ac');fill.addColorStop(.88,'#c7aa7d');fill.addColorStop(1,'#8d704e');
     c.fillStyle=fill;c.fill();
     c.lineWidth=2;c.strokeStyle='#f3e2bf';c.stroke();
-    c.beginPath();c.ellipse(940,389,34,32,0,0,Math.PI*2);c.lineWidth=1;c.strokeStyle='rgba(142,105,69,.34)';c.stroke();
+    c.beginPath();c.ellipse(0,0,rx*.83,ry*.82,0,0,Math.PI*2);c.lineWidth=1;c.strokeStyle='rgba(142,105,69,.34)';c.stroke();
     c.restore();
   }
-  function drawFixedDecor(c,original,shell){
-    if(typeof document==='undefined'||!ready(original)||!ready(shell))return;
-    for(const [roomId,shapes] of Object.entries(fixedLayerDecor))for(const shape of shapes){
-      const d=decorMask(shape,roomId,original,shell),[,,w,h]=shape;
-      const patch=makeCanvas(w,h),p=patch.getContext('2d');
-      p.drawImage(original,d.x,d.y,w,h,0,0,w,h);
-      p.globalCompositeOperation='destination-in';p.drawImage(d.mask,0,0);
-      // Preserve exact reference pixels in the tight authored silhouette. This
-      // supplies an opaque core without introducing a second art style.
-      const solid=makeCanvas(w,h),s=solid.getContext('2d'),spec=decorSpecs.get(shape);
-      s.drawImage(original,d.x,d.y,w,h,0,0,w,h);
-      s.globalCompositeOperation='destination-in';s.drawImage(maskFor(spec),0,0);
-      p.globalCompositeOperation='destination-over';p.drawImage(solid,0,0);
-      c.drawImage(patch,d.x,d.y);
-    }
+  function drawWindowWallRepair(c,x,y,w,rotation){
+    const angle=(rotation||0)*Math.PI/180,dx=Math.cos(angle)*w/2,dy=Math.sin(angle)*w/2;
+    drawNewWall(c,{x1:x-dx,y1:y-dy,x2:x+dx,y2:y+dy,finish:'graphite'});
   }
   function waitForImage(image,src){
     if(src&&!image.src)image.src=src;
@@ -398,14 +362,16 @@
     for(const base of starter.walls)if(!sameWall(base,currentWalls.get(base.id)))repairWall(c,base,wallFree);
     const starterRooms=new Map(starter.rooms.map(r=>[r.id,r]));
     for(const room of project.rooms)if(!sameRoom(room,starterRooms.get(room.id)))paintRoom(c,room,starter,project,images);
-    drawLivingRug(c);drawBedroomRug(c);drawOfficeRug(c);drawFixedDecor(c,original,shell);
+    // The source shell still contains the photographed window openings. Cover
+    // each one with a continuous wall segment first; editable window items are
+    // then the sole source of visible glazing.
+    for(const [x,y,w,,rotation] of referenceWindowOpenings)drawWindowWallRepair(c,x,y,w,rotation);
     const layers=Engine.render.orderSceneItems(project.items,window.RoomcraftInventory?.byType);
     for(const item of layers.floorItems)drawItem(c,item,starter,original,shell,fallback);
     for(const item of layers.regularItems)drawItem(c,item,starter,original,shell,fallback);
     // Ceiling fixtures remain visible above movable furniture, independent of insertion order.
     for(const item of layers.ceilingItems)drawItem(c,item,starter,original,shell,fallback);
     for(const wall of project.walls){const base=starter.walls.find(w=>w.id===wall.id);if(!sameWall(wall,base))drawNewWall(c,wall);}
-    for(const [x,y,w,h,rotation] of exteriorWindows)drawGlazedWindow(c,x,y,w,h,rotation);
     for(const item of layers.windowItems)drawItem(c,item,starter,original,shell,fallback);
     return true;
   }
