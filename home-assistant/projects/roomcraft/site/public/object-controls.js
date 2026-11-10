@@ -5,7 +5,7 @@
   const visualKinds = new Set(['auto', 'light', 'fan', 'climate', 'window', 'door', 'vacuum', 'device', 'none']);
   const lightForms = new Set(['table_lamp', 'bud_lamp', 'cloud_floor_lamp', 'bloom_ceiling', 'star_pendant', 'acorn_sconce']);
   const iconPattern = /^mdi:[a-z0-9-]+$/i;
-  const bindingKeys = new Set(['tapAction', 'holdAction', 'tapEntityId', 'holdEntityId',
+  const bindingKeys = new Set(['tapAction', 'holdAction', 'tapEntityId', 'holdEntityId', 'presenceEntityId',
     'controlLabel', 'controlIcon', 'visualKind', 'vacuumMapEntityId', 'vacuumPositionTransform']);
   const entityPattern = /^[a-z_]+\.[a-z0-9_]+$/i;
   const sceneWidth = 1536;
@@ -44,6 +44,8 @@
         && (!item.tapEntityId || entityPattern.test(item.tapEntityId)))
       && (!('holdEntityId' in item) || typeof item.holdEntityId === 'string'
         && (!item.holdEntityId || entityPattern.test(item.holdEntityId)))
+      && (!('presenceEntityId' in item) || typeof item.presenceEntityId === 'string'
+        && (!item.presenceEntityId || /^binary_sensor\.[a-z0-9_]+$/i.test(item.presenceEntityId)))
       && (!('controlLabel' in item) || (typeof item.controlLabel === 'string' && item.controlLabel.length <= 80))
       && (!('controlIcon' in item) || (typeof item.controlIcon === 'string' && (!item.controlIcon || iconPattern.test(item.controlIcon))))
       && (!('visualKind' in item) || visualKinds.has(item.visualKind))
@@ -66,6 +68,10 @@
     }
     if (key === 'tapEntityId' || key === 'holdEntityId') {
       return !value || entityPattern.test(value) ? { valid: true, value: value || undefined } : { valid: false };
+    }
+    if (key === 'presenceEntityId') {
+      return !value || /^binary_sensor\.[a-z0-9_]+$/i.test(value)
+        ? { valid: true, value: value || undefined } : { valid: false };
     }
     if (key === 'vacuumMapEntityId') {
       return !value || /^camera\.[a-z0-9_]+$/i.test(value)
@@ -149,11 +155,13 @@
       ...(visualKind(item) === 'light' ? { roomcraft_light_form: lightForm(item) } : {}),
       ...(visualKind(item) === 'device' && item.type === 'humidifier' ? { roomcraft_device_form: 'humidifier' } : {}),
       ...(visualKind(item) === 'device' && item.type === 'airPurifier' ? { roomcraft_device_form: 'air_purifier' } : {}),
+      ...(visualKind(item) === 'device' && item.type === 'presenceSwitch' ? { roomcraft_device_form: 'presence_switch' } : {}),
       ...(visualKind(item) === 'window' ? { roomcraft_window_axis: item.w < item.h ? 'vertical' : 'horizontal' } : {}),
       roomcraft_tap_action: item.tapAction || 'auto',
       roomcraft_hold_action: item.holdAction || 'auto',
       ...(item.tapEntityId ? { roomcraft_tap_entity: item.tapEntityId } : {}),
       ...(item.holdEntityId ? { roomcraft_hold_entity: item.holdEntityId } : {}),
+      ...(item.presenceEntityId ? { roomcraft_presence_entity: item.presenceEntityId } : {}),
       ...(item.vacuumMapEntityId ? { roomcraft_vacuum_map_entity: item.vacuumMapEntityId } : {}),
       ...(item.vacuumPositionTransform ? { roomcraft_vacuum_position_transform: item.vacuumPositionTransform } : {}),
       style: dimensions(item, 4)
@@ -310,6 +318,10 @@
         + entityField('Tap target (optional)', 'tapEntityId', item.tapEntityId || '', entityOptions, null, escape)
         + actionField('holdAction', 'Hold action', item.holdAction, 'Default · open device details')
         + entityField('Hold target (optional)', 'holdEntityId', item.holdEntityId || '', entityOptions, null, escape)
+        + (item.type === 'presenceSwitch'
+          ? entityField('Presence sensor', 'presenceEntityId', item.presenceEntityId || '', entityOptions, 'binary_sensor', escape)
+            + '<p class="field-hint">The three dots attached to the switch animate only while this occupancy sensor reports on.</p>'
+          : '')
         + (visualKind(item) === 'vacuum'
           ? entityField('Vacuum map camera', 'vacuumMapEntityId', item.vacuumMapEntityId || '', entityOptions, 'camera', escape)
             + '<div class="field"><label for="prop-vacuumPositionTransform">Position transform (advanced)</label>'

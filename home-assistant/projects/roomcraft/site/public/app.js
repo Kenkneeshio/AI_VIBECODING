@@ -100,6 +100,7 @@
     { type: 'tableLamp', label: 'Table lamp', icon: '◌', w: 48, h: 52, group: 'lighting' },
     { type: 'wallSconce', label: 'Wall sconce', icon: '◖', w: 34, h: 48, group: 'lighting' },
     { type: 'thermostat', label: 'Wall thermostat / AC', icon: '◴', w: 48, h: 54, group: 'systems', mount: 'wall', visualKind: 'climate' },
+    { type: 'presenceSwitch', label: 'Presence dimmer switch', icon: '⠿', w: 30, h: 42, group: 'systems', mount: 'wall', visualKind: 'device' },
     { type: 'humidifier', label: 'Floor humidifier', icon: '♨', w: 46, h: 58, group: 'systems', visualKind: 'device' },
     { type: 'airPurifier', label: 'Air purifier', icon: '≋', w: 48, h: 62, group: 'systems', visualKind: 'device' },
     { type: 'windowFan', label: 'Window fan', icon: '✣', w: 46, h: 46, group: 'systems', visualKind: 'fan' },

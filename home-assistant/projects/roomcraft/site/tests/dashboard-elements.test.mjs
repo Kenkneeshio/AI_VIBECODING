@@ -234,6 +234,19 @@ test('a linked fan exports separate scene targets without losing its monitored s
   assert.equal(element.roomcraft_visual_kind, 'fan');
 });
 
+test('a presence switch keeps dimmer control and occupancy animation on separate entities', () => {
+  const item = { id: 'living-presence-switch', type: 'presenceSwitch', name: 'Living presence dimmer',
+    x: 781, y: 442, w: 30, h: 42, rotation: 0, entityId: 'light.inovelli_vzm32_sn',
+    presenceEntityId: 'binary_sensor.inovelli_vzm32_sn_occupancy', visualKind: 'device' };
+  assert.equal(validObjectControl(item), true);
+  assert.equal(validObjectControl({ ...item, presenceEntityId: 'light.wrong_domain' }), false);
+  const [element] = mergeDashboardElements([], [], [item]);
+  assert.equal(element.entity, 'light.inovelli_vzm32_sn');
+  assert.equal(element.roomcraft_device_form, 'presence_switch');
+  assert.equal(element.roomcraft_presence_entity, 'binary_sensor.inovelli_vzm32_sn_occupancy');
+  assert.equal(element.roomcraft_tap_action, 'auto');
+});
+
 test('linked object visuals classify stateful equipment and allow a safe override', () => {
   const base = { id: 'device', type: 'controlZone', x: 400, y: 400, w: 60, h: 50,
     entityId: 'cover.example', name: 'Window blind' };

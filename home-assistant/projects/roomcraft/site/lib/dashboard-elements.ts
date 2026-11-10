@@ -117,6 +117,8 @@ export function validObjectControl(item: unknown): item is JsonObject {
       (item.tapEntityId === "" || /^[a-z_]+\.[a-z0-9_]+$/.test(item.tapEntityId))) &&
     (item.holdEntityId === undefined || typeof item.holdEntityId === "string" &&
       (item.holdEntityId === "" || /^[a-z_]+\.[a-z0-9_]+$/.test(item.holdEntityId))) &&
+    (item.presenceEntityId === undefined || typeof item.presenceEntityId === "string" &&
+      (item.presenceEntityId === "" || /^binary_sensor\.[a-z0-9_]+$/.test(item.presenceEntityId))) &&
     (item.vacuumMapEntityId === undefined || typeof item.vacuumMapEntityId === "string" &&
       (item.vacuumMapEntityId === "" || /^camera\.[a-z0-9_]+$/.test(item.vacuumMapEntityId))) &&
     (item.vacuumPositionTransform === undefined || Array.isArray(item.vacuumPositionTransform) &&
@@ -163,11 +165,13 @@ export function objectControlElements(items: unknown): JsonObject[] {
           typeof item.lightForm === "string" && LIGHT_FORMS.includes(item.lightForm) ? item.lightForm : "table_lamp" } : {}),
         ...(visualKind === "device" && item.type === "humidifier" ? { roomcraft_device_form: "humidifier" } : {}),
         ...(visualKind === "device" && item.type === "airPurifier" ? { roomcraft_device_form: "air_purifier" } : {}),
+        ...(visualKind === "device" && item.type === "presenceSwitch" ? { roomcraft_device_form: "presence_switch" } : {}),
         ...(visualKind === "window" ? { roomcraft_window_axis: Number(item.w) < Number(item.h) ? "vertical" : "horizontal" } : {}),
         roomcraft_tap_action: item.tapAction || "auto",
         roomcraft_hold_action: item.holdAction || "auto",
         ...(item.tapEntityId ? { roomcraft_tap_entity: item.tapEntityId } : {}),
         ...(item.holdEntityId ? { roomcraft_hold_entity: item.holdEntityId } : {}),
+        ...(item.presenceEntityId ? { roomcraft_presence_entity: item.presenceEntityId } : {}),
         ...(item.vacuumMapEntityId ? { roomcraft_vacuum_map_entity: item.vacuumMapEntityId } : {}),
         ...(item.vacuumPositionTransform ? { roomcraft_vacuum_position_transform: item.vacuumPositionTransform } : {}),
         style: {

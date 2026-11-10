@@ -187,6 +187,8 @@ function validObjectControl(item) {
       (item.tapEntityId === '' || /^[a-z_]+\.[a-z0-9_]+$/.test(item.tapEntityId))) &&
     (item.holdEntityId === undefined || typeof item.holdEntityId === 'string' &&
       (item.holdEntityId === '' || /^[a-z_]+\.[a-z0-9_]+$/.test(item.holdEntityId))) &&
+    (item.presenceEntityId === undefined || typeof item.presenceEntityId === 'string' &&
+      (item.presenceEntityId === '' || /^binary_sensor\.[a-z0-9_]+$/.test(item.presenceEntityId))) &&
     (item.vacuumMapEntityId === undefined || typeof item.vacuumMapEntityId === 'string' &&
       (item.vacuumMapEntityId === '' || /^camera\.[a-z0-9_]+$/.test(item.vacuumMapEntityId))) &&
     (item.vacuumPositionTransform === undefined || Array.isArray(item.vacuumPositionTransform) &&
@@ -231,11 +233,13 @@ function objectControlElements(items) {
         LIGHT_FORMS.includes(item.lightForm) ? item.lightForm : 'table_lamp' } : {}),
       ...(visualKind === 'device' && item.type === 'humidifier' ? { roomcraft_device_form: 'humidifier' } : {}),
       ...(visualKind === 'device' && item.type === 'airPurifier' ? { roomcraft_device_form: 'air_purifier' } : {}),
+      ...(visualKind === 'device' && item.type === 'presenceSwitch' ? { roomcraft_device_form: 'presence_switch' } : {}),
       ...(visualKind === 'window' ? { roomcraft_window_axis: item.w < item.h ? 'vertical' : 'horizontal' } : {}),
       roomcraft_tap_action: item.tapAction || 'auto',
       roomcraft_hold_action: item.holdAction || 'auto',
       ...(item.tapEntityId ? { roomcraft_tap_entity: item.tapEntityId } : {}),
       ...(item.holdEntityId ? { roomcraft_hold_entity: item.holdEntityId } : {}),
+      ...(item.presenceEntityId ? { roomcraft_presence_entity: item.presenceEntityId } : {}),
       ...(item.vacuumMapEntityId ? { roomcraft_vacuum_map_entity: item.vacuumMapEntityId } : {}),
       ...(item.vacuumPositionTransform ? { roomcraft_vacuum_position_transform: item.vacuumPositionTransform } : {}),
       style: {
@@ -719,10 +723,13 @@ class RoomcraftObjectControl extends HTMLElement {
         (config.roomcraft_hold_entity !== undefined &&
           (typeof config.roomcraft_hold_entity !== 'string' ||
             !/^[a-z_]+\.[a-z0-9_]+$/.test(config.roomcraft_hold_entity))) ||
+        (config.roomcraft_presence_entity !== undefined &&
+          (typeof config.roomcraft_presence_entity !== 'string' ||
+            !/^binary_sensor\.[a-z0-9_]+$/.test(config.roomcraft_presence_entity))) ||
         (config.roomcraft_visual_kind !== undefined && config.roomcraft_visual_kind !== 'auto' &&
           !VISUAL_KINDS.includes(config.roomcraft_visual_kind)) ||
         (config.roomcraft_light_form !== undefined && !LIGHT_FORMS.includes(config.roomcraft_light_form)) ||
-        (config.roomcraft_device_form !== undefined && !['humidifier', 'air_purifier'].includes(config.roomcraft_device_form)) ||
+        (config.roomcraft_device_form !== undefined && !['humidifier', 'air_purifier', 'presence_switch'].includes(config.roomcraft_device_form)) ||
         (config.roomcraft_window_axis !== undefined &&
           !['horizontal', 'vertical'].includes(config.roomcraft_window_axis)) ||
         (config.roomcraft_vacuum_map_entity !== undefined &&
@@ -898,6 +905,23 @@ class RoomcraftObjectControl extends HTMLElement {
       .target[data-visual="device"][data-form="humidifier"][data-state="on"] .art::after{opacity:.6;animation:roomcraft-mist 2.4s 1.15s ease-out infinite}
       .target[data-visual="device"][data-form="air_purifier"] .art::before{content:"";position:absolute;left:20%;right:20%;top:26%;height:3px;border-radius:99px;background:#c9fff0;box-shadow:0 9px #9cebd7,0 18px #70d7c0;opacity:.22}
       .target[data-visual="device"][data-form="air_purifier"][data-state="on"] .art::before{opacity:.92;animation:roomcraft-airflow 1.8s ease-in-out infinite alternate}
+      .target[data-visual="device"][data-form="presence_switch"] .art{
+        inset:2% 13% 2%;overflow:visible;border:1px solid #526064;border-radius:6px;
+        background:linear-gradient(145deg,#faf7ed,#d8d9d2 58%,#98a5a3);
+        box-shadow:inset 0 1px #fff,0 2px 4px #07161b8f;filter:none}
+      .target[data-visual="device"][data-form="presence_switch"] .art::before{
+        content:"";position:absolute;left:22%;top:14%;width:56%;height:56%;box-sizing:border-box;
+        border:1px solid #697778;border-radius:3px;background:linear-gradient(180deg,#fff,#dddcd4 54%,#a5afab);
+        box-shadow:inset 0 1px #fff,0 1px 1px #34464b55}
+      .target[data-visual="device"][data-form="presence_switch"] .art::after{
+        content:"";position:absolute;left:18%;bottom:8%;width:64%;height:8%;border-radius:99px;
+        background:radial-gradient(circle at 16% 50%,#708b82 0 11%,transparent 13%),radial-gradient(circle at 50% 50%,#708b82 0 11%,transparent 13%),radial-gradient(circle at 84% 50%,#708b82 0 11%,transparent 13%);
+        opacity:.34;transform-origin:50% 50%}
+      .target[data-visual="device"][data-form="presence_switch"][data-state="off"] .art{filter:brightness(.72) saturate(.62)}
+      .target[data-visual="device"][data-form="presence_switch"][data-state="on"] .art{box-shadow:inset 0 1px #fff,0 0 8px 2px #ffe5988a,0 2px 4px #07161b8f}
+      .target[data-visual="device"][data-form="presence_switch"][data-presence="on"] .art::after{
+        background:radial-gradient(circle at 16% 50%,#b9ffe8 0 12%,transparent 14%),radial-gradient(circle at 50% 50%,#55e7b7 0 12%,transparent 14%),radial-gradient(circle at 84% 50%,#25b887 0 12%,transparent 14%);
+        opacity:1;filter:drop-shadow(0 0 2px #64edc5);animation:roomcraft-presence-dots 1.35s steps(3,end) infinite}
       .target[data-state="unavailable"] .art{background:#28313bb8;box-shadow:inset 0 0 0 2px #87919b;filter:grayscale(1)}
       .target[data-visual="fan"][data-state="unavailable"] .art{background:radial-gradient(ellipse at center,#293842e6 0 27%,#29384299 49%,transparent 76%);box-shadow:none}
       .detail-badge{display:none;position:absolute;z-index:20;box-sizing:border-box;width:max-content;min-width:112px;max-width:190px;padding:6px 8px;border:1px solid #dff9ef;border-radius:8px;background:#10272ef2;color:#f4fff9;box-shadow:0 3px 12px #07171db8;pointer-events:none;text-align:left;font:600 10px/1.25 system-ui,sans-serif}
@@ -919,6 +943,7 @@ class RoomcraftObjectControl extends HTMLElement {
       @keyframes roomcraft-vacuum-brush{to{transform:rotate(360deg)}}
       @keyframes roomcraft-mist{0%{transform:translateY(7px) scale(.8);opacity:0}30%{opacity:.8}100%{transform:translateY(-15px) scale(1.35);opacity:0}}
       @keyframes roomcraft-airflow{to{transform:translateX(4px);filter:brightness(1.35)}}
+      @keyframes roomcraft-presence-dots{0%,100%{transform:scale(.86);opacity:.48}50%{transform:scale(1.12);opacity:1}}
       @keyframes roomcraft-spin{to{transform:rotate(360deg)}}
       @keyframes roomcraft-door-opening{to{transform:scaleY(.28)}}
       @keyframes roomcraft-door-closing{to{transform:scaleY(1)}}
@@ -1064,6 +1089,11 @@ class RoomcraftObjectControl extends HTMLElement {
       visualKind === 'device' ? this._config.roomcraft_device_form || '' : '');
     this._button.setAttribute('data-axis', this._config.roomcraft_window_axis || 'horizontal');
     this._button.setAttribute('data-zone', String(this._config.control_zone === true));
+    const presenceValue = this._config.roomcraft_presence_entity
+      ? this._hass?.states?.[this._config.roomcraft_presence_entity]?.state || 'unavailable'
+      : 'off';
+    this._button.setAttribute('data-presence', presenceValue === 'on' ? 'on' :
+      presenceValue === 'off' ? 'off' : 'unavailable');
     const label = this._config.title || state?.attributes?.friendly_name || this._config.entity;
     const tap = this._actionFor('tap');
     const hold = this._actionFor('hold');
@@ -1072,7 +1102,10 @@ class RoomcraftObjectControl extends HTMLElement {
       action === 'activate' ? `${gesture} to run` :
       action === 'vacuum-panel' ? `${gesture} for vacuum controls` :
       action === 'more-info' ? `${gesture} for details` : `${gesture} disabled`;
-    this._button.setAttribute('aria-label', `${label}: ${displayValue}. ${describe(tap, 'Tap')}; ${describe(hold, 'hold')}.`);
+    const presenceDescription = this._config.roomcraft_presence_entity
+      ? ` Presence ${presenceValue === 'on' ? 'detected' : presenceValue === 'off' ? 'clear' : 'unavailable'}.`
+      : '';
+    this._button.setAttribute('aria-label', `${label}: ${displayValue}.${presenceDescription} ${describe(tap, 'Tap')}; ${describe(hold, 'hold')}.`);
     this._button.title = `${label} · ${displayValue}`;
     this._detailName.textContent = label;
     this._detailState.textContent = displayValue;

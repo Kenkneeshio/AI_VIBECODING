@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-10 — Presence-aware wall switch object
+
+- Added a movable wall-mounted presence dimmer to the Systems catalog. Its detailed switch plate remains the transparent tap target for the bound light while three attached dots animate only when an independently bound binary occupancy sensor reports `on`.
+- Added the optional, validated `presenceEntityId` layout field and matching `roomcraft_presence_entity` dashboard contract. The dimmer state, action target, and occupancy animation remain separate so presence can never invent a light state or operate the load.
+- The Inspector can search and edit the presence binding. Both dashboard transports, manual export, the installed card, schema, canvas renderer, and reduced-motion behavior share the same deterministic contract.
+
 ## 2026-11-09 — Reliable object removal and detailed fixture art
 
 - Layout authors can remove or move rugs and fixtures and see the result in both Design and the exported plan. The release checks a shared cache key for editor scripts, styles, and art so a newly opened editor cannot combine an old renderer with the current scene.

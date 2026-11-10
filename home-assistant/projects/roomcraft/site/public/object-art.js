@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const assetUrl = window.RoomcraftAssetUrl || (path => path);
-  const supported=new Set(['sofa','table','chair','bed','desk','armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','lamp','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce','thermostat','humidifier','airPurifier','windowFan','garageDoor','floorPlant','artwork','mirror','window']);
+  const supported=new Set(['sofa','table','chair','bed','desk','armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','lamp','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce','thermostat','presenceSwitch','humidifier','airPurifier','windowFan','garageDoor','floorPlant','artwork','mirror','window']);
   // These cells face the same near-top-down camera as the supplied plan.
   // Front-facing atlas pieces use the perspective-aware canvas art below.
   const atlas=new Image();
@@ -1294,6 +1294,16 @@
         rr(c,x+7,y+7,w-14,h*.38,2,gradient(c,x+7,y+7,w-14,h*.38,[[0,'#a9cad0'],[1,'#527d8b']]));
         disc(c,0,y+h*.18,Math.min(w,h)*.1,'#e5e7d8','#6c7c7a',1);
         for(let i=0;i<4;i++)rr(c,x+9+i*(w-18)/4,y+h*.7,(w-22)/6,1.4,0,'#708487');
+        break;
+      }
+      case 'presenceSwitch':{
+        // A wall-mounted dimmer plate with a distinct rocker and three
+        // occupancy pips. Live HA art animates these same attached pips.
+        raisedCase(c,x+1,y+2,w-2,h-4,5,4,'#3f4b4e');
+        rr(c,x,y,w,h-3,5,gradient(c,x,y,w,h,[[0,'#f7f4ea'],[.58,'#d9d8cf'],[1,'#9ba6a4']]),'#526064',1.2);
+        rr(c,x+w*.22,y+h*.14,w*.56,h*.56,3,gradient(c,x+w*.22,y+h*.14,w*.56,h*.56,[[0,'#ffffff'],[.48,'#dfded5'],[1,'#a5aeaa']]),'#687578',.8);
+        c.beginPath();c.moveTo(x+w*.28,y+h*.39);c.lineTo(x+w*.72,y+h*.39);c.strokeStyle='rgba(88,103,104,.55)';c.lineWidth=.8;c.stroke();
+        for(let i=0;i<3;i++)disc(c,x+w*(.34+i*.16),y+h*.82,Math.max(1.3,w*.045),i===1?'#63c9aa':'#78938a','#536762',.45);
         break;
       }
       case 'humidifier':{

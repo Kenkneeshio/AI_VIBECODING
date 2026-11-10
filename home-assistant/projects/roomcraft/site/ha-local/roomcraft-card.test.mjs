@@ -1052,6 +1052,32 @@ test('humidifier and purifier forms animate only from their own on state', () =>
   }
 });
 
+test('presence switch dots follow only the bound occupancy entity', () => {
+  const object = new ObjectControl();
+  object.setConfig({ entity: 'light.inovelli_vzm32_sn', title: 'Living presence dimmer',
+    roomcraft_visual_kind: 'device', roomcraft_device_form: 'presence_switch',
+    roomcraft_presence_entity: 'binary_sensor.inovelli_vzm32_sn_occupancy' });
+  const css = object.shadowRoot.children[0].textContent;
+  assert.match(css, /\[data-form="presence_switch"\] \.art::after\{[^}]*radial-gradient/);
+  assert.match(css, /\[data-form="presence_switch"\]\[data-presence="on"\] \.art::after\{[^}]*roomcraft-presence-dots/);
+  object.hass = { states: {
+    'light.inovelli_vzm32_sn': { state: 'off' },
+    'binary_sensor.inovelli_vzm32_sn_occupancy': { state: 'off' },
+  } };
+  assert.equal(object._button.attributes['data-state'], 'off');
+  assert.equal(object._button.attributes['data-presence'], 'off');
+  object.hass = { states: {
+    'light.inovelli_vzm32_sn': { state: 'off' },
+    'binary_sensor.inovelli_vzm32_sn_occupancy': { state: 'on' },
+  } };
+  assert.equal(object._button.attributes['data-state'], 'off', 'presence cannot invent the dimmer state');
+  assert.equal(object._button.attributes['data-presence'], 'on');
+  assert.match(object._button.attributes['aria-label'], /Presence detected/);
+  assert.throws(() => object.setConfig({ entity: 'light.inovelli_vzm32_sn',
+    roomcraft_presence_entity: 'light.wrong_domain' }), /invalid device binding/i);
+  object.disconnectedCallback();
+});
+
 test('window artwork is a narrow pane inside its full touch target', () => {
   const object = new ObjectControl();
   object.setConfig({ entity: 'cover.study_blind', title: 'Study blind',
