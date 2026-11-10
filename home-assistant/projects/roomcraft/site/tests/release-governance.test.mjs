@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { isAbsolute } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { isAbsolute, join } from 'node:path';
 import {
   PROJECT_ROOT,
   REQUIRED_ENGINE_SOURCES,
@@ -8,6 +9,7 @@ import {
   buildReleaseManifest,
   canonicalInputBytes,
   renderManifest,
+  stampEditorAssetUrls,
   validateEditorScriptOrder
 } from '../scripts/roomcraft-release.mjs';
 
@@ -100,4 +102,15 @@ test('editor engine modules must load in the exact dependency order before raste
     ])),
     /engine modules must load before raster-renderer\.js/
   );
+});
+
+test('editor scripts, styles and images share the generated release cache key', () => {
+  const publicRoot = join(SITE_ROOT, 'public');
+  const editor = readFileSync(join(publicRoot, 'editor.html'), 'utf8');
+  const stale = editor.replace(/\?v=[a-f0-9]{16}/g, '?v=old');
+  assert.notEqual(stale, editor);
+  assert.equal(stampEditorAssetUrls(stale, publicRoot), editor);
+  const versions = [...editor.matchAll(/\?v=([a-f0-9]{16})"/g)].map(match => match[1]);
+  assert.ok(versions.length >= 15);
+  assert.equal(new Set(versions).size, 1);
 });

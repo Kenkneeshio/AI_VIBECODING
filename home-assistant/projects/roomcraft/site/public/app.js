@@ -41,14 +41,15 @@
   const ctx = canvas.getContext('2d');
   const viewport = document.getElementById('viewport');
   const stage = document.getElementById('canvasStage');
+  const assetUrl = window.RoomcraftAssetUrl || (path => path);
   const reference = new Image();
-  reference.src = 'assets/floorplan.png?v=corrected-windows-20261031';
+  reference.src = assetUrl('assets/floorplan.png');
   reference.addEventListener('load', () => draw());
   const emptyShell = new Image();
-  emptyShell.src = 'assets/empty-shell.png';
+  emptyShell.src = assetUrl('assets/empty-shell.png');
   emptyShell.addEventListener('load', () => draw());
   const wallFreeShell = new Image();
-  wallFreeShell.src = 'assets/wall-free-shell.png';
+  wallFreeShell.src = assetUrl('assets/wall-free-shell.png');
   wallFreeShell.addEventListener('load', () => draw());
 
   const surfaces = [
@@ -587,10 +588,8 @@
     c.save();
     c.translate(-CROP_X,-CROP_Y);
     if(mode==='reference'){
-      const raster=window.RoomcraftRasterRenderer;
-      if(!raster?.draw(c,STARTER,STARTER,{original:reference,shell:emptyShell,wallFree:wallFreeShell},o=>drawObject(c,o))){
-        if(reference.complete&&reference.naturalWidth){c.drawImage(reference,0,0,W,H);}else{c.fillStyle='#e6ecda';c.fillRect(0,0,W,H);}
-      }
+      if(reference.complete&&reference.naturalWidth){c.drawImage(reference,0,0,W,H);}
+      else{c.fillStyle='#e6ecda';c.fillRect(0,0,W,H);}
       if(!clean){drawHotspots(c);drawSelection(c);}
     }else{
       const raster=window.RoomcraftRasterRenderer;

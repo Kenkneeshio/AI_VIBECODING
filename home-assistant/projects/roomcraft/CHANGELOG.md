@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-09 — Reliable object removal and detailed fixture art
+
+- Layout authors can remove or move rugs and fixtures and see the result in both Design and the exported plan. The release checks a shared cache key for editor scripts, styles, and art so a newly opened editor cannot combine an old renderer with the current scene.
+- Rebuilt the living, office, and bedroom rugs with woven detailing. The kitchen worktop, two bathroom fixture assemblies, bedroom cabinet and bench, and living wall unit now use illustrated material and hardware details with clean transparent edges. The existing item IDs, layout format, and placements are preserved.
+- Use explicit source regions to remove the cap, face, and shadow of an edited interior wall while retaining the original illustration where the wall is intact.
+- Design uses the clean shell or a procedural fallback while assets load. Reference shows the original furnished illustration. Home Assistant migration v5 → v6 preserves previous deletions of the v5 rugs, windows, and fixtures.
+
 ## 2026-11-09 — Empty-shell audit, split fan controls, and detached garage
 
 - Audited both supplied shell PNGs and found the final non-architectural remnant: a lavender wall-mounted unit embedded above the living-room wall. Reference migration version 6 now makes it an ordinary `wallUnit` item and deterministically repairs the wall beneath it. The empty-scene render repairs eight source windows plus this unit before drawing item layers.

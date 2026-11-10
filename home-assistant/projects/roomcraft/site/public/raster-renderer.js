@@ -4,6 +4,7 @@
   'use strict';
   const Engine = window.RoomcraftEngine;
   if (!Engine) throw new Error('RoomcraftEngine must load before raster-renderer.js');
+  const assetUrl = window.RoomcraftAssetUrl || (path => path);
   const W = 1536, H = 1024;
   const specs = {
     i1: { box:[398,197,194,272], shapes:[['r',14,12,88,246,10],['r',13,167,171,94,11]] },
@@ -20,29 +21,27 @@
     i12:{ box:[1109,583,79,60], shapes:[['r',5,3,69,54,16]] },
     i13:{ box:[435,624,51,56], shapes:[['e',3,3,45,50]] },
     i14: { box:[1419,446,48,60], shapes:[['e',3,2,39,41],['e',13,34,22,22]] },
-    'kitchen-worktop': { box:[695,672,106,127], shapes:[['r',3,3,99,121,5]] },
-    'master-storage-cabinet': { box:[1395,197,75,92], shapes:[['r',3,3,69,86,7]] },
-    'master-bedroom-bench': { box:[1143,352,52,122], shapes:[['r',3,3,46,116,5]] },
-    'bath-one-fixtures': { box:[1020,681,73,117], shapes:[['r',3,2,67,112,8]] },
-    'bath-two-vanity': { box:[1195,755,202,44], shapes:[['r',3,2,196,39,5]] },
-    'living-wall-unit': { box:[529,169,139,43], shapes:[['r',2,1,135,40,4]] },
     lamp:{ box:[1419,446,48,60], shapes:[['e',3,2,39,41],['e',13,34,22,22]] }
   };
-  const prototype = {sofa:'i1',tv:'i2',table:'i3',desk:'i4',chair:'i5',bed:'i6',counter:'i7',tub:'i9',toilet:'i11',plant:'i13',lamp:'lamp',
-    kitchenWorktop:'kitchen-worktop',storageCabinet:'master-storage-cabinet',bedroomBench:'master-bedroom-bench',
-    bathFixtures:'bath-one-fixtures',doubleVanity:'bath-two-vanity',wallUnit:'living-wall-unit'};
-  const vectorFurniture = new Set(['sofa','table','chair','bed','desk','armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','lamp','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce']);
-  // The source art contains bright cyan exterior panes. Paint these fixed
-  // openings as subdued top-down glazing after floor and furniture repairs.
-  // User-placed windows are painted separately below and remain editable.
-  const referenceWindowOpenings = [
-    // Horizontal replacements deliberately cover the old source sill and its
-    // isolated lower hardware tabs. Their continuous lower rail is the only
-    // dark edge left visible, so every window reads as one coherent opening.
-    [461,203,82,34,0],[728,203,78,34,0],
-    [866.5,203,71,34,0],[962.5,203,73,34,0],
-    [1227,179,84,34,0],[1340,179,82,34,0],
-    [400,316.5,107,28,90],[303.5,709,138,29,90]
+  const prototype = {sofa:'i1',tv:'i2',table:'i3',desk:'i4',chair:'i5',bed:'i6',counter:'i7',tub:'i9',toilet:'i11',plant:'i13',lamp:'lamp'};
+  const vectorFurniture = new Set([
+    'sofa','table','chair','bed','desk','armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool',
+    'lamp','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce',
+    'kitchenWorktop','bathFixtures','doubleVanity','storageCabinet','bedroomBench','wallUnit'
+  ]);
+  // The wall relief comes from clean adjacent strips of the same shell.
+  // Each source/target pair covers the old trim and sill at matching depth.
+  // The Design canvas then paints glazing exclusively from scene items.
+  const exteriorOpeningRepairs = [
+    [[503,183,17,47], [420,183,81,47]],
+    [[768,183,14,47], [693,183,74,47]],
+    [[903,183,20,47], [831,183,72,47]],
+    [[1003,183,19,47], [925,183,77,47]],
+    [[1168,162,13,47], [1184,162,85,47]],
+    [[1280,162,15,47], [1298,162,82,47]],
+    [[381,378,50,13], [381,264,50,112]],
+    [[286,783,40,10], [286,665,40,117]],
+    [[509,183,17,31], [528,183,143,31]],
   ];
   const floorSamples = {
     oak:[545,260,180,150], walnut:[835,265,176,150], ash:[1190,235,175,150],
@@ -50,12 +49,39 @@
   };
   const extraTextures = {terrazzo:new Image(),sage:new Image()};
   for(const image of Object.values(extraTextures))image.addEventListener('load',()=>{floorLayers.clear();window.dispatchEvent(new Event('roomcraft-asset-loaded'));});
-  const rugImage=new Image();
-  rugImage.addEventListener('load',()=>window.dispatchEvent(new Event('roomcraft-asset-loaded')));
+  let textileTile;
   const fixedExteriorWalls=new Set(['w1','w2','w3','w4','w5','w6','w7','w8','w9','w10','w11','w12']);
+  // Source-space ownership for the editable interior of empty-shell.png.
+  // Geometry lines approximate the plan; these bounds include the illustrated
+  // cap, reveal, and shadow. Shared joins use a hard cut. Free floor edges
+  // feather out into the underlying texture ('l', 't', 'r', 'b').
+  const interiorWallRegions = {
+    w13: [[773, 214, 827, 465, 'lr']],
+    w14: [[762, 465, 987, 531, 'lrb']],
+    w15: [[1037, 441, 1174, 530, 'lrb']],
+    w16: [[1035, 212, 1094, 299, 'lr'], [1035, 299, 1094, 360, 'lb']],
+    w17: [[1094, 297, 1118, 345, 'tb']],
+    w18: [[1115, 189, 1142, 217, 'lrb']],
+    w19: [[1118, 285, 1175, 441, 'tr']],
+    w20: [[1038, 541, 1293, 579, 'ltr'], [1129, 579, 1293, 602, 'rb']],
+    w21: [[1339, 541, 1497, 579, 'lt'], [1425, 579, 1497, 604, 'b']],
+    w22: [[878, 629, 979, 688, 'trb']],
+    w23: [[1014, 629, 1086, 689, 'ltb']],
+    w24: [[827, 639, 878, 794, 'l']],
+    w25: [[1086, 579, 1129, 629, 'l'], [1086, 629, 1136, 794, '']],
+    w26: [[1136, 629, 1286, 690, 'trb']],
+    w29: [[1369, 655, 1434, 794, 'lr']],
+    w30: [[1369, 579, 1425, 655, 'lr']],
+    w32: [[591, 541, 671, 794, 'ltr']],
+    w33: [[827, 541, 878, 639, 'lt'], [878, 541, 971, 612, 'trb']],
+  };
+  // w25 and w28 describe the two room boundaries of one illustrated divider.
+  // w27 and w31 have no separate source pixels.
+  const interiorWallOwners = {w28: 'w25'};
   let cacheImage = null, cacheShell = null;
   const sprites = new Map(), repairs = new Map(), masks = new Map(), paintMasks = new Map(), wallPaintMasks = new Map(), floorLayers = new Map();
   const wallRepairs = new Map();
+  const interiorWallRepairs = new WeakMap();
   const ready = image => image?.complete && image.naturalWidth >= W;
   function makeCanvas(w,h) { const c=document.createElement('canvas');c.width=w;c.height=h;return c; }
   function maskFor(spec) {
@@ -145,7 +171,7 @@
   function drawShape(c,s){const [type,x,y,w,h,r]=s;c.beginPath();if(type==='e')c.ellipse(x+w/2,y+h/2,w/2,h/2,0,0,Math.PI*2);else c.roundRect(x,y,w,h,r||0);c.fill();}
   function floorPattern(c,surface,shell){
     const extra=extraTextures[surface];
-    if(extra&&!extra.src)extra.src=`assets/${surface}-tile.png`;
+    if(extra&&!extra.src)extra.src=assetUrl(`assets/${surface}-tile.png`);
     const tw=192,th=extra?192:160,tile=makeCanvas(tw,th),t=tile.getContext('2d');
     if(extra?.complete&&extra.naturalWidth)t.drawImage(extra,0,0,extra.naturalWidth,extra.naturalHeight,0,0,tw,th);
     else if(floorSamples[surface]&&ready(shell)){const [x,y,w,h]=floorSamples[surface];t.drawImage(shell,x,y,w,h,0,0,tw,th);}
@@ -194,6 +220,40 @@
       wallRepairs.set(key,{patch,x,y});
     }
     const result=wallRepairs.get(key);c.drawImage(result.patch,result.x,result.y);
+  }
+  function interiorWallPatch(wallFree, region){
+    let patches=interiorWallRepairs.get(wallFree);
+    if(!patches){patches=new Map();interiorWallRepairs.set(wallFree,patches);}
+    if(patches.has(region))return patches.get(region);
+    const [left,top,right,bottom,edges]=region;
+    const fade=8;
+    const l=edges.includes('l')?fade:0, t=edges.includes('t')?fade:0;
+    const r=edges.includes('r')?fade:0, b=edges.includes('b')?fade:0;
+    const x=left-l, y=top-t, w=right+r-x, h=bottom+b-y;
+    const patch=makeCanvas(w,h),p=patch.getContext('2d');
+    p.drawImage(wallFree,x,y,w,h,0,0,w,h);
+    p.globalCompositeOperation='destination-in';
+    function fadeAxis(before,after,axisLength,gradient){
+      gradient.addColorStop(0,before?'transparent':'white');
+      gradient.addColorStop(before/axisLength,'white');
+      gradient.addColorStop(1-after/axisLength,'white');
+      gradient.addColorStop(1,after?'transparent':'white');
+      p.fillStyle=gradient;p.fillRect(0,0,w,h);
+    }
+    if(l||r)fadeAxis(l,r,w,p.createLinearGradient(0,0,w,0));
+    if(t||b)fadeAxis(t,b,h,p.createLinearGradient(0,0,0,h));
+    const result={patch,x,y};patches.set(region,result);return result;
+  }
+  function repairChangedWalls(c,changedWalls,wallFree){
+    const interiors=new Set();
+    for(const base of changedWalls){
+      if(fixedExteriorWalls.has(base.id)){repairWall(c,base,wallFree);continue;}
+      interiors.add(interiorWallOwners[base.id]||base.id);
+    }
+    for(const id of interiors)for(const region of interiorWallRegions[id]||[]){
+      const {patch,x,y}=interiorWallPatch(wallFree,region);
+      c.drawImage(patch,x,y);
+    }
   }
   function drawNewWall(c,w){
     const vx=w.x2-w.x1,vy=w.y2-w.y1,length=Math.hypot(vx,vy)||1;
@@ -275,12 +335,7 @@
       return;
     }
     if(item.type==='rug'){
-      if(item.rugStyle==='bedroom-floral'){drawBedroomRug(c,item);return;}
-      if(item.rugStyle==='office-round'){drawOfficeRug(c,item);return;}
-      if(!rugImage.src)rugImage.src='assets/rug-sprite.png';
-      if(!rugImage.complete||!rugImage.naturalWidth){fallback(item);return;}
-      c.save();c.translate(item.x,item.y);c.rotate((item.rotation||0)*Math.PI/180);
-      c.drawImage(rugImage,120,105,1210,885,-item.w/2,-item.h/2,item.w,item.h);c.restore();
+      drawRug(c,item);
       return;
     }
     const id=specs[item.id]?item.id:prototype[item.type];const spec=specs[id];
@@ -295,45 +350,116 @@
     c.drawImage(sprite,spec.box[0]-base.x,spec.box[1]-base.y);
     c.restore();
   }
-  function drawBedroomRug(c,item){
-    // A straight authored rug replaces the photographed crop, whose baked
-    // perspective made the lower edge look skewed after scaling. It is centered
-    // on the bed footprint and remains strictly aligned with the room axes.
-    const x=-item.w/2,y=-item.h/2,w=item.w,h=item.h,r=Math.max(4,Math.min(10,w*.04));
-    c.save();c.translate(item.x,item.y);c.rotate((item.rotation||0)*Math.PI/180);
-    c.beginPath();c.roundRect(x+2,y+5,w,h,r);c.fillStyle='rgba(78,54,31,.15)';c.fill();
-    c.beginPath();c.roundRect(x,y,w,h,r);
-    const fill=c.createLinearGradient(x,y,x+w,y+h);
-    fill.addColorStop(0,'#fbf1da');fill.addColorStop(.48,'#ead6af');fill.addColorStop(1,'#c7a878');
-    c.fillStyle=fill;c.fill();
-    c.lineWidth=3;c.strokeStyle='#f6e8c9';c.stroke();
-    c.beginPath();c.roundRect(x+8,y+8,w-16,h-16,7);c.lineWidth=1.5;c.strokeStyle='rgba(157,119,70,.46)';c.stroke();
-    // Small symmetric flowers echo the reference without importing its skew.
-    const flowers=[[x+24,y+29],[x+24,y+h-29],[x+w-24,y+29],[x+w-24,y+h-29],
-      [x+24,y+h*.5],[x+w-24,y+h*.5]];
-    for(const [cx,cy] of flowers){
-      c.fillStyle='rgba(178,139,83,.72)';
-      for(let i=0;i<6;i++){const a=i*Math.PI/3;c.beginPath();c.ellipse(cx+Math.cos(a)*6,cy+Math.sin(a)*6,3.2,5.2,a,0,Math.PI*2);c.fill();}
-      c.beginPath();c.arc(cx,cy,3,0,Math.PI*2);c.fillStyle='#f6e8bd';c.fill();
+  const rugRecipes={
+    classic:{w:207,h:142,pile:['#f4e8d0','#e5d3b1','#c7ae85'],edge:'#ad8e64'},
+    'bedroom-floral':{w:254,h:240,pile:['#f9efd9','#e8d8b8','#cdb68f'],edge:'#ae9167'},
+    'office-round':{w:82,h:78,pile:['#f9ecd1','#e5cda0','#b29164'],edge:'#a18154'}
+  };
+  function textilePattern(c){
+    if(!textileTile){
+      textileTile=makeCanvas(32,32);
+      const tile=textileTile.getContext('2d');
+      for(let y=0;y<16;y++)for(let x=0;x<8;x++){
+        const thread=(x*13+y*7+x*y*3)%11;
+        const left=x*4+(y%2)*2;
+        tile.fillStyle=thread<4?'#61482525':'#fff6df45';
+        tile.fillRect(left,y*2,1.5+thread*.19,.72);
+        if(left>29)tile.fillRect(left-32,y*2,1.5+thread*.19,.72);
+      }
     }
+    return c.createPattern(textileTile,'repeat');
+  }
+  function drawRug(c,item){
+    const style=Object.hasOwn(rugRecipes,item.rugStyle)?item.rugStyle:'classic';
+    const {w,h,pile,edge}=rugRecipes[style];
+    const round=style==='office-round';
+    function outline(inset=0,dx=0,dy=0){
+      c.beginPath();
+      if(round)c.ellipse(dx,dy,w/2-inset,h/2-inset,0,0,Math.PI*2);
+      else c.roundRect(-w/2+inset+dx,-h/2+inset+dy,w-2*inset,h-2*inset,Math.max(1,7-inset/3));
+    }
+    c.save();
+    c.translate(item.x,item.y);
+    c.rotate((item.rotation||0)*Math.PI/180);
+    c.scale(item.w/w,item.h/h);
+    // Low felt pile with a small contact shadow in the scene's light direction.
+    outline(0,1.4,3.1);c.fillStyle='#49341c22';c.fill();
+    outline(0,.7,1.6);c.fillStyle='#49341c2b';c.fill();
+    outline();c.fillStyle=edge;c.fill();
+    const dye=c.createLinearGradient(-w*.35,-h/2,w*.35,h/2);
+    dye.addColorStop(0,pile[0]);dye.addColorStop(.48,pile[1]);dye.addColorStop(1,pile[2]);
+    c.save();outline(1);c.clip();
+    c.fillStyle=dye;c.fillRect(-w/2,-h/2,w,h);
+    if(round)drawBraidedRug(c,w,h);
+    else drawRectangularRug(c,w,h,style);
+    c.fillStyle=textilePattern(c);c.fillRect(-w/2,-h/2,w,h);
+    c.restore();
+    outline(2);c.lineWidth=.8;c.strokeStyle='#fff5dd99';c.stroke();
     c.restore();
   }
-  function drawOfficeRug(c,item){
-    const rx=item.w/2,ry=item.h/2;
-    c.save();c.translate(item.x,item.y);c.rotate((item.rotation||0)*Math.PI/180);
-    c.beginPath();c.ellipse(2,4,rx,ry,0,0,Math.PI*2);
-    c.fillStyle='rgba(65,42,28,.14)';c.fill();
-    c.beginPath();c.ellipse(0,0,rx,ry,0,0,Math.PI*2);
-    const fill=c.createRadialGradient(-rx*.32,-ry*.36,3,0,0,Math.max(rx,ry));
-    fill.addColorStop(0,'#fff4d9');fill.addColorStop(.58,'#ead6ac');fill.addColorStop(.88,'#c7aa7d');fill.addColorStop(1,'#8d704e');
-    c.fillStyle=fill;c.fill();
-    c.lineWidth=2;c.strokeStyle='#f3e2bf';c.stroke();
-    c.beginPath();c.ellipse(0,0,rx*.83,ry*.82,0,0,Math.PI*2);c.lineWidth=1;c.strokeStyle='rgba(142,105,69,.34)';c.stroke();
+  function drawRectangularRug(c,w,h,style){
+    const x=-w/2,y=-h/2;
+    for(const [inset,color,width] of [[4,'#fff5dc9e',3],[7.5,'#9e7e555e',1],[13,'#f8eaceb8',4],[16,'#9e7e5554',1]]){
+      c.beginPath();c.roundRect(x+inset,y+inset,w-2*inset,h-2*inset,4);
+      c.lineWidth=width;c.strokeStyle=color;c.stroke();
+    }
+    // A clipped tonal repeat keeps the field textured beneath the motifs.
+    c.save();c.beginPath();c.roundRect(x+17,y+17,w-34,h-34,3);c.clip();
+    c.beginPath();
+    for(let row=-Math.ceil(h/22);row<=Math.ceil(h/22);row++){
+      for(let col=-Math.ceil(w/36);col<=Math.ceil(w/36);col++){
+        const cx=col*36+(row%2)*18,cy=row*14;
+        c.moveTo(cx-8,cy);c.quadraticCurveTo(cx,cy-2,cx,cy-7);
+        c.quadraticCurveTo(cx,cy-2,cx+8,cy);c.quadraticCurveTo(cx,cy+2,cx,cy+7);
+        c.quadraticCurveTo(cx,cy+2,cx-8,cy);
+      }
+    }
+    c.lineWidth=.78;c.strokeStyle=style==='classic'?'#8d6d423b':'#a2875e33';c.stroke();
     c.restore();
+    if(style==='bedroom-floral'){
+      for(const cx of [x+29,-x-29]){
+        for(const cy of [y+30,0,-y-30])drawRugRosette(c,cx,cy);
+      }
+    }
   }
-  function drawWindowWallRepair(c,x,y,w,rotation){
-    const angle=(rotation||0)*Math.PI/180,dx=Math.cos(angle)*w/2,dy=Math.sin(angle)*w/2;
-    drawNewWall(c,{x1:x-dx,y1:y-dy,x2:x+dx,y2:y+dy,finish:'graphite'});
+  function drawRugRosette(c,x,y){
+    c.beginPath();c.arc(x,y,10,0,Math.PI*2);
+    c.lineWidth=.75;c.strokeStyle='#9a754c73';c.stroke();
+    for(let petal=0;petal<6;petal++){
+      const angle=petal*Math.PI/3;
+      c.beginPath();
+      c.ellipse(x+Math.cos(angle)*4.9,y+Math.sin(angle)*4.9,3.15,1.65,angle,0,Math.PI*2);
+      c.fillStyle=petal%2===0?'#a07b4b':'#bc9964';c.fill();
+    }
+    c.beginPath();c.arc(x,y,1.8,0,Math.PI*2);c.fillStyle='#f9e3a8';c.fill();
+  }
+  function drawBraidedRug(c,w,h){
+    for(let inset=4;inset<h/2-3;inset+=2.55){
+      const rx=w/2-inset,ry=h/2-inset;
+      c.beginPath();c.ellipse(0,0,rx,ry,0,0,Math.PI*2);
+      c.lineWidth=.72;c.strokeStyle=inset<10?'#87603989':'#8f663b62';c.stroke();
+      c.beginPath();c.ellipse(0,-.36,rx-.55,ry-.55,0,0,Math.PI*2);
+      c.lineWidth=.77;c.strokeStyle='#fff4d994';c.stroke();
+      const stitches=Math.max(8,Math.round(rx*1.8));
+      c.beginPath();
+      for(let n=0;n<stitches;n++){
+        const angle=(n+inset*.3)*Math.PI*2/stitches;
+        c.moveTo(Math.cos(angle)*rx,Math.sin(angle)*ry);
+        c.lineTo(Math.cos(angle+.032)*(rx-1.5),Math.sin(angle+.032)*(ry-1.5));
+      }
+      c.lineWidth=.52;c.strokeStyle='#895c315b';c.stroke();
+    }
+  }
+  function repairExteriorOpenings(c,shell){
+    // The old lavender unit extends above the cap. Reflect the narrow strip
+    // of grass immediately above it so the original grain meets at the edge.
+    const x=528, y=167, width=143, height=17;
+    c.save();
+    c.translate(0,2*y);
+    c.scale(1,-1);
+    c.drawImage(shell,x,y-height,width,height,x,y-height,width,height);
+    c.restore();
+    for(const [source,target] of exteriorOpeningRepairs)c.drawImage(shell,...source,...target);
   }
   function waitForImage(image,src){
     if(src&&!image.src)image.src=src;
@@ -344,32 +470,26 @@
     });
   }
   function prepareExport(project,starter,images){
-    const tasks=[waitForImage(images.original),waitForImage(images.shell),waitForImage(images.wallFree),
-      waitForImage(rugImage,'assets/rug-sprite.png')];
-    for(const id of ['terrazzo','sage'])if(project.rooms.some(r=>r.surface===id))tasks.push(waitForImage(extraTextures[id],`assets/${id}-tile.png`));
+    const tasks=[waitForImage(images.original),waitForImage(images.shell),waitForImage(images.wallFree)];
+    for(const id of ['terrazzo','sage'])if(project.rooms.some(r=>r.surface===id))tasks.push(waitForImage(extraTextures[id],assetUrl(`assets/${id}-tile.png`)));
     return Promise.all(tasks);
   }
   function draw(c,project,starter,images,fallback) {
     const {original,shell,wallFree}=images;
-    if(!ready(original))return false;
-    if(!ready(shell)){c.drawImage(original,0,0,W,H);return true;}
+    if(!ready(original)||!ready(shell))return false;
+    const currentWalls=new Map(project.walls.map(w=>[w.id,w]));
+    const changedWalls=starter.walls.filter(base=>!sameWall(base,currentWalls.get(base.id)));
+    if(changedWalls.length&&!ready(wallFree))return false;
     // The empty shell is the canonical background. Floors and walls are never
     // repaired with furniture-sized rectangles; every object is a separate
     // transparent layer above this seamless base.
     c.drawImage(shell,0,0,W,H);
     const baseById=new Map(starter.items.map(i=>[i.id,i]));
     const currentById=new Map(project.items.map(i=>[i.id,i]));
-    const currentWalls=new Map(project.walls.map(w=>[w.id,w]));
-    for(const base of starter.walls)if(!sameWall(base,currentWalls.get(base.id)))repairWall(c,base,wallFree);
+    repairChangedWalls(c,changedWalls,wallFree);
     const starterRooms=new Map(starter.rooms.map(r=>[r.id,r]));
     for(const room of project.rooms)if(!sameRoom(room,starterRooms.get(room.id)))paintRoom(c,room,starter,project,images);
-    // The source shell still contains the photographed window openings. Cover
-    // each one with a continuous wall segment first; editable window items are
-    // then the sole source of visible glazing.
-    for(const [x,y,w,,rotation] of referenceWindowOpenings)drawWindowWallRepair(c,x,y,w,rotation);
-    // The lavender wall-mounted unit is also baked into both shell PNGs.
-    // Repair it as architecture first; its v6 item is the only visible owner.
-    drawWindowWallRepair(c,598.5,190.5,139,0);
+    repairExteriorOpenings(c,shell);
     const layers=Engine.render.orderSceneItems(project.items,window.RoomcraftInventory?.byType);
     for(const item of layers.floorItems)drawItem(c,item,starter,original,shell,fallback);
     for(const item of layers.regularItems)drawItem(c,item,starter,original,shell,fallback);

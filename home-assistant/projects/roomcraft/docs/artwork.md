@@ -1,14 +1,14 @@
 # Artwork and graphics
 
-Roomcraft's 1536 × 1024 visual starting point was supplied for this project as a PNG and refined for the sofa, stair, floor, and window corrections. The bundled `floorplan.png` has recessed blue glazing. The [published-plan image](images/published-plan.png) is a public-safe release capture: it shows movable room fixtures, the bedside lamp, and a drawn camera placeholder. Its pixels differ from the bundled reference because the renderer encoded the editable scene anew. The real camera image is a separate authenticated dashboard overlay, never baked into this public illustration. The renderer also reapplies blue glazing pixels from `empty-shell.png` where edited rooms or objects disturb those baked-in windows. The editor's shell, floor textures, furniture atlas, baby/home atlases, and object overlays were created or derived for the Roomcraft layout workflow. They are bundled under `site/public/assets/` so the HA-hosted editor, optional cloud editor, and detailed PNG export use the same graphics. Earlier flat-window captures are in the [legacy screenshot archive](legacy/README.md).
+Roomcraft's 1536 × 1024 visual starting point was supplied as a PNG and refined for the sofa, stairs, floors, and windows. The bundled `floorplan.png` is the furnished Reference view. Design builds its own scene from shell, rooms, walls, and item records. The [published-plan image](images/published-plan.png) is a public-safe capture showing movable room fixtures, a bedside lamp, and a drawn camera placeholder. Home Assistant supplies real camera frames as separate authenticated overlays. The editor assets under `site/public/assets/` are shared by HA Studio, the hosted editor, and the PNG export. Earlier flat-window captures are in the [legacy screenshot archive](legacy/README.md).
 
 | File or group | Role |
 | --- | --- |
 | `floorplan.png` | Corrected furnished reference bundled with the editor; the live published export is shown separately in the manual |
-| `empty-shell.png`, `wall-free-shell.png` | Underlay art used when the editable layout is drawn; `empty-shell.png` restores default glazing around edited cutouts |
+| `empty-shell.png`, `wall-free-shell.png` | Illustrated shell and replacement floor pixels for edited interior wall segments. Window and wall-unit repairs sit below their editable art. |
 | `illustrated-furniture-atlas.png` | Perspective furniture sprites |
 | `baby-and-home-atlas.png`, `baby-and-home-overhead-atlas.png` | Small-item artwork for baby, home, safety, and decor inventory |
-| `rug-sprite.png`, `bedroom-rug-sprite.png` | Floor object detail |
+| `rug-sprite.png`, `bedroom-rug-sprite.png` | Historical rug art retained for comparison. The living, office, and bedroom rug items use woven canvas recipes in the rugs layer. |
 | `terrazzo-tile.png`, `sage-tile.png` | Room finish textures |
 
 Preserve original source dimensions, transparency, and color alignment when replacing an asset. A new atlas should include a contact sheet or screenshot, a render comparison at 100% scale, and a note in the changelog. Check that a sprite's perspective, shadow direction, and wall attachment match the scene. Keep the reference PNG in source so future work can compare the rendered result without relying on an external attachment.
@@ -56,6 +56,8 @@ In this comparison, the top crop shows the flat replacement windows and the lowe
 5. Export a PNG and compare its window position and perspective to the editor at the same scale. Check both laptop and tablet canvas sizes for clipping or alignment shifts.
 
 The original furnished reference includes baked-in windows. Editable window objects are separate overlays; moving a wall or changing its finish does not cut a new structural opening into the reference bitmap. The exterior outline remains fixed to keep the supplied scene aligned.
+
+To check layer ownership, export a disposable Design copy with zero items. The living, office, and bedroom rugs, the cooktop, bathroom fixtures, cabinets, windows, and wall unit should all disappear. Interior wall moves and removals additionally replace the old cap, face, and shadow within the authored source regions in `raster-renderer.js`. Inspect the exposed floor and adjacent wall joins at full scale.
 
 ## New fixture and live-state art
 

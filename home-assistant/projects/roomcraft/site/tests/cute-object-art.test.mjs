@@ -4,9 +4,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import { test } from 'node:test';
+import { installRoomcraftEngine } from './engine-loader.mjs';
 
 const inventorySource = readFileSync(new URL('../public/inventory.js', import.meta.url), 'utf8');
 const artSource = readFileSync(new URL('../public/object-art.js', import.meta.url), 'utf8');
+const rasterSource = readFileSync(new URL('../public/raster-renderer.js', import.meta.url), 'utf8');
 const layoutSchemaUrl = new URL('../../layout.schema.json', import.meta.url);
 const layoutSchema = existsSync(fileURLToPath(layoutSchemaUrl))
   ? JSON.parse(readFileSync(layoutSchemaUrl, 'utf8'))
@@ -176,6 +178,39 @@ test('the default movable furniture and light set uses the detailed authored ren
     const { summary } = render(window, descriptor);
     assert.ok(summary.operations >= 42, `${type} must not fall back to flat placeholder art`);
     assert.ok(summary.gradients >= 1, `${type} material lighting`);
+  }
+});
+
+test('restored kitchen, bath and bedroom fixtures are independently rendered without source crops', () => {
+  const window = loadRuntime();
+  installRoomcraftEngine(window);
+  runInNewContext(rasterSource, { window, Image: class Image { addEventListener() {} } });
+  const original = { complete: true, naturalWidth: 1536 };
+  const shell = { complete: true, naturalWidth: 1536 };
+  const starter = { items: [] };
+  const recipes = [
+    ['kitchen-worktop', 'kitchenWorktop', 106, 127],
+    ['bath-one-fixtures', 'bathFixtures', 73, 117],
+    ['bath-two-vanity', 'doubleVanity', 202, 44],
+    ['master-storage-cabinet', 'storageCabinet', 75, 92],
+    ['master-bedroom-bench', 'bedroomBench', 52, 122],
+    ['living-wall-unit', 'wallUnit', 139, 43]
+  ];
+  for (const [id, type, w, h] of recipes) {
+    const item = { id, type, x: 420, y: 510, w: w * 1.25, h: h * 0.75, rotation: 90 };
+    const renderFixture = () => {
+      const canvas = traceCanvas();
+      window.RoomcraftRasterRenderer.drawItem(canvas, item, starter, original, shell,
+        object => assert.equal(window.RoomcraftObjectArt.draw(canvas, object), true, type));
+      return canvas;
+    };
+    const canvas = renderFixture();
+    assert.deepEqual(canvas.trace, renderFixture().trace, `${type} determinism`);
+    assert.ok(canvas.summary().gradients > 0, `${type} material lighting`);
+    assert.equal(canvas.summary().saves, canvas.summary().restores, `${type} canvas state`);
+    assert.ok(!canvas.trace.some(row => row[1] === 'drawImage'), `${type} must not sample source pixels`);
+    assert.deepEqual(canvas.trace.filter(row => row[1] === 'scale'), [['call', 'scale', 1.25, 0.75]]);
+    assert.deepEqual(canvas.trace.find(row => row[1] === 'rotate'), ['call', 'rotate', 1.570796]);
   }
 });
 

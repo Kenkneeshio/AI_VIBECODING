@@ -1,6 +1,7 @@
-/* Illustrated top-down art for objects that do not have a cutout in the PNG. */
+/* Illustrated top-down art for editable scene objects. */
 (() => {
   'use strict';
+  const assetUrl = window.RoomcraftAssetUrl || (path => path);
   const supported=new Set(['sofa','table','chair','bed','desk','armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','lamp','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce','thermostat','humidifier','airPurifier','windowFan','garageDoor','floorPlant','artwork','mirror','window']);
   // These cells face the same near-top-down camera as the supplied plan.
   // Front-facing atlas pieces use the perspective-aware canvas art below.
@@ -9,7 +10,7 @@
     armchair:[46,45,244,250],coffeeTable:[360,82,291,204],floorPlant:[1017,341,231,255]
   };
   atlas.addEventListener('load',()=>window.dispatchEvent(new Event('roomcraft-asset-loaded')));
-  atlas.src='assets/illustrated-furniture-atlas.png';
+  atlas.src=assetUrl('assets/illustrated-furniture-atlas.png');
   const babyAtlas=new Image();
   // This atlas was redrawn for the plan's near-overhead, orthographic camera.
   // Tight source rectangles keep adjacent sprites out of each editable piece.
@@ -24,7 +25,7 @@
     'activityCube','playGym','sensoryBall','plushBear','activityBoard','robotVacuum'
   ]);
   babyAtlas.addEventListener('load',()=>window.dispatchEvent(new Event('roomcraft-asset-loaded')));
-  babyAtlas.src='assets/baby-and-home-overhead-atlas.png';
+  babyAtlas.src=assetUrl('assets/baby-and-home-overhead-atlas.png');
   function drawBabyAtlas(c,o,template){
     if(!overheadAtlasPieces.has(template.atlas))return false;
     const region=babyRegions[template.atlas];
@@ -177,6 +178,121 @@
   function brass(c,x,y,w,h,r=2){
     const g=c.createLinearGradient(x,y,x+w,y+h);g.addColorStop(0,'#fff1bd');g.addColorStop(.22,'#d6b361');g.addColorStop(.58,'#8c6b35');g.addColorStop(.82,'#e8cb7a');g.addColorStop(1,'#6e522c');rr(c,x,y,w,h,r,g,'#67502f',Math.max(.45,Math.min(w,h)*.035));
   }
+  const utilityOak = { base:'#a97149', accent:'#cb9462', detail:'#ebbb88', dark:'#694633' };
+  const utilityWalnut = { base:'#955c43', accent:'#b37a5a', detail:'#dba17b', dark:'#5c382d' };
+
+  function drawKitchenWorktop(c){
+    // Worktop and inset hob occupy one editable footprint.
+    woodPanel(c,-50,-60,100,114,4,utilityOak,5);
+    const stone=gradient(c,-46,-57,92,110,[[0,'#fff7e9'],[.45,'#ebdbbd'],[1,'#c9b28e']]);
+    rr(c,-46,-57,92,108,3,stone,'#aa9272',.8);
+    const stoneVeins=[
+      [-39,-39,-19,-41,4,-49,34,-47],
+      [-41,-22,-14,-24,10,-36,37,-32],
+      [-35,-8,-12,-10,20,-21,40,-20]
+    ];
+    c.strokeStyle='#a8906e55';c.lineWidth=.7;
+    for(const [x,y,cx1,cy1,cx2,cy2,endX,endY] of stoneVeins){
+      c.beginPath();c.moveTo(x,y);c.bezierCurveTo(cx1,cy1,cx2,cy2,endX,endY);c.stroke();
+    }
+    const glass=gradient(c,-36,1,72,47,[[0,'#495054'],[.32,'#303639'],[1,'#191e20']]);
+    rr(c,-37,0,74,48,4,glass,'#171e20',1);
+    rr(c,-35,2,70,44,3,null,'#d5dbd463',.7);
+    for(const [x,y,r] of [[-20,13,8],[17,13,7],[-19,33,8],[18,33,9]]){
+      const iron=gradient(c,x-r,y-r,r*2,r*2,[[0,'#626669'],[.5,'#373c3e'],[1,'#24282a']]);
+      disc(c,x,y,r,iron,'#838788',.75);
+      disc(c,x,y,r*.63,null,'#c4c7c063',.6);
+    }
+    for(const y of [12,20,28,36])disc(c,31,y,1.15,'#a9b0ab','#202829',.5);
+    brass(c,-13,53,26,2.2,1);
+  }
+
+  function porcelainBowl(c,x,y,w,h){
+    const ceramic=gradient(c,x,y,w,h,[[0,'#fffdf9'],[.5,'#f4eee6'],[1,'#d5c8b9']]);
+    const basin=gradient(c,x,y,w,h,[[0,'#b8c0be'],[.5,'#d5dedb'],[1,'#f3f2e9']]);
+    rr(c,x,y+2,w,h,Math.min(w,h)*.24,'#93877a60');
+    rr(c,x,y,w,h,Math.min(w,h)*.24,ceramic,'#a99b8d',.8);
+    rr(c,x+w*.14,y+h*.15,w*.68,h*.7,Math.min(w,h)*.18,basin,'#acaea6',.7);
+    disc(c,x+w*.46,y+h*.55,Math.min(w,h)*.055,'#797c76','#d3d6ce',.5);
+  }
+
+  function chromeTap(c,x,y,length){
+    const chrome=gradient(c,x-2,y,4,length,[[0,'#f8fcfa'],[.42,'#bfc7c4'],[.68,'#67716f'],[1,'#d7ddda']]);
+    disc(c,x,y,3,'#adb5b0','#777e79',.65);
+    rr(c,x-1.6,y-1,3.2,length,1.6,chrome,'#777e79',.45);
+  }
+
+  function drawBathFixtures(c){
+    // Both pieces face away from the east wall, with a clear floor gap between them.
+    for(const [y,hasTap] of [[-28,true],[24,false]]){
+      c.save();c.translate(0,y);c.rotate(Math.PI/2);
+      if(hasTap){
+        porcelainBowl(c,-18,-24,36,51);
+        chromeTap(c,0,-17,11);
+      }else{
+        const seat=gradient(c,-17,-10,34,50,[[0,'#fffdfa'],[.56,'#f3eee7'],[1,'#cfc5ba']]);
+        oval(c,1,14,17.5,22,'#55463736');
+        oval(c,0,11,17.5,22,seat,'#a79d92',.8);
+        oval(c,-.3,11,13.4,17.7,null,'#ccc3b8',.8);
+        rr(c,-21,-30,42,19,4,seat,'#aa9f94',.75);
+        rr(c,-17,-27,34,1.4,.7,'#ffffffa0');
+        disc(c,13,-22,1.85,'#adb6b0','#777f79',.5);
+      }
+      c.restore();
+    }
+  }
+
+  function drawDoubleVanity(c){
+    woodPanel(c,-97,-19,194,31,3,utilityOak,5);
+    const stone=gradient(c,-97,-19,194,31,[[0,'#fffaf2'],[.5,'#ebe4d9'],[1,'#bdb4a6']]);
+    rr(c,-97,-19,194,31,3,stone,'#a59d90',.9);
+    for(const x of [-55,55]){
+      c.save();c.translate(x,-2);c.rotate(Math.PI);
+      porcelainBowl(c,-30,-12,60,25);
+      chromeTap(c,0,-9,10);
+      c.restore();
+    }
+    rr(c,-15,-15,30,23,2,utilityOak.accent,utilityOak.dark,.65);
+    clippedTexture(c,-13,-13,26,19,1,'wood');
+    for(const x of [-55,0,55])brass(c,x-6,13,12,2.3,1);
+  }
+
+  function drawReferenceCabinet(c){
+    woodPanel(c,-33,-42,66,76,5,utilityWalnut,5);
+    rr(c,-28,-37,56,65,3,null,'#55392f90',1);
+    rr(c,-25,-34,50,59,2,null,'#f4c19d55',.75);
+    brass(c,-12,33,24,3,1.4);
+  }
+
+  function drawReferenceBench(c){
+    woodPanel(c,-23,-56,46,106,5,utilityWalnut,5);
+    const leather={ base:'#a36b56', accent:'#c18a6d', detail:'#dbaa8a', dark:'#794c41' };
+    fabricPanel(c,-18,-50,36,94,5,leather,{depth:2,piping:true});
+    for(const x of [-16,11])taperedLeg(c,x,48,5,7,utilityWalnut.dark);
+  }
+
+  function drawWallUnit(c){
+    rr(c,-66,-11,136,31,5,'#27222b44');
+    rr(c,-66,-14,132,29,5,'#665e73','#514a60',.9);
+    const housing=gradient(c,-66,-19,132,30,[[0,'#eee8f4'],[.46,'#cec2de'],[1,'#a798bb']]);
+    rr(c,-66,-19,132,27,5,housing,'#7b7089',.8);
+    rr(c,-58,-15,116,1.2,.6,'#fff8ffa0');
+    rr(c,-55,2,110,9,2.5,'#554d62','#786e85',.8);
+    for(const y of [4,6.2,8.4])rr(c,-51,y,102,.7,.35,'#b2a6be');
+    rr(c,-62,-9,1,11,.5,'#a89ab6');
+    rr(c,61,-9,1,11,.5,'#9587a3');
+  }
+
+  // Recipes are authored in the catalog's reference footprint, then scaled
+  // to the placed object so resize and rotation preserve its construction.
+  const referenceFixtures = {
+    kitchenWorktop:[106,127,drawKitchenWorktop],
+    bathFixtures:[73,117,drawBathFixtures],
+    doubleVanity:[202,44,drawDoubleVanity],
+    storageCabinet:[75,92,drawReferenceCabinet],
+    bedroomBench:[52,122,drawReferenceBench],
+    wallUnit:[139,43,drawWallUnit]
+  };
   function furnitureFoot(c,x,y,w,h,r=8){
     rr(c,x+5,y+8,w,h,r,'rgba(31,35,32,.08)');rr(c,x+3,y+5,w,h,r,'rgba(31,35,32,.14)');
   }
@@ -964,6 +1080,16 @@
   function draw(c,o){
     const expanded=window.RoomcraftInventory?.byType?.[o.type];
     if(expanded?.artFamily)return drawCatalog(c,o,expanded);
+    if(Object.hasOwn(referenceFixtures,o.type)){
+      const [width,height,paint]=referenceFixtures[o.type];
+      c.save();
+      c.translate(o.x,o.y);
+      c.rotate((o.rotation||0)*Math.PI/180);
+      c.scale(o.w/width,o.h/height);
+      paint(c);
+      c.restore();
+      return true;
+    }
     if(!supported.has(o.type))return false;
     // The original atlas remains useful for the authored plant. Furniture uses
     // deterministic vector recipes so its rounded cozy style survives resize,

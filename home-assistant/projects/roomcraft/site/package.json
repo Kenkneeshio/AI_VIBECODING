@@ -13,6 +13,7 @@
     "test": "node --test \"tests/*.test.mjs\"",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "release:verify": "node scripts/roomcraft-release.mjs --verify",
+    "release:stamp-editor": "node scripts/roomcraft-release.mjs --stamp-editor",
     "release:manifest": "node scripts/roomcraft-release.mjs --write",
     "release:manifest:verify": "node scripts/roomcraft-release.mjs --check",
     "db:generate": "drizzle-kit generate"

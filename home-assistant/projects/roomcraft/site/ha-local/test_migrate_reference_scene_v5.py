@@ -12,7 +12,7 @@ from migrate_reference_scene_v5 import REFERENCE_ITEMS, migrate_dashboard, stabl
 class ReferenceSceneV5Tests(unittest.TestCase):
     def setUp(self):
         self.dashboard = {"views": [], "roomcraft_layout": {
-            "version": 2, "editableReferenceVersion": 5,
+            "version": 2, "editableReferenceVersion": 4,
             "rooms": [], "walls": [], "items": [
                 {"id": "owner-object"},
                 {"id": "fan", "type": "fans-fan-light-white", "name": "Dining ceiling fan", "x": 445, "y": 682},
@@ -29,9 +29,17 @@ class ReferenceSceneV5Tests(unittest.TestCase):
         self.assertEqual(by_id["fan-light"]["type"], "ceilingLight")
         self.assertEqual((by_id["garage"]["w"], by_id["garage"]["h"]), (132, 92))
         self.assertEqual(stable(migrate_dashboard(migrated)), stable(migrated))
-        self.assertEqual(self.dashboard["roomcraft_layout"]["editableReferenceVersion"], 5)
+        self.assertEqual(self.dashboard["roomcraft_layout"]["editableReferenceVersion"], 4)
 
     def test_a_v5_deletion_is_not_recreated(self):
+        self.dashboard["roomcraft_layout"]["editableReferenceVersion"] = 5
+        migrated = migrate_dashboard(self.dashboard)
+        added = {item["id"] for item in migrated["roomcraft_layout"]["items"]} - {
+            item["id"] for item in self.dashboard["roomcraft_layout"]["items"]
+        }
+        self.assertEqual(added, {"living-wall-unit"})
+
+    def test_a_v6_deletion_is_not_recreated(self):
         migrated = migrate_dashboard(self.dashboard)
         migrated["roomcraft_layout"]["items"] = [item for item in migrated["roomcraft_layout"]["items"]
                                                        if item.get("id") != "living-wall-unit"]

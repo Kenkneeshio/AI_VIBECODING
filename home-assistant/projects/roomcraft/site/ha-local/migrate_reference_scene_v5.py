@@ -24,7 +24,7 @@ def _item(item_id, item_type, name, x, y, width, height, rotation=0, **extra):
             "w": width, "h": height, "rotation": rotation, "entityId": "", **extra}
 
 
-REFERENCE_ITEMS = (
+REFERENCE_ITEMS_V5 = (
     _item("rug-living", "rug", "Living room rug", 541, 351, 207, 142, 90, rugStyle="classic"),
     _item("rug-bedroom", "rug", "Bedroom floral rug", 1331, 408, 254, 240, rugStyle="bedroom-floral"),
     _item("rug-office", "rug", "Office round rug", 940, 389, 82, 78, rugStyle="office-round"),
@@ -41,8 +41,11 @@ REFERENCE_ITEMS = (
     _item("window-bedroom-north-two", "window", "Bedroom north window 02", 1340, 179, 82, 34),
     _item("window-living-west", "window", "Living west window", 400, 316.5, 107, 28, 90),
     _item("window-dining-west", "window", "Dining west window", 303.5, 709, 138, 29, 90),
+)
+REFERENCE_ITEMS_V6 = (
     _item("living-wall-unit", "wallUnit", "Living wall-mounted unit", 598.5, 190.5, 139, 43),
 )
+REFERENCE_ITEMS = REFERENCE_ITEMS_V5 + REFERENCE_ITEMS_V6
 
 
 class MigrationError(RuntimeError):
@@ -66,7 +69,8 @@ def migrate_dashboard(current):
     if reference_version >= TARGET_VERSION:
         return result
     present = {item.get("id") for item in project["items"] if isinstance(item, dict)}
-    project["items"].extend(deepcopy(item) for item in REFERENCE_ITEMS if item["id"] not in present)
+    additions = REFERENCE_ITEMS if reference_version < 5 else REFERENCE_ITEMS_V6
+    project["items"].extend(deepcopy(item) for item in additions if item["id"] not in present)
     fan = next((item for item in project["items"] if item.get("type") == "fans-fan-light-white" and
                 "dining ceiling fan" in item.get("name", "").lower()), None)
     if fan:

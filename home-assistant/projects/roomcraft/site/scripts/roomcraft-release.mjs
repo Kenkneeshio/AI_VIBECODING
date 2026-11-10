@@ -77,6 +77,8 @@ function runtimeCandidates(siteRoot = SITE_ROOT, projectRoot = PROJECT_ROOT) {
     ...walkFiles(join(projectRoot, 'docs')),
     join(siteRoot, 'ha-local', 'install.py'),
     join(siteRoot, 'ha-local', 'migrate_interactive_plan.py'),
+    join(siteRoot, 'ha-local', 'migrate_reference_scene_v5.py'),
+    join(siteRoot, 'ha-local', 'test_migrate_reference_scene_v5.py'),
     join(siteRoot, 'ha-local', 'roomcraft-card.js'),
     join(siteRoot, 'ha-local', 'roomcraft-weather-outdoor.js'),
     join(siteRoot, 'cloudflare-env.d.ts'),
@@ -156,6 +158,20 @@ export function validateEditorScriptOrder(editor) {
   return engineSources;
 }
 
+// A release uses one cache namespace for the editor scripts, styles and art.
+// The HTML carries that namespace but is excluded from its own digest.
+export function stampEditorAssetUrls(editor, publicRoot) {
+  const digest = createHash('sha256');
+  for (const path of walkFiles(publicRoot)) {
+    const name = posixPath(relative(publicRoot, path));
+    if (name === 'editor.html') continue;
+    digest.update(`${name}\0${sha256(canonicalInputBytes(path))}\n`);
+  }
+  const version = digest.digest('hex').slice(0, 16);
+  return editor.replace(/\b(src|href)="([\w/-][\w./-]*\.(?:js|css|png|svg))(?:\?v=[^"]*)?"/g,
+    (attribute, key, path) => path.startsWith('/') ? attribute : `${key}="${path}?v=${version}"`);
+}
+
 export function verifyReleasePolicy(siteRoot = SITE_ROOT) {
   const editorPath = join(siteRoot, 'public', 'editor.html');
   const appPath = join(siteRoot, 'public', 'app.js');
@@ -165,6 +181,9 @@ export function verifyReleasePolicy(siteRoot = SITE_ROOT) {
 
   const editor = readFileSync(editorPath, 'utf8');
   const engineSources = validateEditorScriptOrder(editor);
+  if (editor !== stampEditorAssetUrls(editor, join(siteRoot, 'public'))) {
+    fail('editor asset URLs are stale; run npm run release:stamp-editor');
+  }
 
   const loadedEngine = engineSources.map(source => {
     const path = join(siteRoot, 'public', ...source.split('/'));
@@ -218,9 +237,16 @@ function checkManifest(manifest, manifestPath = MANIFEST_PATH) {
 }
 
 export function runCli(args = process.argv.slice(2)) {
-  const allowed = new Set(['--verify', '--write', '--check']);
+  const allowed = new Set(['--verify', '--write', '--check', '--stamp-editor']);
   for (const argument of args) if (!allowed.has(argument)) fail(`unknown option ${argument}`);
   const options = new Set(args.length ? args : ['--verify']);
+  if (options.has('--stamp-editor')) {
+    const publicRoot = join(SITE_ROOT, 'public');
+    const path = join(publicRoot, 'editor.html');
+    const editor = readFileSync(path, 'utf8');
+    const stamped = stampEditorAssetUrls(editor, publicRoot);
+    if (editor !== stamped) writeFileSync(path, stamped, 'utf8');
+  }
   const manifest = verifyRepeatability();
   if (options.has('--write')) writeManifest(manifest);
   if (options.has('--check')) checkManifest(manifest);

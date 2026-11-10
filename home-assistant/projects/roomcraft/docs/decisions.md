@@ -1,5 +1,11 @@
 # Decision log
 
+## 2026-11-09 — Version editor assets as a unit and draw fixtures from scene records
+
+The editor's stylesheet, scripts, and art share a content-derived cache key. Home Assistant serves static assets with a long cache lifetime. Keeping the same renderer URL across releases let a browser combine current project data with a renderer that still drew removed furnishings. The release gate checks the key against the public asset tree, and the Design renderer uses the empty shell or the procedural fallback while its assets load. The furnished image belongs to the Reference view.
+
+The three rugs, kitchen worktop, bathroom fixtures, and the two bedroom storage pieces use deterministic canvas artwork tied to their existing item IDs. The maintainer can replace a material or detail without editing the floor image or migrating existing placement. The HA migration applies only reference additions newer than the input's migration marker, preserving deletions from earlier versions.
+
 ## 2026-11-09 — Audit the shell and separate physical controls
 
 **Decision:** Maintain an explicit list of every non-architectural feature inherited from the supplied shell images. Repair those pixels as architecture below the scene, then represent the feature as an item. Version 6 converts the last lavender wall unit. A combined physical fixture uses one item per independently controlled circuit: the dining fan motor is a five-blade fan item and its light is a separate ceiling-light item at the hub. Garage-door state is represented by a detached-garage object whose door panel—not its whole building—animates.

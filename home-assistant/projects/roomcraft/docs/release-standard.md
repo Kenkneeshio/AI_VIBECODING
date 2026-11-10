@@ -36,7 +36,7 @@ Prefer a reusable contract, adapter, catalog entry, or data-driven recipe when i
 
 ## Deterministic release evidence
 
-From `home-assistant/projects/roomcraft/site`:
+From `home-assistant/projects/roomcraft/site`, run `npm run release:stamp-editor` after changing anything under `public/` and include the generated HTML URL updates in the release commit. Then run:
 
 ```powershell
 npm ci
