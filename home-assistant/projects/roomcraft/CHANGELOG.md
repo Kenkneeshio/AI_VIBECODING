@@ -7,6 +7,7 @@
 - Added **Remove all objects**, which preserves rooms, floors, and walls, plus a complete **Restore reference layout** action that rebuilds all starter furniture, fixtures, rugs, windows, and movable interface elements through the engine without overwriting unrelated additions.
 - The raster renderer now repairs the old PNG window openings as architecture and draws glazing only from window items. Removed unconditional rug/fixed-furniture/window painting and retained the deterministic floor/furniture/ceiling/opening layer order.
 - Added end-to-end migration, deletion persistence, full restore, empty-scene, and editable-window regression coverage. Local browser QA rendered the full reference scene without console warnings or errors.
+- **Verified release:** canonical implementation commit `c61f00b` passed 84 Site/engine tests, 51 Home Assistant JavaScript tests, 11 Python tests, TypeScript, lint with zero errors, production build, deterministic 128-input manifest `sha256:2ba1390a524fa00730bf745a8acd92bd8839fba5783e2ac2d7fdcaf7bcbedaf3`, and whitespace checks. Private dashboard backups preceded the install and version-5 migration. Full HA readback matched 64 items; a second apply was `already-current`; the served asset contains the v5/remove-all engine. Restricted-audience Site v47 was published from exact hosted source `87c28c86a634c0ade024114a0849d46e23943258`, and its custom owner allowlist remained unchanged. No household device was operated.
 
 ## 2026-11-09 — Uniform bottom interface controls
 
