@@ -6,6 +6,10 @@
 - Rebuilt the living, office, and bedroom rugs with woven detailing. The kitchen worktop, two bathroom fixture assemblies, bedroom cabinet and bench, and living wall unit now use illustrated material and hardware details with clean transparent edges. The existing item IDs, layout format, and placements are preserved.
 - Use explicit source regions to remove the cap, face, and shadow of an edited interior wall while retaining the original illustration where the wall is intact.
 - Design uses the clean shell or a procedural fallback while assets load. Reference shows the original furnished illustration. Home Assistant migration v5 → v6 preserves previous deletions of the v5 rugs, windows, and fixtures.
+- **Release evidence.** Source `259570c1ec69f78e492b251d2839a69003357a94` passed 91 Site/engine tests, 51 Home Assistant JavaScript tests, 12 Python tests, TypeScript, lint with zero errors, production build, manifest readback, and whitespace verification. The 132-input root digest is `sha256:896fe48766d03fcb341748e93c2f77f1da6f19da3ac4395dd320d134134cf623`.
+- Browser QA exported the furnished plan, a zero-item plan, and a plan with two interior wall segments removed. The empty export showed no rugs, fixtures, old glazing, or lavender hardware. The edited-wall export shows a small wood-tone seam above the retained bath junction. The furnished export and the 1920 × 1080 wall-tablet capture show the updated artwork.
+- Restricted-audience Site v49 deployed from hosted source `274da60b86d721f5a9aba9dd98f0122c0bfa899c` with the same access policy. All 26 Home Assistant editor files matched the release over HTTP at cache key `4ec579692bbc90a2`. The installed card resources and dashboard configuration passed readback. The refreshed plan image matched its authenticated upload byte-for-byte, with 65 items and 28 plan elements.
+- To roll back, reinstall the prior source `1aa2fbc` or restore the private pre-install assets, restore the backed-up dashboard and image, and redeploy Site v48 if necessary. See the [deployment guide](docs/deployment.md).
 
 ## 2026-11-09 — Empty-shell audit, split fan controls, and detached garage
 
