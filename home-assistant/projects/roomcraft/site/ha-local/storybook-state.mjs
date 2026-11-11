@@ -148,3 +148,68 @@ export function placeStorybookTargets(targets, width, height) {
   }
   return placed;
 }
+
+/** Keep measured detail labels near their controls and away from other hit areas. */
+export function placeStorybookDetails(targets, width, height) {
+  if (width <= 0 || height <= 0) return [];
+  const obstacles = targets.map(({x, y, w, h}) => ({
+    left: x - w / 2, top: y - h / 2, right: x + w / 2, bottom: y + h / 2,
+  }));
+  const placed = [];
+  const gap = 7;
+  const clamp = (value, max) => Math.min(Math.max(value, 0), max);
+  for (const {id, x, y, w, h, detail} of targets) {
+    if (!detail || !(detail.width > 0 && detail.height > 0)) continue;
+    const labelWidth = Math.min(width, detail.width);
+    const labelHeight = Math.min(height, detail.height);
+    const maxLeft = width - labelWidth;
+    const maxTop = height - labelHeight;
+    const lefts = [x - w / 2 - labelWidth - gap, x - labelWidth / 2, x + w / 2 + gap];
+    const tops = [y - h / 2 - labelHeight - gap, y - labelHeight / 2, y + h / 2 + gap];
+    let best;
+    function consider(left, top) {
+      left = clamp(left, maxLeft);
+      top = clamp(top, maxTop);
+      const right = left + labelWidth;
+      const bottom = top + labelHeight;
+      const distance = (left - lefts[1]) ** 2 + (top - tops[1]) ** 2;
+      let overlap = 0;
+      for (const obstacle of obstacles) {
+        const spanX = Math.min(right, obstacle.right) - Math.max(left, obstacle.left);
+        const spanY = Math.min(bottom, obstacle.bottom) - Math.max(top, obstacle.top);
+        if (spanX > 0 && spanY > 0) overlap += spanX * spanY;
+        if (best && overlap > best.overlap) return;
+      }
+      if (!best || overlap < best.overlap || (overlap === best.overlap && distance < best.distance)) {
+        best = {left, top, right, bottom, overlap, distance};
+      }
+    }
+    for (let col = 0; col < lefts.length; col++) {
+      for (let row = 0; row < tops.length; row++) {
+        if (col !== 1 || row !== 1) consider(lefts[col], tops[row]);
+      }
+    }
+    if (best.overlap > 0) {
+      // In a tight cluster, overlap only changes when two rectangle edges cross.
+      // Try those alignments and the centered axes to find free space or the least overlap.
+      const availableLefts = new Set([0, maxLeft, clamp(lefts[1], maxLeft)]);
+      const availableTops = new Set([0, maxTop, clamp(tops[1], maxTop)]);
+      for (const obstacle of obstacles) {
+        for (const edge of [obstacle.left, obstacle.right]) {
+          availableLefts.add(clamp(edge, maxLeft));
+          availableLefts.add(clamp(edge - labelWidth, maxLeft));
+        }
+        for (const edge of [obstacle.top, obstacle.bottom]) {
+          availableTops.add(clamp(edge, maxTop));
+          availableTops.add(clamp(edge - labelHeight, maxTop));
+        }
+      }
+      for (const left of availableLefts) {
+        for (const top of availableTops) consider(left, top);
+      }
+    }
+    obstacles.push(best);
+    placed.push({id, left: best.left, top: best.top});
+  }
+  return placed;
+}

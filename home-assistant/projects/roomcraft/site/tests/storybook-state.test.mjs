@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {placeStorybookTargets, readStorybookConfig, storybookFrame, storybookPreview} from '../ha-local/storybook-state.mjs';
+import {placeStorybookDetails, placeStorybookTargets, readStorybookConfig, storybookFrame, storybookPreview} from '../ha-local/storybook-state.mjs';
 
 const items = [
   {id: 'motor', type: 'fan', entityId: 'switch.example_motor'},
@@ -128,4 +128,33 @@ test('camera tiles search farther for clear space and keep ordinary placement as
   const [fallback] = placeStorybookTargets([{...target, keepClear: [entirelyCovered]}], 400, 380);
   assert.deepEqual([fallback.x, fallback.y], [target.x, target.y]);
   assert.deepEqual(placeStorybookTargets([target], 400, 380), [target]);
+});
+
+test('details in a crowded phone viewport stay visible without covering controls, cameras or other labels', () => {
+  const detail = {width: 108, height: 28};
+  const targets = [
+    {id:'left', x:24, y:28, w:44, h:44, detail},
+    {id:'center', x:71, y:28, w:44, h:44, detail},
+    {id:'lower', x:24, y:77, w:44, h:44, detail},
+    {id:'camera', x:141, y:30, w:92, h:58},
+  ];
+  const bounds = targets.map(({x,y,w,h}) => [x-w/2,y-h/2,x+w/2,y+h/2]);
+  const placed = placeStorybookDetails(targets, 220, 150);
+  assert.deepEqual(placed.map(({id}) => id), ['left','center','lower']);
+  assert.deepEqual(placeStorybookDetails(targets, 220, 150), placed);
+  for (const {left,top} of placed) {
+    const right = left + detail.width;
+    const bottom = top + detail.height;
+    assert.ok(left >= 0 && top >= 0 && right <= 220 && bottom <= 150);
+    assert.ok(bounds.every(([x,y,r,b]) => right <= x || left >= r || bottom <= y || top >= b));
+    bounds.push([left,top,right,bottom]);
+  }
+});
+
+test('an unavoidable collision keeps the label in frame over the least occupied area', () => {
+  const targets = [
+    {id:'control', x:20, y:20, w:100, h:40, detail:{width:30,height:20}},
+    {id:'camera', x:20, y:20, w:40, h:40},
+  ];
+  assert.deepEqual(placeStorybookDetails(targets, 60, 40), [{id:'control', left:30, top:10}]);
 });

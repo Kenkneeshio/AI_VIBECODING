@@ -2,10 +2,11 @@
 
 ## Clearer live controls, weather and presence
 
-- Roomcraft Home groups **Menu** actions under **On the map**, **View controls** and **Manage**. **Object details** toggles labels beside linked controls and shares the existing preference with Floor Plan.
+- Roomcraft Home groups **Menu** actions under **On the map**, **View controls** and **Manage**. **Object details** toggles labels beside linked controls and shares the existing preference with Floor Plan. The 3D view uses measured label sizes to avoid covering nearby controls, cameras, and other labels where space permits.
 - Animated daylight, moon, clouds and weather appear in the live header beside the menu. The illustrated home continues to reflect the current lighting and outdoor conditions.
 - Radar-only reports update the live scene. Characters are larger and easier to see, and the presence dimmer has a second dot that distinguishes mapped targets from presence alone. The existing red and green dot still shows dimmer power. Position alignment depends on the switch's floor-plan calibration.
 - Verified the Home Assistant sidebar cleanup. **Roomcraft Home** and **Main Dashboard** stay visible. The privately archived prototype was removed, and **Second Floor** still serves the saved layout, Studio and health views through their existing paths. The signed-in user's Roomcraft default and the system's Main Dashboard default were preserved.
+- Verified the crescent header, Menu, Object details toggle, blue radar dot and a real tracked character on the wall tablet. Chrome checks used synthetic clear night, sun, thunderstorms and snow at tablet and phone widths, including reduced motion.
 
 ## Live presence tracking
 

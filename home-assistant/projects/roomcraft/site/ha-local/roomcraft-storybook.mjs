@@ -3,7 +3,7 @@ import {bindLiveModelLibrary} from './storybook-library.mjs';
 import {createStorybookScene} from './storybook-scene.mjs';
 import {enterFreeView, normalizeCameraView, populateCameraOptions, readSavedFreeView, resolveDefaultCameraView} from './storybook-camera.mjs';
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
-import {placeStorybookTargets, readStorybookConfig, storybookFrame, storybookPreview} from './storybook-state.mjs';
+import {placeStorybookDetails, placeStorybookTargets, readStorybookConfig, storybookFrame, storybookPreview} from './storybook-state.mjs';
 import {storybookWeather, storybookWeatherMarkup, storybookWeatherStyles, updateStorybookWeather} from './storybook-weather.mjs';
 
 const TAG = 'roomcraft-storybook-card';
@@ -49,14 +49,15 @@ class RoomcraftStorybookCard extends HTMLElement {
           overflow:auto;overscroll-behavior:contain;padding:7px;border:1px solid #cfbfa2;border-radius:15px;
           color-scheme:light;background:#fffaf0;color:#393831;box-shadow:0 9px 30px #18213250}
         .main-menu[hidden]{display:none}
-        .main-menu button,.main-menu a{width:100%;justify-content:flex-start;text-align:left;border-radius:7px}
+        .bar .main-menu :is(button,a){width:100%;justify-content:flex-start;text-align:left;border-radius:7px}
         .main-menu button:disabled{opacity:.35;cursor:default}
         .main-menu button:hover:not(:disabled),.main-menu a:hover{background:#f2e9d9;text-decoration:none}
         .menu-group{display:grid;gap:1px;padding:4px}
         .menu-group+.menu-group{border-top:1px solid #e8dfce}
         .menu-heading{margin:4px 8px 1px;color:#706550;font-size:11px;font-weight:700;letter-spacing:.045em}
         .camera-steps{display:grid;grid-template-columns:1fr 1fr;gap:2px}
-        .main-menu .toggle-object-details{justify-content:space-between}
+        .bar .main-menu .camera-steps button{justify-content:center}
+        .bar .main-menu .toggle-object-details{justify-content:space-between}
         .menu-toggle{display:flex;align-items:center;justify-content:space-around;gap:3px;min-width:36px;
           height:23px;padding:0 4px;border-radius:20px;background:#e9e0d0;color:#514b40;font-size:10px;font-weight:700}
         .menu-toggle::before{content:"";display:block;width:9px;height:9px;border-radius:50%;background:#8e8270}
@@ -653,8 +654,21 @@ class RoomcraftStorybookCard extends HTMLElement {
       }
     }
     for (const {element} of this.controls) if (!positioned.has(element)) element.hidden = true;
-    for (const element of positioned) element.updateDetailPosition?.();
+    this.positionDetails(placements);
     this.tethers.replaceChildren(...leaders);
+  }
+
+  positionDetails(placements) {
+    if (!customElements.get(CONTROL_TAG)?.detailVisibility) return;
+    const measured = placements.map(target => ({...target, detail: target.element.detailSize}));
+    const labels = new Map(placeStorybookDetails(measured, this.width, this.height).map(label => [label.id, label]));
+    for (const {element, id, x, y, w, h} of placements) {
+      const label = labels.get(id);
+      element.toggleAttribute('data-detail-fit', Boolean(label));
+      if (!label) continue;
+      element.style.setProperty('--detail-left', `${label.left - x + w / 2}px`);
+      element.style.setProperty('--detail-top', `${label.top - y + h / 2}px`);
+    }
   }
 
   reset() {

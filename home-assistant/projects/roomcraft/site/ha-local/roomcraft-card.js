@@ -37,6 +37,15 @@ const LIGHT_FORMS = ['table_lamp', 'bud_lamp', 'cloud_floor_lamp', 'bloom_ceilin
 const ACTIVATION_SERVICES = new Map([['scene', 'turn_on'], ['script', 'turn_on'], ['button', 'press']]);
 const DETAIL_VISIBILITY_EVENT = 'roomcraft-detail-visibility';
 const DETAIL_VISIBILITY_KEY = 'roomcraft.show-object-details.v1';
+const STORYBOOK_DETAIL_POSITION = `
+  :host([data-detail-fit]) [data-storybook-detail]{left:var(--detail-left);top:var(--detail-top);
+    right:auto;bottom:auto;transform:none}
+`;
+
+function measureDetail(badge) {
+  if (!badge?.offsetWidth || !badge.offsetHeight) return undefined;
+  return { width: badge.offsetWidth, height: badge.offsetHeight };
+}
 
 function readDetailVisibility() {
   try { return window.localStorage?.getItem(DETAIL_VISIBILITY_KEY) === 'true'; }
@@ -754,6 +763,7 @@ function controlDisplayState(value, domain) {
 class RoomcraftObjectControl extends HTMLElement {
   static get detailVisibility() { return roomcraftDetailsVisible; }
   static set detailVisibility(visible) { setDetailVisibility(visible); }
+  get detailSize() { return measureDetail(this._detail); }
 
   constructor() {
     super();
@@ -767,7 +777,7 @@ class RoomcraftObjectControl extends HTMLElement {
       this._detailsVisible = Boolean(event.detail?.visible);
       this._refreshDetailVisibility();
     };
-    this._onDetailResize = () => this.updateDetailPosition();
+    this._onDetailResize = () => this._refreshDetailPosition();
   }
 
   setConfig(config) {
@@ -1021,6 +1031,8 @@ class RoomcraftObjectControl extends HTMLElement {
       @keyframes roomcraft-door-opening{to{transform:scaleY(.28)}}
       @keyframes roomcraft-door-closing{to{transform:scaleY(1)}}
       @media(prefers-reduced-motion:reduce){:host{transition:none}.target[data-visual="fan"][data-state="on"] .rotor,.target[data-visual="vacuum"][data-state="on"] .art,.target[data-visual="vacuum"] .art::after,.target[data-visual="device"] .art::before,.target[data-visual="device"] .art::after,.target[data-visual="door"] .art{animation:none}}
+      :host([data-renderer="storybook"]) .detail-badge{min-width:88px;max-width:164px}
+      ${STORYBOOK_DETAIL_POSITION}
     `;
     const button = document.createElement('button');
     button.type = 'button';
@@ -1077,6 +1089,7 @@ class RoomcraftObjectControl extends HTMLElement {
     button.append(radarIndicator);
     const detail = document.createElement('div');
     detail.className = 'detail-badge';
+    detail.setAttribute('data-storybook-detail', '');
     detail.setAttribute('aria-hidden', 'true');
     const detailName = document.createElement('span');
     detailName.className = 'detail-name';
@@ -1233,10 +1246,10 @@ class RoomcraftObjectControl extends HTMLElement {
   _refreshDetailVisibility() {
     this.setAttribute('data-show-details', String(this._detailsVisible));
     this._detail?.setAttribute('aria-hidden', String(!this._detailsVisible));
-    this.updateDetailPosition();
+    this._refreshDetailPosition();
   }
 
-  updateDetailPosition() {
+  _refreshDetailPosition() {
     if (!this._detailsVisible || typeof this.getBoundingClientRect !== 'function') return;
     const rect = this.getBoundingClientRect();
     const width = Number(window.innerWidth) || document.documentElement?.clientWidth || 0;
@@ -1829,6 +1842,8 @@ class RoomcraftEntityMenu extends HTMLElement {
  * HA's native image element owns stream transport and credentials.
  */
 class RoomcraftCameraThumbnail extends HTMLElement {
+  get detailSize() { return measureDetail(this._detailEntity); }
+
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -1870,7 +1885,7 @@ class RoomcraftCameraThumbnail extends HTMLElement {
       this._detailsVisible = Boolean(event.detail?.visible);
       this._refreshDetailVisibility();
     };
-    this._onDetailResize = () => this.updateDetailPosition();
+    this._onDetailResize = () => this._refreshDetailPosition();
   }
 
   setConfig(config) {
@@ -1925,6 +1940,7 @@ class RoomcraftCameraThumbnail extends HTMLElement {
   _build() {
     const style = document.createElement('style');
     style.textContent = ':host{display:block;box-sizing:border-box;min-width:40px;min-height:40px}.frame{box-sizing:border-box;display:block;position:relative;width:100%;height:100%;min-height:40px;overflow:hidden;padding:0;border:2px solid #e4ebdf;border-radius:9px;background:#182a2c;color:#fff;box-shadow:0 4px 15px #1118;cursor:pointer;font:inherit;text-align:left}.frame:active{filter:brightness(1.18);transform:scale(.985)}.media,.still,.live{position:absolute;inset:0;width:100%;height:100%}.still{object-fit:cover}.live{display:block;overflow:hidden;opacity:0;pointer-events:none}.veil{position:absolute;inset:0;background:linear-gradient(#0008,transparent 36%,transparent 62%,#000a);pointer-events:none}.head,.foot{position:absolute;left:7px;right:7px;z-index:2;font:600 10px/1.2 system-ui,sans-serif;text-shadow:0 1px 3px #000}.head{top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.foot{bottom:6px}.detail-entity{display:none;position:absolute;z-index:20;box-sizing:border-box;width:max-content;max-width:190px;overflow:hidden;padding:5px 7px;border:1px solid #dff9ef;border-radius:7px;background:#10272ef2;color:#c8e8df;box-shadow:0 3px 12px #07171db8;text-overflow:ellipsis;white-space:nowrap;pointer-events:none;font:500 8px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;text-shadow:0 1px 2px #000}:host([data-show-details="true"]) .detail-entity{display:block}:host([data-detail-side="right"]) .detail-entity{left:calc(100% + 7px);top:50%;transform:translateY(-50%)}:host([data-detail-side="left"]) .detail-entity{right:calc(100% + 7px);top:50%;transform:translateY(-50%)}:host([data-detail-side="top"]) .detail-entity{left:50%;bottom:calc(100% + 7px);transform:translateX(-50%)}:host([data-detail-side="bottom"]) .detail-entity{left:50%;top:calc(100% + 7px);transform:translateX(-50%)}.message{position:absolute;inset:25px 7px 20px;display:flex;align-items:center;justify-content:center;text-align:center;color:#e1e9e3;font:500 10px/1.2 system-ui,sans-serif}.still[hidden],.message[hidden]{display:none}';
+    style.textContent += STORYBOOK_DETAIL_POSITION;
     const frame = document.createElement('button');
     frame.type = 'button';
     frame.className = 'frame';
@@ -1976,6 +1992,7 @@ class RoomcraftCameraThumbnail extends HTMLElement {
     foot.className = 'foot';
     const detailEntity = document.createElement('div');
     detailEntity.className = 'detail-entity';
+    detailEntity.setAttribute('data-storybook-detail', '');
     const message = document.createElement('div');
     message.className = 'message';
     media.append(still);
@@ -1993,10 +2010,10 @@ class RoomcraftCameraThumbnail extends HTMLElement {
 
   _refreshDetailVisibility() {
     this.setAttribute('data-show-details', String(this._detailsVisible));
-    this.updateDetailPosition();
+    this._refreshDetailPosition();
   }
 
-  updateDetailPosition() {
+  _refreshDetailPosition() {
     if (!this._detailsVisible || typeof this.getBoundingClientRect !== 'function') return;
     const rect = this.getBoundingClientRect();
     const width = Number(window.innerWidth) || document.documentElement?.clientWidth || 0;
