@@ -1181,7 +1181,8 @@
       return;
     }
     if(selected.kind==='item'&&window.RoomcraftObjectControls.isBindingKey(key)){
-      const tracking = key === 'presenceTrackEntityId' || key === 'presenceTrackTransform' || key === 'presenceTrackZone';
+      const tracking = key === 'presenceTrackEntityId' || key === 'presenceTrackTransform' || key === 'presenceTrackZone'
+        || key === 'presenceTrackProfile';
       if (target.type === 'cameraThumbnail' || (tracking && target.type !== 'presenceSwitch')) return;
       const update = window.RoomcraftObjectControls.propertyUpdate(key, value);
       if (!update.valid) {
@@ -1189,6 +1190,7 @@
           presenceTrackEntityId: 'Enter a sensor entity ID like sensor.radar_targets.',
           presenceTrackTransform: 'Enter six finite values with a valid position scale.',
           presenceTrackZone: 'Enter x min, x max, y min, y max in centimetres, between −600 and 600. Each minimum must be below its maximum.',
+          presenceTrackProfile: 'Choose a radar model from the list.',
           controlIcon: 'Use an icon like mdi:lightbulb',
         };
         showToast(errors[key] || 'Choose a valid button setting');

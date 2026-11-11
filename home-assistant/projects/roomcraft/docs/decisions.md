@@ -1,5 +1,11 @@
 # Decision log
 
+## Separate configured radar bounds from estimated coverage
+
+The configured detection rectangle and the manufacturer's nominal field of view answer different questions. Display the saved XY bounds in cyan and an optional device profile's field of view in dashed amber. The `inovelli-vzm32-sn` profile uses a rounded centimeter trace of the published chart, which reaches about 6 m forward. Both outlines use the same calibration as the live targets. The profile is a display setting and physical coverage should be checked in the room. [Inovelli field-of-view chart, manual page 33](https://help.inovelli.com/en/articles/8807172-blue-series-mmwave-presence-dimmer-switch-manual)
+
+Use compiled floor and stair geometry to check where a tracked person can appear and how they move between positions. Interpolate across supported surfaces and snap across gaps. Check the vacuum footprint against compiled floors. For unsupported reports, hold the last accepted point or use the authored dock if it fits. Studio keeps object placement free.
+
 ## Radar zone and character presentation
 
 Use the same calibrated plan transform for the sensor's configured XY bounds and its target positions. The coverage toggle is a local display preference, and Studio can preview the saved bounds when a switch is selected. Occupancy and target freshness still come from Home Assistant. Assign the preferred character styles to active tracks without identifying people, and animate the pose without adding motion to the radar coordinates.

@@ -4,7 +4,7 @@ Roomcraft Studio edits the layout used by Roomcraft Home. Use the 3D view to arr
 
 ## Use the live dashboard
 
-Use **Menu → On the map → Detection zone** to show the configured radar bounds. Select the presence dimmer in 3D Studio to preview the same boundary and update its saved display values. The boundary is a configuration view. Actual detection depends on the switch's physical field of view and the room.
+Use **Menu → On the map → Detection zone** to see the radar's saved bounds as a cyan rectangle. For a switch with the Inovelli VZM32-SN profile, a dashed amber outline shows the manufacturer's estimated coverage. Select the presence dimmer in 3D Studio to preview the same outlines and edit the display settings. Use a walk or sit test to confirm detection where it matters. [Inovelli field-of-view chart, manual page 33](https://help.inovelli.com/en/articles/8807172-blue-series-mmwave-presence-dimmer-switch-manual)
 
 Open **Roomcraft Home** in the Home Assistant sidebar for the live view. **Menu → Manage → Layout Studio** opens the editor. Use **On the map** for Object details and Presence tracking, and **View controls** for rotation, zoom and default view settings. **Manage** also opens popups for Object models, Devices and sensors, Indoor air, Electrical and System health when configured. The labels from **Object details** show each linked control's name and current state. The toggle is saved in the current browser.
 
@@ -26,7 +26,7 @@ An administrator enables detailed reporting for the compatible switch in Home As
 
 Use **Plan pixels per metre**, **Rotation offset**, and **Flip radar left and right** to align the radar with the drawing. Select **Use switch position** to apply those settings from the placed switch. Have someone stand at two known points, preferably at different distances and on different sides of the switch, and adjust until their positions agree with the plan. Use **Export to dashboard** to publish the calibration. The advanced transform field accepts six affine coefficients when additional adjustment is needed.
 
-Characters and their location rings stay visible over furniture and walls at the calibrated point. They disappear when fresh positions stop. If the tracking popup reports a target without a mapped point, check the calibration against two known spots. Each switch tracks independently, so overlapping coverage can show the same person twice. Positions stay in Roomcraft Home and authenticated Home Assistant Studio. Layout exports and the private web editor contain the saved calibration. [Home Assistant presence setup](../ha-presence/README.md)
+Characters and their location rings stay visible over furniture and walls at the calibrated point. They follow mapped floors and stairs and jump to the next valid point across a gap. They disappear when fresh positions stop. If the tracking popup reports a target without a mapped point, check the calibration against two known spots. Each switch tracks independently, so overlapping coverage can show the same person twice. Positions stay in Roomcraft Home and authenticated Home Assistant Studio. Layout exports and the private web editor contain the saved calibration. [Home Assistant presence setup](../ha-presence/README.md)
 
 ## Change the view
 
@@ -189,7 +189,7 @@ The editor checks the dashboard revision before exporting. If another change hap
 
 The **Export** menu also provides a PNG and a manual Home Assistant YAML fallback. The YAML references a local image path; copy the PNG to that path before applying it manually.
 
-Tap a bound robot vacuum in Roomcraft Home to open its state and map panel. The panel provides Start, Pause, Dock, Locate and room buttons when the map supplies room identifiers. Hold the robot to open native Home Assistant details. With a valid map calibration, its marker follows fresh coordinates while cleaning or returning, parks at its last calibrated position while docked and pauses on stale data. Recheck the calibration if the vacuum map or illustrated plan changes.
+Tap a bound robot vacuum in Roomcraft Home to open its state and map panel. The panel provides Start, Pause, Dock, Locate and room buttons when the map supplies room identifiers. Hold the robot to open native Home Assistant details. With a valid map calibration, its marker follows fresh positions where it fits on a floor while cleaning or returning. A report on stairs or too close to an edge leaves it at its last valid position. Before the first valid report, it appears at the authored dock if the dock fits on the floor. Recheck the calibration if the vacuum map or illustrated plan changes.
 
 **Menu → Manage → Devices and sensors** opens the device drawer on Home. The drawer includes **On plan**, **All entities**, search with registry availability and curated groups for planning, weather and air quality, lighting, security, energy and the robot vacuum. [Main Dashboard map](main-dashboard-map.md)
 

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import polygonClipping from 'polygon-clipping';
 import { makeStorybookFurniture } from './storybook-furniture.mjs';
 import { garagePadContains, makeStorybookDevice } from './storybook-devices.mjs';
 import { compileFloorStructure, compileWallStructure, isOutdoorRoom } from './storybook-structure.mjs';
@@ -7,6 +8,7 @@ import { createStorybookLighting } from './storybook-lighting.mjs';
 import { fitStorybookCamera, normalizeCameraView } from './storybook-camera.mjs';
 import { applyModelHeight } from './storybook-size.mjs';
 import { createStorybookPeople } from './storybook-people.mjs';
+import { createFloorSupport } from './storybook-floor-support.mjs';
 
 const DEG = Math.PI / 180;
 const WALL_WIDTH = 14;
@@ -137,13 +139,16 @@ function wallPalette(wall) {
   return Object.hasOwn(WALL_LOOKS, wall.finish) ? WALL_LOOKS[wall.finish] : WALL_LOOKS.graphite;
 }
 
-function stairGrade(stair, x, z) {
+function stairLocalPoint(stair, x, z) {
   const dx = x - stair.x;
   const dz = z - stair.z;
   const cos = Math.cos(stair.angle);
   const sin = Math.sin(stair.angle);
-  const localX = dx * cos + dz * sin;
-  const localZ = -dx * sin + dz * cos;
+  return [dx * cos + dz * sin, -dx * sin + dz * cos];
+}
+
+function stairGrade(stair, x, z) {
+  const [localX, localZ] = stairLocalPoint(stair, x, z);
   if (Math.abs(localX) > stair.item.w / 2 + 5 || Math.abs(localZ) > stair.item.h / 2 + 5) return null;
   const fraction = THREE.MathUtils.clamp(localZ / stair.item.h + .5, 0, 1);
   return STAIR_BASE - STAIR_BASE * fraction;
@@ -855,17 +860,26 @@ export function projectExteriorClearance(plan, camera, width, height) {
   return [...rails, ...stairs];
 }
 
-function trackedFloor(plan) {
-  const surfaces = plan.floorStructure.footprint.map(polygon => polygon.map(ring => ({
-    points: ring.map(([x, y]) => ({x, y})),
-  })));
+function stairPolygon({x, z, angle, item, apronDepth}) {
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const left = -item.w / 2;
+  const right = item.w / 2;
+  const bottom = -item.h / 2 - apronDepth;
+  const top = item.h / 2;
+  return [[[left,bottom], [right,bottom], [right,top], [left,top]].map(([u,v]) =>
+    [x + u * cos - v * sin, z + u * sin + v * cos].map(value => Math.round(value * 1e5) / 1e5))];
+}
+
+function trackedFloor(plan, floors) {
   return (x, z) => {
-    if (surfaces.some(([outer, ...holes]) =>
-      roomContains(outer, x, z) && !holes.some(hole => roomContains(hole, x, z)))) return 0;
+    if (floors.contains(x, z)) return 0;
     for (const stair of plan.stairs) {
-      const grade = stairGrade(stair, x, z);
-      if (grade === null) continue;
-      const step = Math.min(stair.steps, Math.floor(stair.steps * (grade - STAIR_BASE) / -STAIR_BASE) + 1);
+      const {item, apronDepth} = stair;
+      const [u, v] = stairLocalPoint(stair, x, z);
+      if (Math.abs(u) > item.w / 2 || v > item.h / 2 || v < -item.h / 2 - apronDepth) continue;
+      if (v < -item.h / 2) return STAIR_BASE;
+      const step = Math.min(stair.steps, Math.floor(stair.steps * (v / item.h + .5)) + 1);
       return STAIR_BASE + (-STAIR_BASE / stair.steps) * step;
     }
     return null;
@@ -899,7 +913,11 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
   const lighting = createStorybookLighting(renderer, scene, plan.bounds);
   lighting.markStructure();
   const updateWeather = buildWeather(scene, plan, showSkyArt);
-  const floorForPerson = trackedFloor(plan);
+  const footprint = plan.floorStructure.footprint;
+  const floors = createFloorSupport(footprint);
+  const walkable = plan.stairs.length
+    ? createFloorSupport(polygonClipping.union(footprint, ...plan.stairs.map(stairPolygon))) : floors;
+  const floorForPerson = trackedFloor(plan, floors);
   // The tracker is a foreground overlay. Use the same camera so the character
   // stays anchored to the measured floor position behind walls and furniture.
   const trackingOverlay = new THREE.Scene();
@@ -908,11 +926,19 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
     color: '#57e7de', side: THREE.DoubleSide, transparent: true, opacity: 0.17, depthWrite: false,
   });
   const coverageEdge = new THREE.LineBasicMaterial({color: '#b0fff3', transparent: true, opacity: 0.9, depthWrite: false});
+  const nominalFill = new THREE.MeshBasicMaterial({
+    color: '#ffc16a', side: THREE.DoubleSide, transparent: true, opacity: 0.25, depthWrite: false,
+  });
+  const nominalEdge = new THREE.LineDashedMaterial({
+    color: '#ffc16a', dashSize: 10, gapSize: 6, transparent: true, opacity: 0.98, depthWrite: false,
+  });
   const trackingFill = new THREE.HemisphereLight('#fff5e1', '#c9bfd7', 1.8);
   const trackingKey = new THREE.DirectionalLight('#fff1d8', 1.65);
   trackingKey.position.set(-4, 9, 6);
   trackingOverlay.add(trackingFill, trackingKey);
-  const people = createStorybookPeople(trackingOverlay, floorForPerson);
+  const people = createStorybookPeople(trackingOverlay, floorForPerson, {
+    supportsRoute: walkable.supportsRoute, floorClearance: walkable.clearance,
+  });
   const anchors = new Map();
   const roots = new Map();
   const garages = new Map();
@@ -927,6 +953,7 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
       const heightOffset = applyModelHeight(item, object.root);
       object.root.position.set(x, baseY + heightOffset, z);
       object.root.rotation.y = -angle;
+      if (object.floorRadius) object.dockFits = floors.clearance(x, z) >= object.floorRadius;
       scene.add(object.root);
       roots.set(item.id, object);
       if (item.type === 'garageDoor') garages.set(object.root, item.id);
@@ -1010,7 +1037,8 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
       renderer.autoClear = true;
     }
   }
-  function render(timeSeconds = 0, statesById = {}, environment = {}, {animateTelemetry = true} = {}) {
+  function render(timeSeconds = 0, statesById = {}, environment = {},
+    {animateTelemetry = true, showTelemetryPosition = true, draftPositions} = {}) {
     if (disposed || currentWidth < 1 || currentHeight < 1) return;
     lighting.update(environment, statesById, groundMaterial);
     const reduceMotion = environment.reduceMotion === true;
@@ -1020,10 +1048,15 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
     for (const [id, object] of roots) {
       const state = statesById[id] ?? defaultState;
       const latest = state.position;
-      if (latest && Number.isFinite(latest.x) && Number.isFinite(latest.y)) {
-        object.root.position.x = latest.x;
-        object.root.position.z = latest.y;
+      if (latest && Number.isFinite(latest.x) && Number.isFinite(latest.y) &&
+          (!object.floorRadius || floors.clearance(latest.x, latest.y) >= object.floorRadius)) {
+        object.telemetryPosition = latest;
       }
+      const location = draftPositions?.[id]?.position ?? (showTelemetryPosition ? object.telemetryPosition : null);
+      const authored = anchors.get(id);
+      object.root.position.x = location?.x ?? authored.x;
+      object.root.position.z = location?.y ?? authored.z;
+      if (object.floorRadius) object.root.visible = Boolean(location || !showTelemetryPosition || object.dockFits);
       object.animate?.(state, object.ambientMotion ? time : telemetryTime);
     }
     people.render(timeSeconds, reduceMotion);
@@ -1035,14 +1068,15 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
   function setDetectionZones(zones) {
     for (const mesh of coverageOverlay.children) mesh.geometry.dispose();
     coverageOverlay.clear();
-    for (const {points} of zones) {
-      const vertices = points.map(({x,y}) => new THREE.Vector3(x, 0.35, y));
+    for (const {points, kind} of zones) {
+      const nominal = kind === 'nominal';
+      const vertices = points.map(({x,y}) => new THREE.Vector3(x, nominal ? 0.5 : 0.35, y));
       const fill = new THREE.BufferGeometry().setFromPoints(vertices);
-      const triangles = [];
-      for (let i = 1; i < points.length - 1; i++) triangles.push(0, i, i + 1);
-      fill.setIndex(triangles);
-      coverageOverlay.add(new THREE.Mesh(fill, coverageFill),
-        new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(vertices), coverageEdge));
+      fill.setIndex(THREE.ShapeUtils.triangulateShape(points.map(({x,y}) => new THREE.Vector2(x, y)), []).flat());
+      const border = new THREE.Line(new THREE.BufferGeometry().setFromPoints([...vertices, vertices[0]]),
+        nominal ? nominalEdge : coverageEdge);
+      if (nominal) border.computeLineDistances();
+      coverageOverlay.add(new THREE.Mesh(fill, nominal ? nominalFill : coverageFill), border);
     }
   }
   function renderAmbient(timeSeconds) {
@@ -1056,6 +1090,7 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
     if (!entry || currentWidth < 1 || currentHeight < 1) return null;
     const { x, z, baseY, object } = entry;
     if (object) {
+      if (!object.root.visible) return null;
       position.set(object.anchorOffset?.x || 0, object.anchorY || 0, object.anchorOffset?.z || 0);
       object.root.localToWorld(position);
     } else {
@@ -1071,6 +1106,8 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
     setDetectionZones([]);
     coverageFill.dispose();
     coverageEdge.dispose();
+    nominalFill.dispose();
+    nominalEdge.dispose();
     const geometries = new Set();
     const materials = new Set();
     const textures = new Set();
@@ -1092,7 +1129,7 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
   return {
     resize, render, anchor, setView, getView, projectToPlan, pickGarage, exteriorClearance, dispose,
     hasAmbientMotion: ambientObjects.length > 0, renderAmbient, setPeople, setDetectionZones,
-    canPlacePerson: (x, y) => Number.isFinite(floorForPerson(x, y)),
+    canPlacePerson: (x, y) => Number.isFinite(floorForPerson(x, y)) && walkable.clearance(x, y) > 0,
     get hasPeopleMotion() { return people.hasMotion; },
   };
 }

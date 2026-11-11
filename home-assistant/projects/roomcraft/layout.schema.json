@@ -98,6 +98,7 @@
         "presenceTrackEntityId": { "type": "string", "pattern": "^sensor\\.[a-z0-9_]+$", "description": "Optional authenticated Home Assistant radar tracking sensor." },
         "presenceTrackTransform": { "type": "array", "minItems": 6, "maxItems": 6, "items": { "type": "number", "minimum": -10000, "maximum": 10000 }, "description": "Affine transform from radar centimetres [x,y] to plan pixels. Layout stores calibration only." },
         "presenceTrackZone": { "type": "array", "minItems": 4, "maxItems": 4, "items": { "type": "number", "minimum": -600, "maximum": 600 }, "description": "Optional display bounds [xMin,xMax,yMin,yMax] in radar centimetres for a presence switch. Each minimum must be below its maximum." },
+        "presenceTrackProfile": { "enum": ["inovelli-vzm32-sn"], "description": "Optional radar model for displaying manufacturer-rated nominal coverage on the plan." },
         "presenceEntityId": { "$ref": "#/$defs/optionalEntityId", "description": "Optional binary occupancy source for an attached presence animation; only the on state animates." },
         "vacuumMapEntityId": { "type": "string", "pattern": "^(?:|camera\\.[a-z0-9_]+)$", "description": "Optional authenticated Home Assistant map camera used by a vacuum control panel." },
         "vacuumPositionTransform": { "type": "array", "minItems": 6, "maxItems": 6, "items": { "type": "number", "minimum": -10000, "maximum": 10000 }, "description": "Optional affine transform [a,b,c,d,e,f] from live vacuum coordinates to Roomcraft project pixels." },

@@ -1,5 +1,11 @@
 # Changelog
 
+## Radar coverage and movement on the plan
+
+- **Detection zone** in Roomcraft Home and 3D Studio distinguishes configured bounds with a cyan rectangle and estimated Inovelli VZM32-SN coverage with a dashed amber outline. The optional sensor profile identifies the matching model. The nominal outline uses rounded centimeter readings from the manufacturer's field-of-view chart.
+- Tracked characters and their footprints follow mapped floors and stair treads. Characters jump to the next valid position across a gap, and unsupported coordinates are omitted.
+- The vacuum display accepts calibrated floor positions with enough room for the model. It holds its last valid position or starts at its authored dock when the dock fits on the floor. Studio object placement remains free.
+
 ## Radar zone and family character styles
 
 - **Menu → On the map → Detection zone** shows the radar's configured XY bounds on the live map. The setting is remembered on each browser. Select a configured presence switch in 3D Studio to preview and edit those bounds.

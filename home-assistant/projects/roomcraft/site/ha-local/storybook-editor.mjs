@@ -261,11 +261,10 @@ export function mountStorybookEditor(document, host) {
         if (state && state.entityId === item.entityId) states[item.id] = state;
       }
     }
-    for (const [id, state] of Object.entries(dragPreview ?? {})) states[id] = {...states[id], ...state};
     const environment = usingDashboard ? dashboard.environment
       : {night: false, condition: 'sunny', daylightKnown: true};
     scene.render(ambientSeconds, states, {...environment, reduceMotion: motionPreference?.matches === true},
-      {animateTelemetry: false});
+      {animateTelemetry: false, showTelemetryPosition: usingDashboard, draftPositions: dragPreview});
     if (isFree()) return;
     const targets = [];
     for (const [id, marker] of markers) {

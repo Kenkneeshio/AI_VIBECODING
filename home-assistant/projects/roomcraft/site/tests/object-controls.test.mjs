@@ -121,6 +121,24 @@ test('configured detection zone bounds validate in sensor centimetres and remain
   assert.match(inspector, /data-prop="presenceTrackZone"[^>]*value="-200, 200, 0, 600"/);
 });
 
+test('the optional radar model selects a supported nominal coverage profile', () => {
+  const c = controls();
+  const model = 'inovelli-vzm32-sn';
+  const presence = {type: 'presenceSwitch', presenceTrackProfile: model};
+  assert.equal(c.validBinding(presence), true);
+  assert.equal(c.validBinding({...presence, type: 'lamp'}), false);
+  assert.equal(c.validBinding({...presence, presenceTrackProfile: 'made-up-model'}), false);
+  assert.equal(c.propertyUpdate('presenceTrackProfile', model).value, model);
+  assert.equal(c.propertyUpdate('presenceTrackProfile', '').valid, true);
+  assert.equal(c.propertyUpdate('presenceTrackProfile', '').value, undefined);
+  assert.equal(c.propertyUpdate('presenceTrackProfile', 'made-up-model').valid, false);
+  const inspector = c.renderInspector(presence, {icon: '◉', label: 'Presence dimmer'},
+    () => '', () => '', String);
+  assert.match(inspector, /data-prop="presenceTrackProfile"/);
+  assert.match(inspector, /<option value="inovelli-vzm32-sn" selected>Inovelli Blue Presence Dimmer/);
+  assert.match(inspector, /<option value="">Unknown or other radar/);
+});
+
 test('a fan can show its switch state while tap and hold run separate scenes', () => {
   const c = controls();
   const fan = {

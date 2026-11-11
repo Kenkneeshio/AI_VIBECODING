@@ -485,7 +485,7 @@ function robot(w, h) {
   for (const x of [-0.27, 0.27]) bead(root, radius * 0.105, base, radius * x, 10, radius * 0.88);
   const stripe = softBox(root, radius * 0.68, 1.2, 2.5, status, 0, 13.2, radius * 0.36);
   return {
-    root, anchorY: 12,
+    root, anchorY: 12, floorRadius: radius * 1.03,
     animate(state, seconds = 0) {
       const running = ['cleaning', 'returning'].includes(stateValue(state));
       stripe.material.emissiveIntensity = running ? 0.6 + 0.5 * Math.cos(seconds * 6) : 0;

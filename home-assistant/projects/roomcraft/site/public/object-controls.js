@@ -7,8 +7,9 @@
   const iconPattern = /^mdi:[a-z0-9-]+$/i;
   const bindingKeys = new Set(['tapAction', 'holdAction', 'tapEntityId', 'holdEntityId', 'presenceEntityId',
     'controlLabel', 'controlIcon', 'visualKind', 'vacuumMapEntityId', 'vacuumPositionTransform',
-    'presenceTrackEntityId', 'presenceTrackTransform', 'presenceTrackZone']);
+    'presenceTrackEntityId', 'presenceTrackTransform', 'presenceTrackZone', 'presenceTrackProfile']);
   const radarEntityPattern = /^sensor\.[a-z0-9_]+$/;
+  const radarProfiles = new Map([['inovelli-vzm32-sn', 'Inovelli Blue Presence Dimmer']]);
   const entityPattern = /^[a-z_]+\.[a-z0-9_]+$/i;
   const sceneWidth = 1536;
   const sceneHeight = 864;
@@ -80,6 +81,8 @@
         && validPresenceTransform(item.presenceTrackTransform))
       && (!('presenceTrackZone' in item) || item.type === 'presenceSwitch'
         && validPresenceZone(item.presenceTrackZone))
+      && (!('presenceTrackProfile' in item) || item.type === 'presenceSwitch'
+        && radarProfiles.has(item.presenceTrackProfile))
       && (!('controlLabel' in item) || (typeof item.controlLabel === 'string' && item.controlLabel.length <= 80))
       && (!('controlIcon' in item) || (typeof item.controlIcon === 'string' && (!item.controlIcon || iconPattern.test(item.controlIcon))))
       && (!('visualKind' in item) || visualKinds.has(item.visualKind))
@@ -109,6 +112,10 @@
     }
     if (key === 'presenceTrackEntityId') {
       return !value || radarEntityPattern.test(value)
+        ? { valid: true, value: value || undefined } : { valid: false };
+    }
+    if (key === 'presenceTrackProfile') {
+      return !value || radarProfiles.has(value)
         ? { valid: true, value: value || undefined } : { valid: false };
     }
     if (key === 'presenceTrackTransform' || key === 'presenceTrackZone') {
@@ -292,14 +299,17 @@
     return lines.join('\n') + '\n';
   }
 
+  function selectField(key, label, current, options) {
+    return '<div class="field"><label for="prop-' + key + '">' + label + '</label><select id="prop-' + key + '" data-prop="' + key + '">'
+      + options.map(([value, name]) => '<option value="' + value + '"' + (current === value ? ' selected' : '') + '>' + name + '</option>').join('')
+      + '</select></div>';
+  }
+
   function actionField(key, label, current, autoLabel) {
-    const options = [
+    return selectField(key, label, current || 'auto', [
       ['auto', autoLabel], ['toggle', 'Toggle device'], ['activate', 'Run scene, script, or button'],
       ['more-info', 'Open device details'], ['none', 'Do nothing']
-    ];
-    return '<div class="field"><label for="prop-' + key + '">' + label + '</label><select id="prop-' + key + '" data-prop="' + key + '">'
-      + options.map(([value, name]) => '<option value="' + value + '"' + ((current || 'auto') === value ? ' selected' : '') + '>' + name + '</option>').join('')
-      + '</select></div>';
+    ]);
   }
 
   function entityField(label, key, value, options, domain, escape) {
@@ -338,11 +348,13 @@
       + '<div class="field"><label for="prop-presenceTrackTransform">Position transform (advanced)</label>'
       + '<input id="prop-presenceTrackTransform" data-prop="presenceTrackTransform" type="text" value="'
       + escape((transform || []).join(', ')) + '" placeholder="a, b, c, d, e, f" autocomplete="off"></div>'
+      + selectField('presenceTrackProfile', 'Radar model for coverage', item.presenceTrackProfile || '',
+        [['', 'Unknown or other radar'], ...radarProfiles])
       + '<div class="field"><label for="prop-presenceTrackZone">Configured zone bounds (cm)</label>'
       + '<input id="prop-presenceTrackZone" data-prop="presenceTrackZone" type="text" value="'
       + escape((item.presenceTrackZone || []).join(', ')) + '" placeholder="x min, x max, y min, y max"'
       + ' aria-describedby="presence-zone-hint" autocomplete="off"></div>'
-      + '<p class="field-hint" id="presence-zone-hint">These bounds control the map overlay. Enter the values configured on the switch.</p></div>';
+      + '<p class="field-hint" id="presence-zone-hint">Enter the switch’s configured bounds to preview its detection zone. The nominal radar outline estimates coverage, which can vary with the installation.</p></div>';
   }
 
   function renderInspector(item, template, field, variantField, escape, entityOptions = [], dimensions = {}) {

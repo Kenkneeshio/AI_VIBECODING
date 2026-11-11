@@ -97,6 +97,14 @@ class RoomcraftStorybookCard extends HTMLElement {
         .tracking-legend li{display:flex;align-items:center;gap:4px}
         .tracking-legend i{display:block;width:8px;height:8px;border-radius:50%;background:var(--dot,#87939d)}
         .tracking-legend .unavailable i{box-sizing:border-box;border:1px solid #87939d;background:transparent}
+        .zone-legend{position:absolute;right:12px;bottom:12px;z-index:3;display:grid;gap:4px;
+          max-width:calc(100% - 24px);box-sizing:border-box;margin:0;padding:7px 9px;list-style:none;
+          border:1px solid #c8e7e959;border-radius:9px;background:#13262eea;color:#f5f8ec;
+          font-size:12px;line-height:1.35;pointer-events:none}
+        .zone-legend li{display:flex;align-items:center;gap:6px}
+        .zone-legend[hidden],.zone-legend li[hidden]{display:none}
+        .zone-legend i{flex:none;width:15px;border-top:2px solid #b0fff3}
+        .zone-legend [data-zone-kind=nominal] i{border-top:2px dashed #ffcf87}
         .view-status{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
         a,.bar button{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;
           min-height:44px;padding:0 9px;font:inherit;color:inherit;text-decoration:none}
@@ -145,7 +153,7 @@ class RoomcraftStorybookCard extends HTMLElement {
                   <p class="menu-heading" aria-hidden="true">On the map</p>
                   <button type="button" class="map-toggle toggle-object-details" aria-pressed="false">Object details <span class="menu-toggle" aria-hidden="true"></span></button>
                   <button type="button" class="open-tracking" hidden>Presence tracking</button>
-                  <button type="button" class="map-toggle toggle-detection-zone" aria-pressed="false" hidden>Detection zone <span class="menu-toggle" aria-hidden="true"></span></button>
+                  <button type="button" class="map-toggle toggle-detection-zone" aria-controls="detection-zone-legend" aria-pressed="false" hidden>Detection zone <span class="menu-toggle" aria-hidden="true"></span></button>
                 </section>
                 <section class="menu-group" aria-label="View controls">
                   <p class="menu-heading" aria-hidden="true">View controls</p>
@@ -179,6 +187,10 @@ class RoomcraftStorybookCard extends HTMLElement {
           <span id="free-view-hint" class="free-view-hint" hidden>Drag or use arrow keys to orbit. Pinch, scroll, or use +/− to zoom.</span>
           <svg class="tethers" aria-hidden="true"></svg>
           <div class="overlay"></div>
+          <ul class="zone-legend" id="detection-zone-legend" aria-label="Radar coverage legend" hidden>
+            <li data-zone-kind="configured"><i aria-hidden="true"></i>Configured detection zone</li>
+            <li data-zone-kind="nominal"><i aria-hidden="true"></i>Nominal radar coverage (estimate)</li>
+          </ul>
           <div class="status"><div class="status-inner">
             <div role="status">Opening Roomcraft…</div>
             <div class="recovery" hidden>
@@ -221,6 +233,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.menuButton = this.shadowRoot.querySelector('.main-menu-button');
     this.mainMenu = this.shadowRoot.querySelector('.main-menu');
     this.detectionZoneButton = this.shadowRoot.querySelector('.toggle-detection-zone');
+    this.detectionZoneLegend = this.shadowRoot.querySelector('.zone-legend');
     this.detectionZoneVisible = false;
     try { this.detectionZoneVisible = window.localStorage.getItem(DETECTION_ZONE_KEY) === 'true'; }
     catch { /* Private or restricted browsing can block storage. */ }
@@ -494,6 +507,10 @@ class RoomcraftStorybookCard extends HTMLElement {
     const visible = zones.length > 0 && this.detectionZoneVisible;
     this.detectionZoneButton.hidden = zones.length === 0;
     this.detectionZoneButton.setAttribute('aria-pressed', String(visible));
+    this.detectionZoneLegend.hidden = !visible;
+    this.detectionZoneLegend.querySelector('[data-zone-kind=configured]').hidden =
+      !zones.some(zone => zone.kind === 'configured' || !zone.kind);
+    this.detectionZoneLegend.querySelector('[data-zone-kind=nominal]').hidden = !zones.some(zone => zone.kind === 'nominal');
     this.scene?.setDetectionZones(visible ? zones : []);
     this.anchorDirty = true;
     this.schedule();
@@ -829,6 +846,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.detectionZones = undefined;
     this.detectionZoneButton.hidden = true;
     this.detectionZoneButton.setAttribute('aria-pressed', 'false');
+    this.detectionZoneLegend.hidden = true;
     if (this.utilityDialog.open) this.utilityDialog.close();
     this.utilityRows = null;
     this.utilityPanels = null;

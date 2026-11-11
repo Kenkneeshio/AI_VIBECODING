@@ -3,6 +3,8 @@ import * as THREE from 'three';
 const MAX_TRACKS = 24;
 const MOVE_SECONDS = 0.32;
 const MAX_INTERPOLATION_DISTANCE = 125;
+// Bounds the pose, ground ring and shadow in every heading.
+const AVATAR_FOOTPRINT_RADIUS = 24;
 const STYLES = [
   {role: 'papa', scale: [1.26, 1.25, 1.22], sweater: '#537eaa', trim: '#ffcc81', skin: '#db9f76', hair: '#4b3533'},
   {role: 'mama', scale: [1.09, 1.18, 1.12], sweater: '#c86587', trim: '#ffdeaf', skin: '#e8af83', hair: '#5a3841'},
@@ -23,8 +25,9 @@ function animateFace(character, idle, reducedMotion) {
 /**
  * Private, transient scene layer. A snapshot contains {id, x, y} plan points.
  * Time is monotonic seconds supplied by the scene adapter.
+ * Route and clearance queries use the same compiled surface as floorAt.
  */
-export function createStorybookPeople(scene, floorAt = () => 0) {
+export function createStorybookPeople(scene, floorAt = () => 0, {supportsRoute, floorClearance} = {}) {
   const group = new THREE.Group();
   group.name = 'tracked-people';
   scene.add(group);
@@ -163,15 +166,26 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
     hasVisibleTracks = false;
     for (const track of tracks.values()) {
       const {character} = track;
-      const amount = reduced ? 1 : progress(track, lastTime);
-      const x = THREE.MathUtils.lerp(track.fromX, track.x, amount);
-      const z = THREE.MathUtils.lerp(track.fromZ, track.z, amount);
-      const floor = floorAt(x, z);
-      character.root.visible = Number.isFinite(floor);
+      if (reduced) track.duration = 0;
+      let amount = progress(track, lastTime);
+      let x = THREE.MathUtils.lerp(track.fromX, track.x, amount);
+      let z = THREE.MathUtils.lerp(track.fromZ, track.z, amount);
+      let floor = floorAt(x, z);
+      if (!Number.isFinite(floor) && amount < 1) {
+        // An interpolated point must never appear over unsupported space.
+        track.duration = 0;
+        amount = 1;
+        x = track.x;
+        z = track.z;
+        floor = floorAt(x, z);
+      }
+      const fit = floorClearance ? Math.min(1, floorClearance(x, z) / AVATAR_FOOTPRINT_RADIUS) : 1;
+      character.root.visible = Number.isFinite(floor) && fit > 0;
       if (!character.root.visible) continue;
       hasVisibleTracks = true;
       character.root.position.set(x, floor, z);
       character.root.rotation.y = track.heading;
+      character.root.scale.setScalar(fit);
       const walking = track.walking && amount < 1 && !reduced;
       const idle = Math.floor(Math.max(0, lastTime - track.born) * 16) / 16 + .7 + character.styleIndex * .62;
       const step = Math.floor(amount * 12) / 12 * Math.PI * 4;
@@ -224,7 +238,9 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
         const fromZ = THREE.MathUtils.lerp(old.fromZ, old.z, amount);
         const distance = Math.hypot(x - fromX, z - fromZ);
         const heading = distance > 1 ? Math.atan2(x - fromX, z - fromZ) : old.heading;
-        const duration = !reduceMotion && distance <= MAX_INTERPOLATION_DISTANCE ? MOVE_SECONDS : 0;
+        const canWalk = !reduceMotion && distance > 0 && distance <= MAX_INTERPOLATION_DISTANCE &&
+          supportsRoute?.(fromX, fromZ, x, z);
+        const duration = canWalk ? MOVE_SECONDS : 0;
         Object.assign(old, {fromX, fromZ, x, z, heading, start:time, duration, walking:distance > 2});
       }
     }

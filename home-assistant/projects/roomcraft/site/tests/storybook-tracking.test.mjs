@@ -12,9 +12,25 @@ const snapshot = (id = 1, x = 20, y = 100, at = 8000) => ({state:'1', attributes
 test('detection zone uses the radar calibration and clips to the editable map', () => {
   const zone = {id:'radar', ...source, presenceTrackZone:[-600,600,0,600]};
   assert.deepEqual(readDetectionZones([zone]), [{
-    id:'radar', points:[{x:0,y:0},{x:600,y:0},{x:600,y:1024},{x:0,y:1024}],
+    id:'radar', kind:'configured', points:[{x:0,y:0},{x:600,y:0},{x:600,y:1024},{x:0,y:1024}],
   }]);
   assert.deepEqual(readDetectionZones([{...zone,presenceTrackZone:[10,-10,0,600]}, source]), []);
+});
+
+test('project the Inovelli forward lobe independently of the configured rectangle', () => {
+  const switchItem = {id:'radar', ...source, presenceTrackTransform:[0,-1,800,1,0,500],
+    presenceTrackZone:[-50,50,0,100], presenceTrackProfile:'inovelli-vzm32-sn'};
+  const [configured, nominal] = readDetectionZones([switchItem]);
+  assert.equal(configured.kind, 'configured');
+  assert.equal(nominal.kind, 'nominal');
+  assert.deepEqual(nominal.points.find(point => point.x === 200), {x:200,y:500});
+  assert.deepEqual(nominal.points.find(point => point.x === 800), {x:800,y:500});
+  assert.ok(nominal.points.length > 20);
+  assert.deepEqual(readDetectionZones([{...switchItem,presenceTrackProfile:'other'}]), [configured]);
+  assert.deepEqual(readDetectionZones([{...switchItem,presenceTrackZone:undefined}]), [nominal]);
+  const clipped = readDetectionZones([{...switchItem,presenceTrackTransform:[0,-1,300,1,0,100]}]);
+  assert.ok(clipped.some(zone => zone.kind === 'nominal' && zone.points.some(point => point.x === 0)));
+  assert.ok(clipped.every(zone => zone.points.every(({x,y}) => x >= 0 && y >= 0)));
 });
 
 test('map coordinates from multiple radars and keep source-scoped track identities', () => {
