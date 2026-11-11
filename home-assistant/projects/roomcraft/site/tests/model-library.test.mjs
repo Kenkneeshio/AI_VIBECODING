@@ -27,6 +27,32 @@ test('locking proportions scales both axes and respects the limits of linked tou
   assert.equal(Models.resizeFootprint(item,'h',NaN,false), null);
 });
 
+test('top contact allows a lamp on a table and blocks edge overhang and incompatible furniture', () => {
+  const nightstand = {id:'stand', type:'nightstand', x:120, y:100, w:62, h:52, rotation:90};
+  const lamp = {id:'lamp', type:'tableLamp', x:120, y:100, w:46, h:54};
+  const humidifier = {id:'air', type:'humidifier', x:120, y:100, w:46, h:58};
+  const bed = {id:'bed', type:'bed', x:120, y:100, w:145, h:160};
+  const rug = {...bed, id:'rug', type:'rug'};
+  const chair = {...bed, id:'chair', type:'chair'};
+  assert.equal(Models.blockingPlacement(lamp, [nightstand, rug, chair]), undefined);
+  assert.equal(Models.blockingPlacement({...lamp, x:143}, [nightstand]), nightstand);
+  assert.equal(Models.blockingPlacement({...humidifier, x:132}, [nightstand]), nightstand);
+  assert.equal(Models.blockingPlacement(lamp, [bed]), bed);
+  assert.equal(Models.blockingPlacement(lamp, [nightstand, humidifier]), humidifier);
+  assert.deepEqual(Models.orderMountedObjects([lamp, rug, nightstand]), [rug, nightstand, lamp]);
+  assert.deepEqual(Models.orderMountedObjects([lamp, bed]), [lamp, bed]);
+});
+
+test('floor furniture checks rotated occupied shapes and lets earlier overlaps shrink', () => {
+  const sofa = {id:'sofa', type:'sofa', x:140, y:140, w:160, h:230};
+  const bench = {id:'bench', type:'bedroomBench', x:174, y:125, w:50, h:55, rotation:16};
+  assert.equal(Models.blockingPlacement(bench, [sofa]), undefined);
+  const blocked = {...bench, x:50};
+  assert.equal(Models.blockingPlacement(blocked, [sofa]), sofa);
+  assert.equal(Models.blockingPlacement({...blocked, x:44}, [sofa], blocked), undefined);
+  assert.equal(Models.blockingPlacement({...blocked, y:225, x:145}, [sofa], blocked), sofa);
+});
+
 test('authored height scales vertically around the model support plane', () => {
   const root = new Group();
   const mesh = new Mesh(new BoxGeometry(40,20,30), new MeshBasicMaterial());

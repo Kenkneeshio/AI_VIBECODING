@@ -81,6 +81,13 @@
     o.x=Math.max(0,Math.min(W,o.x));o.y=Math.max(0,Math.min(H,o.y));
     o.w=Math.max(12,Math.min(W,o.w));o.h=Math.max(12,Math.min(H,o.h));
   }
+  const placementBlock = (candidate, previous) => Models.blockingPlacement(candidate, project.items, previous);
+  const placementMessage = blocker => `Leave room for ${blocker.name || templateByType[blocker.type]?.label || 'the other object'}.`;
+  function checkPlacement(candidate, previous) {
+    const blocker = placementBlock(candidate, previous);
+    if (blocker) showToast(placementMessage(blocker));
+    return !blocker;
+  }
   const isFixtureControl = o => templateByType[o.type]?.group==='lighting'||templateByType[o.type]?.artFamily==='ceilingFan';
   const matchesKnownGeometry = (o, variants, tolerance=2) => !!o && variants.some(v =>
     ['x','y','w','h'].every(key=>Math.abs(o[key]-v[key])<=tolerance) &&
@@ -605,7 +612,7 @@
         const layers=sceneLayers();
         c.fillStyle='#cfdfbf';c.fillRect(0,0,W,H);drawRooms(c);
         for(const o of layers.floorItems)drawDynamicObject(o);
-        for(const o of layers.regularItems)drawDynamicObject(o);
+        for(const o of Models.orderMountedObjects(layers.regularItems))drawDynamicObject(o);
         for(const o of layers.ceilingItems)drawDynamicObject(o);
         for(const w of project.walls)drawWall(c,w);
         for(const o of layers.windowItems)drawDynamicObject(o);
@@ -625,6 +632,11 @@
               c.strokeRect(ghost.x-ghost.w/2,ghost.y-ghost.h/2,ghost.w,ghost.h);c.setLineDash([]);
             }else if(raster)raster.drawItem(c,ghost,()=>drawObject(c,ghost));
             else drawObject(c,ghost);
+            if(placementBlock(ghost)){
+              c.translate(ghost.x,ghost.y);c.rotate(ghost.rotation*Math.PI/180);
+              c.strokeStyle='#b83548';c.lineWidth=4;
+              c.strokeRect(-ghost.w/2,-ghost.h/2,ghost.w,ghost.h);
+            }
             c.restore();
           }
         }
@@ -695,7 +707,7 @@
     // Prefer the visible footprint. Only use a larger touch target when no
     // object was directly hit, so a small lamp cannot steal its neighbor.
     const layers=sceneLayers();
-    const hitOrder=[...layers.floorItems,...layers.regularItems,...layers.ceilingItems,...layers.windowItems];
+    const hitOrder=[...layers.floorItems,...Models.orderMountedObjects(layers.regularItems),...layers.ceilingItems,...layers.windowItems];
     for(const expanded of includeTouchTarget?[false,true]:[false])for(let i=hitOrder.length-1;i>=0;i--){
       const o=hitOrder[i],q=itemLocalPoint(p,o);
       const halfW=expanded?Math.max(o.w/2+5,22/currentView.scale):o.w/2+4;
@@ -747,8 +759,7 @@
       showToast('Click near a wall to mount this object');
       return false;
     }
-    snapshot();
-    const placed = item(uid('i'), template.type, template.label,
+    const placed = item('', template.type, template.label,
       Math.round(mount?.x ?? p.x), Math.round(mount?.y ?? p.y),
       template.w, template.h, mount?.rotation ?? 0);
     if (placed.type === 'cameraThumbnail') {
@@ -760,6 +771,9 @@
       if (placed.type === 'presenceSwitch' && pendingEntityId.startsWith('binary_sensor.')) placed.presenceEntityId = pendingEntityId;
       clampLinkedItem(placed);
     }
+    if (!checkPlacement(placed)) return false;
+    snapshot();
+    placed.id = uid('i');
     project.items.push(placed);
     selected = {kind: 'item', id: placed.id};
     clearPlacement();
@@ -815,6 +829,33 @@
     setStatus(`Selected ${segmentLabel(segment)} · drag the segment or a handle`);
     return true;
   }
+  function movedItem(current, x, y) {
+    const wallMounted = current.type === 'window' || templateByType[current.type]?.mount === 'wall';
+    const mount = wallMounted ? nearestWallPlacement({x, y}) : null;
+    if (wallMounted && !mount) return;
+    const next = {...current, x: Math.round(mount?.x ?? x), y: Math.round(mount?.y ?? y),
+      rotation: mount?.rotation ?? current.rotation};
+    if (next.type === 'cameraThumbnail') {
+      next.x = Math.max(0, Math.min(W, next.x));
+      next.y = Math.max(0, Math.min(H, next.y));
+    }
+    clampLinkedItem(next);
+    return next;
+  }
+  function draftItem(item, candidate) {
+    const blocker = placementBlock(candidate, interaction.initial);
+    if (blocker) {
+      if (interaction.blocker !== blocker) setStatus(placementMessage(blocker));
+      interaction.blocker = blocker;
+      return;
+    }
+    if (interaction.blocker) setStatus(`Selected ${item.name}`);
+    interaction.blocker = undefined;
+    if (['x','y','w','h','rotation'].every(key => item[key] === candidate[key])) return;
+    if (!interaction.snapshot) {snapshot();interaction.snapshot=true;}
+    Object.assign(item, candidate);
+    draw();
+  }
   function onPointerDown(e){
     if(e.button>1||interaction?.pointerId!==undefined)return;
     if(viewMode==='reference'&&tool!=='pan'&&!spaceHeld&&e.button!==1){showToast('Switch to Design to edit the plan');return;}
@@ -830,10 +871,10 @@
       return;
     }
     if(tool==='room'){const vertex=hitRoomVertex(p);if(vertex>=0){interaction={kind:'room-vertex',id:selected.id,index:vertex,snapshot:false};return;}const r=hitRoom(p);if(r){select('room',r.id);setStatus(`Selected ${r.name} · drag a corner to reshape`);}else{selected=null;renderInspector();draw();}return;}
-    const handle=hitSelectedItemHandle(p);if(handle){const o=handle.item,a=o.rotation*Math.PI/180,lx=-handle.sx*o.w/2,ly=-handle.sy*o.h/2;interaction={kind:'item-resize',id:o.id,start:p,w:o.w,h:o.h,rotation:o.rotation,anchor:point(o.x+lx*Math.cos(a)-ly*Math.sin(a),o.y+lx*Math.sin(a)+ly*Math.cos(a)),sx:handle.sx,sy:handle.sy,snapshot:false};setStatus(`Resize ${o.name} · hold Shift to keep its proportions`);return;}
-    const o=hitItem(p,false);if(o){select('item',o.id);interaction={kind:'item-move',id:o.id,start:p,x:o.x,y:o.y,snapshot:false};setStatus(`Selected ${o.name}`);return;}
+    const handle=hitSelectedItemHandle(p);if(handle){const o=handle.item,a=o.rotation*Math.PI/180,lx=-handle.sx*o.w/2,ly=-handle.sy*o.h/2;interaction={kind:'item-resize',id:o.id,start:p,w:o.w,h:o.h,rotation:o.rotation,initial:{...o},anchor:point(o.x+lx*Math.cos(a)-ly*Math.sin(a),o.y+lx*Math.sin(a)+ly*Math.cos(a)),sx:handle.sx,sy:handle.sy,snapshot:false};setStatus(`Resize ${o.name} · hold Shift to keep its proportions`);return;}
+    const o=hitItem(p,false);if(o){select('item',o.id);interaction={kind:'item-move',id:o.id,start:p,x:o.x,y:o.y,initial:{...o},snapshot:false};setStatus(`Selected ${o.name}`);return;}
     const h=hitHotspot(p);if(h){const q=hotspotPoint(h);select('hotspot',h.id);interaction={kind:'hotspot-move',id:h.id,start:p,x:q.x,y:q.y,snapshot:false};setStatus(`Selected ${h.title} control`);return;}
-    const near=hitItem(p);if(near){select('item',near.id);interaction={kind:'item-move',id:near.id,start:p,x:near.x,y:near.y,snapshot:false};setStatus(`Selected ${near.name}`);return;}
+    const near=hitItem(p);if(near){select('item',near.id);interaction={kind:'item-move',id:near.id,start:p,x:near.x,y:near.y,initial:{...near},snapshot:false};setStatus(`Selected ${near.name}`);return;}
     if(startStructureMove(p,e.pointerId))return;
     const r=hitRoom(p);if(r){select('room',r.id);setStatus(`Selected ${r.name}`);}else{selected=null;renderInspector();draw();}
   }
@@ -849,16 +890,15 @@
     if(interaction.kind==='wall-draw'){
       updateSegmentGuide(interaction,p,e.shiftKey);draw();return;
     }
-    if(interaction.kind==='item-move'){const o=project.items.find(o=>o.id===interaction.id);if(!o)return;const dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;
-      if(o.type==='window'||templateByType[o.type]?.mount==='wall'){
-        const mount=nearestWallPlacement(point(interaction.x+dx,interaction.y+dy));
-        if(!mount)return;
-        const nx=Math.round(mount.x),ny=Math.round(mount.y);
-        if(!interaction.snapshot&&(nx!==o.x||ny!==o.y||mount.rotation!==o.rotation)){snapshot();interaction.snapshot=true;}
-        if(interaction.snapshot){o.x=nx;o.y=ny;o.rotation=mount.rotation;clampLinkedItem(o);draw();}
-        return;
-      }
-      if(Math.hypot(dx,dy)>2&&!interaction.snapshot){snapshot();interaction.snapshot=true;}if(interaction.snapshot){o.x=Math.round(interaction.x+dx);o.y=Math.round(interaction.y+dy);if(o.type==='cameraThumbnail'){o.x=Math.max(0,Math.min(W,o.x));o.y=Math.max(0,Math.min(H,o.y));}clampLinkedItem(o);draw();}return;}
+    if(interaction.kind==='item-move'){
+      const o=project.items.find(item=>item.id===interaction.id);
+      if(!o)return;
+      const dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;
+      if(Math.hypot(dx,dy)<=2&&!interaction.snapshot&&o.type!=='window'&&templateByType[o.type]?.mount!=='wall')return;
+      const candidate=movedItem(o,interaction.x+dx,interaction.y+dy);
+      if(candidate)draftItem(o,candidate);
+      return;
+    }
     if(interaction.kind==='item-resize'){
       const o=project.items.find(o=>o.id===interaction.id);if(!o)return;
       const a=interaction.rotation*Math.PI/180,dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;
@@ -876,8 +916,7 @@
       const ny=Math.round(interaction.anchor.y+lx*Math.sin(a)+ly*Math.cos(a));
       const bound=o.type==='cameraThumbnail'||validEntityId(o.entityId);
       const nextX=bound?Math.max(0,Math.min(W,nx)):nx,nextY=bound?Math.max(0,Math.min(H,ny)):ny;
-      if(!interaction.snapshot&&(nextW!==o.w||nextH!==o.h||nextX!==o.x||nextY!==o.y)){snapshot();interaction.snapshot=true;}
-      if(interaction.snapshot){o.w=nextW;o.h=nextH;o.x=nextX;o.y=nextY;draw();}
+      draftItem(o,{...o,w:nextW,h:nextH,x:nextX,y:nextY});
       return;
     }
     if(interaction.kind==='hotspot-move'){const h=project.hotspots.find(h=>h.id===interaction.id);if(!h)return;const dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;if(Math.hypot(dx,dy)>2&&!interaction.snapshot){snapshot();interaction.snapshot=true;}if(interaction.snapshot){h.style.left=`${Math.max(0,Math.min(100,(interaction.x+dx)/W*100)).toFixed(2)}%`;h.style.top=`${Math.max(0,Math.min(100,(interaction.y+dy)/H*100)).toFixed(2)}%`;draw();}return;}
@@ -905,7 +944,7 @@
   }
   function onPointerUp(e){
     if(!interaction||(interaction.pointerId!==undefined&&e.pointerId!==interaction.pointerId))return;
-    const {kind,id,snapshot:changed}=interaction;
+    const {kind,id,snapshot:changed,blocker}=interaction;
     if(kind==='wall-draw')finishSegment(e);
     else if(changed){
       const message=kind==='wall-move'
@@ -913,6 +952,7 @@
         : ({'room-vertex':'Reshaped room','hotspot-move':'Moved Home Assistant control','item-resize':'Resized object'})[kind]||'Moved object';
       afterChange(message);
     }
+    if(blocker)showToast(placementMessage(blocker));
     interaction=null;
     viewport.classList.remove('dragging');
     draw();
@@ -1137,6 +1177,7 @@
       const dimensions = Models.resizeFootprint(item, key, numeric, lockObjectDimensions);
       if (!dimensions) {renderInspector();return;}
       if (Object.keys(dimensions).every(axis => dimensions[axis] === item[axis])) return;
+      if (!checkPlacement({...item, ...dimensions}, item)) {renderInspector();return;}
       snapshot();
       Object.assign(item, dimensions);
     }
@@ -1148,6 +1189,7 @@
     const current = project.items.find(entry => entry.id === selected.id);
     const template = current && templateByType[current.type];
     if (!template || current.w === template.w && current.h === template.h && current.modelHeight === undefined) return;
+    if (!checkPlacement({...current, w:template.w, h:template.h}, current)) return;
     snapshot();
     current.w = template.w;
     current.h = template.h;
@@ -1230,6 +1272,9 @@
       if(bound&&key==='y')v=Math.max(0,Math.min(H,v));
     }
     if(target[key]===v)return;
+    if(selected.kind==='item'&&['x','y','rotation'].includes(key)&&!checkPlacement({...target,[key]:v},target)){
+      renderInspector();return;
+    }
     snapshot();target[key]=v;
     if(selected.kind==='item')clampLinkedItem(target);
     afterChange(`Updated ${key}`);
@@ -1279,6 +1324,7 @@
     const previous = templateByType[current.type];
     const next = Object.hasOwn(templateByType,command.modelId) && templateByType[command.modelId];
     if (!Models.canReplace(current, previous, next)) return false;
+    if (!checkPlacement({...current, type:next.type, lightForm:next.lightForm}, current)) return false;
     snapshot();
     selected = {kind:'item', id:current.id};
     if (current.name === previous.label) current.name = next.label;
@@ -1322,6 +1368,7 @@
     if(old?.seriesId&&variants){
       const replacement=variants.apply(o,old,next,kind);
       if(!replacement)return;
+      if(!checkPlacement(replacement,o))return;
       snapshot();project.items[index]=replacement;
       afterChange(`Changed ${kind}`);return;
     }
@@ -1335,8 +1382,34 @@
     const current=key==='left'||key==='top'?h.style[key]:key==='tap'?h.tap_action?.action:key==='hold'?h.hold_action?.action||'none':h[key];if(next===current)return;snapshot();if(key==='left'||key==='top')h.style[key]=next;else if(key==='tap')h.tap_action={action:next};else if(key==='hold'){if(next==='none')delete h.hold_action;else h.hold_action={action:next};}else h[key]=next;afterChange(`Updated ${h.title} control`);
   }
   function deleteSelected(){if(!selected)return;snapshot();if(selected.kind==='item')project.items=project.items.filter(i=>i.id!==selected.id);else if(selected.kind==='hotspot')project.hotspots=project.hotspots.filter(h=>h.id!==selected.id);else if(selected.kind==='wall')project.walls=project.walls.filter(w=>w.id!==selected.id);else project.rooms=project.rooms.filter(r=>r.id!==selected.id);selected=null;afterChange('Removed selection');}
-  function duplicateSelected(){if(selected?.kind!=='item')return;const o=project.items.find(i=>i.id===selected.id);if(!o)return;snapshot();const n=clone(o);n.id=uid('i');n.x+=26;n.y+=26;if(n.type==='cameraThumbnail'){n.x=Math.min(W,n.x);n.y=Math.min(H,n.y);}clampLinkedItem(n);n.name=`${o.name} copy`;project.items.push(n);select('item',n.id);afterChange('Duplicated object');}
-  function rotateSelected(){if(selected?.kind!=='item')return;const o=project.items.find(i=>i.id===selected.id);if(!o)return;snapshot();o.rotation=(o.rotation+90)%360;afterChange('Rotated object');}
+  function duplicateSelected(){
+    if(selected?.kind!=='item')return;
+    const current=project.items.find(item=>item.id===selected.id);
+    if(!current)return;
+    const spacing=Math.max(current.w,current.h)+10;
+    const copy=clone(current);
+    copy.id='';
+    const offsets=[[26,26],[spacing,0],[-spacing,0],[0,spacing],[0,-spacing]];
+    const placed=offsets.some(([x,y],index)=>{
+      copy.x=current.x+x;copy.y=current.y+y;
+      if(copy.type==='cameraThumbnail'){copy.x=Math.min(W,copy.x);copy.y=Math.min(H,copy.y);}
+      clampLinkedItem(copy);
+      if(index>0&&(copy.x<0||copy.x>W||copy.y<0||copy.y>H))return false;
+      return !placementBlock(copy);
+    });
+    if(!placed){showToast('Make room next to this object before duplicating it.');return;}
+    snapshot();
+    copy.id=uid('i');copy.name=`${current.name} copy`;
+    project.items.push(copy);select('item',copy.id);afterChange('Duplicated object');
+  }
+  function rotateSelected(){
+    if(selected?.kind!=='item')return;
+    const current=project.items.find(item=>item.id===selected.id);
+    if(!current)return;
+    const rotation=(current.rotation+90)%360;
+    if(!checkPlacement({...current,rotation},current))return;
+    snapshot();current.rotation=rotation;afterChange('Rotated object');
+  }
   function addRoom(){snapshot();const r=room(uid('r'),'New room','terrazzo',[[570,420],[790,420],[790,580],[570,580]],[580,440]);project.rooms.push(r);setTool('room');select('room',r.id);setPanel('rooms');afterChange('Added editable room');showToast('Drag the corner handles to reshape your room');}
   function missingReferenceItems(){const present=new Set(project.items.map(i=>i.id));return COMPLETE_REFERENCE_ITEMS.filter(i=>!present.has(i.id));}
   function updateRestoreButton(){const button=document.getElementById('restoreFurnishingsButton');if(!button)return;const count=missingReferenceItems().length;button.disabled=count===0;button.textContent=count?`↺ Restore ${count} missing reference object${count===1?'':'s'}`:'✓ Complete reference layout is present';button.title=count?'Add every missing reference object while keeping your floors, rooms, and new objects':'Every reference object is already in this design';const clear=document.getElementById('clearObjectsButton');if(clear){clear.disabled=project.items.length===0;clear.textContent=project.items.length?`Remove all objects (${project.items.length})`:'No objects to remove';}}
@@ -1644,20 +1717,19 @@
         window.dispatchEvent?.(new CustomEvent('roomcraft-editor-change'));
       }
     },
+    moveItemWarning(id, x, y) {
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      const current = project.items.find(entry => entry.id === id);
+      const next = current && movedItem(current, x, y);
+      const blocker = next && placementBlock(next, current);
+      return blocker ? placementMessage(blocker) : undefined;
+    },
     moveItem(id, x, y) {
       if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
       const current = project.items.find(entry => entry.id === id);
       if (!current) return false;
-      const wallMounted = current.type === 'window' || templateByType[current.type]?.mount === 'wall';
-      const mount = wallMounted ? nearestWallPlacement({x, y}) : null;
-      if (wallMounted && !mount) return false;
-      const next = {...current, x: Math.round(mount?.x ?? x), y: Math.round(mount?.y ?? y),
-        rotation: mount?.rotation ?? current.rotation};
-      if (next.type === 'cameraThumbnail') {
-        next.x = Math.max(0, Math.min(W, next.x));
-        next.y = Math.max(0, Math.min(H, next.y));
-      }
-      clampLinkedItem(next);
+      const next = movedItem(current, x, y);
+      if (!next || !checkPlacement(next, current)) return false;
       if (next.x === current.x && next.y === current.y && next.rotation === current.rotation) return false;
       snapshot();
       Object.assign(current, next);

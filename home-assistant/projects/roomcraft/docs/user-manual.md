@@ -26,6 +26,8 @@ Choose **Menu → Commute traffic** for **All routes** or an individual route’
 
 While travel times are unavailable, the road preview shows one vehicle passing per second across both lanes. Use **Vehicle style** to pick a design or keep **Mixed vehicles**. The current browser remembers your choice. **Reduce motion** holds the vehicles still.
 
+The sidewalks have cyclists and families, and the water has small boats with wakes. These characters and boats are part of the illustrated scene. Use **Menu → 30-second demo** to see them up close or **Reduce motion** to hold them still.
+
 ### Restore a previous layout
 
 Sign in as a Home Assistant administrator and choose **Menu → Manage → Layout snapshots**. Select a saved date and choose **Restore layout**. Roomcraft reloads Home with the restored design and keeps the design you just replaced so you can switch back. Studio reads the same restored design the next time you open it or select **Import from dashboard**.
@@ -80,7 +82,9 @@ The older 2D plan view is shown above. The left palette chooses objects, floor f
 
 The canvas is a top-down plan with lightly raised walls and furniture. The balcony and stair are outdoors at left. The stair begins at the lower-left landing and descends toward the top-left. The house, balcony, and lower-left stair landing are on the second floor. The detached garage sits on the first-floor ground plane. Choose **From west** to see the height difference clearly. Doorways between upstairs rooms remain on one floor level. Bedroom, study, baths, and living spaces have different finishes. The editor uses this image as a reference and separate illustrated assets to redraw edited geometry; an edited scene can differ from individual pixels in the reference PNG.
 
-In the 3D views, look across the street for sand dunes, beach umbrellas and a curved shoreline. Paths from the far sidewalk lead through the dunes to the beach. The beach appears above the house in **Top down** and moves with the rest of the scene when you rotate or zoom.
+In the 3D views, look across the street for sand dunes, beach umbrellas and a curved shoreline with boats. Paths from the far sidewalk lead through the dunes to the beach. The beach appears above the house in **Top down** and moves with the rest of the scene when you rotate or zoom.
+
+Place a table lamp, plant, or humidifier over a compatible tabletop and Studio sets it at the surface height. When a move would overlap solid furniture, Studio keeps the last valid position and identifies the object in the way. Rugs and compatible tabletop arrangements can overlap their furniture footprints.
 
 ### Full-width plan export
 

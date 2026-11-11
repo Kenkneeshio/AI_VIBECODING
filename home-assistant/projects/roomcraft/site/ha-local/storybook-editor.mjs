@@ -477,7 +477,7 @@ export function mountStorybookEditor(document, host) {
     event.stopPropagation();
     const screen = pointerPoint(event);
     if (api.hasPlacement()) {
-      const point = scene.projectToPlan(screen.x, screen.y, api.getPlacementType());
+      const point = scene.projectToPlan(screen.x, screen.y, api.getPlacementType(), {preferTabletop: true});
       if (point) api.placeAt(point.x, point.y);
       refresh();
       return;
@@ -507,7 +507,16 @@ export function mountStorybookEditor(document, host) {
     const p = scene.projectToPlan(screen.x, screen.y, drag.item.type);
     if (!p) return;
     drag.moved = true;
-    drag.position = {x: drag.item.x + p.x - drag.startPlan.x, y: drag.item.y + p.y - drag.startPlan.y};
+    const position = {x: drag.item.x + p.x - drag.startPlan.x, y: drag.item.y + p.y - drag.startPlan.y};
+    const warning = api.moveItemWarning?.(drag.item.id, position.x, position.y);
+    if (warning) {
+      if (warning !== drag.warning) setStatus(warning);
+      drag.warning = warning;
+      return;
+    }
+    if (drag.warning) setStatus(`Moving ${drag.item.name || 'object'}`);
+    drag.warning = undefined;
+    drag.position = position;
     draw({[drag.item.id]: {position: drag.position}});
   };
   const onPointerUp = event => {

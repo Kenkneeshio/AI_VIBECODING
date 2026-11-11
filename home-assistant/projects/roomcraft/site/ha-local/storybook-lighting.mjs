@@ -69,7 +69,7 @@ export function createStorybookLighting(renderer, scene, bounds) {
     if (fixture && item.entityId) candidates.push({item, object});
   }
 
-  function update(environment, states, ground) {
+  function update(environment, states, ground, placementChanged = false) {
     const night = environment.night === true;
     const overcast = OVERCAST.has(environment.condition);
     const elevation = Number.isFinite(environment.sunElevation)
@@ -91,7 +91,7 @@ export function createStorybookLighting(renderer, scene, bounds) {
       previousEnvironment = profile;
       previousStates = undefined;
     }
-    if (previousStates !== states) {
+    if (previousStates !== states || placementChanged) {
       const lit = candidates.flatMap(({item, object}) => {
         const entity = states[item.id];
         if (entity?.state !== 'on') return [];
@@ -112,7 +112,7 @@ export function createStorybookLighting(renderer, scene, bounds) {
           light.color.copy(rgb);
         } else light.color.set('#ffd5a2');
         light.position.copy(object.root.position);
-        light.position.y += Math.max(18, object.anchorY - 9);
+        light.position.y += Math.max(18, (object.anchorY - 9) * object.root.scale.y);
         light.intensity = power * lerp(2350, 1250, daylight);
       }
       previousStates = states;

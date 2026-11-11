@@ -113,6 +113,25 @@ test('the 3D mutation bridge preserves bindings and records one undoable move', 
   assert.notEqual(bridge.getProject().items[0].x, -1000);
 });
 
+test('2D dragging and the Studio movement bridge preserve the last legal placement', () => {
+  const fixture = (id, type, x, y, w, h) => ({id, type, name:id, x, y, w, h, rotation:0});
+  const editor = boot({version:2, editableReferenceVersion:6, rooms:[], walls:[], hotspots:[], items:[
+    fixture('dresser','dresser',280,350,102,72),
+    fixture('bed','bed',520,350,122,152),
+    fixture('lamp','lamp',160,350,48,48),
+  ]});
+  const bridge = editor.window.RoomcraftEditorViewport;
+  assert.match(bridge.moveItemWarning('lamp', 520, 350), /bed/);
+  assert.equal(bridge.moveItem('lamp', 520, 350), false);
+  assert.equal(editor.window.RoomcraftEditorEngine.inspect().commandCount, 0);
+  editor.pointer('pointerdown', 160, 350);
+  editor.pointer('pointermove', 280, 350);
+  editor.pointer('pointermove', 520, 350);
+  editor.pointer('pointerup', 520, 350);
+  assert.equal(bridge.getProject().items.find(item => item.id === 'lamp').x, 280);
+  assert.equal(editor.window.RoomcraftEditorEngine.inspect().commandCount, 1);
+});
+
 test('Studio saves radar calibration through the Inspector and keeps live samples out of the layout', () => {
   const radar = {id:'radar', type:'presenceSwitch', name:'Radar', x:300, y:400, w:36, h:20, rotation:90};
   const project = {version:2, editableReferenceVersion:9, rooms:[], walls:[], items:[radar], hotspots:[]};

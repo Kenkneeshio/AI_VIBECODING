@@ -42,8 +42,33 @@ const RECIPES = [
 ];
 const RECIPES_BY_ID = new Map(RECIPES.map(recipe => [recipe.id, recipe]));
 
-export const STORYBOOK_VEHICLES = Object.freeze(RECIPES.map(({id, label, length, width, detail}) =>
-  Object.freeze({id, label, length, width: detail === 'food' ? width + 2 : width})));
+const MOTORCYCLES = [
+  {id: 'apricot-scooter', label: 'Apricot scooter', length: 40, width: 14, style: 'scooter',
+    paint: '#e19872', trim: '#f7d9ab', jacket: '#547c83', helmet: '#f1e5cb'},
+  {id: 'ruby-motorcycle', label: 'Ruby sport motorcycle', length: 46, width: 14, style: 'racer',
+    paint: '#b95b66', trim: '#edb9a1', jacket: '#594e70', helmet: '#f4c27d'},
+  {id: 'moss-motorcycle', label: 'Moss trail motorcycle', length: 43, width: 14, style: 'trail',
+    paint: '#869961', trim: '#ead5a0', jacket: '#b57357', helmet: '#ded5a1'},
+  {id: 'indigo-motorcycle', label: 'Indigo cruiser motorcycle', length: 46, width: 15, style: 'cruiser',
+    paint: '#657a9a', trim: '#ded3aa', jacket: '#98775e', helmet: '#c5d1d2'},
+];
+const BICYCLES = [
+  {id: 'peach-basket-bicycle', label: 'Peach basket bicycle', length: 27, width: 8.8, style: 'basket',
+    paint: '#d98474', trim: '#eac996', jacket: '#708e7f', helmet: '#f8d48a'},
+  {id: 'seafoam-commuter-bicycle', label: 'Seafoam commuter bicycle', length: 28, width: 8.8, style: 'commuter',
+    paint: '#77aba0', trim: '#c5d8bd', jacket: '#b67479', helmet: '#ece0ba'},
+  {id: 'lavender-road-bicycle', label: 'Lavender road bicycle', length: 28, width: 8.8, style: 'road',
+    paint: '#9e8abb', trim: '#d9c7e2', jacket: '#5c7292', helmet: '#edc99d'},
+  {id: 'honey-cargo-bicycle', label: 'Honey cargo bicycle', length: 30, width: 9, style: 'longtail',
+    paint: '#d9a359', trim: '#f2d3a3', jacket: '#917da0', helmet: '#e7c79b'},
+];
+const MOTORCYCLE_BY_ID = new Map(MOTORCYCLES.map(recipe => [recipe.id, recipe]));
+const BICYCLE_BY_ID = new Map(BICYCLES.map(recipe => [recipe.id, recipe]));
+const catalogEntry = ({id, label, length, width, detail}) =>
+  Object.freeze({id, label, length, width: detail === 'food' ? width + 2 : width});
+
+export const STORYBOOK_VEHICLES = Object.freeze([...RECIPES, ...MOTORCYCLES].map(catalogEntry));
+export const STORYBOOK_BICYCLES = Object.freeze(BICYCLES.map(catalogEntry));
 
 function quad(points) {
   const geometry = new THREE.BufferGeometry();
@@ -279,8 +304,167 @@ function addDetails(art) {
   }
 }
 
+function vehicleLayers(bodyParts, headlamp, taillamp) {
+  return [
+    {role: 'body', geometry: paintedLayer(bodyParts),
+      material: new THREE.MeshStandardMaterial({vertexColors: true, roughness: .65})},
+    {role: 'headlamp', geometry: headlamp,
+      material: new THREE.MeshStandardMaterial({color: '#fff1d7', emissive: '#ffe4ab',
+        emissiveIntensity: .26, roughness: .5})},
+    {role: 'taillamp', geometry: taillamp,
+      material: new THREE.MeshStandardMaterial({color: '#bc5854', emissive: '#ed6b5c',
+        emissiveIntensity: .28, roughness: .5})},
+  ];
+}
+
+function cycleArt(recipe, motor) {
+  const {style, length, paint, trim, jacket, helmet} = recipe;
+  const parts = [];
+  const add = (geometry, shade) => parts.push([geometry, shade]);
+  const box = (shade, position, size) => add(new THREE.BoxGeometry(...size).translate(...position), shade);
+  const sphere = (shade, position, size, angle = 0) =>
+    add(new THREE.SphereGeometry(1, 8, 5).scale(...size).rotateZ(angle).translate(...position), shade);
+  function rod(shade, start, end, radius) {
+    const from = new THREE.Vector3(...start);
+    const to = new THREE.Vector3(...end);
+    const axis = new THREE.Vector3().subVectors(to, from);
+    const rotation = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), axis.clone().normalize());
+    add(new THREE.CylinderGeometry(radius, radius, axis.length(), 5, 1, true)
+      .applyQuaternion(rotation).translate(...from.lerp(to, .5).toArray()), shade);
+  }
+  const scale = motor ? 1 : .75;
+  const tire = length * (motor ? .132 : .15);
+  const rear = -length * (style === 'longtail' ? .309 : .326);
+  const front = length * .326;
+  const crank = [length * -.024, tire + scale * 1.25, 0];
+  const seat = [length * (style === 'cruiser' ? -.16 : -.115),
+    length * (style === 'trail' ? .40 : style === 'cruiser' ? .327 : .369), 0];
+  const crouches = style === 'road' || style === 'racer';
+  const bar = [length * (crouches ? .234 : .204),
+    seat[1] + (crouches ? .50 : 3.7) * scale, 0];
+  const hubWidth = scale * (motor ? 2.2 : 1.36);
+  const tireTube = scale * (motor ? 1.04 : .65);
+  const frame = scale * (motor ? .90 : .65);
+  const guard = style !== 'road';
+  for (const x of [rear, front]) {
+    add(new THREE.TorusGeometry(tire - tireTube, tireTube, 4, 12).translate(x, tire, 0), DETAILS.tire);
+    if (guard) {
+      add(new THREE.TorusGeometry(tire + scale * .37, scale * .39, 4, 6, Math.PI * .74)
+        .rotateZ(Math.PI * .13).translate(x, tire, 0), paint);
+    }
+    for (const turn of [0, Math.PI / 3, Math.PI * 2 / 3]) {
+      const radius = tire - tireTube * 1.35;
+      const dx = Math.cos(turn) * radius;
+      const dy = Math.sin(turn) * radius;
+      rod(DETAILS.rim, [x - dx, tire - dy, 0], [x + dx, tire + dy, 0], scale * .23);
+    }
+    add(new THREE.CylinderGeometry(scale * 1.05, scale * 1.05, hubWidth, 8)
+      .rotateX(Math.PI / 2).translate(x, tire, 0), DETAILS.hub);
+  }
+
+  const rearAxle = [rear, tire, 0];
+  rod(paint, rearAxle, seat, frame);
+  rod(paint, rearAxle, crank, frame);
+  rod(paint, seat, crank, frame);
+  rod(paint, crank, bar, frame);
+  const topTube = style === 'basket' || style === 'scooter' ? [bar[0] * .7, crank[1] + scale * 2.65, 0] : bar;
+  rod(paint, seat, topTube, frame);
+  if (topTube !== bar) rod(paint, topTube, bar, frame);
+  for (const side of [-1, 1]) {
+    rod(DETAILS.rim, [bar[0], bar[1] - scale * 2.3, side * hubWidth * .38],
+      [front, tire, side * hubWidth * .45], frame * .7);
+  }
+  box(DETAILS.bumper, [seat[0] - .25, seat[1] + scale * .4, 0],
+    [scale * (motor ? 7.1 : 4.8), scale * 1.08, scale * 3.15]);
+  const gripZ = scale * (motor ? 5.05 : 4.75);
+  const gripX = bar[0] + (crouches ? scale * 1.85 : -scale * .8);
+  const gripY = bar[1] + (crouches ? -scale * .6 : scale * .25);
+  for (const side of [-1, 1]) {
+    const grip = [gripX, gripY, side * gripZ];
+    rod(DETAILS.rim, bar, grip, scale * .47);
+    rod(DETAILS.tire, [gripX + scale * .6, gripY, side * gripZ * .82], grip, scale * .63);
+  }
+
+  if (motor) {
+    box(DETAILS.bumper, [crank[0] + .4, crank[1] + 1.05, 0], [6.4, 4.9, 5.4]);
+    const hood = style === 'scooter' ? [bar[0] + 2.1, seat[1] - 2.3, 0] : [seat[0] + 5.5, seat[1] + .7, 0];
+    const profile = style === 'scooter' ? [4.1, 5.3, 4.2]
+      : style === 'racer' ? [6.8, 3.45, 4.55] : [5.4, 2.8, 3.85];
+    sphere(paint, hood, profile, style === 'scooter' ? .34 : -.18);
+    box(trim, [hood[0] + .8, hood[1] + .15, profile[2] * .87], [profile[0] * 1.18, 1, .8]);
+    box(trim, [hood[0] + .8, hood[1] + .15, -profile[2] * .87], [profile[0] * 1.18, 1, .8]);
+    if (style === 'racer') {
+      sphere(DETAILS.window, [bar[0] + 2, bar[1] + .95, 0], [2.75, 2.4, 3.15], -.52);
+      box(paint, [rear + 1.75, seat[1] + 1.25, 0], [5.6, 1.55, 4.25]);
+    } else if (style === 'trail') {
+      box(trim, [front - 2.2, tire * 2.1 + 1.05, 0], [7.25, .82, 3.65]);
+      box(DETAILS.rim, [rear + 1.55, seat[1] - 1.9, 0], [6.7, 1.35, 4.2]);
+    } else if (style === 'scooter') {
+      sphere(paint, [rear + 3.7, seat[1] - 3.1, 0], [6.9, 3.05, 4.05], -.13);
+      box(trim, [crank[0], tire + 1.1, 0], [8.2, 1.22, 6.2]);
+    } else {
+      for (const side of [-1, 1]) {
+        rod(DETAILS.rim, [rear - 2.2, tire + 2.1, side * 2.8], [crank[0] + 4.5, tire + .45, side * 3.25], .79);
+      }
+    }
+  } else {
+    const rack = style === 'longtail' ? [rear + 1.1, tire * 2.05 + 1.8, 0]
+      : [front - .98, bar[1] - 1.55, 0];
+    if (style === 'basket' || style === 'longtail') {
+      box(DETAILS.wood, rack, [style === 'longtail' ? 7.6 : 4.1, 2.8, 4.8]);
+      box(trim, [rack[0], rack[1] + 1.15, 0], [style === 'longtail' ? 8 : 4.6, .56, 5.1]);
+      box(DETAILS.tan, [rack[0], rack[1] + 1.5, 0], [style === 'longtail' ? 6.3 : 3.6, .34, 3.75]);
+    } else if (style === 'commuter') {
+      box(trim, [rear + 1.65, tire + 1.05, 2], [4.2, 3.4, 1.85]);
+      box(DETAILS.roofRail, [rear + 1.6, tire * 2.05 + .45, 0], [5.3, .66, 4.3]);
+    }
+  }
+
+  // Seated figures use a readable helmet, jacket and bent knees at overview scale.
+  const hip = [seat[0] - scale * .38, seat[1] + scale * 2.05, 0];
+  const torso = [hip[0] + (crouches ? 3.05 : 1.05) * scale, hip[1] + scale * 3.75, 0];
+  const head = [torso[0] + (crouches ? 3.35 : .95) * scale,
+    torso[1] + (crouches ? 3.10 : 4.85) * scale, 0];
+  const angle = crouches ? -.57 : -.22;
+  sphere(jacket, torso, [scale * 2.6, scale * 4.15, scale * 3.0], angle);
+  sphere(helmet, head, [scale * 2.94, scale * 2.68, scale * 2.62]);
+  sphere(DETAILS.window, [head[0] + scale * 2.1, head[1] - scale * .4, 0],
+    [scale * 1.08, scale * 1.05, scale * 2.2]);
+  if (style === 'commuter' || style === 'trail') {
+    box(trim, [torso[0] - scale * 2.1, torso[1] + scale * .6, 0], [scale * 1.9, scale * 3.3, scale * 3.5]);
+  }
+  const leg = '#4b4e63';
+  const gloves = '#e2b491';
+  for (const side of [-1, 1]) {
+    const shoulder = [torso[0] + scale * 1.1, torso[1] + scale * 1.65, side * scale * 2.43];
+    const elbow = [lerp(shoulder[0], gripX, .48), lerp(shoulder[1], gripY, .52) - scale, side * scale * 3.48];
+    const hand = [gripX, gripY, side * gripZ * .93];
+    rod(jacket, shoulder, elbow, scale * .95);
+    rod(jacket, elbow, hand, scale * .76);
+    box(gloves, hand, [scale * 1.5, scale * 1.11, scale * 1.09]);
+    const offset = motor ? 0 : side * scale * 1.35;
+    const knee = [hip[0] + scale * (motor ? 4.3 : 4.9) + offset, hip[1] - scale * 3.5, side * scale * 2.64];
+    const foot = [crank[0] + scale * (style === 'scooter' ? 2.65 : .35) + offset,
+      crank[1] + scale * .27 - offset, side * scale * 2.5];
+    rod(leg, [hip[0], hip[1], side * scale * 1.86], knee, scale * 1.12);
+    rod(leg, knee, foot, scale * .88);
+    box(DETAILS.tire, [foot[0] + scale * .25, foot[1], foot[2]], [scale * 2.15, scale * .95, scale * 1.42]);
+  }
+
+  const lampSize = scale * (motor ? 1.34 : .84);
+  const frontLamp = [front + scale * .58, tire * (motor ? 2.3 : 2.18), 0];
+  const rearLamp = [rear - scale * .56, tire * (motor ? 2.18 : 2.02), 0];
+  rod(DETAILS.bumper, [front, tire + scale * 1.5, 0], frontLamp, scale * .58);
+  rod(DETAILS.bumper, [rear, tire * 1.6, 0], rearLamp, scale * .46);
+  const lamp = point => paintedLayer([[new THREE.SphereGeometry(lampSize, 6, 4)
+    .scale(.53, .78, 1).translate(...point), '#ffffff']]);
+  return vehicleLayers(parts, lamp(frontLamp), lamp(rearLamp));
+}
+
 /** Build independently owned layers for +X-facing road instancing. */
 export function buildStorybookVehicle(id) {
+  const motorcycle = MOTORCYCLE_BY_ID.get(id);
+  if (motorcycle) return cycleArt(motorcycle, true);
   const recipe = RECIPES_BY_ID.get(id);
   if (!recipe) return null;
   const art = createArt(recipe);
@@ -289,14 +473,11 @@ export function buildStorybookVehicle(id) {
   const lamps = (end, lampY) => paintedLayer([-1, 1].map(side =>
     [new THREE.BoxGeometry(1.48, 1.8, outer * .35)
       .translate(end * (nose + .19), lampY, side * outer * .63), '#ffffff']));
-  return [
-    {role: 'body', geometry: paintedLayer(bodyParts),
-      material: new THREE.MeshStandardMaterial({vertexColors: true, roughness: .65})},
-    {role: 'headlamp', geometry: lamps(1, frontY - 1.75),
-      material: new THREE.MeshStandardMaterial({color: '#fff1d7', emissive: '#ffe4ab',
-        emissiveIntensity: .26, roughness: .5})},
-    {role: 'taillamp', geometry: lamps(-1, shoulder - 2.65),
-      material: new THREE.MeshStandardMaterial({color: '#bc5854', emissive: '#ed6b5c',
-        emissiveIntensity: .28, roughness: .5})},
-  ];
+  return vehicleLayers(bodyParts, lamps(1, frontY - 1.75), lamps(-1, shoulder - 2.65));
+}
+
+/** Build an independently owned +X-facing bicycle and its seated rider. */
+export function buildStorybookBicycle(id) {
+  const recipe = BICYCLE_BY_ID.get(id);
+  return recipe ? cycleArt(recipe, false) : null;
 }

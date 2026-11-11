@@ -79,7 +79,7 @@ function child(parent, x = 0, y = 0, z = 0) {
   return group;
 }
 
-function lightPool(root, radius) {
+function lightPool(root, radius, height = 2.8) {
   const glow = new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
     uniforms: { strength: { value: 0 }, tint: { value: new THREE.Color(color.warm) } },
@@ -97,7 +97,7 @@ function lightPool(root, radius) {
         #include <colorspace_fragment>
       }`,
   });
-  const pool = mesh(root, new THREE.PlaneGeometry(2 * radius, 2 * radius), glow, 0, 2.8, 0);
+  const pool = mesh(root, new THREE.PlaneGeometry(2 * radius, 2 * radius), glow, 0, height, 0);
   pool.rotation.x = -PI / 2;
   pool.visible = false;
   return (power, tint) => {
@@ -123,7 +123,9 @@ function lamp(item, w, h) {
   const diffuser = material(color.cream, { emissive: color.warm, emissiveIntensity: 0 });
   const tint = new THREE.Color(color.warm);
   const bodyHeight = fanLight ? 46 : pendant ? 50 : ceiling ? 56 : wall ? 40 : standing ? 56 : 36;
-  const pool = lightPool(root, clamp(size * (ceiling ? 1.72 : 1.35), 38, 110));
+  const tableLamp = !ceiling && !standing && !wall;
+  const poolRadius = tableLamp ? clamp(size * .68, 15, 46) : clamp(size * (ceiling ? 1.72 : 1.35), 38, 110);
+  const pool = lightPool(root, poolRadius, tableLamp ? 16.8 : 2.8);
   if (ceiling) {
     const radius = size * (fanLight ? 0.19 : 0.29);
     cylinder(root, radius, radius * 1.02, 3, trim, 0, bodyHeight + 2);
@@ -453,8 +455,8 @@ function appliance(item, w, h) {
   const y = height - 1;
   cylinder(root, width * 0.46, width * 0.5, 4, material(color.ink), 0, 2);
   if (humidifier) {
-    const body = bead(root, width / 2, shade, 0, 12, 0);
-    body.scale.y = 0.78;
+    const body = bead(root, width / 2, shade, 0, 13, 0);
+    body.scale.y = 22 / width;
     cylinder(root, width * 0.19, width * 0.22, 3.5, trim, 0, y);
   } else {
     softBox(root, width, 24, width * 0.82, shade, 0, 15, 0, 5);

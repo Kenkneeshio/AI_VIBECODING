@@ -131,6 +131,133 @@
     return {w:Math.round(item.w * scale * 10) / 10, h:Math.round(item.h * scale * 10) / 10};
   }
 
+  const SUPPORT_TYPES = new Set(['table', 'desk', 'dresser', 'nightstand', 'storageCabinet', 'coffeeTable', 'sideTable']);
+  const TABLETOP_TYPES = new Set(['lamp', 'tableLamp', 'humidifier', 'plant']);
+  const FLOOR_SOLIDS = new Set(['sofa', 'bed', 'armchair', 'bookcase', 'bedroomBench', 'counter', 'kitchenWorktop',
+    'bathFixtures', 'doubleVanity', 'tub', 'toilet', 'floorPlant']);
+  const SURFACE_VARIANT = /^(?:living-(?:petal-dining|round-dining|rectangular-dining|lily-coffee-table|bubble-side-table)|bedroom-(?:sprout-desk|corner-desk|secretary-desk|star-nightstand|honey-dresser)|play-furniture-low-play-table)-/;
+  const SOLID_VARIANT = /^(?:bedroom-|living-(?:cloud-sofa|tailored-sofa|tailored-loveseat|upholstered-chaise|acorn-armchair)-|play-furniture-bear-floor-chair-)/;
+  const FOOT_SAMPLES = [[0,0],[1,0],[-1,0],[0,1],[0,-1],[.707,.707],[.707,-.707],[-.707,.707],[-.707,-.707]];
+
+  function placementRole(item) {
+    const type = item?.type ?? '';
+    if (SUPPORT_TYPES.has(type) || SURFACE_VARIANT.test(type)) return 'surface';
+    if (TABLETOP_TYPES.has(type) || item?.lightForm === 'bud_lamp' || type.startsWith('lighting-bud-table-lamp-')) return 'tabletop';
+    return 'floor';
+  }
+
+  function tabletopRadius(item) {
+    const ratio = item.type === 'humidifier' ? .37 : item.type === 'plant' ? .23 : .20;
+    return Math.min(item.w, item.h) * ratio;
+  }
+
+  function footprintShape(item, surfaceOnly = false) {
+    const {type, w, h} = item;
+    if (type === 'desk' || type.startsWith('bedroom-corner-desk-')) {
+      return [[0, -.33 * h, w, .34 * h], [-.41 * w, .17 * h, .18 * w, .66 * h],
+        [.41 * w, .17 * h, .18 * w, .66 * h]];
+    }
+    if (!surfaceOnly && (type === 'sofa' || type.startsWith('living-cloud-sofa-'))) {
+      if (h > w) return [[-.25 * w, 0, .5 * w, h],
+        [.22 * w, (type === 'sofa' ? .3 : -.3) * h, .52 * w, .38 * h]];
+      return [[0, -.215 * h, w, .57 * h], [-.32 * w, .25 * h, .34 * w, .46 * h]];
+    }
+    if (surfaceOnly) {
+      if (type.startsWith('living-round-dining-')) return [[0, 0, .58 * w, .58 * h]];
+      if (type === 'table' || /-dining-set-/.test(type)) return [[0, 0, .79 * w, .56 * h]];
+      if (type.includes('-desk-')) return [[0, 0, w, .85 * h]];
+    }
+    if (!surfaceOnly && placementRole(item) === 'tabletop') {
+      const diameter = 2 * tabletopRadius(item);
+      return [[0, 0, diameter, diameter]];
+    }
+    return [[0, 0, w * .95, h * .95]];
+  }
+
+  function orientedBoxes(item, surfaceOnly) {
+    if (![item?.x, item?.y, item?.w, item?.h].every(Number.isFinite) || item.w <= 0 || item.h <= 0) return [];
+    const angle = (Number.isFinite(item.rotation) ? item.rotation : 0) * Math.PI / 180;
+    const u = [Math.cos(angle), Math.sin(angle)];
+    const v = [-u[1], u[0]];
+    return footprintShape(item, surfaceOnly).map(([x, y, width, height]) => ({
+      x: item.x + x * u[0] + y * v[0], y: item.y + x * u[1] + y * v[1],
+      u, v, width: width / 2, height: height / 2,
+    }));
+  }
+
+  const project = (x, y, axis) => x * axis[0] + y * axis[1];
+  function onSurface(item, support) {
+    const circular = support.type.startsWith('living-round-dining-');
+    const boxes = orientedBoxes(support, true);
+    const radius = tabletopRadius(item) * .9;
+    return FOOT_SAMPLES.every(([u, v]) => boxes.some(box => {
+      const dx = item.x + u * radius - box.x;
+      const dy = item.y + v * radius - box.y;
+      const x = Math.abs(project(dx, dy, box.u)) / box.width;
+      const y = Math.abs(project(dx, dy, box.v)) / box.height;
+      return circular ? Math.hypot(x, y) <= 1 : x <= 1 && y <= 1;
+    }));
+  }
+
+  function solidBoxes(item) {
+    if (placementRole(item) !== 'floor' || FLOOR_SOLIDS.has(item.type) || SOLID_VARIANT.test(item.type)) {
+      return orientedBoxes(item, false);
+    }
+    return [];
+  }
+
+  function overlapDepth(first, second) {
+    const span = (box, axis) => box.width * Math.abs(project(...box.u, axis))
+      + box.height * Math.abs(project(...box.v, axis));
+    return Math.min(...[first.u, first.v, second.u, second.v].map(axis =>
+      span(first, axis) + span(second, axis) - Math.abs(project(first.x - second.x, first.y - second.y, axis))));
+  }
+
+  function penetration(item, neighbor, boxes, neighborBoxes) {
+    let deepest = 0;
+    for (const box of boxes) for (const other of neighborBoxes) deepest = Math.max(deepest, overlapDepth(box, other));
+    if (deepest <= 2) return deepest;
+    const itemRole = placementRole(item);
+    const neighborRole = placementRole(neighbor);
+    if (itemRole === 'tabletop' && neighborRole === 'surface' && onSurface(item, neighbor)
+        || itemRole === 'surface' && neighborRole === 'tabletop' && onSurface(neighbor, item)) return 0;
+    return deepest;
+  }
+
+  /** Guard authored edits, while allowing an existing overlap to get smaller. */
+  function blockingPlacement(item, others, previous) {
+    const boxes = solidBoxes(item);
+    if (!boxes.length) return;
+    const before = previous ? solidBoxes(previous) : [];
+    let conflict;
+    let maxDepth = 2;
+    for (const neighbor of others) {
+      if (neighbor.id === item.id) continue;
+      const neighborBoxes = solidBoxes(neighbor);
+      const depth = penetration(item, neighbor, boxes, neighborBoxes);
+      if (depth <= maxDepth) continue;
+      if (before.length && depth <= penetration(previous, neighbor, before, neighborBoxes) + .02) continue;
+      conflict = neighbor;
+      maxDepth = depth;
+    }
+    return conflict;
+  }
+
+  function orderMountedObjects(items) {
+    const surfaces = items.filter(item => placementRole(item) === 'surface');
+    const mounted = new Set();
+    const children = new Map();
+    for (const item of items) {
+      if (placementRole(item) !== 'tabletop') continue;
+      const support = surfaces.find(candidate => onSurface(item, candidate));
+      if (!support) continue;
+      mounted.add(item.id);
+      if (!children.has(support.id)) children.set(support.id, []);
+      children.get(support.id).push(item);
+    }
+    return mounted.size ? items.flatMap(item => mounted.has(item.id) ? [] : [item, ...(children.get(item.id) ?? [])]) : items;
+  }
+
   function mount(container, read, apply) {
     const document = container.ownerDocument;
     const make = (tag, text, attributes = {}) => {
@@ -289,5 +416,6 @@
     };
   }
 
-  root.RoomcraftModels = Object.freeze({catalog, canMap, canReplace, suggestions, supportsHeight, resizeFootprint, mount, handoffKey});
+  root.RoomcraftModels = Object.freeze({catalog, canMap, canReplace, suggestions, supportsHeight, resizeFootprint,
+    placementRole, blockingPlacement, orderMountedObjects, mount, handoffKey});
 })(typeof window === 'undefined' ? globalThis : window);

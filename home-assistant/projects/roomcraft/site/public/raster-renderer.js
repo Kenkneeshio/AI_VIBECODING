@@ -497,7 +497,9 @@
     const stairs = new Map((plan?.stairs || []).map(stair => [stair.item.id, stair]));
     for (const item of project.items) if (item.type === 'stairs') drawStairs(c, item, stairs.get(item.id));
     for (const item of layers.floorItems) drawItem(c, item, fallback);
-    for (const item of layers.regularItems) if (item.type !== 'stairs') drawItem(c, item, fallback);
+    for (const item of window.RoomcraftModels?.orderMountedObjects(layers.regularItems) ?? layers.regularItems) {
+      if (item.type !== 'stairs') drawItem(c, item, fallback);
+    }
     drawWalls(c, walls, plan?.wallStructure);
     drawFences(c, plan?.fences ?? walls.filter(wall => wall.kind === 'fence'));
     for (const item of layers.windowItems) drawItem(c, mounts.get(item.id) || item, fallback);

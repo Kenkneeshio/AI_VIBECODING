@@ -127,15 +127,22 @@ test('the style filter reuses the road lanes with a single silhouette or the mix
   const traffic = createStorybookTraffic(road);
   const visibleModels = () => traffic.root.children.filter(child => child.isGroup && child.visible);
   traffic.update(0, profile('ambient'));
-  assert.equal(visibleModels().length, STORYBOOK_VEHICLES.length);
+  const initial = new Set(visibleModels().map(model => model.name));
+  assert.ok(initial.size >= 12);
+  assert.ok(initial.has('vehicle-ruby-motorcycle') || initial.has('vehicle-indigo-motorcycle'));
+  for (let time = .25; time <= 32; time += .25) {
+    traffic.update(time, profile('ambient'));
+    for (const {name} of visibleModels()) initial.add(name);
+  }
+  assert.equal(initial.size, STORYBOOK_VEHICLES.length);
   for (const {id} of STORYBOOK_VEHICLES) {
-    traffic.update(0, {...profile('ambient'), vehicleStyle: id});
+    traffic.update(32, {...profile('ambient'), vehicleStyle: id});
     const [model, ...others] = visibleModels();
     assert.equal(others.length, 0);
     assert.equal(model.name, `vehicle-${id}`);
     assert.ok(model.children.every(mesh => mesh.isInstancedMesh && mesh.count === traffic.root.children[0].count));
   }
-  traffic.update(0, {...profile('ambient'), vehicleStyle: 'invalid'});
+  traffic.update(32, {...profile('ambient'), vehicleStyle: 'invalid'});
   assert.ok(visibleModels().length > 1);
   traffic.dispose();
   assert.equal(traffic.root.children.length, 0);

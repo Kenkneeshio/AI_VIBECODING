@@ -24,7 +24,7 @@ export function createTrafficMotion({centerX, width, lanes}) {
     z, lane, index, x: start,
     offset: spacing * (index + .25 + (lane ? .5 : 0)),
   })));
-  let phase = 0;
+  let distance = 0;
   let previousTime;
   let previousPattern;
   let velocity;
@@ -54,22 +54,23 @@ export function createTrafficMotion({centerX, width, lanes}) {
       : Number.isFinite(factor) && factor > 0
         ? PATTERNS.get('clear').speed * THREE.MathUtils.clamp(factor, .22, 1) : pattern.speed;
     if (fromDemoClock) {
-      phase = !reduceMotion && Number.isFinite(time) ? (Math.max(0, time) * speed) % span : 0;
+      distance = !reduceMotion && Number.isFinite(time) ? Math.max(0, time) * speed : 0;
     } else if (!reduceMotion) {
       if (easing && velocity !== undefined) {
         const remaining = Math.exp(-step / TRANSITION_SECONDS);
         const difference = velocity - speed;
-        phase += step * speed + difference * TRANSITION_SECONDS * (1 - remaining);
+        distance += step * speed + difference * TRANSITION_SECONDS * (1 - remaining);
         velocity = speed + difference * remaining;
         easing = Math.abs(velocity - speed) > .1;
       } else {
-        phase += step * speed;
+        distance += step * speed;
         velocity = speed;
       }
-      phase %= span;
     }
     for (const slot of visible) {
-      const offset = (slot.offset + phase) % span;
+      const travel = slot.offset + distance;
+      const offset = travel % span;
+      slot.lap = Math.floor(travel / span);
       slot.x = start + (slot.lane ? span - offset : offset);
     }
     return visible;
@@ -131,7 +132,9 @@ export function createStorybookTraffic(road) {
     for (const model of models.values()) model.count = 0;
     const selected = VEHICLES.get(profile?.vehicleStyle);
     for (const [index, slot] of slots.entries()) {
-      const vehicle = selected ?? STORYBOOK_VEHICLES[(slot.index + slot.lane * 3) % STORYBOOK_VEHICLES.length];
+      // Rotate each slot through the catalog when it wraps beyond the scene.
+      const fleetIndex = slot.index + Math.floor(slot.index / AMBIENT.stride) + slot.lane * 6 + slot.lap;
+      const vehicle = selected ?? STORYBOOK_VEHICLES[fleetIndex % STORYBOOK_VEHICLES.length];
       const model = modelFor(vehicle);
       transform.position.set(slot.x, road.surfaceY, slot.z);
       transform.rotation.y = slot.lane ? Math.PI : 0;

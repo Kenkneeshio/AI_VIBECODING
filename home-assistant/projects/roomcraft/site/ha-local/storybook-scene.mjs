@@ -13,6 +13,9 @@ import { createStorybookCoverage } from './storybook-coverage.mjs';
 import { createStorybookOcean } from './storybook-ocean.mjs';
 import { buildStorybookNeighborhood, buildStorybookStreet, storybookStreetBounds } from './storybook-street.mjs';
 import { createStorybookTraffic } from './storybook-traffic.mjs';
+import { createStorybookSidewalk } from './storybook-sidewalk.mjs';
+import { createStorybookBoats } from './storybook-boats.mjs';
+import { createStorybookPlacement } from './storybook-placement.mjs';
 
 const DEG = Math.PI / 180;
 const WALL_WIDTH = 14;
@@ -771,24 +774,6 @@ function cameraAboveGarage(camera, garage) {
   return garagePadContains(garage, dx * cosine + dz * sine, -dx * sine + dz * cosine);
 }
 
-function tableMount(plan, placement, roots) {
-  if (placement.item.type !== 'plant') return 0;
-  // V2 has no furniture sockets. Flowers on a table are the sole inferred
-  // mount here; general placement still uses the authored floor coordinates.
-  for (const support of plan.placements) {
-    if (!['table', 'coffeeTable', 'sideTable'].includes(support.item.type)) continue;
-    const dx = placement.x - support.x;
-    const dz = placement.z - support.z;
-    const localX = dx * Math.cos(support.angle) + dz * Math.sin(support.angle);
-    const localZ = -dx * Math.sin(support.angle) + dz * Math.cos(support.angle);
-    if (Math.abs(localX) < support.item.w * 0.35 && Math.abs(localZ) < support.item.h * 0.35) {
-      const mounted = roots.get(support.item.id);
-      return mounted ? mounted.root.position.y + (mounted.anchorY ?? 0) * mounted.root.scale.y : 0;
-    }
-  }
-  return 0;
-}
-
 // The live camera thumbnails yield to the visible stair and rail geometry.
 export function projectExteriorClearance(plan, camera, width, height) {
   const projected = new THREE.Vector3();
@@ -888,7 +873,9 @@ export function createStorybookScene(canvas, layout) {
   const lighting = createStorybookLighting(renderer, scene, plan.bounds);
   lighting.markStructure();
   const ocean = createStorybookOcean(water);
-  scene.add(ocean.mesh);
+  const sidewalk = createStorybookSidewalk(road);
+  const boats = createStorybookBoats(water);
+  scene.add(ocean.mesh, sidewalk.root, boats.root);
   let oceanEnvironment = {};
   const updatePrecipitation = buildPrecipitation(scene, plan, street.sceneryMinZ);
   const footprint = plan.floorStructure.footprint;
@@ -930,14 +917,19 @@ export function createStorybookScene(canvas, layout) {
       if (item.type === 'garageDoor') garages.set(object.root, item.id);
       lighting.register(item, object);
     }
-    anchors.set(item.id, { x, z, baseY, object });
+    anchors.set(item.id, { x, z, baseY, rootY: object?.root.position.y, object });
   }
+  const placementSupport = createStorybookPlacement(plan.placements, roots);
+  const restingSupports = placementSupport.resolve();
+  let resolvedSupports = restingSupports;
+  let lastDraftPositions;
   const cameraBounds = {...plan.bounds, sceneryMinZ: street.sceneryMinZ};
   for (const placement of plan.placements) {
     const object = roots.get(placement.item.id);
     if (!object) continue;
-    object.root.position.y += tableMount(plan, placement, roots);
-    if (object.root.scale.y !== 1) {
+    const support = restingSupports.get(placement.item.id);
+    if (support) object.root.position.y = support.y;
+    if (object.root.scale.y !== 1 || support?.supportId) {
       const {max} = new THREE.Box3().setFromObject(object.root);
       if (Number.isFinite(max.y)) cameraBounds.maxY = Math.max(cameraBounds.maxY ?? 92, max.y);
     }
@@ -988,8 +980,12 @@ export function createStorybookScene(canvas, layout) {
     raycaster.setFromCamera(new THREE.Vector2(x / currentWidth * 2 - 1, 1 - y / currentHeight * 2), camera);
     return true;
   }
-  function projectToPlan(x, y, type) {
+  function projectToPlan(x, y, type, {preferTabletop = false} = {}) {
     if (!pointRay(x, y)) return null;
+    if (preferTabletop) {
+      const surface = placementSupport.projectTabletop(type, raycaster);
+      if (surface) return surface;
+    }
     floorPlane.constant = -garageBaseY(type);
     return raycaster.ray.intersectPlane(floorPlane, projected)
       ? {x: projected.x, y: projected.z} : null;
@@ -1022,10 +1018,16 @@ export function createStorybookScene(canvas, layout) {
       renderer.autoClear = true;
     }
   }
+  function updateWaterfront(timeSeconds, environment, transientTelemetry = false) {
+    const options = {reduceMotion: environment.reduceMotion === true, night: environment.night === true,
+      condition: environment.condition, transientTelemetry};
+    sidewalk.update(timeSeconds, options);
+    boats.update(timeSeconds, options);
+    ocean.update(timeSeconds, environment);
+  }
   function render(timeSeconds = 0, statesById = {}, environment = {},
     {animateTelemetry = true, showTelemetryPosition = true, draftPositions, transientTelemetry = false} = {}) {
     if (disposed || currentWidth < 1 || currentHeight < 1) return;
-    lighting.update(environment, statesById, groundMaterial);
     const reduceMotion = environment.reduceMotion === true;
     const time = !reduceMotion && Number.isFinite(timeSeconds) ? timeSeconds : 0;
     const telemetryTime = animateTelemetry ? time : 0;
@@ -1037,7 +1039,12 @@ export function createStorybookScene(canvas, layout) {
       transientTelemetry});
     updatePrecipitation(telemetryTime, environment.condition);
     oceanEnvironment = environment;
-    ocean.update(time, oceanEnvironment);
+    updateWaterfront(timeSeconds, environment, transientTelemetry);
+    const placementChanged = lastDraftPositions !== draftPositions;
+    if (placementChanged) {
+      lastDraftPositions = draftPositions;
+      resolvedSupports = draftPositions ? placementSupport.resolve(draftPositions) : restingSupports;
+    }
     for (const [id, object] of roots) {
       const state = statesById[id] ?? defaultState;
       const latest = state.position;
@@ -1048,11 +1055,13 @@ export function createStorybookScene(canvas, layout) {
       const location = draftPositions?.[id]?.position ?? (showTelemetryPosition ? trackedPosition : null);
       const authored = anchors.get(id);
       object.root.position.x = location?.x ?? authored.x;
+      object.root.position.y = resolvedSupports.get(id)?.y ?? authored.rootY;
       object.root.position.z = location?.y ?? authored.z;
       if (object.floorRadius) object.root.visible = Boolean(location || !showTelemetryPosition || object.dockFits);
       object.animate?.(state, object.ambientMotion ? time : telemetryTime,
         Boolean(validPosition && showTelemetryPosition), transientTelemetry);
     }
+    lighting.update(environment, statesById, groundMaterial, placementChanged);
     const nextPeople = transientTelemetry ? demoPeople : livePeople;
     if (people !== nextPeople) {
       people?.setVisible(false);
@@ -1075,7 +1084,7 @@ export function createStorybookScene(canvas, layout) {
   }
   function renderAmbient(timeSeconds) {
     if (disposed || currentWidth < 1 || currentHeight < 1) return;
-    ocean.update(timeSeconds, oceanEnvironment);
+    updateWaterfront(timeSeconds, oceanEnvironment);
     for (const object of ambientObjects) object.animate(defaultState, timeSeconds);
     livePeople.render(timeSeconds);
     draw();
@@ -1101,6 +1110,8 @@ export function createStorybookScene(canvas, layout) {
     demoPeople?.dispose();
     coverage.dispose();
     traffic?.dispose();
+    sidewalk.dispose();
+    boats.dispose();
     const geometries = new Set();
     const materials = new Set();
     const textures = new Set();

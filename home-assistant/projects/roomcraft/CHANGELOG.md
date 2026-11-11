@@ -1,5 +1,11 @@
 # Changelog
 
+## Waterfront life
+
+- Motorcycles and scooters join the road fleet. Cyclists, adults, and children move along the two sidewalks. Sailboats and small working boats travel offshore with wakes and hull motion.
+- The 30-second demo features the street and waterfront, and the same outdoor scene appears in 3D Studio. Reduced motion holds the scenery still.
+- Furniture placement checks for overlaps in Studio. Table lamps, humidifiers and other supported objects sit on compatible furniture in 3D and draw above it in the plan.
+
 ## Road preview and miniature vehicles
 
 - Roomcraft shows one passing vehicle per second across both lanes when the selected route or route mix has no usable traffic data. The commute panel labels this as a road preview.

@@ -44,7 +44,11 @@ export function buildStorybookStreet(batch, {nearZ, farZ}, groundY, width, cente
     batch.box(34, 0.2, 2.8, '#e9ce91', x, groundY + 1.24, roadCenter);
   }
   return {centerX, width, surfaceY: groundY + 1.24,
-    lanes: [(roadCenter + roadSouth) / 2, (roadNorth + roadCenter) / 2]};
+    lanes: [(roadCenter + roadSouth) / 2, (roadNorth + roadCenter) / 2],
+    sidewalks: [
+      {minZ: roadSouth + CURB_WIDTH, maxZ: nearZ, surfaceY: groundY + 5},
+      {minZ: farZ, maxZ: roadNorth - CURB_WIDTH, surfaceY: groundY + 5},
+    ]};
 }
 
 function beachStrip(batch, south, north, color) {

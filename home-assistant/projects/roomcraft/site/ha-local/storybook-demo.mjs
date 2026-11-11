@@ -9,8 +9,8 @@ const shots = [
   {beat: 'vacuum', duration: 3100, title: 'Robot on the move', azimuth: 0, tilt: 25, zoom: 2.8},
   {beat: 'garage', duration: 2900, title: 'Garage door', azimuth: 343, tilt: 41, zoom: 3.35},
   {beat: 'habitat', duration: 3000, title: 'Life indoors', azimuth: 5, tilt: 32, zoom: 3.5},
-  {beat: 'weather', duration: 3900, title: 'Sky and reflections', azimuth: 0, tilt: 28, zoom: 2.05, target: 'coast'},
-  {beat: 'traffic', duration: 3900, title: 'Traffic on the road', azimuth: 4, tilt: 33, zoom: 3.1, target: 'road'},
+  {beat: 'weather', duration: 3900, title: 'Boats and reflections', azimuth: 0, tilt: 28, zoom: 2.05, target: 'coast'},
+  {beat: 'traffic', duration: 3900, title: 'Street and sidewalk', azimuth: 4, tilt: 33, zoom: 3.1, target: 'road'},
   {beat: 'finale', duration: 1900, title: 'Back to your live home'},
 ];
 
