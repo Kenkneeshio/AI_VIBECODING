@@ -15,7 +15,9 @@ import { buildStorybookNeighborhood, buildStorybookStreet, storybookStreetBounds
 import { createStorybookTraffic } from './storybook-traffic.mjs';
 import { createStorybookSidewalk } from './storybook-sidewalk.mjs';
 import { createStorybookBoats } from './storybook-boats.mjs';
+import { createStorybookBeachPlay } from './storybook-beach-play.mjs';
 import { createStorybookPlacement } from './storybook-placement.mjs';
+import { createStorybookTreeWind, STORYBOOK_TREE_SPECIES } from './storybook-trees.mjs';
 
 const DEG = Math.PI / 180;
 const WALL_WIDTH = 14;
@@ -43,8 +45,8 @@ const WALL_LOOKS = {
   sage: ['#dce0bf', '#8fa18c', '#667d74'],
   walnut: ['#d0a991', '#a47d6f', '#755a56'],
 };
-const WET = new Set(['hail', 'lightning-rainy', 'pouring', 'rainy', 'snowy-rainy']);
-const SNOW = new Set(['snowy', 'snowy-rainy', 'hail']);
+const WET = new Set(['lightning-rainy', 'pouring', 'rainy', 'snowy-rainy']);
+const SNOW = new Set(['snowy', 'snowy-rainy']);
 const MOUNT_HEIGHT = { presenceSwitch: 39, wallSconce: 40, wallUnit: 48, thermostat: 42 };
 function seededRandom(seed) {
   let value = seed >>> 0;
@@ -674,7 +676,7 @@ function meadowTexture(document) {
   return texture;
 }
 
-function buildYard(batch, plan) {
+function buildYard(batch, plan, street, treeWind) {
   const { minX, maxX, minZ, maxZ } = plan.houseBounds;
   const width = maxX - minX;
   const depth = maxZ - minZ;
@@ -712,6 +714,45 @@ function buildYard(batch, plan) {
       batch.ball(1.2, 0.9, 1.2, '#cb9c57', flowerX, -100.3, flowerZ);
     }
   }
+  const treeSites = [
+    ['cypress', .10, -.10, 126],
+    ['shore-pine', .81, -.145, 119],
+    ['fan-palm', .96, -.10, 112],
+    ['olive', -.075, .42, 97],
+    ['cypress', 1.055, .64, 136],
+    ['coast-oak', .21, 1.14, 112],
+    ['jacaranda', .82, 1.16, 118],
+  ];
+  const structures = plan.placements.filter(({item}) => item.type === 'garageDoor' || item.type === 'stairs');
+  for (const [seed, [kind, fx, fz, height]] of treeSites.entries()) {
+    const radius = height * STORYBOOK_TREE_SPECIES[kind].radius + 7;
+    const x = minX + fx * width;
+    const z = minZ + fz * depth;
+    const towardOutside = z < minZ ? -1 : 1;
+    const lateral = x < (minX + maxX) / 2 ? -1 : 1;
+    for (const [shiftX, shiftZ] of [[0, 0], [lateral * (radius + 20), 0], [0, towardOutside * (radius + 20)]]) {
+      const nextX = x + shiftX;
+      const nextZ = z + shiftZ;
+      if (nextZ - radius <= street.nearZ) continue;
+      if (nextX + radius > minX && nextX - radius < maxX && nextZ + radius > minZ && nextZ - radius < maxZ) continue;
+      const meetsStructure = structures.some(structure => {
+        const dx = nextX - structure.x;
+        const dz = nextZ - structure.z;
+        const u = dx * Math.cos(structure.angle) + dz * Math.sin(structure.angle);
+        const v = -dx * Math.sin(structure.angle) + dz * Math.cos(structure.angle);
+        return Math.abs(u) < structure.item.w / 2 + radius && Math.abs(v) < structure.item.h * .6 + radius;
+      });
+      if (meetsStructure) continue;
+      treeWind.add({kind, x: nextX, z: nextZ, groundY: GROUND_Y, height, seed: 7229 + seed * 101});
+      break;
+    }
+  }
+  for (const [seed, kind, fx, shoreOffset] of [
+    [5633, 'date-palm', .065, 21], [2081, 'fan-palm', .93, 20], [7313, 'date-palm', .985, 32],
+  ]) {
+    treeWind.add({kind, x: minX + fx * width, z: street.farZ - shoreOffset,
+      groundY: GROUND_Y + .68, seed});
+  }
 }
 
 function buildPrecipitation(scene, plan, sceneryMinZ) {
@@ -733,30 +774,43 @@ function buildPrecipitation(scene, plan, sceneryMinZ) {
   }
   const rainPositions = new Float32Array(rainLocations.length * 6);
   const snowPositions = new Float32Array(rainLocations.length * 3);
+  const hailPositions = new Float32Array(rainLocations.length * 3);
   const rainGeometry = new THREE.BufferGeometry();
   const snowGeometry = new THREE.BufferGeometry();
+  const hailGeometry = new THREE.BufferGeometry();
   rainGeometry.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3).setUsage(THREE.DynamicDrawUsage));
   snowGeometry.setAttribute('position', new THREE.BufferAttribute(snowPositions, 3).setUsage(THREE.DynamicDrawUsage));
+  hailGeometry.setAttribute('position', new THREE.BufferAttribute(hailPositions, 3).setUsage(THREE.DynamicDrawUsage));
   const rain = new THREE.LineSegments(rainGeometry,
     new THREE.LineBasicMaterial({color: '#d3e4ec', transparent: true, opacity: .36, depthWrite: false}));
   const snow = new THREE.Points(snowGeometry,
     new THREE.PointsMaterial({ color: '#fff6eb', size: 3.2, transparent: true, opacity: 0.8 }));
-  rain.frustumCulled = snow.frustumCulled = false;
-  scene.add(rain, snow);
-  return (time, condition) => {
+  const hail = new THREE.Points(hailGeometry,
+    new THREE.PointsMaterial({color: '#c9edf6', size: 2.6, transparent: true, opacity: .83}));
+  rain.frustumCulled = snow.frustumCulled = hail.frustumCulled = false;
+  scene.add(rain, snow, hail);
+  return (time, {condition, windSpeed, windBearing}) => {
     rain.visible = WET.has(condition);
-    rain.material.opacity = condition === 'pouring' || condition === 'lightning-rainy' ? .50 : .34;
+    const heavy = condition === 'pouring' || condition === 'lightning-rainy';
+    rain.material.opacity = heavy ? .50 : .34;
     snow.visible = SNOW.has(condition);
-    if (rain.visible || snow.visible) {
+    hail.visible = condition === 'hail';
+    if (rain.visible || snow.visible || hail.visible) {
+      const upwind = Number.isFinite(windBearing) ? windBearing * DEG : 285 * DEG;
+      const slant = THREE.MathUtils.clamp(windSpeed ?? 6, 0, 22) * .028;
       for (const [index, drop] of rainLocations.entries()) {
-        const y = 65 - (drop.phase + time * drop.speed) % 170;
+        const y = 65 - (drop.phase + time * drop.speed * (heavy ? 1.3 : 1)) % 170;
         const flakeY = 65 - (drop.phase + time * 20) % 170;
+        const hailY = 65 - (drop.phase + time * drop.speed * 1.55) % 170;
         const i = index * 6;
-        rainPositions.set([drop.x, y, drop.z, drop.x - drop.length * .18, y + drop.length, drop.z + 2], i);
+        rainPositions.set([drop.x, y, drop.z, drop.x + drop.length * slant * Math.sin(upwind),
+          y + drop.length, drop.z - drop.length * slant * Math.cos(upwind)], i);
         snowPositions.set([drop.x + Math.sin(time + index) * 6, flakeY, drop.z], index * 3);
+        hailPositions.set([drop.x, hailY, drop.z], index * 3);
       }
       rainGeometry.attributes.position.needsUpdate = rain.visible;
       snowGeometry.attributes.position.needsUpdate = snow.visible;
+      hailGeometry.attributes.position.needsUpdate = hail.visible;
     }
   };
 }
@@ -852,6 +906,8 @@ export function createStorybookScene(canvas, layout) {
   ground.position.set((minX + maxX) / 2, GROUND_Y, (minZ + maxZ) / 2);
   scene.add(ground);
   const batch = makeStaticBatch(scene);
+  const treeBatch = makeStaticBatch(scene);
+  const treeWind = createStorybookTreeWind(treeBatch);
   const street = storybookStreetBounds(plan);
   const road = buildStorybookStreet(batch, street, GROUND_Y, ground.geometry.parameters.width, ground.position.x);
   let traffic;
@@ -862,20 +918,23 @@ export function createStorybookScene(canvas, layout) {
   const sceneryFocus = {
     road: {x: road.centerX, y: road.surfaceY + 8, z: (road.lanes[0] + road.lanes[1]) / 2},
     coast: {x: water.focusX + 16, y: water.y, z: shoreCenter.z - 36},
+    beach: {x: water.focusX, y: water.y + 8, z: shoreCenter.z + 37},
   };
-  buildYard(batch, plan);
+  buildYard(batch, plan, street, treeWind);
   buildReferenceLanding(batch, plan);
   buildFloors(scene, batch, plan, canvas.ownerDocument);
   buildWalls(batch, plan);
   buildFences(batch, plan.fences);
   batch.finish();
+  treeBatch.finish();
   const structureMeshes = scene.children.filter(node => node.isMesh);
   const lighting = createStorybookLighting(renderer, scene, plan.bounds);
   lighting.markStructure();
   const ocean = createStorybookOcean(water);
   const sidewalk = createStorybookSidewalk(road);
   const boats = createStorybookBoats(water);
-  scene.add(ocean.mesh, sidewalk.root, boats.root);
+  const beachPlay = createStorybookBeachPlay(water, street);
+  scene.add(ocean.mesh, sidewalk.root, boats.root, beachPlay.root);
   let oceanEnvironment = {};
   const updatePrecipitation = buildPrecipitation(scene, plan, street.sceneryMinZ);
   const footprint = plan.floorStructure.footprint;
@@ -1023,6 +1082,8 @@ export function createStorybookScene(canvas, layout) {
       condition: environment.condition, transientTelemetry};
     sidewalk.update(timeSeconds, options);
     boats.update(timeSeconds, options);
+    beachPlay.update(timeSeconds, options);
+    treeWind.update(timeSeconds, environment);
     ocean.update(timeSeconds, environment);
   }
   function render(timeSeconds = 0, statesById = {}, environment = {},
@@ -1037,7 +1098,7 @@ export function createStorybookScene(canvas, layout) {
     }
     traffic?.update(timeSeconds, environment.traffic, {reduceMotion, night: environment.night === true,
       transientTelemetry});
-    updatePrecipitation(telemetryTime, environment.condition);
+    updatePrecipitation(telemetryTime, environment);
     oceanEnvironment = environment;
     updateWaterfront(timeSeconds, environment, transientTelemetry);
     const placementChanged = lastDraftPositions !== draftPositions;
@@ -1112,6 +1173,7 @@ export function createStorybookScene(canvas, layout) {
     traffic?.dispose();
     sidewalk.dispose();
     boats.dispose();
+    beachPlay.dispose();
     const geometries = new Set();
     const materials = new Set();
     const textures = new Set();

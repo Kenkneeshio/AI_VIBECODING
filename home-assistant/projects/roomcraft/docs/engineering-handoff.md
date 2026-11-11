@@ -10,6 +10,8 @@ The shared 3D renderer mounts `storybook-sidewalk.mjs` and `storybook-boats.mjs`
 
 Studio and the shared 3D renderer use the catalog's placement roles. Studio checks proposed overlaps in the floor plan. `storybook-placement.mjs` places supported models on the rendered surface and follows draft positions during a drag. The authored coordinates remain the input for both the floor plan and the 3D scene. Use the preceding Roomcraft layout snapshot to roll back published furniture positions.
 
+The weather demo samples `storybook-demo-frame.mjs` on its own clock. Live wind speed and bearing and available celestial positions come from `storybook-state.mjs`. The tree shader, sky and water receive those render values. The installed Moon integration supplies the phase; an illustrated path drives the moon's movement when a position is unavailable. `storybook-demo-narration.mjs` uses the browser voice engine and leaves captions available independently.
+
 The road preview runs when `roomcraft-storybook.mjs` has no fresh calibrated commute profile for the active selection. `storybook-traffic.mjs` owns the two-lane schedule and draws from the shared `storybook-vehicles.mjs` catalog. The commute panel keeps the browser's vehicle style choice. Reinstall Git revision `ce62626136cef65ca574bad373e3287f7f1b0787` or restore private Studio version 74 to roll back the road release.
 
 The showcase samples camera moves in `storybook-demo.mjs` and simulated inputs in `storybook-demo-frame.mjs`. `roomcraft-storybook.mjs` owns playback, view restoration, and input isolation. The scene uses separate demo animation state for tracked objects and vehicles. The authored layout and device bindings remain the same for live rendering and the demo.

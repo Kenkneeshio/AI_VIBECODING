@@ -38,10 +38,14 @@ const config = {
 const model = readStorybookConfig(config);
 
 test('validated live sun altitude reaches the sky and Studio weather preview', () => {
-  const snapshot = {'sun.sun': {state: 'above_horizon', attributes: {elevation: 6.5, rising: true}}};
+  const snapshot = {'sun.sun': {state: 'above_horizon', attributes: {elevation: 6.5, azimuth: 84, rising: true}},
+    'weather.example': {state: 'windy', attributes: {wind_speed: 36, wind_speed_unit: 'km/h', wind_bearing: 'WNW'}}};
   const {environment} = storybookFrame(model, snapshot);
   assert.equal(storybookWeather(environment).sunElevation, 6.5);
   assert.equal(storybookPreview(config, snapshot).environment.sunRising, true);
+  assert.equal(storybookPreview(config, snapshot).environment.sunAzimuth, 84);
+  assert.equal(environment.windSpeed, 10);
+  assert.equal(environment.windBearing, 292.5);
   assert.equal(storybookWeather(environment, true).sunElevation, undefined);
 
   const invalid = {'sun.sun': {state: 'above_horizon', attributes: {elevation: 120, rising: 'yes'}}};

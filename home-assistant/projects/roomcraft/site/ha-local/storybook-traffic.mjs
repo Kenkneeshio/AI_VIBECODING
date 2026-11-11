@@ -2,15 +2,26 @@ import * as THREE from 'three';
 import {STORYBOOK_VEHICLES, buildStorybookVehicle} from './storybook-vehicles.mjs';
 
 const PATTERNS = new Map([
-  ['clear', {stride: 4, speed: 86}],
-  ['slow', {stride: 2, speed: 53}],
-  ['heavy', {stride: 1, speed: 24}],
+  ['clear', {stride: 4, speed: 70}],
+  ['slow', {stride: 2, speed: 44}],
+  ['heavy', {stride: 1, speed: 20}],
 ]);
-const AMBIENT = {stride: 3};
+const AMBIENT = {stride: 4, crossingSeconds: 3.2};
 const SLOT_SPACING = 242;
 const DENSITY_CYCLE = 12;
 const TRANSITION_SECONDS = .38;
 const VEHICLES = new Map(STORYBOOK_VEHICLES.map(vehicle => [vehicle.id, vehicle]));
+const NEIGHBORHOOD_FLEET = [
+  'seafoam-sedan', 'blue-wagon', 'butter-compact', 'seafoam-sedan',
+  'pine-suv', 'blue-wagon', 'sand-pickup', 'butter-compact',
+  'lavender-delivery', 'pine-suv', 'seafoam-sedan', 'indigo-motorcycle',
+].map(id => VEHICLES.get(id));
+
+function neighborhoodVehicle({index, lane}) {
+  const block = Math.floor(index / AMBIENT.stride);
+  const positionInBlock = index % AMBIENT.stride;
+  return NEIGHBORHOOD_FLEET[(2 * (block + positionInBlock) + lane) % NEIGHBORHOOD_FLEET.length];
+}
 
 /** Advance two illustrative lanes without tying the art to a route's actual car positions. */
 export function createTrafficMotion({centerX, width, lanes}) {
@@ -22,7 +33,7 @@ export function createTrafficMotion({centerX, width, lanes}) {
   const spacing = span / count;
   const slots = lanes.map((z, lane) => Array.from({length: count}, (_, index) => ({
     z, lane, index, x: start,
-    offset: spacing * (index + .25 + (lane ? .5 : 0)),
+    offset: spacing * (index + .25 + (count === 1 && lane ? .5 : 0)),
   })));
   let distance = 0;
   let previousTime;
@@ -38,8 +49,9 @@ export function createTrafficMotion({centerX, width, lanes}) {
     if (pattern !== previousPattern) {
       easing = Boolean(previousPattern && pattern && (pattern === AMBIENT || previousPattern === AMBIENT));
       const stride = Math.min(count, pattern?.stride ?? 1);
+      const laneStep = pattern === AMBIENT ? Math.floor(stride / 2) : 1;
       visible = pattern ? slots.flatMap((lane, side) =>
-        lane.filter(({index}) => index % stride === side % stride)) : [];
+        lane.filter(({index}) => index % stride === side * laneStep % stride)) : [];
       previousPattern = pattern;
     }
     if (!pattern) {
@@ -47,10 +59,10 @@ export function createTrafficMotion({centerX, width, lanes}) {
       return visible;
     }
     const factor = profile.speedFactor;
-    // Scenic slots arrive every two seconds per lane. The two lanes have
-    // opposite headings and offset slots, alternating at the road midpoint.
+    // Give each lane twice the passing interval. Offset the scenic lanes
+    // by half their spacing so their crossings alternate at the midpoint.
     const speed = pattern === AMBIENT
-      ? spacing * Math.min(count, AMBIENT.stride) / 2
+      ? spacing * Math.min(count, AMBIENT.stride) / (2 * AMBIENT.crossingSeconds)
       : Number.isFinite(factor) && factor > 0
         ? PATTERNS.get('clear').speed * THREE.MathUtils.clamp(factor, .22, 1) : pattern.speed;
     if (fromDemoClock) {
@@ -67,10 +79,9 @@ export function createTrafficMotion({centerX, width, lanes}) {
         velocity = speed;
       }
     }
+    distance %= span;
     for (const slot of visible) {
-      const travel = slot.offset + distance;
-      const offset = travel % span;
-      slot.lap = Math.floor(travel / span);
+      const offset = (slot.offset + distance) % span;
       slot.x = start + (slot.lane ? span - offset : offset);
     }
     return visible;
@@ -132,9 +143,8 @@ export function createStorybookTraffic(road) {
     for (const model of models.values()) model.count = 0;
     const selected = VEHICLES.get(profile?.vehicleStyle);
     for (const [index, slot] of slots.entries()) {
-      // Rotate each slot through the catalog when it wraps beyond the scene.
-      const fleetIndex = slot.index + Math.floor(slot.index / AMBIENT.stride) + slot.lane * 6 + slot.lap;
-      const vehicle = selected ?? STORYBOOK_VEHICLES[fleetIndex % STORYBOOK_VEHICLES.length];
+      // Keep a car's silhouette stable across wraps and changes in traffic mode.
+      const vehicle = selected ?? neighborhoodVehicle(slot);
       const model = modelFor(vehicle);
       transform.position.set(slot.x, road.surfaceY, slot.z);
       transform.rotation.y = slot.lane ? Math.PI : 0;

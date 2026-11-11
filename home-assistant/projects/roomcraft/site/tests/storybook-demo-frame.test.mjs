@@ -73,10 +73,18 @@ test('vacuum moves between clear floor points and cover art receives an open-clo
 
 test('weather and traffic cues work without any linked sensors or placed models', () => {
   const empty = createStorybookDemoScenario({rooms: [], walls: [], items: []});
-  const weather = [0, 1300, 2500].map(beatTimeMs =>
-    empty.sampleFrame({beat: 'weather', beatTimeMs}).environment);
-  assert.deepEqual(weather.map(({condition}) => condition), ['sunny', 'rainy', 'clear-night']);
-  assert.equal(weather[2].moonPhase, 'full_moon');
+  const weather = beatTimeMs => empty.sampleFrame({beat: 'weather', beatTimeMs}).environment;
+  const day = Array.from({length: 14}, (_, index) => weather(index * 800));
+  assert.deepEqual(day.map(({condition}) => condition), ['sunny', 'partlycloudy', 'cloudy', 'fog',
+    'windy', 'windy-variant', 'rainy', 'pouring', 'lightning', 'lightning-rainy', 'hail',
+    'snowy', 'snowy-rainy', 'exceptional']);
+  assert.deepEqual(day.slice(4, 6).map(({windBearing}) => windBearing), [270, 90]);
+  assert.ok(weather(1200).sunElevation > weather(0).sunElevation);
+  const night = Array.from({length: 8}, (_, index) => weather(11200 + index * 600));
+  assert.ok(night.every(({condition, night}) => condition === 'clear-night' && night));
+  assert.deepEqual(night.map(({moonPhase}) => moonPhase), ['new_moon', 'waxing_crescent', 'first_quarter',
+    'waxing_gibbous', 'full_moon', 'waning_gibbous', 'last_quarter', 'waning_crescent']);
+  assert.ok(night.at(-1).skyProgress > night[0].skyProgress);
   assert.equal(sample('traffic', 1000).environment.traffic.severity, 'clear');
   assert.equal(sample('traffic', 1800).environment.traffic.severity, 'heavy');
   assert.equal(sample('overview', 0).environment.traffic, undefined);

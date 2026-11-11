@@ -13,7 +13,7 @@ export const COMMUTE_DIALOG_MARKUP = `
     <header><h2 id="commute-title">Commute traffic</h2><button type="button" data-close-link>Close</button></header>
     <label class="commute-route" hidden>Route <select class="commute-select"></select></label>
     <p class="commute-reading" role="status">Add a Home Assistant travel-time sensor to connect a commute.</p>
-    <p class="commute-ambient" hidden>Road preview · One vehicle passes per second while live traffic is unavailable.</p>
+    <p class="commute-ambient" hidden>Road preview · About one vehicle passes every three seconds while live traffic is unavailable.</p>
     <ul class="commute-breakdown" aria-label="Travel times by route" hidden></ul>
     <label class="commute-route commute-vehicle-picker">Vehicle style <select class="commute-vehicle-style"></select></label>
     <button type="button" class="commute-details" hidden>Travel-time sensor details</button>

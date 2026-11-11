@@ -1,9 +1,25 @@
 const CONTROL = 'custom:roomcraft-object-control';
 const CAMERA = 'custom:roomcraft-camera-thumbnail';
-const MOTION_WEATHER = new Set(['pouring', 'rainy', 'lightning-rainy', 'snowy',
+const MOTION_WEATHER = new Set(['pouring', 'rainy', 'lightning', 'lightning-rainy', 'snowy',
   'snowy-rainy', 'hail', 'windy', 'windy-variant', 'fog']);
 const ACTIVE_HVAC = new Set(['cooling', 'heating', 'drying', 'fan', 'preheating', 'defrosting']);
 const VACUUM_POSITION_MAX_AGE_MS = 20 * 60 * 1000;
+const SPEED_FACTORS = new Map([['m/s', 1], ['km/h', 1 / 3.6], ['mph', .44704], ['kn', .514444], ['ft/s', .3048]]);
+const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
+  'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+
+function bearing(value) {
+  if (Number.isFinite(value) && value >= 0 && value <= 360) return value % 360;
+  const index = typeof value === 'string' ? COMPASS.indexOf(value.trim().toUpperCase()) : -1;
+  return index >= 0 ? index * 22.5 : undefined;
+}
+
+function windSpeed(value, unit) {
+  if (!Number.isFinite(value) || value < 0) return undefined;
+  if (unit === 'Beaufort' && value <= 12) return .836 * value ** 1.5;
+  const factor = SPEED_FACTORS.get(unit);
+  return factor === undefined ? undefined : value * factor;
+}
 
 /** Select data from the same dashboard projection that powers the plan. */
 export function readStorybookConfig(config) {
@@ -60,21 +76,30 @@ export function storybookFrame(model, snapshot = {}, now = 0) {
   const states = Object.create(null);
   const weather = snapshot[model.weather.weather_entity];
   const sun = snapshot[model.weather.sun_entity || 'sun.sun'];
-  const {elevation, rising} = sun?.attributes ?? {};
+  const moon = snapshot[model.weather.moon_entity];
+  const {elevation, azimuth, rising} = sun?.attributes ?? {};
+  const weatherAttributes = weather?.attributes ?? {};
   const daylightKnown = sun?.state === 'above_horizon' || sun?.state === 'below_horizon';
   const environment = {
     night: daylightKnown ? sun.state === 'below_horizon' : weather?.state === 'clear-night',
     daylightKnown,
     condition: weather?.state ?? 'unavailable',
-    moonPhase: snapshot[model.weather.moon_entity]?.state ?? '',
-    temperature: weather?.attributes?.temperature,
-    unit: weather?.attributes?.temperature_unit ?? ''
+    moonPhase: moon?.state ?? '',
+    temperature: weatherAttributes.temperature,
+    unit: weatherAttributes.temperature_unit ?? '',
+    windSpeed: windSpeed(weatherAttributes.wind_speed, weatherAttributes.wind_speed_unit),
+    windBearing: bearing(weatherAttributes.wind_bearing),
   };
   if (environment.daylightKnown) {
     if (Number.isFinite(elevation) && Math.abs(elevation) <= 90) environment.sunElevation = elevation;
+    if (Number.isFinite(azimuth)) environment.sunAzimuth = bearing(azimuth);
     if (typeof rising === 'boolean') environment.sunRising = rising;
   }
-  let moving = MOTION_WEATHER.has(environment.condition);
+  if (Number.isFinite(moon?.attributes?.azimuth)) environment.moonAzimuth = bearing(moon.attributes.azimuth);
+  if (Number.isFinite(moon?.attributes?.elevation) && Math.abs(moon.attributes.elevation) <= 90) {
+    environment.moonElevation = moon.attributes.elevation;
+  }
+  let moving = MOTION_WEATHER.has(environment.condition) || environment.windSpeed > 0;
   let nextRefreshAt;
   for (const element of model.controls) {
     if (element.type !== CONTROL) continue;

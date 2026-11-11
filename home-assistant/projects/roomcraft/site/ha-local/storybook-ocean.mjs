@@ -55,6 +55,8 @@ const fragmentShader = `
   varying vec3 surfacePoint;
   uniform float waterTime;
   uniform float rain;
+  uniform float fog;
+  uniform float reflectedWind;
   uniform float roughness;
   uniform float cloudCover;
   uniform float bodyVisibility;
@@ -100,7 +102,7 @@ const fragmentShader = `
     if (offshore < 700.0 && abs(coastPoint.x) < 800.0) {
       vec2 rippleOffset = vec2(rippleA * 4.5, rippleB * 3.8) * roughness;
       vec2 mirror = coastPoint + rippleOffset + vec2(toCamera.x, -toCamera.z) * 18.0;
-      float drift = sin(waterTime * 0.064) * 26.0;
+      float drift = sin(waterTime * 0.064) * 26.0 + reflectedWind;
       float nearCloud = cloud(mirror, vec2(-186.0 + drift, 49.0), 1.32);
       float farCloud = cloud(mirror, vec2(182.0 + drift * 0.74, 69.0), 1.18);
       float bank = softEllipse(mirror, vec2(drift, 72.0), vec2(372.0, 62.0), 0.86);
@@ -149,6 +151,8 @@ const fragmentShader = `
       float ring = 1.0 - smoothstep(0.025, 0.078, abs(circle - (0.23 + rippleB * 0.14)));
       color = mix(color, foamTint, ring * smoothstep(0.7, 1.0, rippleA) * 0.18);
     }
+    color = mix(color, mix(cloudTint, foamTint, 0.46),
+      fog * (0.26 + 0.42 * smoothstep(15.0, 145.0, offshore)));
     gl_FragColor = vec4(color, 1.0);
     #include <colorspace_fragment>
   }
@@ -158,6 +162,8 @@ export function createStorybookOcean({y, farZ, shoreline, focusX}) {
   const uniforms = {
     waterTime: {value: 0},
     rain: {value: 0},
+    fog: {value: 0},
+    reflectedWind: {value: 0},
     roughness: {value: 1},
     cloudCover: {value: 0.24},
     bodyVisibility: {value: 0},
@@ -174,7 +180,8 @@ export function createStorybookOcean({y, farZ, shoreline, focusX}) {
   mesh.position.set(focusX, y, farZ);
 
   function update(timeSeconds, environment = {}) {
-    const {night, daylightKnown, condition, moonPhase, sunElevation, sunRising} = environment;
+    const {night, daylightKnown, condition, moonPhase, sunElevation, sunRising,
+      sunAzimuth, moonAzimuth, moonElevation, skyProgress, windSpeed, windBearing, reduceMotion} = environment;
     const overcast = OVERCAST.has(condition);
     const altitude = Number.isFinite(sunElevation) ? sunElevation : night ? -19 : 42;
     const sunlight = smoothstep(altitude, -8, 17);
@@ -190,18 +197,30 @@ export function createStorybookOcean({y, farZ, shoreline, focusX}) {
     if (sunVisible) uniforms.bodyTint.value.lerp(LOW_SUN, lowSun * 0.7);
     if (moonVisible) uniforms.bodyTint.value.copy(PALETTES.night[5]);
     const raining = RAIN.has(condition);
-    uniforms.waterTime.value = Number.isFinite(timeSeconds) && !environment.reduceMotion ? timeSeconds : 0;
+    const time = Number.isFinite(timeSeconds) && !reduceMotion ? timeSeconds : 0;
+    uniforms.waterTime.value = time;
     uniforms.rain.value = raining ? 1 : 0;
-    uniforms.roughness.value = raining || condition === 'windy' || condition === 'windy-variant' ? 1.65 : 1;
+    uniforms.fog.value = condition === 'fog' ? 1 : 0;
+    const breeze = Number.isFinite(windSpeed) ? clamp(windSpeed / 18, 0, 1) : 0;
+    const direction = Number.isFinite(windBearing) ? -Math.sin(THREE.MathUtils.degToRad(windBearing)) : 1;
+    uniforms.reflectedWind.value = Math.sin(time * .09) * direction * breeze * 24;
+    const choppy = raining || condition === 'windy' || condition === 'windy-variant';
+    uniforms.roughness.value = 1 + Math.max(choppy ? .65 : 0, breeze * .65);
     uniforms.cloudCover.value = overcast ? 0.94 : condition === 'partlycloudy' ? 0.64 : night ? 0.32 : 0.24;
     uniforms.bodyVisibility.value = overcast ? 0 : moonVisible ? 0.93 : sunVisible ? 0.97 : 0;
     uniforms.moon.value = moonVisible ? 1 : 0;
+    const progress = Number.isFinite(skyProgress) ? clamp(skyProgress, 0, 1) : undefined;
+    const arc = progress === undefined ? undefined : THREE.MathUtils.lerp(-145, 145, progress);
+    const azimuthX = value => clamp((value - 180) * 1.08, -180, 180);
     if (moonVisible) {
       uniforms.moonLight.value.set(Math.sin(phaseAngle), Math.cos(phaseAngle));
-      uniforms.bodyPosition.value.set(46, 42);
+      const x = arc ?? (Number.isFinite(moonAzimuth) ? azimuthX(moonAzimuth) : 46 + Math.sin(time * .014) * 27);
+      const y = Number.isFinite(moonElevation) ? 32 + clamp(moonElevation / 75, 0, 1) * 24 : 42;
+      uniforms.bodyPosition.value.set(x, y);
     } else {
       const sunSide = sunRising === true ? -107 : sunRising === false ? 118 : -31;
-      uniforms.bodyPosition.value.set(sunSide * (1 - elevation), 38 + elevation * 20);
+      const x = arc ?? (Number.isFinite(sunAzimuth) ? azimuthX(sunAzimuth) : sunSide * (1 - elevation));
+      uniforms.bodyPosition.value.set(x, 38 + elevation * 20);
     }
   }
 

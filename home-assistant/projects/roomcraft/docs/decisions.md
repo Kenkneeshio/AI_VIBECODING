@@ -1,5 +1,11 @@
 # Decision log
 
+## Show changing coastal weather in the narrated tour
+
+Give household visitors 45 seconds to see what the live dashboard reads and how it looks across weather and time of day. Sample the tour's conditions, wind, moon phases, narration and camera from one elapsed clock. Keep example state in the renderer and stop speech when the tour stops. Captions carry the same explanation if audio is muted or unavailable.
+
+In the live scene, use Home Assistant's sun and wind data and the moon phase from the configured entity. Derive the cloud forms from the reported weather condition. Use the illustrated moon path when the source supplies only a phase. Keep scenery and tree animation outside the authored floor plan and follow the reduced-motion preference in both the live view and the tour.
+
 ## Keep the road active between traffic readings
 
 Use a dedicated preview schedule when the selected commute or route mix has no fresh calibrated reading. Alternate vehicle crossings across both lanes at one per second and label the mode in the commute panel. A fresh reading takes over the road again. The renderer uses a shared miniature catalog and the browser remembers the chosen design. The road preview, vehicle preference, and demo use presentation state outside the authored layout.

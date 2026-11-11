@@ -24,9 +24,9 @@ Choose **Menu → Calendar & to-dos** for Home Assistant’s own Calendar and To
 
 Choose **Menu → Commute traffic** for **All routes** or an individual route’s travel time and delay. The road cars illustrate the measured pace relative to clear-road times. Administrators can change destinations, route sources, and clear-road times from the panel. Use a route’s Google Maps link for directions. [Google Maps Travel Time](https://www.home-assistant.io/integrations/google_travel_time/)
 
-While travel times are unavailable, the road preview shows one vehicle passing per second across both lanes. Use **Vehicle style** to pick a design or keep **Mixed vehicles**. The current browser remembers your choice. **Reduce motion** holds the vehicles still.
+While travel times are unavailable, the road preview shows a vehicle passing about every three seconds, alternating directions. Use **Vehicle style** to pick a design or keep **Mixed vehicles**. The current browser remembers your choice. **Reduce motion** holds the vehicles still.
 
-The sidewalks have cyclists and families, and the water has small boats with wakes. These characters and boats are part of the illustrated scene. Use **Menu → 30-second demo** to see them up close or **Reduce motion** to hold them still.
+The sidewalks have cyclists and families. Beachgoers play with a ball and build a sandcastle, and small boats leave wakes offshore. Use **Menu → 45-second demo** to see them up close or **Reduce motion** to hold the scenery still.
 
 ### Restore a previous layout
 
@@ -36,7 +36,7 @@ Roomcraft keeps up to three distinct previous layouts from successful Studio pub
 
 Open **Menu → More options** to show or hide **Camera tiles** or turn on **Reduce motion**. These settings are saved in the current browser.
 
-Choose **Menu → 30-second demo** for a quick showcase of presence characters, lights, fan, robot, garage, indoor animations, coastal weather, and traffic. The **Demo** badge marks simulated states. Select **Stop** or press **Escape** to return early to your previous view and the latest live readings. With **Reduce motion** enabled in Roomcraft or on your device, the chapters advance with the camera held still.
+Choose **Menu → 45-second demo** for a narrated tour of live dashboard features, beach activity, weather and traffic. The weather chapter shows every Home Assistant condition and all eight moon phases. **Mute** silences narration and keeps the captions. Select **Stop** or press **Escape** to return early to your previous view and the latest live readings. With **Reduce motion** enabled, the chapters advance with the camera held still.
 
 Use **Menu → On the map → Detection zone** to see the radar's saved bounds as a light cyan dashed outline. For a switch with the Inovelli VZM32-SN profile, the solid amber outline and shaded area show the manufacturer's estimated coverage. The marker shows the calibrated switch position and the line points forward. Home's legend shows the rated range when available. Select the presence dimmer in 3D Studio to preview the same overlays and edit the display settings. Use a walk or sit test to confirm detection where it matters. [Inovelli field-of-view chart, manual page 33](https://help.inovelli.com/en/articles/8807172-blue-series-mmwave-presence-dimmer-switch-manual)
 

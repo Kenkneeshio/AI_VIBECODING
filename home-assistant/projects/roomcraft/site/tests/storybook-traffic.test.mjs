@@ -38,17 +38,22 @@ test('traffic stays still under reduced motion and hides without live severity',
   assert.deepEqual(motion.update(11, profile('constructor')), []);
 });
 
-test('scenic traffic crosses the road midpoint once per second with alternating lanes', () => {
+test('scenic traffic has fewer vehicles at a calmer pace and alternates every 3.2 seconds', () => {
   for (const geometry of [road, {...road, width: 5110}]) {
     const motion = createTrafficMotion(geometry);
     const ambient = profile('ambient');
     let previous = snapshot(motion.update(0, ambient));
     const slow = createTrafficMotion(geometry).update(0, profile('slow'));
+    assert.equal(previous.length, 12);
     assert.ok(previous.length < slow.length);
     const arrivals = [];
     const sample = .025;
-    for (let tick = 1; tick <= 1200; tick++) {
+    for (let tick = 1; tick <= 1280; tick++) {
       const current = motion.update(tick * sample, ambient);
+      if (tick === 1) {
+        const speed = (current[0].x - previous[0].x) / sample;
+        assert.ok(speed > 120 && speed < 170);
+      }
       for (const [index, {x, lane}] of current.entries()) {
         const old = previous[index].x;
         const crosses = lane ? old > geometry.centerX && x <= geometry.centerX : old < geometry.centerX && x >= geometry.centerX;
@@ -56,10 +61,10 @@ test('scenic traffic crosses the road midpoint once per second with alternating 
       }
       previous = snapshot(current);
     }
-    assert.equal(arrivals.length, 30);
+    assert.equal(arrivals.length, 10);
     for (const [index, arrival] of arrivals.slice(1).entries()) {
       assert.notEqual(arrival.lane, arrivals[index].lane);
-      assert.ok(Math.abs(arrival.time - arrivals[index].time - 1) < 1e-6);
+      assert.ok(Math.abs(arrival.time - arrivals[index].time - 3.2) < 1e-6);
     }
     assert.deepEqual(snapshot(motion.update(40, ambient, true)), previous);
   }
@@ -74,11 +79,11 @@ test('scenic and measured traffic keep shared positions and ease into the next s
   const beforeSwap = next - first;
   assert.equal(motion.update(.1, heavy)[0].x, next);
   const afterSwap = motion.update(.2, heavy)[0].x - next;
-  assert.ok(afterSwap > 2.4 && afterSwap < beforeSwap);
+  assert.ok(afterSwap > 2 && afterSwap < beforeSwap);
   for (let tick = 3; tick < 30; tick++) motion.update(tick / 10, heavy);
   const settled = motion.update(3, heavy)[0].x;
   const afterSettle = motion.update(3.1, heavy)[0].x - settled;
-  assert.ok(Math.abs(afterSettle - 2.4) < .03);
+  assert.ok(Math.abs(afterSettle - 2) < .03);
 });
 
 test('a measured speed factor varies speed smoothly within one density', () => {
@@ -86,8 +91,8 @@ test('a measured speed factor varies speed smoothly within one density', () => {
   const before = motion.update(0, profile('slow'))[0].x;
   const halfway = motion.update(.1, {severity: 'slow', speedFactor: .8})[0].x;
   const after = motion.update(.2, {severity: 'slow', speedFactor: .6})[0].x;
-  assert.ok(halfway - before > after - halfway);
-  assert.ok(after > halfway);
+  assert.ok(Math.abs(halfway - before - 5.6) < 1e-8);
+  assert.ok(Math.abs(after - halfway - 4.2) < 1e-8);
 });
 
 test('a lane preserves spacing through profile changes and wrapping', () => {
@@ -123,18 +128,43 @@ test('instanced cars sit on the rendered road and disappear when a feed is unava
   traffic.dispose();
 });
 
-test('the style filter reuses the road lanes with a single silhouette or the mixed catalog', () => {
+test('the everyday mix has predictable cars and occasional vans and motorcycles', () => {
   const traffic = createStorybookTraffic(road);
   const visibleModels = () => traffic.root.children.filter(child => child.isGroup && child.visible);
+  const modelCounts = () => Object.fromEntries(visibleModels().map(({name, children}) => [name, children[0].count]));
   traffic.update(0, profile('ambient'));
-  const initial = new Set(visibleModels().map(model => model.name));
-  assert.ok(initial.size >= 12);
-  assert.ok(initial.has('vehicle-ruby-motorcycle') || initial.has('vehicle-indigo-motorcycle'));
-  for (let time = .25; time <= 32; time += .25) {
-    traffic.update(time, profile('ambient'));
-    for (const {name} of visibleModels()) initial.add(name);
+  const initial = modelCounts();
+  assert.deepEqual(initial, {
+    'vehicle-seafoam-sedan': 3, 'vehicle-butter-compact': 2, 'vehicle-pine-suv': 2,
+    'vehicle-sand-pickup': 1, 'vehicle-lavender-delivery': 1, 'vehicle-blue-wagon': 2,
+    'vehicle-indigo-motorcycle': 1,
+  });
+  for (let time = .25; time <= 80; time += .25) traffic.update(time, profile('ambient'));
+  assert.deepEqual(modelCounts(), initial);
+  const vehiclePositions = () => {
+    const positions = new Map();
+    const matrix = new THREE.Matrix4();
+    for (const model of visibleModels()) {
+      const mesh = model.children[0];
+      for (let index = 0; index < mesh.count; index++) {
+        mesh.getMatrixAt(index, matrix);
+        positions.set([matrix.elements[12], matrix.elements[14]].join(','), model.name);
+      }
+    }
+    return positions;
+  };
+  const shared = vehiclePositions();
+  traffic.update(80, profile('heavy'));
+  const measured = vehiclePositions();
+  for (const [position, model] of shared) {
+    assert.equal(measured.get(position), model);
   }
-  assert.equal(initial.size, STORYBOOK_VEHICLES.length);
+  traffic.dispose();
+});
+
+test('the style filter can still select every regular and specialty model', () => {
+  const traffic = createStorybookTraffic(road);
+  const visibleModels = () => traffic.root.children.filter(child => child.isGroup && child.visible);
   for (const {id} of STORYBOOK_VEHICLES) {
     traffic.update(32, {...profile('ambient'), vehicleStyle: id});
     const [model, ...others] = visibleModels();

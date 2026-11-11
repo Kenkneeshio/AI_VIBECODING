@@ -11,8 +11,31 @@ const SEARCH_OFFSETS = Array.from({length: 17}, (_, y) =>
 
 const DAY = {night: false, daylightKnown: true, condition: 'partlycloudy', sunElevation: 31};
 const GOLDEN_HOUR = {...DAY, condition: 'sunny', sunElevation: 13, sunRising: false};
-const RAIN = {...DAY, condition: 'rainy', sunElevation: 26};
 const MOON = {...DAY, night: true, condition: 'clear-night', moonPhase: 'full_moon', sunElevation: -16};
+const WEATHER_CONDITIONS = [
+  ['sunny', 'Sun and high clouds', 2, 80],
+  ['partlycloudy', 'Partly cloudy · Cumulus', 4, 110],
+  ['cloudy', 'Overcast · Stratus', 5, 150],
+  ['fog', 'Coastal fog', 1, 180],
+  ['windy', 'Wind from the west', 14, 270],
+  ['windy-variant', 'Wind from the east · Cloudy', 16, 90],
+  ['rainy', 'Rain', 7, 210],
+  ['pouring', 'Heavy rain', 12, 235],
+  ['lightning', 'Thunder and lightning', 7, 260],
+  ['lightning-rainy', 'Thunderstorm with rain', 14, 280],
+  ['hail', 'Hail', 10, 325],
+  ['snowy', 'Snow', 3, 45],
+  ['snowy-rainy', 'Sleet', 8, 70],
+  ['exceptional', 'Unusual weather', 5, 120],
+];
+const MOON_PHASES = [
+  ['new_moon', 'New moon'], ['waxing_crescent', 'Waxing crescent'], ['first_quarter', 'First quarter'],
+  ['waxing_gibbous', 'Waxing gibbous'], ['full_moon', 'Full moon'], ['waning_gibbous', 'Waning gibbous'],
+  ['last_quarter', 'Last quarter'], ['waning_crescent', 'Waning crescent'],
+];
+const CONDITION_MS = 800;
+const PHASE_MS = 600;
+const MOON_START_MS = WEATHER_CONDITIONS.length * CONDITION_MS;
 
 function validPoint(point) {
   return Number.isFinite(point?.x) && Number.isFinite(point?.y);
@@ -134,11 +157,27 @@ function doorState(time) {
 
 function demoEnvironment(beat, time) {
   if (beat === 'lamps') return {...GOLDEN_HOUR, sunElevation: 1};
-  if (beat === 'weather') return {...(time < 1150 ? GOLDEN_HOUR : time < 2150 ? RAIN : MOON)};
+  if (beat === 'beach') return {...GOLDEN_HOUR, sunElevation: 36, windSpeed: 4, windBearing: 225};
+  if (beat === 'weather') return sampleDemoWeather(time);
   if (beat === 'traffic') return {...GOLDEN_HOUR,
     traffic: time < 1250 ? {severity: 'clear', speedFactor: 1} : {severity: 'heavy', speedFactor: .32}};
   if (beat === 'finale') return {...GOLDEN_HOUR, traffic: {severity: 'slow', speedFactor: .55}};
   return {...DAY};
+}
+
+export function sampleDemoWeather(time) {
+  const elapsed = Number.isFinite(time) ? Math.max(0, time) : 0;
+  if (elapsed < MOON_START_MS) {
+    const [condition, weatherCaption, windSpeed, windBearing] = WEATHER_CONDITIONS[Math.floor(elapsed / CONDITION_MS)];
+    const skyProgress = Math.min(1, elapsed / 2400);
+    return {...DAY, condition, weatherCaption, windSpeed, windBearing, skyProgress,
+      skyTimeSeconds: elapsed / 1000, sunElevation: 9 + 44 * Math.sin(skyProgress * Math.PI)};
+  }
+  const nightTime = elapsed - MOON_START_MS;
+  const index = Math.min(MOON_PHASES.length - 1, Math.floor(nightTime / PHASE_MS));
+  const [moonPhase, weatherCaption] = MOON_PHASES[index];
+  return {...MOON, moonPhase, weatherCaption, skyTimeSeconds: elapsed / 1000,
+    skyProgress: Math.min(1, nightTime / (PHASE_MS * MOON_PHASES.length))};
 }
 
 /** Build render-only cues from the authored scene once per demo run. */

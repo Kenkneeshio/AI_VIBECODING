@@ -1,5 +1,12 @@
 # Changelog
 
+## Beach play and slower traffic
+
+- Beachgoers play with a ball and build a sandcastle. Taller palms, evergreens and broadleaf trees give the shore and yard distinct silhouettes.
+- Vehicles travel more slowly. The road preview uses a smaller neighborhood fleet with more space between vehicles. The style picker includes the full catalog.
+- The robot vacuum has a smaller 3D model.
+- A narrated 45-second demo shows all Home Assistant weather conditions, moving clouds and reflections, directional tree wind and all eight moon phases. The live scene uses current wind, sun and moon data from Home Assistant.
+
 ## Waterfront life
 
 - Motorcycles and scooters join the road fleet. Cyclists, adults, and children move along the two sidewalks. Sailboats and small working boats travel offshore with wakes and hull motion.

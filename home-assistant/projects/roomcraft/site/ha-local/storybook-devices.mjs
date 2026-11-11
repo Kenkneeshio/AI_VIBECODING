@@ -484,6 +484,8 @@ function appliance(item, w, h) {
 function robot(w, h) {
   const root = new THREE.Group();
   const radius = Math.min(w, h) * 0.42;
+  const visualScale = .72;
+  root.scale.setScalar(visualScale);
   const status = material(color.sage, { emissive: color.mint, emissiveIntensity: 0 });
   const base = material(color.ink);
   cylinder(root, radius, radius * 0.95, 7, base, 0, 4.6);
@@ -492,7 +494,7 @@ function robot(w, h) {
   for (const x of [-0.27, 0.27]) bead(root, radius * 0.105, base, radius * x, 10, radius * 0.88);
   const stripe = softBox(root, radius * 0.68, 1.2, 2.5, status, 0, 13.2, radius * 0.36);
   return {
-    root, anchorY: 12, floorRadius: radius * 1.03,
+    root, anchorY: 12, floorRadius: radius * 1.03 * visualScale,
     animate(state, seconds = 0, tracking = false) {
       const running = ['cleaning', 'returning'].includes(stateValue(state));
       stripe.material.emissiveIntensity = running ? (tracking ? 0.6 + 0.5 * Math.cos(seconds * 6) : 0.3) : 0;
