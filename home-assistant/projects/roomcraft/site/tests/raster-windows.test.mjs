@@ -93,6 +93,23 @@ test('moving and deleting authored structure repaints 2D without old walls, fenc
     kind === 'translate' && x === stairs.x && y === stairs.y), 'removed stair stays gone');
 });
 
+test('2D stair draws its grade approach at local negative Y and distinct noses through the upper landing', () => {
+  const item = {id: 'stairs', type: 'stairs', x: 160, y: 530, w: 80, h: 360, rotation: 90, steps: 12};
+  const layout = {...empty, items: [item]};
+  for (const compile of [undefined, compileStorybookPlan]) {
+    const canvas = recordingCanvas();
+    renderer(compile).draw(canvas, layout, noop);
+    const stairDrawing = canvas.operations.slice(canvas.operations.findIndex(([kind, x, y]) => kind === 'translate' && x === item.x && y === item.y));
+    const apronDepth = item.w * .47;
+    assert.deepEqual(stairDrawing.slice(0, 3), [
+      ['translate', 160, 530], ['rotate', Math.PI / 2],
+      ['rect', '#a99c88', -40, -180 - apronDepth, 80, apronDepth],
+    ]);
+    assert.deepEqual(stairDrawing.filter(([kind, color]) => kind === 'rect' && color === '#806456')
+      .map(([, , , y]) => y), Array.from({length: 12}, (_, index) => -180 + 30 * index));
+  }
+});
+
 test('2D glazing uses the compiled solid-wall opening and disappears when removed', () => {
   const raster = renderer(compileStorybookPlan);
   const canvas = recordingCanvas();

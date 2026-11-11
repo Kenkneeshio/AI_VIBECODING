@@ -55,7 +55,7 @@ export function createStorybookLighting(renderer, scene, bounds) {
     object.root.traverse(node => {
       if (!node.isMesh || node.material.transparent || node.material.isShaderMaterial) return;
       node.receiveShadow = true;
-      node.castShadow = shadow;
+      node.castShadow ||= shadow;
     });
     if (fixture && item.entityId) candidates.push({item, object});
   }

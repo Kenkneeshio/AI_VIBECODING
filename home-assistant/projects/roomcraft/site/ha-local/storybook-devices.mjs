@@ -16,6 +16,16 @@ const inactiveStates = new Set(['unknown', 'unavailable']);
 
 const clamp = (n, low, high) => Math.max(low, Math.min(high, n));
 const span = (n, fallback) => Number.isFinite(n) ? clamp(n, 12, 480) : fallback;
+const GARAGE_PAD_DEPTH = 0.96;
+const GARAGE_PAD_CENTER = 0.09;
+
+/** The camera remains independently placed and shares the level of the pad beneath it. */
+export function garagePadContains(item, localX, localZ) {
+  const width = span(item.w, 42);
+  const depth = span(item.h, 42);
+  return Math.abs(localX) <= width / 2 &&
+    Math.abs(localZ - depth * GARAGE_PAD_CENTER) <= depth * GARAGE_PAD_DEPTH / 2;
+}
 const material = (shade, options = {}) => new THREE.MeshStandardMaterial({
   color: shade, roughness: 0.83, ...options,
 });
@@ -308,7 +318,7 @@ function garage(w, h) {
   const roof = material(color.plum);
   const shingles = [material(color.tile), material(color.paleTile)];
   const bay = material(color.dark);
-  box(root, w, 5, depth + h * 0.24, trim, 0, 2.5, h * 0.09);
+  box(root, w, 5, h * GARAGE_PAD_DEPTH, trim, 0, 2.5, h * GARAGE_PAD_CENTER);
   box(root, w * 0.88, frameH + 4, 5, siding, 0, (frameH + 4) / 2, -front + 2);
   for (const x of [-w * 0.42, w * 0.42]) {
     box(root, w * 0.09, frameH + 4, depth, siding, x, (frameH + 4) / 2);
@@ -345,6 +355,8 @@ function garage(w, h) {
   softBox(root, 4, 4.5, depth + 12, roof, 0, frameH + roofH + 5.6, 0, 1.5);
   box(root, w * 0.95, 3.5, 3.5, trim, 0, frameH + 4, front + 5.5);
   box(root, frameW, frameH, 1.5, bay, 0, frameH / 2 + 4, front - 4);
+  // The pad and shell cast a ground shadow while the shutter animates independently.
+  for (const node of root.children) if (node.isMesh) node.castShadow = true;
   const doorSurface = material(color.mint);
   const doorInset = material(color.sage);
   const doorHeight = frameH - 3;

@@ -13,6 +13,8 @@ The [JSON Schema](../layout.schema.json) describes Roomcraft layout version 2 sh
 
 The editable project is 1536 × 1024. `x` and `y` are project pixels; room and item IDs should remain stable across edits. IDs created by the current editor are seeded and sequence-based; they never use time or randomness. The full-width dashboard image includes the entire source width x0–1536 and crops only y80–944, producing 1536 × 864 pixels at **the same source pixel scale**. Its exact 16:9 aspect fits a landscape tablet while leaving project geometry unchanged. A wall's absence of `finish` means graphite for compatibility with layouts saved before wall finishes were added. Catalog `type` values must match the installed editor inventory; JSON Schema cannot enumerate dynamically added inventory templates.
 
+In 3D, the authored house and exterior decks share the second-floor datum. An exterior `stairs` item has its ground approach at local negative Y and its upper landing end at local positive Y before rotation. It retains its optional `steps` count. A detached `garageDoor` item rests on grade using the same 2D coordinates. These elevations are derived when rendering and require no extra layout fields.
+
 ## Catalog variants and persisted geometry
 
 Product-family metadata such as `collectionId`, `seriesId`, `designId`, `sizeId`, material, and display labels belongs to the installed catalog, not layout version 2. A placed item persists the selected catalog entry in `type` and its resolved authored footprint in `w` and `h`. This keeps old layouts portable even when the Inspector gains richer variant menus and avoids duplicating mutable catalog descriptions inside every saved project.

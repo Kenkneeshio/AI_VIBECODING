@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { makeStorybookFurniture } from './storybook-furniture.mjs';
-import { makeStorybookDevice } from './storybook-devices.mjs';
+import { garagePadContains, makeStorybookDevice } from './storybook-devices.mjs';
 import { compileFloorStructure, compileWallStructure, isOutdoorRoom } from './storybook-structure.mjs';
 import { createStorybookLighting } from './storybook-lighting.mjs';
 import { fitStorybookCamera, normalizeCameraView } from './storybook-camera.mjs';
@@ -286,7 +286,10 @@ export function compileStorybookPlan(layout) {
       window: { ...item, w: end - start + 2, rotation: angle / DEG },
     });
   }
+  const garages = items.filter(item => item.type === 'garageDoor');
   const placements = items.map(item => {
+    const baseY = item.type === 'cameraThumbnail' && garages.some(garage => cameraAboveGarage(item, garage))
+      ? GROUND_Y : garageBaseY(item.type);
     const isBlind = item.type === 'controlZone' &&
       (item.visualKind === 'window' || item.entityId?.startsWith('cover.'));
     let mount = windowMounts.get(item.id) ?? resolveWallMount(indoorRooms, walls, item);
@@ -308,14 +311,21 @@ export function compileStorybookPlan(layout) {
     const halfZ = Math.min(limit, (Math.abs(Math.sin(angle)) * item.w + Math.abs(Math.cos(angle)) * item.h) / 2);
     extend(x - halfX, z - halfZ);
     extend(x + halfX, z + halfZ);
-    return { item, x, z, angle, window: mount?.window, mountY: mount?.mountY, isBlind };
+    return { item, x, z, baseY, angle, window: mount?.window, mountY: mount?.mountY, isBlind };
   });
   for (const wall of walls) wall.openings.sort((a, b) => a.start - b.start || a.end - b.end);
-  const stairs = placements.filter(({item}) => item.type === 'stairs').map(placement => ({
-    ...placement,
-    steps: Number.isInteger(placement.item.steps) && placement.item.steps >= 2 && placement.item.steps <= 40
-      ? placement.item.steps : DEFAULT_STEPS,
-  }));
+  const stairs = placements.filter(({item}) => item.type === 'stairs').map(placement => {
+    const {item, x, z, angle} = placement;
+    const steps = Number.isInteger(item.steps) && item.steps >= 2 && item.steps <= 40
+      ? item.steps : DEFAULT_STEPS;
+    const apronDepth = Math.min(46, Math.max(12, item.w * .47));
+    const lowEnd = -item.h / 2 - apronDepth;
+    for (const side of [-item.w / 2, item.w / 2]) {
+      extend(x + side * Math.cos(angle) - lowEnd * Math.sin(angle),
+        z + side * Math.sin(angle) + lowEnd * Math.cos(angle));
+    }
+    return {...placement, steps, apronDepth};
+  });
   const fences = authoredWalls.filter(wall => wall.kind === 'fence').map(wall => compileFence(wall, rooms, stairs));
   const floorStructure = compileFloorStructure(rooms, reference, editableStructure);
   const wallStructure = compileWallStructure(walls.map(wall => ({
@@ -554,20 +564,33 @@ function buildFences(batch, fences) {
   }
 }
 
-function buildStairObject({item, steps}) {
+function addStairTreads(batch, width, depth, steps, x = 0, z = 0) {
+  const run = depth / steps;
+  const rise = -STAIR_BASE / steps;
+  const noseDepth = Math.min(5.5, run * .25);
+  const lipDepth = Math.min(1.8, noseDepth * .38);
+  for (let step = 0; step < steps; step++) {
+    const front = z - depth / 2 + run * step;
+    const y = step === steps - 1 ? 0 : STAIR_BASE + (step + 1) * rise;
+    const coreTop = y - 3;
+    batch.box(width, coreTop - GROUND_Y, run, '#a98075', x, (GROUND_Y + coreTop) / 2, front + run / 2);
+    batch.box(width, 3, run - noseDepth, step % 2 ? '#e4c5a8' : '#d9b79a',
+      x, y - 1.5, front + (run + noseDepth) / 2);
+    // The edge profile sits above the tread so the actual step breaks survive
+    // a directly overhead view. The contrasting bevel also reads from below.
+    batch.box(width, 3.35, noseDepth - lipDepth, '#896254',
+      x, coreTop + 3.35 / 2, front + (noseDepth + lipDepth) / 2);
+    batch.box(width, 3.4, lipDepth, '#f5d8b5', x, coreTop + 3.4 / 2, front + lipDepth / 2);
+  }
+}
+
+export function makeStorybookStairs({item, steps, apronDepth}) {
   const root = new THREE.Group();
   const batch = makeStaticBatch(root);
-  const run = item.h / steps;
-  const rise = -STAIR_BASE / steps;
-  for (let step = 0; step < steps; step++) {
-    const z = -item.h / 2 + run * (step + .5);
-    const y = STAIR_BASE + (step + 1) * rise;
-    const coreTop = y - 3;
-    batch.box(item.w, coreTop - GROUND_Y, run, '#a98075', 0, (GROUND_Y + coreTop) / 2, z);
-    batch.box(item.w, 3, run, step % 2 ? '#e2c2a6' : '#d5b198', 0, y - 1.5, z);
-    const nosing = Math.min(3, run);
-    batch.box(item.w + 1, 2.4, nosing, '#b68e82', 0, y - 1.8, z - run / 2 + nosing / 2);
-  }
+  addStairTreads(batch, item.w, item.h, steps);
+  const apronHeight = STAIR_BASE - GROUND_Y;
+  batch.box(item.w, apronHeight, apronDepth, '#c8b79e', 0, GROUND_Y + apronHeight / 2,
+    -item.h / 2 - apronDepth / 2);
   batch.finish();
   return {root, anchorY: STAIR_BASE / 2};
 }
@@ -577,18 +600,15 @@ function buildReferenceLanding(batch, plan) {
   const { left, deckEdge, stepTop, stepBottom, northDeck } = plan.reference;
   const deckWidth = deckEdge - left;
   const center = (deckEdge + left) / 2;
-  const steps = 14;
-  const run = (stepBottom - stepTop) / steps;
-  const ground = -108;
+  const steps = DEFAULT_STEPS;
+  const depth = stepBottom - stepTop;
+  const run = depth / steps;
+  const ground = STAIR_BASE;
   const rise = -ground / steps;
+  addStairTreads(batch, deckWidth, depth, steps, center, (stepTop + stepBottom) / 2);
   for (let step = 0; step < steps; step++) {
     const z = stepTop + run * (step + 0.5);
     const y = ground + (step + 1) * rise;
-    const coreTop = y - 3;
-    // Riser blocks meet edge to edge; the last tread shares the landing datum.
-    batch.box(deckWidth, coreTop - ground, run, '#a98075', center, (ground + coreTop) / 2, z);
-    batch.box(deckWidth, 3, run, step % 2 ? '#e2c2a6' : '#d5b198', center, y - 1.5, z);
-    batch.box(deckWidth + 1, 2.4, 3, '#b68e82', center, y - 1.8, z - run / 2 + 0.4);
     batch.box(5, 24, 5, '#9f8183', left + 4, y + 12, z);
   }
   const railRun = run * (steps - 1);
@@ -761,6 +781,19 @@ function buildWeather(scene, plan) {
   };
 }
 
+function garageBaseY(type) {
+  return type === 'garageDoor' ? GROUND_Y : 0;
+}
+
+function cameraAboveGarage(camera, garage) {
+  const dx = camera.x - garage.x;
+  const dz = camera.y - garage.y;
+  const angle = (garage.rotation ?? 0) * DEG;
+  const cosine = Math.cos(angle);
+  const sine = Math.sin(angle);
+  return garagePadContains(garage, dx * cosine + dz * sine, -dx * sine + dz * cosine);
+}
+
 function tableMount(plan, placement, roots) {
   if (placement.item.type !== 'plant') return 0;
   // V2 has no furniture sockets. Flowers on a table are the sole inferred
@@ -799,30 +832,33 @@ export function createStorybookScene(canvas, layout) {
   buildWalls(batch, plan);
   buildFences(batch, plan.fences);
   batch.finish();
+  const structureMeshes = scene.children.filter(node => node.isMesh);
   const lighting = createStorybookLighting(renderer, scene, plan.bounds);
   lighting.markStructure();
   const updateWeather = buildWeather(scene, plan);
   const anchors = new Map();
   const roots = new Map();
+  const garages = new Map();
   const stairsById = new Map(plan.stairs.map(stair => [stair.item.id, stair]));
   for (const placement of plan.placements) {
-    const { item, x, z, angle, window, mountY, isBlind } = placement;
+    const { item, x, z, baseY, angle, window, mountY, isBlind } = placement;
     const drawItem = item.type === 'window' && window ? window : item;
     const stair = stairsById.get(item.id);
-    const object = stair ? buildStairObject(stair) :
+    const object = stair ? makeStorybookStairs(stair) :
       makeStorybookDevice(drawItem, {window: isBlind ? window : undefined, mountY}) ?? makeStorybookFurniture(drawItem);
     if (object) {
-      object.root.position.set(x, 0, z);
+      object.root.position.set(x, baseY, z);
       object.root.rotation.y = -angle;
       scene.add(object.root);
       roots.set(item.id, object);
+      if (item.type === 'garageDoor') garages.set(object.root, item.id);
       lighting.register(item, object);
     }
-    anchors.set(item.id, { x, z, object });
+    anchors.set(item.id, { x, z, baseY, object });
   }
   for (const placement of plan.placements) {
     const object = roots.get(placement.item.id);
-    if (object) object.root.position.y = tableMount(plan, placement, roots);
+    if (object) object.root.position.y += tableMount(plan, placement, roots);
   }
   const position = new THREE.Vector3();
   let disposed = false;
@@ -850,11 +886,30 @@ export function createStorybookScene(canvas, layout) {
     return getView();
   }
   function getView() { return {...cameraView}; }
-  function projectToPlan(x, y) {
-    if (disposed || !Number.isFinite(x) || !Number.isFinite(y) || currentWidth <= 0 || currentHeight <= 0) return null;
+  function pointRay(x, y) {
+    if (disposed || !Number.isFinite(x) || !Number.isFinite(y) || currentWidth <= 0 || currentHeight <= 0) return false;
     raycaster.setFromCamera(new THREE.Vector2(x / currentWidth * 2 - 1, 1 - y / currentHeight * 2), camera);
+    return true;
+  }
+  function projectToPlan(x, y, type) {
+    if (!pointRay(x, y)) return null;
+    floorPlane.constant = -garageBaseY(type);
     return raycaster.ray.intersectPlane(floorPlane, projected)
       ? {x: projected.x, y: projected.z} : null;
+  }
+  function pickGarage(x, y) {
+    if (!garages.size || !pointRay(x, y)) return null;
+    const visibleMeshes = [];
+    for (const root of garages.keys()) {
+      root.traverseVisible(node => { if (node.isMesh) visibleMeshes.push(node); });
+    }
+    const hit = raycaster.intersectObjects(visibleMeshes, false)[0];
+    if (!hit || raycaster.intersectObjects(structureMeshes, false)
+      .some(obstruction => obstruction.distance < hit.distance - 0.01)) return null;
+    for (let node = hit.object; node; node = node.parent) {
+      if (garages.has(node)) return garages.get(node);
+    }
+    return null;
   }
   function render(timeSeconds = 0, statesById = {}, environment = {}) {
     if (disposed || currentWidth < 1 || currentHeight < 1) return;
@@ -876,12 +931,12 @@ export function createStorybookScene(canvas, layout) {
   function anchor(itemId) {
     const entry = anchors.get(itemId);
     if (!entry || currentWidth < 1 || currentHeight < 1) return null;
-    const { x, z, object } = entry;
+    const { x, z, baseY, object } = entry;
     if (object) {
       position.set(object.anchorOffset?.x || 0, object.anchorY || 0, object.anchorOffset?.z || 0);
       object.root.localToWorld(position);
     } else {
-      position.set(x, 6, z);
+      position.set(x, baseY + 6, z);
     }
     position.project(camera);
     return { x: (position.x + 1) / 2, y: (1 - position.y) / 2 };
@@ -906,5 +961,5 @@ export function createStorybookScene(canvas, layout) {
     lighting.dispose();
     renderer.dispose();
   }
-  return { resize, render, anchor, setView, getView, projectToPlan, dispose };
+  return { resize, render, anchor, setView, getView, projectToPlan, pickGarage, dispose };
 }

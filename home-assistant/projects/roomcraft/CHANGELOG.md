@@ -1,5 +1,12 @@
 # Changelog
 
+## Second-floor landing and ground-level garage
+
+- The exterior stair descends from the lower-left upstairs landing toward the upper-left ground approach. Defined tread edges make it readable from above and in angled views.
+- The detached garage sits on the first-floor ground plane. Its editable footprint, door control and independent camera binding carry forward.
+- Published a refreshed 1536 × 864 plan through Studio. Readback verified all 14 tread edges, the same layout and all 23 object bindings. Checked Top down, From west, Studio import and return to Roomcraft Home on the wall tablet. Isolated Chrome also verified garage roof selection, drag and new placement in an angled view.
+- Passed 123 editor and engine tests, 53 Home Assistant JavaScript tests, 15 Python tests, TypeScript, lint with zero errors and the production build. The owner-private editor deployed as Site v56 from `71efd7a9864eeb5a10f4d658db1ced7a04d52162`. Restore the private pre-release dashboard backup and previous assets to roll back Home Assistant. Roll back the Site separately.
+
 ## Editable walls, fences and exterior
 
 - Revision 8 turns the reference decks, stair and railings into editable layout records. Design and the exported plan draw architecture from the same geometry as the 3D scene. The source illustration is available in Reference.

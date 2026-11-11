@@ -1468,6 +1468,7 @@
     getSelection: () => selected ? {...selected} : null,
     getTool: () => viewMode === 'reference' ? 'reference' : pendingWallFinish ? 'wall' : tool,
     hasPlacement: () => Boolean(pendingTemplate),
+    getPlacementType: () => pendingTemplate,
     showStatus: setStatus,
     useSelectTool() {
       if (viewMode === 'design' && tool === 'select' && !pendingWallFinish) return;

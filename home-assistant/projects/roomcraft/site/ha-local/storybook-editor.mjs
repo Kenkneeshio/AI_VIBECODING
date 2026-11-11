@@ -46,7 +46,8 @@ export function pickEditorItem(items, screenPoint, planPoint, anchors, width, he
     if (!anchor) return [];
     const distance = Math.hypot(anchor.x * width - screenPoint.x, anchor.y * height - screenPoint.y);
     const near = distance <= SELECT_RADIUS;
-    if (!near && !containsItem(item, planPoint)) return [];
+    // The garage mesh is picked separately at its visible ground-level height.
+    if (!near && (item.type === 'garageDoor' || !containsItem(item, planPoint))) return [];
     return [{item, index, distance, near, area: item.w * item.h}];
   });
   candidates.sort((a, b) => Number(b.near) - Number(a.near) ||
@@ -319,23 +320,25 @@ export function mountStorybookEditor(document, host) {
     event.preventDefault();
     event.stopPropagation();
     const screen = pointerPoint(event);
-    const planPoint = scene.projectToPlan(screen.x, screen.y);
-    if (!planPoint) return;
     if (api.hasPlacement()) {
-      api.placeAt(planPoint.x, planPoint.y);
+      const point = scene.projectToPlan(screen.x, screen.y, api.getPlacementType());
+      if (point) api.placeAt(point.x, point.y);
       refresh();
       return;
     }
     const {width, height} = currentSize();
     const anchors = new Map(project.items.map(item => [item.id, scene.anchor(item.id)]));
-    const item = forcedId ? project.items.find(item => item.id === forcedId) :
-      pickEditorItem(project.items, screen, planPoint, anchors, width, height);
+    const hitId = forcedId ?? scene.pickGarage(screen.x, screen.y);
+    const item = hitId ? project.items.find(item => item.id === hitId) :
+      pickEditorItem(project.items, screen, scene.projectToPlan(screen.x, screen.y), anchors, width, height);
     api.selectItem(item?.id ?? null);
     if (!item) {
       draw();
       return;
     }
-    drag = {item: {...item}, startScreen: screen, startPlan: planPoint, pointerId: event.pointerId};
+    const startPlan = scene.projectToPlan(screen.x, screen.y, item.type);
+    if (!startPlan) return;
+    drag = {item: {...item}, startScreen: screen, startPlan, pointerId: event.pointerId};
     canvas.setPointerCapture(event.pointerId);
     draw();
   };
@@ -345,7 +348,7 @@ export function mountStorybookEditor(document, host) {
     if (!drag || drag.pointerId !== event.pointerId || !scene) return;
     const screen = pointerPoint(event);
     if (!drag.moved && Math.hypot(screen.x - drag.startScreen.x, screen.y - drag.startScreen.y) < MIN_DRAG) return;
-    const p = scene.projectToPlan(screen.x, screen.y);
+    const p = scene.projectToPlan(screen.x, screen.y, drag.item.type);
     if (!p) return;
     drag.moved = true;
     drag.position = {x: drag.item.x + p.x - drag.startPlan.x, y: drag.item.y + p.y - drag.startPlan.y};

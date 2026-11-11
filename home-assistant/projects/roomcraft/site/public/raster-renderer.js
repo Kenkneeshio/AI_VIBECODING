@@ -247,23 +247,39 @@
     return gradient;
   }
 
-  function drawStairs(c, item) {
+  function drawStairs(c, item, stair) {
     const {w, h} = item;
     const steps = Number.isInteger(item.steps) && item.steps >= 2 && item.steps <= 40 ? item.steps : 14;
     const run = h / steps;
+    const left = -w / 2;
+    const lowEnd = -h / 2;
+    const apronDepth = stair?.apronDepth ?? Math.min(46, Math.max(12, w * .47));
     c.save();
     c.translate(item.x, item.y);
     c.rotate((item.rotation || 0) * Math.PI / 180);
-    c.fillStyle = '#54463733';
-    c.fillRect(-w / 2 + 4, -h / 2 + 6, w, h);
+    // The approach is on grade at the low end. The +Y end meets the upstairs landing.
+    c.fillStyle = '#a99c88';
+    c.fillRect(left, lowEnd - apronDepth, w, apronDepth);
+    c.fillStyle = '#c2b39b';
+    c.fillRect(left + 2, lowEnd - apronDepth + 2, Math.max(0, w - 4), apronDepth - 3);
+    c.fillStyle = '#a99c88';
+    c.fillRect(-.6, lowEnd - apronDepth + 2, 1.2, apronDepth - 3);
+    c.fillStyle = '#54463745';
+    c.fillRect(left + 4, lowEnd, w, h);
     for (let step = 0; step < steps; step++) {
-      const y = -h / 2 + step * run;
-      c.fillStyle = step % 2 ? '#e2c2a6' : '#d5b198';
-      c.fillRect(-w / 2, y, w, run);
-      c.fillStyle = '#98796e';
-      c.fillRect(-w / 2, y, w, Math.min(2.2, run * .14));
-      c.fillStyle = '#fff4db8c';
-      c.fillRect(-w / 2 + 2, y + Math.min(2.4, run * .16), Math.max(0, w - 4), Math.min(1.6, run * .1));
+      const y = lowEnd + step * run;
+      const shade = 61 + step * 6 / (steps - 1);
+      const nose = Math.min(4.2, run * .15);
+      c.fillStyle = material(c, left, y, w, run, [
+        [0, step % 2 ? '#dec2a7' : '#d6b99f'],
+        [.22, '#e9cdb0'],
+        [1, `hsl(25 32% ${shade}%)`],
+      ]);
+      c.fillRect(left, y, w, run);
+      c.fillStyle = '#806456';
+      c.fillRect(left, y, w, nose);
+      c.fillStyle = '#f7dfc4';
+      c.fillRect(left, y + nose, w, Math.min(2.2, run * .085));
     }
     c.restore();
   }
@@ -478,7 +494,8 @@
     const layers = Engine.render.orderSceneItems(project.items, window.RoomcraftInventory?.byType);
     yard(c);
     drawFloors(c, project.rooms, plan?.floorStructure);
-    for (const item of project.items) if (item.type === 'stairs') drawStairs(c, item);
+    const stairs = new Map((plan?.stairs || []).map(stair => [stair.item.id, stair]));
+    for (const item of project.items) if (item.type === 'stairs') drawStairs(c, item, stairs.get(item.id));
     for (const item of layers.floorItems) drawItem(c, item, fallback);
     for (const item of layers.regularItems) if (item.type !== 'stairs') drawItem(c, item, fallback);
     drawWalls(c, walls, plan?.wallStructure);

@@ -1,5 +1,11 @@
 # Decision log
 
+## Keep the upper floor and the ground level distinct
+
+The home, porch and upper landing share one second-floor elevation. The authored stair rises from its local negative Y end on grade to its positive Y end at the landing. Each view derives the treads and ground approach from that object, so rotating or moving it also moves the approach.
+
+A detached garage sits on the ground plane while its saved coordinates remain in the shared 2D plan. Studio uses the object's elevation when projecting its placement and drag. The dashboard projects the door and camera targets through the active camera from their own scene positions. Elevation is derived from the layout and object type, so existing layouts need no migration.
+
 ## The saved project owns every structural piece
 
 Reference revision 8 converts the old shell into editable deck polygons, one stair object and fence segments. Existing solid wall and window geometry carries forward. Studio and Roomcraft Home share a projection from those records, so a deleted wall stays deleted and a new fence can appear in the 2D plan and 3D views. The furnished illustration remains available in Reference.
