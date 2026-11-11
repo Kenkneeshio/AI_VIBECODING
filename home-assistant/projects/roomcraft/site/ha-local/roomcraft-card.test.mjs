@@ -782,6 +782,12 @@ test('the dashboard menu toggles live object and camera details without changing
   menu._detailToggle.listeners.click();
   assert.equal(object.attributes['data-show-details'], 'false');
   assert.equal(camera.attributes['data-show-details'], 'false');
+  ObjectControl.detailVisibility = true;
+  assert.equal(menu._detailToggle.attributes['aria-pressed'], 'true');
+  assert.equal(object.attributes['data-show-details'], 'true');
+  assert.equal(camera.attributes['data-show-details'], 'true');
+  assert.equal(localStorageValues.get('roomcraft.show-object-details.v1'), 'true');
+  ObjectControl.detailVisibility = false;
   menu.disconnectedCallback();
   camera.disconnectedCallback();
   object.disconnectedCallback();
@@ -1073,6 +1079,16 @@ test('presence switch dots follow only the bound occupancy entity', () => {
   assert.equal(object._button.attributes['data-state'], 'off', 'presence cannot invent the dimmer state');
   assert.equal(object._button.attributes['data-presence'], 'on');
   assert.match(object._button.attributes['aria-label'], /Presence detected/);
+  object.setAttribute('data-renderer', 'storybook');
+  object.radarStatus = 'tracking';
+  object.hass = { states: { 'light.inovelli_vzm32_sn': { state: 'off' } } };
+  assert.equal(object._button.attributes['data-state'], 'off');
+  assert.equal(object._button.attributes['data-radar'], 'tracking');
+  assert.match(object._button.attributes['aria-label'], /Live radar tracking/);
+  object.radarStatus = 'clear';
+  object.hass = { states: { 'light.inovelli_vzm32_sn': { state: 'on' } } };
+  assert.equal(object._button.attributes['data-state'], 'on');
+  assert.equal(object._button.attributes['data-radar'], 'clear');
   assert.throws(() => object.setConfig({ entity: 'light.inovelli_vzm32_sn',
     roomcraft_presence_entity: 'light.wrong_domain' }), /invalid device binding/i);
   object.disconnectedCallback();

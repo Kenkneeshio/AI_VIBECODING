@@ -5,7 +5,8 @@ import {placeStorybookTargets, readStorybookConfig, storybookFrame, storybookPre
 const items = [
   {id: 'motor', type: 'fan', entityId: 'switch.example_motor'},
   {id: 'hub', type: 'ceilingLight', entityId: 'switch.example_lamp'},
-  {id: 'rocker', type: 'presenceSwitch', entityId: 'light.example_dimmer'},
+  {id: 'rocker', type: 'presenceSwitch', entityId: 'light.example_dimmer',
+    presenceTrackEntityId: 'sensor.example_radar'},
   {id: 'camera', type: 'cameraThumbnail', entityId: 'camera.example'},
   {id: 'robot', type: 'robotVacuum', entityId: 'vacuum.example'},
 ];
@@ -41,6 +42,12 @@ test('storybook selects only layout-owned plan controls and keeps camera event m
   assert.ok(model.watch.has('binary_sensor.example_ring'));
   assert.ok(model.watch.has('binary_sensor.example_presence'));
   assert.ok(!model.watch.has('light.wrong_binding'));
+});
+
+test('live refresh watches radar-only updates independently from ordinary switch and occupancy updates', () => {
+  const initial = {'sensor.example_radar': {state: '0'}};
+  const changed = {...initial, 'sensor.example_radar': {state: '1'}};
+  assert.deepEqual([...model.watch].filter(id => changed[id] !== initial[id]), ['sensor.example_radar']);
 });
 
 test('physical fan, hub and presence animations read independent state', () => {

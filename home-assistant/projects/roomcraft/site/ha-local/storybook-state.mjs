@@ -21,6 +21,9 @@ export function readStorybookConfig(config) {
   });
   const weather = plan.elements.find(element => element.type === 'custom:roomcraft-weather-outdoor') ?? {};
   const watch = new Set([weather.weather_entity, weather.sun_entity, weather.moon_entity, 'sun.sun']);
+  for (const item of layout.items) {
+    if (item.type === 'presenceSwitch' && item.presenceTrackEntityId) watch.add(item.presenceTrackEntityId);
+  }
   for (const element of controls) {
     for (const key of ['entity', 'roomcraft_tap_entity', 'roomcraft_hold_entity',
       'roomcraft_presence_entity', 'roomcraft_vacuum_map_entity', 'camera_entity', 'image_entity']) {

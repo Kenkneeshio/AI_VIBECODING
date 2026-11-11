@@ -2,6 +2,12 @@
 
 Roomcraft Studio edits the layout used by Roomcraft Home. Use the 3D view to arrange objects, or the 2D plan to edit rooms and walls, then export to Home Assistant. You can also download the image, editable project, or Home Assistant YAML separately.
 
+## Use the live dashboard
+
+Open **Roomcraft Home** in the Home Assistant sidebar. Under **Menu → On the map**, turn on **Object details** to see each linked control's name and current state beside the object. Turn it off to clear the labels. This setting is shared with Floor Plan in the same browser. **View controls** has rotation, zoom and default view settings. **Manage** opens Layout Studio, Object models or System health.
+
+The weather beside the menu shows the sun or moon, with clouds and precipitation for the current condition. Tap the weather to open Home Assistant's weather details. Reduced motion uses still weather artwork.
+
 ## Find and edit object models
 
 Open **Main menu → Object models** in Studio or Roomcraft Home. Choose **On the plan** to find and edit an existing object, **Add objects** to search the catalog, or **Home Assistant devices** to match a device to a model. Choose a suggested model or browse all compatible choices. Roomcraft Home opens Studio for placement and edits.
@@ -12,9 +18,9 @@ Search **Fish Aquarium** or **Lizard Terrarium** to place the animated tanks. Th
 
 ## Track presence on the 3D plan
 
-Open **Main menu → Presence tracking** in Roomcraft Home to see the bound switches' radar target counts and recent zone reports. A calibrated switch can show one anonymous character for each fresh target. The sensor can miss an occupant or pick up moving objects, so its count is an estimate of detected targets. It has no heart-rate or breathing-rate reading.
+Open **Menu → On the map → Presence tracking** in Roomcraft Home to see the bound switches' radar target counts and recent zone reports. A calibrated switch can show one anonymous character for each fresh target. The sensor can miss an occupant or pick up moving objects, so its count is an estimate of detected targets. It has no heart-rate or breathing-rate reading.
 
-An administrator enables detailed reporting for the compatible switch in Home Assistant. In Home Assistant Studio, select its presence switch object and set **Radar targets entity** to the device's **Radar target count** sensor. The existing occupancy indicator on the switch continues to follow its occupancy binding.
+An administrator enables detailed reporting for the compatible switch in Home Assistant. In Home Assistant Studio, select its presence switch object and set **Radar targets entity** to the device's **Radar target count** sensor. The original red and green dot shows dimmer power. The second dot is blue when a target is on the map, amber when there is a detection without a mapped position, gray when clear and hollow gray when unavailable. Open **Presence tracking** to see the count and recent zones.
 
 Use **Plan pixels per metre**, **Rotation offset**, and **Flip radar left and right** to align the radar with the drawing. Select **Use switch position** to apply those settings from the placed switch. Have someone stand at two known points, preferably at different distances and on different sides of the switch, and adjust until their positions agree with the plan. Use **Export to dashboard** to publish the calibration. The advanced transform field accepts six affine coefficients when additional adjustment is needed.
 
@@ -56,9 +62,9 @@ This public-safe PNG shows the corrected sofa orientation, recessed blue windows
 
 ## 1. Open the editor and choose a view
 
-The Second Floor dashboard has three views: **Floor Plan**, **Layout Studio**, and **Live Home**. On a laptop or tablet connected to the home network, open `http://<HA-LAN-IP>:8123/second-floor/studio` and sign in to Home Assistant. The pencil-ruler icon in Floor Plan also navigates to Studio. The editor runs inside this Home Assistant view and uses your HA session; an administrator account is needed to publish a layout. On opening, the editor loads the current saved dashboard project. If a browser held a different local draft, the editor saves it for **Recover previous browser draft**. If Home Assistant cannot be reached, that local draft remains available.
+In Roomcraft Home, open **Menu → Manage → Layout Studio**. On the home network, you can also open `http://<HA-LAN-IP>:8123/second-floor/studio` and sign in. The pencil-ruler icon in Floor Plan also opens Studio. An administrator account can publish a layout. Studio loads the current saved project on opening and offers **Recover previous browser draft** when a different local draft exists. The local draft remains available during a Home Assistant outage.
 
-For the owner's HA profile, **Second Floor** is the default dashboard and the first sidebar item. Home Assistant stores that preference for the account across devices. Other accounts can choose their own default. On the Apolosign Calendar wall tablet, Home Assistant Companion is also the default Android Home app, so pressing Home returns to the panel. A private 1920 × 1080 tablet capture showed the entire original left staircase and right exterior wall without crop or scroll, high-contrast object states, the front-door last-event still, decoded live garage and overhead feeds, current rain, and the 12-hour forecast strip. Physical touch coverage and automatic launch after a tablet reboot remain to be checked. See the [tablet access runbook](tablet-access.md) for recovery and rollback.
+**Roomcraft Home** is the owner's default dashboard. **Main Dashboard** remains available in the sidebar and is the system default. Second Floor keeps the shared layout and the direct links for Studio, Floor Plan and System Health. Home Assistant Companion is the default Android Home app on the Apolosign Calendar wall tablet, so pressing Home returns to the panel. [Tablet access and recovery](tablet-access.md)
 
 ![Home Assistant Floor Plan in a 960 by 600 browser viewport, with the full plan, device markers, weather, clock, and Studio edit icon visible](images/tablet-preview.png)
 
@@ -162,7 +168,7 @@ The design canvas shows stylized placeholders, not private camera frames. The da
 
 ### Read the outdoor weather
 
-The exterior layer shows the current local condition and a strip of forecast hours through the next 12 hours. Tap a forecast tick to preview that hour's rain, snow, clouds, daylight, or night briefly; the artwork then returns to current observed weather. The sun and moon are drawn only outside the house, so room controls stay legible. Forecast times follow Home Assistant's configured time zone. A forecast is a prediction for the selected hour, while **Now** is the current weather entity. The weather layer is configured in the private HA dashboard by an administrator; moving furniture in Studio does not change that binding. Reduced-motion mode stops decorative animation. Current rain and the forecast strip were verified on the tablet; the actual day/night transition remains to be observed.
+Roomcraft Home shows the current condition in the header. In **Floor Plan**, the exterior layer also offers a 12-hour forecast strip. Tap a forecast tick to preview that hour's rain, snow, clouds, daylight or night briefly. The artwork then returns to the current weather. Forecast times follow Home Assistant's configured time zone. An administrator configures the weather binding in the Home Assistant dashboard. Reduced motion stops decorative animation.
 
 Confirm a device's physical location in Home Assistant before placing a control. A friendly name does not prove the room. The editor stores control placement; Home Assistant performs actual device actions. A device that is unavailable or missing should be corrected in Home Assistant before use.
 

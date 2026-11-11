@@ -707,7 +707,7 @@ function buildYard(batch, plan) {
   }
 }
 
-function buildWeather(scene, plan) {
+function buildWeather(scene, plan, showSkyArt) {
   const { minX, maxX, minZ } = plan.houseBounds;
   const rand = seededRandom(2912);
   const bounds = plan.bounds;
@@ -765,10 +765,10 @@ function buildWeather(scene, plan) {
   return (time, environment, reduceMotion) => {
     const { night = false, condition = '', moonPhase = '', daylightKnown = true } = environment;
     const motionTime = reduceMotion ? 0 : time;
-    cloud.visible = CLOUDY.has(condition);
+    cloud.visible = showSkyArt && CLOUDY.has(condition);
     cloud.position.x = Math.sin(motionTime * 0.16) * (condition.includes('windy') ? 48 : 23);
-    sun.visible = daylightKnown && !night;
-    moon.visible = daylightKnown && night && VISIBLE_MOON_PHASES.has(moonPhase);
+    sun.visible = showSkyArt && daylightKnown && !night;
+    moon.visible = showSkyArt && daylightKnown && night && VISIBLE_MOON_PHASES.has(moonPhase);
     moonShadow.visible = moonPhase !== 'full_moon';
     const waxing = moonPhase.startsWith('waxing') || moonPhase === 'first_quarter';
     const quarter = moonPhase.endsWith('quarter');
@@ -872,7 +872,7 @@ function trackedFloor(plan) {
   };
 }
 
-export function createStorybookScene(canvas, layout) {
+export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
   const plan = compileStorybookPlan(layout);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'low-power' });
   // Studio reuses its canvas after edits. Clear blending and depth state from the previous renderer.
@@ -898,8 +898,9 @@ export function createStorybookScene(canvas, layout) {
   const structureMeshes = scene.children.filter(node => node.isMesh);
   const lighting = createStorybookLighting(renderer, scene, plan.bounds);
   lighting.markStructure();
-  const updateWeather = buildWeather(scene, plan);
-  const people = createStorybookPeople(scene, trackedFloor(plan));
+  const updateWeather = buildWeather(scene, plan, showSkyArt);
+  const floorForPerson = trackedFloor(plan);
+  const people = createStorybookPeople(scene, floorForPerson);
   const anchors = new Map();
   const roots = new Map();
   const garages = new Map();
@@ -1049,6 +1050,7 @@ export function createStorybookScene(canvas, layout) {
   return {
     resize, render, anchor, setView, getView, projectToPlan, pickGarage, exteriorClearance, dispose,
     hasAmbientMotion: ambientObjects.length > 0, renderAmbient, setPeople,
+    canPlacePerson: (x, y) => Number.isFinite(floorForPerson(x, y)),
     get hasPeopleMotion() { return people.hasMotion; },
   };
 }

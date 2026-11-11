@@ -752,6 +752,9 @@ function controlDisplayState(value, domain) {
 
 /** The linked object's own artwork and state treatment form its hit target. */
 class RoomcraftObjectControl extends HTMLElement {
+  static get detailVisibility() { return roomcraftDetailsVisible; }
+  static set detailVisibility(visible) { setDetailVisibility(visible); }
+
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -764,7 +767,7 @@ class RoomcraftObjectControl extends HTMLElement {
       this._detailsVisible = Boolean(event.detail?.visible);
       this._refreshDetailVisibility();
     };
-    this._onDetailResize = () => this._refreshDetailPosition();
+    this._onDetailResize = () => this.updateDetailPosition();
   }
 
   setConfig(config) {
@@ -824,6 +827,15 @@ class RoomcraftObjectControl extends HTMLElement {
       .target:active{filter:brightness(1.25)}
       .target[data-toggleable="true"]::before{content:"";position:absolute;right:2px;top:2px;z-index:5;width:4px;height:4px;border-radius:50%;background:#e04444;box-shadow:0 0 0 1px #190b0bcc;pointer-events:none}
       .target[data-toggleable="true"][data-state="on"]::before{background:#2fe176;box-shadow:0 0 0 1px #061a0dcc}
+      .radar-indicator{display:none;position:absolute;right:1px;top:11px;z-index:5;width:6px;height:6px;
+        box-sizing:border-box;border-radius:50%;background:#b5adbd;box-shadow:0 0 0 1px #2d2637;pointer-events:none}
+      :host([data-renderer="storybook"]) .target[data-radar] .radar-indicator{display:block}
+      .target[data-radar="tracking"] .radar-indicator{background:#72daff;box-shadow:0 0 0 1px #18425d,0 0 7px #69d9ff;
+        animation:roomcraft-radar-pulse 1.8s ease-in-out infinite}
+      .target[data-radar="occupied"] .radar-indicator{background:#ffca70;box-shadow:0 0 0 1px #63401e,0 0 5px #ffc96d}
+      .target[data-radar="unavailable"] .radar-indicator{border:1px solid #c6bdcf;background:#39313e}
+      @keyframes roomcraft-radar-pulse{50%{box-shadow:0 0 0 1px #18425d,0 0 9px 2px #69d9ff9c}}
+      @media(prefers-reduced-motion:reduce){.target[data-radar="tracking"] .radar-indicator{animation:none}}
       .target[data-feedback]::after{content:"";position:absolute;inset:1px;z-index:2;border:3px solid #d9fff4;border-radius:12px;background:#b8fff035;box-shadow:0 0 0 3px #15313cbb,0 0 14px 5px #6eead5c9;pointer-events:none}
       .target[data-feedback="hold"]::after{border-color:#fff2bc;background:#ffe8a42d;box-shadow:0 0 0 3px #372a1fbb,0 0 14px 5px #ffd47bc9}
       .target[data-state="unavailable"]{cursor:help}
@@ -1059,6 +1071,10 @@ class RoomcraftObjectControl extends HTMLElement {
     rotor.append(hub);
     art.append(rotor);
     button.append(art);
+    const radarIndicator = document.createElement('span');
+    radarIndicator.className = 'radar-indicator';
+    radarIndicator.setAttribute('aria-hidden', 'true');
+    button.append(radarIndicator);
     const detail = document.createElement('div');
     detail.className = 'detail-badge';
     detail.setAttribute('aria-hidden', 'true');
@@ -1155,6 +1171,8 @@ class RoomcraftObjectControl extends HTMLElement {
       : 'off';
     this._button.setAttribute('data-presence', presenceValue === 'on' ? 'on' :
       presenceValue === 'off' ? 'off' : 'unavailable');
+    if (this.radarStatus) this._button.setAttribute('data-radar', this.radarStatus);
+    else this._button.removeAttribute('data-radar');
     const label = this._config.title || state?.attributes?.friendly_name || this._config.entity;
     const tap = this._actionFor('tap');
     const hold = this._actionFor('hold');
@@ -1166,8 +1184,15 @@ class RoomcraftObjectControl extends HTMLElement {
     const presenceDescription = this._config.roomcraft_presence_entity
       ? ` Presence ${presenceValue === 'on' ? 'detected' : presenceValue === 'off' ? 'clear' : 'unavailable'}.`
       : '';
-    this._button.setAttribute('aria-label', `${label}: ${displayValue}.${presenceDescription} ${describe(tap, 'Tap')}; ${describe(hold, 'hold')}.`);
-    this._button.title = `${label} · ${displayValue}`;
+    const radarDescription = {
+      tracking: 'Live radar tracking',
+      occupied: 'Occupancy detected, awaiting a mapped position',
+      clear: 'Radar area clear',
+      unavailable: 'Radar position unavailable',
+    }[this.radarStatus];
+    const trackingLabel = radarDescription ? ` ${radarDescription}.` : '';
+    this._button.setAttribute('aria-label', `${label}: ${displayValue}.${presenceDescription}${trackingLabel} ${describe(tap, 'Tap')}; ${describe(hold, 'hold')}.`);
+    this._button.title = [label, displayValue, radarDescription].filter(Boolean).join(' · ');
     this._detailName.textContent = label;
     this._detailState.textContent = displayValue;
     this._detailState.setAttribute('data-state', visualState === 'unavailable' ? 'unavailable' : displayValue);
@@ -1208,10 +1233,10 @@ class RoomcraftObjectControl extends HTMLElement {
   _refreshDetailVisibility() {
     this.setAttribute('data-show-details', String(this._detailsVisible));
     this._detail?.setAttribute('aria-hidden', String(!this._detailsVisible));
-    this._refreshDetailPosition();
+    this.updateDetailPosition();
   }
 
-  _refreshDetailPosition() {
+  updateDetailPosition() {
     if (!this._detailsVisible || typeof this.getBoundingClientRect !== 'function') return;
     const rect = this.getBoundingClientRect();
     const width = Number(window.innerWidth) || document.documentElement?.clientWidth || 0;
@@ -1845,7 +1870,7 @@ class RoomcraftCameraThumbnail extends HTMLElement {
       this._detailsVisible = Boolean(event.detail?.visible);
       this._refreshDetailVisibility();
     };
-    this._onDetailResize = () => this._refreshDetailPosition();
+    this._onDetailResize = () => this.updateDetailPosition();
   }
 
   setConfig(config) {
@@ -1968,10 +1993,10 @@ class RoomcraftCameraThumbnail extends HTMLElement {
 
   _refreshDetailVisibility() {
     this.setAttribute('data-show-details', String(this._detailsVisible));
-    this._refreshDetailPosition();
+    this.updateDetailPosition();
   }
 
-  _refreshDetailPosition() {
+  updateDetailPosition() {
     if (!this._detailsVisible || typeof this.getBoundingClientRect !== 'function') return;
     const rect = this.getBoundingClientRect();
     const width = Number(window.innerWidth) || document.documentElement?.clientWidth || 0;

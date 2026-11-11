@@ -1,5 +1,13 @@
 # Decision log
 
+## Keep everyday controls on Roomcraft Home
+
+Give a wall-tablet user one current Roomcraft entry and keep Main Dashboard available. Second Floor holds the saved project and the existing Studio, Floor Plan and System Health paths, so it stays registered with its sidebar entry hidden. Preserve the prototype's dashboard metadata and configuration in the private archive before removing its registration. The user and system defaults stay on their existing dashboards.
+
+Group the live menu under On the map, View controls and Manage. Reuse Floor Plan's object detail preference so the two surfaces agree, and place labels beside the controls. The live header owns the animated sun, moon, clouds and current weather. The saved layout continues to own object placement, while live weather stays in the presentation.
+
+Treat detailed radar updates as their own render input. The second status dot distinguishes mapped targets, presence without a mapped target, clear and unavailable. The original red and green dot shows dimmer power. Larger characters improve visibility on a wall tablet. Placement still uses the saved calibration and valid floor geometry.
+
 ## Keep radar telemetry local and separate from the saved plan
 
 The household can preview where the switch detects movement and see recent radar counts on the tablet. Keep the switch paired with ZHA and attach a local listener to its existing radar cluster. An administrator enables detailed reporting for one device at a time. Stock occupancy remains an independent automation input. An explicit vacancy can report zero, while silence alone leaves count unknown.

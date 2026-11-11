@@ -3,6 +3,7 @@ import * as THREE from 'three';
 const MAX_TRACKS = 24;
 const MOVE_SECONDS = 0.32;
 const MAX_INTERPOLATION_DISTANCE = 125;
+const CHARACTER_SCALE = 1.17;
 const STYLES = [
   {sweater: '#d77465', trim: '#ffe3bb', skin: '#d9a57e', hair: '#63453b'},
   {sweater: '#67a396', trim: '#d6efe4', skin: '#efbc92', hair: '#7c5544'},
@@ -51,6 +52,7 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
     return {
       sphere: new THREE.SphereGeometry(1, 12, 8),
       disc: new THREE.CircleGeometry(1, 24).rotateX(-Math.PI / 2),
+      groundRing: new THREE.RingGeometry(14.2, 16.5, 28).rotateX(-Math.PI / 2),
       palette: STYLES.map(style => Object.fromEntries(
         Object.entries(style).map(([part, color]) => [part, paintedMaterial(color)]),
       )),
@@ -59,6 +61,7 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
       shoes: paintedMaterial('#514656'),
       white: paintedMaterial('#fff1dc'),
       shadow: new THREE.MeshBasicMaterial({color:'#433849', transparent:true, opacity:0.22, depthWrite:false}),
+      groundMark: new THREE.MeshBasicMaterial({color:'#fbe9cc', transparent:true, opacity:0.74, depthWrite:false}),
     };
   }
 
@@ -76,6 +79,7 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
     const legs = [];
     group.add(root);
     root.add(body);
+    body.scale.setScalar(CHARACTER_SCALE);
 
     const ellipse = (parent, material, x, y, z, width, height, depth) => {
       const mesh = new THREE.Mesh(art.sphere, material);
@@ -87,8 +91,11 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
     const tinted = (parts, parent, ...shape) => parts.push(ellipse(parent, art.white, ...shape));
     const shadow = new THREE.Mesh(art.disc, art.shadow);
     shadow.position.y = 0.13;
-    shadow.scale.set(13, 1, 9.5);
+    shadow.scale.set(16, 1, 14);
     root.add(shadow);
+    const groundMark = new THREE.Mesh(art.groundRing, art.groundMark);
+    groundMark.position.y = 0.26;
+    root.add(groundMark);
 
     tinted(clothes, body, 0, 15, 0, 7.1, 8.3, 5.4);
     tinted(trim, body, 0, 20.7, 2.4, 5.8, 2.2, 4);
@@ -206,10 +213,11 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
   function dispose() {
     group.removeFromParent();
     if (!art) return;
-    for (const material of [art.ink, art.cheek, art.shoes, art.white, art.shadow]) material.dispose();
+    for (const material of [art.ink, art.cheek, art.shoes, art.white, art.shadow, art.groundMark]) material.dispose();
     for (const style of art.palette) for (const material of Object.values(style)) material.dispose();
     art.sphere.dispose();
     art.disc.dispose();
+    art.groundRing.dispose();
     group.clear();
     unused.length = 0;
     tracks.clear();
