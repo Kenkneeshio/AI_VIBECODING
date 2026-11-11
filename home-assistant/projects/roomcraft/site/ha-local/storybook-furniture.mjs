@@ -10,25 +10,71 @@ const color = Object.freeze({
   blush: '#dca3a0', peach: '#edc1a7', honey: '#dcb575', sand: '#e2c5a0',
   lilac: '#aca0c8', lilacLight: '#d7c9e1', blue: '#81a6b5', aqua: '#b4d6d3',
   ceramic: '#f2e6e0', shadow: '#a38898', glass: '#577b91', darkGlass: '#344459',
+  brass: '#c39257', binding: '#b29386', blueWater: '#9ac3bf',
 });
 
 const finishes = Object.freeze({
   sage: color.sage, mint: color.aqua, sky: color.blue, peach: color.peach,
   coral: '#cf8979', lavender: color.lilac, butter: color.honey, cream: color.linen,
   white: color.cream, oak: color.oakLight, walnut: color.walnut,
-  charcoal: '#505b68', brass: color.honey, terracotta: '#b97d63',
+  charcoal: '#505b68', brass: color.brass, terracotta: '#b97d63',
   forest: color.moss, blush: color.blush, teddy: '#aa8063', slate: '#9b9b9d',
 });
 
+const woods = new Set([color.oak, color.oakLight, color.walnut]);
+const textiles = new Set([color.sage, color.moss, color.linen, color.lilac, color.lilacLight,
+  color.blush, color.peach]);
+
+function furnitureMaterial(tint, grainDirection) {
+  const detail = woods.has(tint) ? 1 : textiles.has(tint) ? 2 : 0;
+  const glass = tint === color.glass || tint === color.darkGlass || tint === color.blueWater;
+  const brass = tint === color.brass;
+  const material = new THREE.MeshStandardMaterial({
+    color: tint,
+    roughness: brass ? .37 : glass ? .33 : tint === color.ceramic ? .44 : detail === 1 ? .64 : .89,
+    metalness: brass ? .42 : 0,
+  });
+  if (!detail) return material;
+  material.onBeforeCompile = shader => {
+    shader.uniforms.furnitureDetail = { value: detail };
+    shader.uniforms.furnitureGrainDirection = { value: grainDirection };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 furnitureSurfacePosition;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nfurnitureSurfacePosition = position;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>
+        varying vec3 furnitureSurfacePosition;
+        uniform float furnitureDetail;
+        uniform float furnitureGrainDirection;`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        vec3 localPoint = furnitureSurfacePosition;
+        float lengthwise = mix(localPoint.x, localPoint.z, furnitureGrainDirection);
+        float crosswise = mix(localPoint.z, localPoint.x, furnitureGrainDirection);
+        float pixelSize = max(fwidth(lengthwise), fwidth(crosswise));
+        float grain = 0.0;
+        if (furnitureDetail < 1.5) {
+          float warp = 1.3*sin(lengthwise*.054) + .45*sin(lengthwise*.143);
+          float fine = sin((crosswise + warp)*2.1) * (1.0-smoothstep(.55, 2.4, pixelSize));
+          grain = .048*fine + .037*sin((crosswise + warp)*.38);
+        } else {
+          float weave = sin(localPoint.x*2.4) * sin((localPoint.z + localPoint.y)*2.4);
+          grain = .035 * weave * (1.0-smoothstep(.5, 1.8, pixelSize));
+        }
+        diffuseColor.rgb *= 1.0 + grain;`);
+  };
+  return material;
+}
+
 class Miniature {
-  constructor() {
+  constructor(width, depth) {
     this.root = new THREE.Group();
     this.materials = new Map();
+    this.grainDirection = depth > width ? 1 : 0;
   }
 
   part(geometry, tint, x, y, z, angle = 0) {
     if (!this.materials.has(tint)) {
-      this.materials.set(tint, new THREE.MeshStandardMaterial({ color: tint, roughness: 0.87 }));
+      this.materials.set(tint, furnitureMaterial(tint, this.grainDirection));
     }
     const mesh = new THREE.Mesh(geometry, this.materials.get(tint));
     mesh.position.set(x, y, z);
@@ -67,6 +113,14 @@ class Miniature {
     return this.part(geometry, tint, x, y, z);
   }
 
+  basin(x, y, z, rx, height, rz) {
+    const profile = [[0, 0], [.74, 0], [.94, .20], [1, .72], [.96, 1], [.83, 1],
+      [.78, .64], [.56, .28], [.22, .25], [0, .25]].map(([r, level]) => new THREE.Vector2(r, level));
+    const geometry = new THREE.LatheGeometry(profile, 24);
+    geometry.scale(rx, height, rz);
+    return this.part(geometry, color.ceramic, x, y, z);
+  }
+
   finish(anchorY) {
     // Static pieces of the same material can share one draw call. Keep each
     // item's geometry independent so remounting a scene can dispose it safely.
@@ -99,6 +153,12 @@ function feet(p, x, z, w, d, height, tint = color.walnut) {
   }
 }
 
+function pillow(p, x, y, z, width, depth, tint, angle) {
+  const binding = tint === color.linen ? color.binding : color.blush;
+  p.box(x, y, z, width, 8, depth, binding, 3.2, angle);
+  p.box(x, y + 2.1, z, width - 2.6, 7.4, depth - 2.6, tint, 3.2, angle);
+}
+
 function sofa(p, w, d, tint, type) {
   const sectional = type === 'sofa' || type.includes('cloud-sofa');
   const vertical = sectional && d > w;
@@ -128,8 +188,8 @@ function sofa(p, w, d, tint, type) {
       p.box(mainX - mainWidth * .39, 27, z, mainWidth * .22, 31, span - 1, color.sage, 8);
     }
     p.box(mainX, 29, d * .445, mainWidth * .88, 20, arm, color.sage, 6);
-    p.box(mainX + mainWidth * .13, 35, -d * .31, mainWidth * .42, 11, span * .49, color.blush, 5, -.18);
-    p.box(mainX + mainWidth * .12, 35, d * .28, mainWidth * .40, 10, span * .45, color.linen, 5, .20);
+    pillow(p, mainX + mainWidth * .13, 35, -d * .31, mainWidth * .42, span * .49, color.peach, -.18);
+    pillow(p, mainX + mainWidth * .12, 35, d * .28, mainWidth * .40, span * .45, color.linen, .20);
   } else {
     const span = w * .80 / count;
     for (let i = 0; i < count; i++) {
@@ -140,8 +200,16 @@ function sofa(p, w, d, tint, type) {
     for (const x of [-w * .442, w * .442]) {
       p.box(x, 26, mainZ, arm, 22, mainDepth * .89, color.sage, 6);
     }
-    p.box(-w * .27, 35, mainZ - mainDepth * .15, w * .18, 11, mainDepth * .34, color.blush, 5, -.18);
-    p.box(w * .27, 35, mainZ - mainDepth * .12, w * .17, 10, mainDepth * .33, color.linen, 5, .20);
+    pillow(p, -w * .27, 35, mainZ - mainDepth * .15, w * .18, mainDepth * .34, color.peach, -.18);
+    pillow(p, w * .27, 35, mainZ - mainDepth * .12, w * .17, mainDepth * .33, color.linen, .20);
+  }
+  const throwWidth = vertical ? mainWidth * .67 : mainWidth * .19;
+  const throwDepth = vertical ? d * .14 : mainDepth * .58;
+  const throwX = vertical ? mainX + mainWidth * .06 : mainWidth * .32;
+  const throwZ = vertical ? d * .13 : mainZ + mainDepth * .10;
+  p.box(throwX, 37.1, throwZ, throwWidth, 1.7, throwDepth, color.lilacLight, .65);
+  for (const edge of [-1, 1]) {
+    p.box(throwX, 38.82, throwZ + edge * throwDepth * .36, throwWidth * .9, .25, 1.2, color.lilac);
   }
   return 58;
 }
@@ -207,7 +275,7 @@ function desk(p, w, d, tint, wraparound) {
     for (let row = 0; row < 3; row++) {
       const y = 6 + row * 9.7;
       p.box(x, y, returnZ + run * .41, returnWidth * .74, 8.4, 2, color.oak, .7);
-      p.box(x, y + 3, returnZ + run * .43, returnWidth * .26, 2, 2, color.honey, .5);
+      p.box(x, y + 3, returnZ + run * .43, returnWidth * .26, 2, 2, color.brass, .5);
     }
   }
   monitor(p, -w * .02, 44, z - back * .22, w * .28, back * .43);
@@ -240,18 +308,24 @@ function bed(p, w, d, tint, type) {
   for (const deck of decks) {
     p.box(0, deck, 0, w * .97, 15, d * .98, color.walnut, 5);
     p.box(0, deck + 12, 0, w * .90, 11, d * .92, color.linen, 4);
-    p.box(0, deck + 22, d * .15, w * .89, 8, d * .62, tint, 3.5);
+    p.box(0, deck + 21.6, d * .15, w * .89, 5, d * .62, color.lilac, 2.5);
+    p.box(0, deck + 23.7, d * .15, w * .877, 7, d * .605, tint, 3.4);
     p.box(0, deck + 28, -d * .11, w * .88, 3, d * .071, color.lilacLight, 1);
     const centers = w >= 145 ? [-w * .20, w * .20] : [0];
     for (const x of centers) {
-      p.box(x, deck + 22, -d * .275, w * (centers.length === 2 ? .34 : .49), 11,
-        d * .20, color.cream, 5, x < 0 ? -.04 : .04);
+      pillow(p, x, deck + 22, -d * .275, w * (centers.length === 2 ? .34 : .49),
+        d * .20, color.linen, x < 0 ? -.04 : .04);
     }
     const mark = Math.min(w, d) * .045;
-    star(p, -w * .19, deck + 30.2, d * .13, mark, color.cream);
-    star(p, w * .19, deck + 30.2, d * .25, mark * .77, color.honey);
+    for (const [x, z, scale, swatch] of [[-.24, .12, 1, color.cream], [.23, .27, .79, color.honey],
+      [.08, .04, .57, color.cream], [-.1, .34, .62, color.honey]]) {
+      star(p, w * x, deck + 30.8, d * z, mark * scale, swatch);
+    }
     for (const x of [-.32, -.17, 0, .17, .32]) {
-      p.box(w * x, deck + 30.1, d * .24, 1.1, .45, d * .32, color.lilacLight, 0);
+      p.box(w * x, deck + 30.71, d * .24, .85, .24, d * .33, color.lilacLight, 0);
+    }
+    for (const z of [.09, .195, .30, .405]) {
+      p.box(0, deck + 30.72, d * z, w * .71, .24, .9, color.lilacLight, 0);
     }
   }
   const cap = upperDeck || canopy ? 93 : 52;
@@ -278,6 +352,7 @@ function cabinet(p, w, d, tint, type) {
   feet(p, 0, 0, w, d, 5);
   p.box(0, 5, 0, w * .96, height - 6, d * .90, color.walnut, 3);
   p.box(0, height - 2, 0, w, 4, d, tint, 1.7);
+  p.box(0, height - 3.7, 0, w * .985, 1.5, d * .967, color.oak, .6);
   const drawerRows = nightstand ? 2 : 3;
   const drawerCols = w >= 95 ? 2 : 1;
   for (let row = 0; row < drawerRows; row++) for (let col = 0; col < drawerCols; col++) {
@@ -286,7 +361,7 @@ function cabinet(p, w, d, tint, type) {
     const x = drawerW * (col - (drawerCols - 1) / 2);
     const y = 5 + row * drawerH;
     p.box(x, y, d * .46, drawerW - 2, drawerH - 1.5, 2.9, tint, 1);
-    p.oval(x, y + drawerH * .45, d * .51, 2.2, 1.7, 2.2, color.honey);
+    p.oval(x, y + drawerH * .45, d * .51, 2.2, 1.7, 2.2, color.brass);
   }
   return height + 2;
 }
@@ -304,6 +379,10 @@ function rug(p, w, d, style) {
   p.box(0, 4.3, 0, w * .86, .5, d * .86, floral ? color.lilacLight : color.peach);
   for (const side of [-1, 1]) for (let i = -5; i <= 5; i++) {
     p.box(i * w * .074, 1.3, side * d * .493, w * .025, 1.2, d * .047, color.linen);
+  }
+  for (const side of [-1, 1]) {
+    p.box(side * w * .398, 4.84, 0, .6, .32, d * .797, color.linen);
+    p.box(0, 4.84, side * d * .398, w * .797, .32, .6, color.linen);
   }
   if (floral) for (const x of [-1, 0, 1]) for (const z of [-1, 0, 1]) {
     star(p, w * .22 * x, 4.9, d * .22 * z, Math.min(w, d) * .038, color.cream);
@@ -335,11 +414,10 @@ function counter(p, w, d, type) {
   }
   if (double) {
     for (const x of [-w * .24, w * .24]) {
-      p.disc(x, height + 1.9, 0, w * .16, 2.8, d * .36, color.ceramic);
-      p.disc(x, height + 4.7, 0, w * .126, .6, d * .27, color.aqua);
-      p.oval(x, height + 5.6, 0, 2.1, .7, 2.1, color.glass);
-      p.disc(x, height + 2, -d * .32, 2.6, 8, 2.6, color.honey);
-      p.box(x, height + 8.4, -d * .22, 4, 3, d * .2, color.honey, 1);
+      p.basin(x, height + 1.9, 0, w * .16, 5.5, d * .36);
+      p.oval(x, height + 3.48, 0, 2.1, .52, 2.1, color.brass);
+      p.disc(x, height + 2, -d * .32, 2.6, 8, 2.6, color.brass);
+      p.box(x, height + 8.4, -d * .22, 4, 3, d * .2, color.brass, 1);
     }
   }
   return height + 3;
@@ -348,14 +426,15 @@ function counter(p, w, d, type) {
 function bath(p, w, d, type) {
   if (type === 'tub') {
     p.box(0, 0, 0, w * .95, 19, d * .95, color.ceramic, 6);
-    p.box(0, 18, 0, w * .85, 3, d * .86, color.aqua, 1.3);
+    p.box(0, 18, 0, w * .85, 3, d * .86, color.blueWater, 1.3);
     for (const side of [-1, 1]) {
       p.box(side * w * .44, 17, 0, w * .11, 7, d * .94, color.cream, 2.6);
       p.box(0, 17, side * d * .43, w * .82, 7, d * .12, color.cream, 2.6);
     }
     p.disc(0, 21, -d * .31, 2.4, .9, 2.4, color.glass);
-    p.disc(0, 22, -d * .44, 3.5, 9, 3.5, color.honey);
-    p.box(0, 30, -d * .40, 5, 3.7, d * .10, color.honey, 1.3);
+    p.disc(0, 22, -d * .44, 3.5, 9, 3.5, color.brass);
+    p.box(0, 30, -d * .40, 5, 3.7, d * .10, color.brass, 1.3);
+    p.box(w * .24, 21.07, d * .14, w * .014, .18, d * .22, color.aqua, .08);
     return 34;
   }
   if (type === 'toilet') {
@@ -369,10 +448,10 @@ function bath(p, w, d, type) {
   }
   p.box(-w * .15, 0, -d * .14, w * .65, 24, d * .58, color.sage, 3.8);
   p.box(-w * .15, 23, -d * .14, w * .76, 4, d * .68, color.cream, 1.6);
-  p.disc(-w * .15, 27, -d * .11, w * .28, 3, d * .22, color.ceramic);
-  p.disc(-w * .15, 30, -d * .11, w * .23, .65, d * .17, color.aqua);
-  p.disc(-w * .15, 27, -d * .34, 2.5, 8, 2.5, color.honey);
-  p.box(-w * .15, 33, -d * .31, 4.7, 3, d * .1, color.honey, 1.1);
+  p.basin(-w * .15, 27, -d * .11, w * .28, 5.2, d * .22);
+  p.oval(-w * .15, 28.56, -d * .11, 1.6, .55, 1.6, color.brass);
+  p.disc(-w * .15, 27, -d * .34, 2.5, 8, 2.5, color.brass);
+  p.box(-w * .15, 33, -d * .31, 4.7, 3, d * .1, color.brass, 1.1);
   p.box(w * .34, 2, d * .12, w * .22, 17, d * .73, color.walnut, 2.1);
   p.box(w * .34, 19, d * .18, w * .24, 4.7, d * .34, color.blush, 1.7);
   return 36;
@@ -443,7 +522,7 @@ export function makeStorybookFurniture(item) {
   const { type, w, h: d } = item || {};
   if (typeof type !== 'string' || !Number.isFinite(w) || !Number.isFinite(d) || w < 1 || d < 1) return null;
   const tint = finishes[type.split('-').at(-1)];
-  const p = new Miniature();
+  const p = new Miniature(w, d);
   let top;
   if (type === 'sofa' || /(?:sofa|loveseat|chaise)-/.test(type)) {
     top = sofa(p, w, d, tint || color.sage, type);

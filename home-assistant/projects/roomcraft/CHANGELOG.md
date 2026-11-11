@@ -1,5 +1,10 @@
 # Changelog
 
+## Storybook finish and Roomcraft Home
+
+- Joined the 3D floors, walls and patio structure into continuous geometry while preserving authored openings. Added directional shadows, textured materials and responsive lamp lighting.
+- Added the standalone Roomcraft Home dashboard. It reads the same published layout as Studio. The installer documents how to select or roll back the profile default.
+
 ## Storybook 3D preview
 
 - Added an opt-in Home Assistant Storybook panel that renders the published layout as a warm orthographic miniature. It reuses the layout and the existing device and camera actions. Studio continues to author and publish the layout.

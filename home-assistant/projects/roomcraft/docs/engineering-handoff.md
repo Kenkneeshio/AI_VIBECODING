@@ -184,6 +184,8 @@ For each follow-on change, record the data source, offline behavior, accessible 
 
 ## Storybook 3D preview
 
+The standalone **Roomcraft Home** dashboard points to the same published Second Floor layout. Use the two-stage publish and promotion procedure in the [Home Assistant installer guide](../site/ha-local/README.md#standalone-dashboard-and-profile-default). The dedicated scene keeps the authored layout independent from geometry repairs and shadows. Diagnose projection and joins in `storybook-scene.mjs`, lighting in `storybook-lighting.mjs`, and materials in the furniture and device factories.
+
 The Home Assistant-only Storybook panel is installed with `ha-local/install.py --storybook` after `npm run build`. The panel reads the published plan and layout with the signed-in `hass` session. Its control and camera elements are the existing HA custom elements, with geometry supplied by `storybook-scene.mjs` and live state supplied by `storybook-state.mjs`. Device and furniture art live in their respective `storybook-*.mjs` modules. The checked-in 2D editor and layout v2 remain the editing surface. Reopen Storybook after a Studio publish to read the new layout.
 
 Before promoting the preview, compare the current tablet against its 2D baseline for frame pacing, idle power, camera behavior and input accuracy. Live entity bindings belong to the private HA config. For rollback, restore the private installer dashboard backup via Lovelace, then verify the original plan. The ordinary plan can also be opened directly from the preview.

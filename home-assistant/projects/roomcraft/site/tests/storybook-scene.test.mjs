@@ -2,6 +2,19 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { compileStorybookPlan } from '../ha-local/storybook-scene.mjs';
 
+function covers(polygons, x, z) {
+  const contains = ring => {
+    let inside = false;
+    for (let i = 1; i < ring.length; i++) {
+      const [ax, az] = ring[i - 1];
+      const [bx, bz] = ring[i];
+      if ((az > z) !== (bz > z) && x < (bx - ax) * (z - az) / (bz - az) + ax) inside = !inside;
+    }
+    return inside;
+  };
+  return polygons.some(([outer, ...holes]) => contains(outer) && !holes.some(contains));
+}
+
 function sample() {
   return {
     version: 2,
@@ -49,4 +62,41 @@ test('invalid rooms and incompatible versions fail before allocating WebGL resou
   const source = sample();
   assert.throws(() => compileStorybookPlan({ ...source, version: 3 }), /Roomcraft v2/);
   assert.throws(() => compileStorybookPlan({ ...source, rooms: [{ points: [{ x: 1, y: NaN }] }] }), /room polygon/);
+});
+
+test('short drafting gaps and mitered wall corners close while a doorway stays open', () => {
+  const source = sample();
+  source.items = [];
+  source.walls = [
+    {id: 'corner', x1: 110, y1: 410, x2: 110, y2: 210},
+    {id: 'left', x1: 110, y1: 210, x2: 420, y2: 210},
+    {id: 'center', x1: 431, y1: 210, x2: 530, y2: 210},
+    {id: 'right', x1: 600, y1: 210, x2: 760, y2: 210},
+  ];
+  const plan = compileStorybookPlan(source);
+  const floorLevelWalls = plan.wallStructure.filter(({bottom, top}) => bottom < 10 && top > 10)
+    .flatMap(({polygons}) => polygons);
+  const caps = plan.wallStructure.filter(({bottom, top}) => bottom <= 65 && top > 65)
+    .flatMap(({polygons}) => polygons);
+  assert.ok(covers(floorLevelWalls, 104, 204));
+  assert.ok(covers(caps, 425, 210));
+  assert.ok(!covers(floorLevelWalls, 570, 210));
+  assert.ok(!covers(caps, 570, 210));
+});
+
+test('opposed room finishes share a continuous floor slab through their threshold', () => {
+  const source = sample();
+  source.rooms = [
+    {id: 'first', surface: 'oak', points: [{x: 110, y: 210}, {x: 400, y: 210},
+      {x: 400, y: 700}, {x: 110, y: 700}]},
+    {id: 'second', surface: 'blue', points: [{x: 411, y: 210}, {x: 760, y: 210},
+      {x: 760, y: 700}, {x: 411, y: 700}]},
+  ];
+  const {floorStructure} = compileStorybookPlan(source);
+  assert.equal(floorStructure.footprint.length, 1);
+  assert.ok(covers(floorStructure.footprint, 405, 450));
+  assert.deepEqual(floorStructure.regions.filter(({polygons}) => covers(polygons, 405, 450))
+    .map(({surface}) => surface), ['oak']);
+  assert.deepEqual(floorStructure.regions.filter(({polygons}) => covers(polygons, 600, 450))
+    .map(({surface}) => surface), ['blue']);
 });

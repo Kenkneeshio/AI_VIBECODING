@@ -1,5 +1,11 @@
 # Decision log
 
+## Roomcraft Home presents the finished Storybook scene
+
+The new dashboard owns presentation. The Second Floor dashboard still owns the authored plan, bindings, and Studio. A separate promotion command backs up the authenticated profile, verifies the new view, and changes only that profile's default. The tablet follows that selection through Home Assistant Companion.
+
+Wall and floor joins are repaired during 3D scene construction. The layout and its door and window positions stay in the shared source format. Directional shadows are computed once for static geometry. A small pool of lights follows Home Assistant brightness and color while each lamp retains its own visible state. This bounds the work per frame on the wall tablet.
+
 ## Storybook uses the published layout and the existing device controls
 
 Household operators can try a consistent 3D art style on a separate Home Assistant panel. The renderer derives walls, floor finishes, furniture, device placements, and interaction anchors from layout v2. The supported camera is orthographic and fixed, so object positions stay familiar. The preview infers height and cutaway depth from deterministic recipes. Layout v2 stores no measured heights or generalized 3D asset metadata.

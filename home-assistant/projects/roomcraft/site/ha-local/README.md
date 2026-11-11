@@ -55,6 +55,12 @@ Run `npm ci` and `npm run build` from `site/`, then add `--storybook` to the ins
 
 Check the fan motor and light as separate touch targets, the dimmer with occupancy on and off, day/night and adverse weather, and all three camera tile modes. Verify the physical tablet separately, including frame pacing and a longer run with the camera feeds. Use read-only checks or synthetic states to test animations without operating devices. Restore the installer dashboard backup to remove the Storybook tab.
 
+### Standalone dashboard and profile default
+
+After installing the built module, run `python ha-local/publish_storybook_dashboard.py --management-root <private-adapter-directory> --backup-dir <private-backup-directory>`. Open `/roomcraft-home/home` and check the view. Repeat the command with `--make-default` to set it for the user authenticated by the adapter. The command backs up that user's prior preferences and refuses to replace an edited dashboard. The card continues reading the shared layout from Second Floor.
+
+To restore the prior dashboard choice, use **Profile → Appearance → Dashboard** or set the `core` user data to the `user_core` object in the private backup using the authenticated frontend WebSocket API. The Floor plan and Studio links are available on the new dashboard.
+
 ## Verification
 
 1. Open the local Studio URL in a fresh browser and sign into Home Assistant. Use its new-tab button if the embedded frame stays blank.

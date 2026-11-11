@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { makeStorybookFurniture } from './storybook-furniture.mjs';
 import { makeStorybookDevice } from './storybook-devices.mjs';
+import { compileFloorStructure, compileWallStructure } from './storybook-structure.mjs';
+import { createStorybookLighting } from './storybook-lighting.mjs';
 
 const DEG = Math.PI / 180;
 const WALL_WIDTH = 14;
@@ -15,6 +17,7 @@ const FLOOR_LOOKS = {
   blue: ['#b7c9ca', '#81999e', 'tile'],
   sage: ['#b2bd9b', '#7f9a82', 'tile'],
   terrazzo: ['#e0cbba', '#a8878b', 'stone'],
+  patio: ['#e5cfb2', '#a98d7e', 'tile'],
 };
 const WALL_LOOKS = {
   graphite: ['#eee0c9', '#937984', '#725d6d'],
@@ -151,6 +154,7 @@ export function compileStorybookPlan(layout) {
       ].map(([x, y]) => ({ x, y })),
       recess: {
         x1: byWallId.get('w12').x2, x2: byWallId.get('w18').x1,
+        northLeft: byWallId.get('w12').y2,
         z1: Math.min(byWallId.get('w11').y2, byWallId.get('w12').y2),
         z2: byWallId.get('w13').y2,
       },
@@ -158,6 +162,13 @@ export function compileStorybookPlan(layout) {
   if (reference) {
     extend(reference.left, reference.stepTop);
     extend(reference.deckEdge, reference.deckBottom);
+    const {x1, x2, northLeft: y1, z1: y2} = reference.recess;
+    const length = Math.hypot(x2 - x1, y2 - y1);
+    if (x2 > x1 && length > 0) {
+      walls.push({id: 'reference-recess', x1, y1, x2, y2, length,
+        dx: (x2 - x1) / length, dz: (y2 - y1) / length,
+        angle: Math.atan2(y2 - y1, x2 - x1), openings: []});
+    }
   }
   const windowMounts = new Map();
   for (const item of items.filter(entry => entry.type === 'window')) {
@@ -202,16 +213,27 @@ export function compileStorybookPlan(layout) {
     return { item, x, z, angle, window: mount?.window, mountY: mount?.mountY, isBlind };
   });
   for (const wall of walls) wall.openings.sort((a, b) => a.start - b.start || a.end - b.end);
-  return { rooms, walls, placements, bounds, houseBounds, reference };
+  const floorStructure = compileFloorStructure(rooms, reference);
+  const wallStructure = compileWallStructure(walls.map(wall => ({
+    ...wall,
+    height: wallHeight(wall, houseBounds),
+    palette: Object.hasOwn(WALL_LOOKS, wall.finish) ? WALL_LOOKS[wall.finish] : WALL_LOOKS.graphite,
+  })), WALL_WIDTH, SILL, LINTEL);
+  return { rooms, walls, placements, bounds, houseBounds, reference, floorStructure, wallStructure };
 }
 
-function polygon(points) {
-  const shape = new THREE.Shape();
-  for (const [index, { x, y }] of points.entries()) {
-    if (index === 0) shape.moveTo(x, -y);
-    else shape.lineTo(x, -y);
+function drawRing(path, points) {
+  for (const [index, [x, z]] of points.slice(0, -1).entries()) {
+    if (index === 0) path.moveTo(x, -z);
+    else path.lineTo(x, -z);
   }
-  shape.closePath();
+  path.closePath();
+  return path;
+}
+
+function joinedShape([exterior, ...holes]) {
+  const shape = drawRing(new THREE.Shape(), exterior);
+  shape.holes = holes.map(ring => drawRing(new THREE.Path(), ring));
   return shape;
 }
 
@@ -310,27 +332,26 @@ function makeStaticBatch(scene) {
 
 function buildFloors(scene, batch, plan, document) {
   const floorMaterials = new Map();
-  for (const [index, room] of plan.rooms.entries()) {
-    const surface = Object.hasOwn(FLOOR_LOOKS, room.surface) ? room.surface : 'oak';
+  for (const {surface: finish, polygons} of plan.floorStructure.regions) {
+    const surface = Object.hasOwn(FLOOR_LOOKS, finish) ? finish : 'oak';
     if (!floorMaterials.has(surface)) {
       const look = FLOOR_LOOKS[surface];
       const texture = floorTexture(document, look, 141 + Object.keys(FLOOR_LOOKS).indexOf(surface) * 977);
       floorMaterials.set(surface, new THREE.MeshLambertMaterial({ color: texture ? '#fffdf8' : look[0], map: texture }));
     }
-    const shape = polygon(room.points);
-    const geometry = new THREE.ShapeGeometry(shape);
-    geometry.rotateX(-Math.PI / 2);
-    const points = geometry.getAttribute('position');
-    const uv = geometry.getAttribute('uv');
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, points.getX(i) / 248, points.getZ(i) / 248);
-    // Authored room polygons intentionally overlap in v2. Their stable layer
-    // order assigns the visible material without creating a second floor.
-    const floor = new THREE.Mesh(geometry, floorMaterials.get(surface));
-    floor.position.y = index * 0.012;
-    scene.add(floor);
-    const skirt = new THREE.ExtrudeGeometry(shape, { depth: 22, bevelEnabled: false });
-    skirt.rotateX(-Math.PI / 2);
-    batch.add(indexed(skirt), '#a67e76', 0, -22.05, 0);
+    for (const area of polygons) {
+      const geometry = new THREE.ShapeGeometry(joinedShape(area));
+      geometry.rotateX(-Math.PI / 2);
+      const points = geometry.getAttribute('position');
+      const uv = geometry.getAttribute('uv');
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, points.getX(i) / 248, points.getZ(i) / 248);
+      const floor = new THREE.Mesh(geometry, floorMaterials.get(surface));
+      floor.receiveShadow = true;
+      scene.add(floor);
+    }
+  }
+  for (const area of plan.floorStructure.footprint) {
+    addSlab(batch, area, -22, 0, '#a67e76', true);
   }
 }
 
@@ -344,70 +365,95 @@ function indexed(geometry) {
   return geometry;
 }
 
-function buildWalls(batch, plan) {
-  for (const wall of plan.walls) {
-    const height = wallHeight(wall, plan.houseBounds);
-    const [body, cap, base] = WALL_LOOKS[wall.finish] || WALL_LOOKS.graphite;
-    const span = (start, end, minY, maxY, thickness, color) => {
-      const center = (start + end) / 2;
-      batch.box(end - start, maxY - minY, thickness, color,
-        wall.x1 + center * wall.dx, (minY + maxY) / 2, wall.y1 + center * wall.dz, -wall.angle);
-    };
-    // Wall gaps in v2 are already doorways; never bridge those with wall art.
-    if (!wall.openings.length) span(-2, wall.length + 2, 0, height, WALL_WIDTH, body);
-    else {
-      span(-2, wall.length + 2, 0, SILL, WALL_WIDTH, body);
-      span(-2, wall.length + 2, LINTEL, height, WALL_WIDTH, body);
-      let end = -2;
-      for (const opening of wall.openings) {
-        span(end, opening.start, SILL, LINTEL, WALL_WIDTH, body);
-        end = Math.max(end, opening.end);
+function addSlab(batch, polygon, bottom, top, surface, openTop = false) {
+  const geometry = new THREE.ExtrudeGeometry(joinedShape(polygon), {depth: top - bottom, bevelEnabled: false});
+  if (openTop) {
+    // The finish meshes own this shared top plane. Removing the backing
+    // triangles prevents the foundation from appearing through the floor.
+    const positions = geometry.getAttribute('position');
+    const indices = [];
+    for (let i = 0; i < positions.count; i += 3) {
+      if ([i, i + 1, i + 2].some(vertex => positions.getZ(vertex) < top - bottom - 0.001)) {
+        indices.push(i, i + 1, i + 2);
       }
-      span(end, wall.length + 2, SILL, LINTEL, WALL_WIDTH, body);
     }
-    span(-3, wall.length + 3, height - 1, height + 2, WALL_WIDTH + 3, cap);
-    span(-1, wall.length + 1, 0, 3, WALL_WIDTH + 3, base);
+    geometry.setIndex(indices);
+  }
+  geometry.rotateX(-Math.PI / 2);
+  batch.add(indexed(geometry), surface, 0, bottom, 0);
+}
+
+function buildWalls(batch, plan) {
+  for (const {polygons, bottom, top, surface} of plan.wallStructure) {
+    for (const area of polygons) addSlab(batch, area, bottom, top, surface);
   }
 }
 
 function buildReferenceLanding(batch, plan) {
   if (!plan.reference) return;
-  const { left, deckEdge, stepTop, stepBottom, deckBottom, northDeck, southDeck, recess } = plan.reference;
+  const { left, deckEdge, stepTop, stepBottom, northDeck } = plan.reference;
   const deckWidth = deckEdge - left;
   const center = (deckEdge + left) / 2;
   const steps = 14;
   const run = (stepBottom - stepTop) / steps;
+  const ground = -108;
+  const rise = -ground / steps;
   for (let step = 0; step < steps; step++) {
     const z = stepTop + run * (step + 0.5);
-    const y = -94 + (step + 1) * 6.7;
-    batch.box(deckWidth, y + 108, run + 0.05, '#a98075', center, (-108 + y) / 2, z);
-    batch.box(deckWidth + 1, 3, run + 1.8, step % 2 ? '#e2c2a6' : '#d5b198', center, y - 0.6, z);
-    batch.box(deckWidth + 1, 1.8, 2.1, '#b68e82', center, y + 0.75, z - run / 2 + 1);
-    batch.box(4, 11, run + 2, '#917481', left + 1, y + 5.4, z);
+    const y = ground + (step + 1) * rise;
+    const coreTop = y - 3;
+    // Riser blocks meet edge to edge; the last tread shares the landing datum.
+    batch.box(deckWidth, coreTop - ground, run, '#a98075', center, (ground + coreTop) / 2, z);
+    batch.box(deckWidth, 3, run, step % 2 ? '#e2c2a6' : '#d5b198', center, y - 1.5, z);
+    batch.box(deckWidth + 1, 2.4, 3, '#b68e82', center, y - 1.8, z - run / 2 + 0.4);
+    batch.box(5, 24, 5, '#9f8183', left + 4, y + 12, z);
   }
-  batch.box(deckWidth + 4, 22, deckBottom - stepBottom, '#e1cbb0', center + 2,
-    -11, (deckBottom + stepBottom) / 2);
-  batch.box(deckWidth + 2, 3, 80, '#cbbda6', center, -106, stepTop - 40);
-  for (const deck of [northDeck, southDeck]) {
-    const shape = polygon(deck);
-    const slab = new THREE.ExtrudeGeometry(shape, { depth: 22, bevelEnabled: false });
-    slab.rotateX(-Math.PI / 2);
-    batch.add(indexed(slab), '#b79686', 0, -22, 0);
-    const patio = new THREE.ShapeGeometry(shape);
-    patio.rotateX(-Math.PI / 2);
-    batch.add(indexed(patio), '#e1cbb0', 0, 0.1, 0);
-  }
+  const railRun = run * (steps - 1);
+  const railRise = rise * (steps - 1);
+  const rail = new THREE.BoxGeometry(7, 5, Math.hypot(railRun, railRise) + 5);
+  rail.rotateX(-Math.atan2(railRise, railRun));
+  batch.add(rail, '#896e79', left + 4, 24 - railRise / 2, (stepTop + stepBottom) / 2);
+  batch.box(deckWidth + 2, 3, 80, '#cbbda6', center, ground - 1.5, stepTop - 40);
   const [outer, inner] = northDeck;
   const posts = Math.max(2, Math.ceil((inner.x - outer.x) / 28));
   batch.box(inner.x - outer.x, 5, 7, '#896e79', (inner.x + outer.x) / 2, 28, outer.y);
   for (let i = 0; i <= posts; i++) {
     batch.box(5, 28, 5, '#9f8183', outer.x + (inner.x - outer.x) * i / posts, 14, outer.y);
   }
-  const recessWidth = recess.x2 - recess.x1;
-  const recessDepth = recess.z2 - recess.z1;
-  batch.box(recessWidth, 22, recessDepth, '#dbc2a2', (recess.x1 + recess.x2) / 2, -11, (recess.z1 + recess.z2) / 2);
-  batch.box(recessWidth, 62, WALL_WIDTH, '#eee0c9', (recess.x1 + recess.x2) / 2, 31, recess.z1);
-  batch.box(recessWidth + 4, 4, WALL_WIDTH + 3, '#937984', (recess.x1 + recess.x2) / 2, 63, recess.z1);
+}
+
+function meadowTexture(document) {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  const rng = seededRandom(71293);
+  ctx.fillStyle = '#b1c3a0';
+  ctx.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 92; i++) {
+    const x = rng() * 512;
+    const y = rng() * 512;
+    const size = 20 + rng() * 56;
+    for (const dx of [-512, 0, 512]) for (const dy of [-512, 0, 512]) {
+      const gradient = ctx.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, size);
+      gradient.addColorStop(0, i % 3 ? '#dbe0a730' : '#466f5630');
+      gradient.addColorStop(1, '#b1c3a000');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(x + dx - size, y + dy - size, size * 2, size * 2);
+    }
+  }
+  for (let i = 0; i < 4200; i++) {
+    const x = rng() * 512;
+    const y = rng() * 512;
+    ctx.fillStyle = i % 2 ? '#e3e6b33e' : '#5e7b5d30';
+    ctx.fillRect(x, y, 1.4 + rng() * 3, 1.2 + rng() * 2.8);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(15, 10);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  return texture;
 }
 
 function buildYard(batch, plan) {
@@ -427,13 +473,23 @@ function buildYard(batch, plan) {
     const x = minX + fx * width;
     const z = minZ + fz * depth;
     const size = 21 + rand() * 24;
-    batch.ball(size * 1.1, 3, size * 0.85, '#90a68c', x, -109, z);
-    batch.ball(size, size * 0.56, size * 0.77, '#88a78c', x, -97, z);
-    batch.ball(size * 0.76, size * 0.7, size * 0.65, '#a5ba94', x + 8, -88, z - 6);
-    batch.ball(size * 0.42, size * 0.54, size * 0.46, '#b6c89c', x - 12, -82, z + 2);
-    for (let j = 0; j < 4; j++) {
-      const bloom = j % 2 ? '#e0b895' : '#edd8a0';
-      batch.ball(2.6, 2.8, 2.6, bloom, x + (rand() - 0.5) * size, -72, z + (rand() - 0.5) * size * 0.55);
+    batch.ball(size * 0.94, 9, size * 0.67, '#6d886a', x, -104, z);
+    batch.ball(size * 0.82, size * 0.57, size * 0.69, '#819b76', x + 3, -98, z);
+    for (let j = 0; j < 8; j++) {
+      const angle = j * 2.39996;
+      const radius = (0.2 + rand() * 0.5) * size;
+      const leaf = size * (0.28 + rand() * 0.2);
+      const color = ['#94ad7f', '#a6ba88', '#8da878', '#bad09c'][j % 4];
+      batch.ball(leaf * 1.15, leaf * 0.8, leaf, color,
+        x + Math.cos(angle) * radius, -93 + 12 * rand(), z + Math.sin(angle) * radius * 0.75);
+    }
+    for (let j = 0; j < 5; j++) {
+      const bloom = j % 2 ? '#e6c4b1' : '#fae6a4';
+      const flowerX = x + (rand() - 0.5) * size * 1.14;
+      const flowerZ = z + size * (0.62 + rand() * 0.43);
+      batch.ball(2.3, 4.6, 2.3, '#819765', flowerX, -106, flowerZ);
+      batch.ball(3.9, 1.8, 3.3, bloom, flowerX, -101.5, flowerZ);
+      batch.ball(1.2, 0.9, 1.2, '#cb9c57', flowerX, -100.3, flowerZ);
     }
   }
 }
@@ -565,14 +621,10 @@ export function createStorybookScene(canvas, layout) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#d7dfcd');
   const camera = new THREE.OrthographicCamera(-800, 800, 450, -450, 1, 4400);
-  const sky = new THREE.HemisphereLight('#fff0d9', '#a18e9a', 2.03);
-  const sunLight = new THREE.DirectionalLight('#ffe2c4', 1.24);
-  sunLight.position.set(-400, 780, -380);
-  const fillLight = new THREE.DirectionalLight('#d9e3e8', 0.37);
-  fillLight.position.set(600, 230, 500);
-  scene.add(sky, sunLight, fillLight);
   const { minX, maxX, minZ, maxZ } = plan.bounds;
-  const groundMaterial = new THREE.MeshLambertMaterial({ color: '#b5c8a9' });
+  const groundMaterial = new THREE.MeshStandardMaterial({
+    color: '#e8e8d2', map: meadowTexture(canvas.ownerDocument), roughness: 0.95
+  });
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(6200, 4200), groundMaterial);
   ground.rotation.x = -Math.PI / 2;
   ground.position.set((minX + maxX) / 2, -111, (minZ + maxZ) / 2);
@@ -583,6 +635,8 @@ export function createStorybookScene(canvas, layout) {
   buildFloors(scene, batch, plan, canvas.ownerDocument);
   buildWalls(batch, plan);
   batch.finish();
+  const lighting = createStorybookLighting(renderer, scene, plan.bounds);
+  lighting.markStructure();
   const updateWeather = buildWeather(scene, plan);
   const anchors = new Map();
   const roots = new Map();
@@ -596,6 +650,7 @@ export function createStorybookScene(canvas, layout) {
       object.root.rotation.y = -angle;
       scene.add(object.root);
       roots.set(item.id, object);
+      lighting.register(item, object);
     }
     anchors.set(item.id, { x, z, object });
   }
@@ -605,7 +660,6 @@ export function createStorybookScene(canvas, layout) {
   }
   const position = new THREE.Vector3();
   let disposed = false;
-  let wasNight = null;
   let currentWidth = 0;
   let currentHeight = 0;
   const defaultState = Object.freeze({ state: 'unavailable', attributes: Object.freeze({}), presence: 'off', active: false });
@@ -620,18 +674,7 @@ export function createStorybookScene(canvas, layout) {
   }
   function render(timeSeconds = 0, statesById = {}, environment = {}) {
     if (disposed || currentWidth < 1 || currentHeight < 1) return;
-    const night = environment.night === true;
-    if (night !== wasNight) {
-      sky.color.set(night ? '#b5b5e7' : '#fff0d9');
-      sky.groundColor.set(night ? '#777291' : '#a18e9a');
-      sky.intensity = night ? 1.04 : 2.03;
-      sunLight.color.set(night ? '#a1acd8' : '#ffe2c4');
-      sunLight.intensity = night ? 0.29 : 1.24;
-      fillLight.intensity = night ? 0.2 : 0.37;
-      groundMaterial.color.set(night ? '#809382' : '#b5c8a9');
-      scene.background.set(night ? '#494e68' : '#d7dfcd');
-      wasNight = night;
-    }
+    lighting.update(environment, statesById, groundMaterial);
     const reduceMotion = environment.reduceMotion === true;
     const time = Number.isFinite(timeSeconds) ? timeSeconds : 0;
     updateWeather(time, environment, reduceMotion);
@@ -676,6 +719,7 @@ export function createStorybookScene(canvas, layout) {
     for (const texture of textures) texture.dispose();
     for (const geometry of geometries) geometry.dispose();
     for (const material of materials) material.dispose();
+    lighting.dispose();
     renderer.dispose();
   }
   return { resize, render, anchor, dispose };

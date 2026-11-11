@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // Miniature device models. Authored plan pixels map to world X/Z, with Y up.
 // These models accept an explicit state and clock, and never read Home Assistant.
@@ -6,7 +7,8 @@ const color = {
   cream: 0xf4e4ca, oat: 0xd2b99c, honey: 0xbd8b60, rose: 0xb7787c,
   ink: 0x584252, muted: 0x8f817f, plum: 0x665673, sage: 0x8ea88f,
   mint: 0xb6d5bf, teal: 0x426e68, glass: 0xb7d4d7, blue: 0x7099a6,
-  warm: 0xffd490, gold: 0xe4b871, dark: 0x36374c, ember: 0xeea763,
+  warm: 0xffdbab, gold: 0xe4b871, dark: 0x36374c, ember: 0xeea763,
+  tile: 0x77566d, paleTile: 0x805d74, brass: 0xbc8857,
 };
 const PI = Math.PI;
 const fullTurn = 2 * PI;
@@ -77,8 +79,12 @@ function lightPool(root, radius) {
       uniform vec3 tint;
       varying vec2 floorUV;
       void main(){
-        float radial=1.0-smoothstep(0.04,0.5,length(floorUV-vec2(0.5)));
-        gl_FragColor=vec4(tint,radial*radial*strength);
+        float distanceFromLamp=length(floorUV-vec2(0.5));
+        float edge=1.0-smoothstep(0.25,0.5,distanceFromLamp);
+        float falloff=1.0/(1.0+20.0*distanceFromLamp*distanceFromLamp);
+        gl_FragColor=vec4(tint,edge*falloff*strength);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
       }`,
   });
   const pool = mesh(root, new THREE.PlaneGeometry(2 * radius, 2 * radius), glow, 0, 2.8, 0);
@@ -86,7 +92,7 @@ function lightPool(root, radius) {
   pool.visible = false;
   return (power, tint) => {
     pool.visible = power > 0;
-    glow.uniforms.strength.value = power * 0.38;
+    glow.uniforms.strength.value = power * 0.29;
     glow.uniforms.tint.value.copy(tint);
   };
 }
@@ -103,6 +109,7 @@ function lamp(item, w, h) {
   const size = Math.min(w, h);
   const base = material(color.honey);
   const trim = material(color.ink);
+  const brass = material(color.brass, {roughness: 0.36, metalness: 0.42});
   const diffuser = material(color.cream, { emissive: color.warm, emissiveIntensity: 0 });
   const tint = new THREE.Color(color.warm);
   const bodyHeight = fanLight ? 46 : pendant ? 50 : ceiling ? 56 : wall ? 40 : standing ? 56 : 36;
@@ -112,6 +119,7 @@ function lamp(item, w, h) {
     cylinder(root, radius, radius * 1.02, 3, trim, 0, bodyHeight + 2);
     if (pendant) cylinder(root, 1.7, 1.7, 13, base, 0, bodyHeight + 9);
     cylinder(root, radius * 0.82, radius, 5, base, 0, bodyHeight - 1.5);
+    cylinder(root, radius * 0.92, radius * 0.96, 1.15, brass, 0, bodyHeight + 1.1);
     const globe = bead(root, radius * 0.83, diffuser, 0, bodyHeight, 0);
     globe.scale.y = pendant ? 0.88 : 0.52;
   } else if (wall) {
@@ -129,7 +137,8 @@ function lamp(item, w, h) {
     } else {
       const folds = form === 'bud_lamp' ? 12 : 9;
       cylinder(root, radius * 0.56, radius, 14, diffuser, 0, bodyHeight, 0, folds);
-      cylinder(root, radius, radius * 0.99, 1.2, base, 0, bodyHeight - 6.7, 0, folds);
+      cylinder(root, radius, radius * 0.99, 1.2, brass, 0, bodyHeight - 6.7, 0, folds);
+      cylinder(root, radius * 0.55, radius * 0.58, 1.1, brass, 0, bodyHeight + 7.1, 0, folds);
     }
   }
   return {
@@ -144,12 +153,27 @@ function lamp(item, w, h) {
         tint.setHex(color.warm);
       }
       pool(power, tint);
-      diffuser.emissiveIntensity = power * 1.45;
+      diffuser.emissiveIntensity = power * 0.88;
       diffuser.emissive.copy(tint);
       if (power > 0) diffuser.color.copy(tint);
       else diffuser.color.setHex(color.cream);
     },
   };
+}
+
+function fanBlade(radius) {
+  const outline = new THREE.Shape();
+  outline.moveTo(radius * .10, -radius * .061);
+  outline.bezierCurveTo(radius * .39, -radius * .094, radius * .62, -radius * .16, radius * .88, -radius * .14);
+  outline.bezierCurveTo(radius * 1.01, -radius * .11, radius * 1.03, radius * .07, radius * .88, radius * .13);
+  outline.bezierCurveTo(radius * .62, radius * .20, radius * .42, radius * .13, radius * .10, radius * .063);
+  outline.closePath();
+  const geometry = new THREE.ExtrudeGeometry(outline, {
+    depth: 1.8, bevelEnabled: true, bevelSize: .6, bevelThickness: .48,
+    bevelSegments: 1, curveSegments: 5,
+  });
+  geometry.translate(0, 0, -.9);
+  return geometry.rotateX(-PI / 2);
 }
 
 function fan(item, w, h, upright) {
@@ -166,12 +190,13 @@ function fan(item, w, h, upright) {
   const blades = material(bladeColor);
   const count = upright || /three-blade/.test(item.type) ? 3 : /four-blade/.test(item.type) ? 4 : 5;
   cylinder(shaft, radius * 0.18, radius * 0.2, 6, dark);
-  cylinder(shaft, radius * 0.15, radius * 0.19, 3.2, housing, 0, 4.6);
+  cylinder(shaft, radius * 0.174, radius * 0.176, 1.4, material(color.brass, {roughness: .36, metalness: .42}), 0, 3.4);
+  cylinder(shaft, radius * 0.15, radius * 0.17, 2.6, housing, 0, 4.9);
+  const blade = fanBlade(radius);
   for (let i = 0; i < count; i++) {
     const arm = child(rotor);
     arm.rotation.y = (i / count) * fullTurn;
-    const blade = softBox(arm, radius * 0.79, 3.2, radius * 0.33, blades, radius * 0.56, 0, 0);
-    blade.rotation.y = 0.16;
+    mesh(arm, blade, blades);
   }
   if (upright) {
     softBox(root, radius * 1.66, 6, radius * 1.02, dark, 0, 3);
@@ -278,6 +303,7 @@ function garage(w, h) {
   const siding = material(color.oat);
   const trim = material(color.cream);
   const roof = material(color.plum);
+  const shingles = [material(color.tile), material(color.paleTile)];
   const bay = material(color.dark);
   box(root, w, 5, depth + h * 0.24, trim, 0, 2.5, h * 0.09);
   box(root, w * 0.88, frameH + 4, 5, siding, 0, (frameH + 4) / 2, -front + 2);
@@ -295,14 +321,38 @@ function garage(w, h) {
   });
   cap.translate(0, 0, -front - 5.5);
   mesh(root, cap, roof, 0, frameH + 4);
+  const halfRun = w * .49;
+  const roofSlope = Math.atan2(roofH, halfRun);
+  const roofSpan = Math.hypot(roofH, halfRun);
+  const shingleDepth = (depth + 11) / 8;
+  const shingleRows = [[], []];
+  for (const side of [-1, 1]) {
+    for (let row = 0; row < 8; row++) {
+      const z = -front - 5.5 + (row + .5) * shingleDepth;
+      const shingle = new THREE.BoxGeometry(roofSpan * .97, 2.2, shingleDepth - .62);
+      shingle.rotateZ(-side * roofSlope);
+      shingle.translate(side * halfRun * .5, frameH + 5.65 + roofH * .5, z);
+      shingleRows[row % 2].push(shingle);
+    }
+  }
+  shingleRows.forEach((parts, row) => {
+    mesh(root, mergeGeometries(parts), shingles[row]);
+    parts.forEach(part => part.dispose());
+  });
+  softBox(root, 4, 4.5, depth + 12, roof, 0, frameH + roofH + 5.6, 0, 1.5);
   box(root, w * 0.95, 3.5, 3.5, trim, 0, frameH + 4, front + 5.5);
   box(root, frameW, frameH, 1.5, bay, 0, frameH / 2 + 4, front - 4);
   const doorSurface = material(color.mint);
+  const doorInset = material(color.sage);
   const doorHeight = frameH - 3;
   const panelStep = doorHeight / 6;
-  const panels = Array.from({ length: 6 }, (_, i) =>
-    softBox(root, frameW - 2, panelStep - 0.7, 3.4, doorSurface, 0,
-      frameH - (i + 0.5) * panelStep + 2, front + 0.5, 1.2));
+  const panels = Array.from({ length: 6 }, (_, i) => {
+    const panel = child(root, 0, frameH - (i + 0.5) * panelStep + 2, front + 0.5);
+    softBox(panel, frameW - 2, panelStep - 0.7, 3.4, doorSurface, 0, 0, 0, 1.2);
+    box(panel, frameW * .91, .68, .7, doorInset, 0, panelStep * .23, 1.8);
+    if (i === 5) softBox(panel, frameW * .13, 2, 2.2, trim, 0, 0, 2.3, .55);
+    return panel;
+  });
   const lantern = material(color.gold, { emissive: color.ember, emissiveIntensity: 0 });
   bead(root, 3.7, lantern, w * 0.422, frameH * 0.73, front + 4.5);
   let fraction = 0;
@@ -312,6 +362,7 @@ function garage(w, h) {
       const next = coverOpenFraction(state);
       if (next !== null) fraction = next;
       doorSurface.color.setHex(live(state) ? color.mint : color.muted);
+      doorInset.color.setHex(live(state) ? color.sage : color.muted);
       const exposed = (1 - fraction) * panels.length;
       panels.forEach((panel, index) => {
         const shown = clamp(exposed - index, 0, 1);
