@@ -34,7 +34,8 @@ def entity_health(states: Mapping[str, Any], entity_ids: Iterable[str], label: s
 
 
 def integration_health(entries: Iterable[Any]) -> dict[str, Any]:
-    active = [entry for entry in entries if not getattr(entry, "disabled_by", None)]
+    active = [entry for entry in entries
+              if not getattr(entry, "disabled_by", None) and getattr(entry, "source", None) != "ignore"]
     issues: list[str] = []
     for entry in active:
         raw_state = getattr(entry, "state", "unknown")

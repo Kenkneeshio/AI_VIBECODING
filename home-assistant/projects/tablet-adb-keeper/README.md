@@ -6,7 +6,7 @@ Tablet ADB Keeper is an experimental, opt-in Android helper for a dedicated Home
 
 Version 0.1.0 was installed on the Apolosign calendar tablet on 2026-11-08. Android accepted the one-time `WRITE_SECURE_SETTINGS` grant, restore-on-boot was enabled, and a manual attempt wrote and read back `adb_wifi_enabled=1`. The declared locked-boot receiver is registered and the application recorded a successful `LOCKED_BOOT_COMPLETED` restoration result during installation acceptance. A supervised physical reboot is still required before claiming full boot persistence on this firmware.
 
-Version 0.1.1 limits the private receiver to Android's expected boot and package-replacement actions. Apply the supervised acceptance plan when installing it.
+Version 0.1.1 was installed in place on the Apolosign calendar tablet on 2026-11-11. The new APK had the same signer as the installed 0.1.0 APK, and the installed file matched the tested build. Android retained the privileged grant and restore opt-in. The private receiver handled the actual package-replacement event and read back `adb_wifi_enabled=1`. Wireless ADB and the Home Assistant launcher stayed active. The prior APK and preferences are retained in private recovery storage. Full boot persistence still needs a supervised tablet reboot.
 
 Android does not publish a supported third-party API for enabling Wireless debugging. This project writes the vendor-sensitive global setting named `adb_wifi_enabled`; the firmware may ignore it, reset it, or require additional privileged access.
 
@@ -52,6 +52,18 @@ HOME=/data/adb-home adb shell am start -n io.roomcraft.tabletadbkeeper/.MainActi
 ```
 
 The repository deliberately uses documentation-only addresses. Do not commit a home's IP addresses, pairing codes, ADB keys, HA tokens, or APK signing keys.
+
+## Find a changed Wireless debugging port
+
+If Wireless debugging stays enabled and its connection port changes, run this from the project directory on a Windows computer on the same LAN. Use the tablet's known IPv4 address.
+
+```text
+python tools/find_wireless_adb_port.py 192.0.2.20
+```
+
+The read-only probe prints a single endpoint from the tablet's mDNS connection advertisement. Use that endpoint for `adb connect` on the Home Assistant SSH add-on with its persistent paired ADB identity. If no endpoint appears, read the address and connection port from the tablet's **Wireless debugging** screen. A disabled debugging toggle or lost pairing still needs tablet access. Use the pairing screen only when authorizing a new ADB identity. [Android Wireless debugging guide](https://developer.android.com/tools/adb#connect-to-a-device-over-wi-fi)
+
+Run the wire-format tests with `python -m unittest discover -s tools/tests -p "test_*.py"`.
 
 In the app:
 

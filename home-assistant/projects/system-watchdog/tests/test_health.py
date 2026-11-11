@@ -51,6 +51,14 @@ class HealthTests(unittest.TestCase):
         self.assertEqual(report["categories"]["integrations"]["status"], "warning")
         self.assertIn("Broken: setup_error", report["categories"]["integrations"]["issues"])
 
+    def test_ignored_discovery_is_not_monitored(self):
+        self.entries.append(SimpleNamespace(title="Ignored discovery", state="not_loaded",
+                                            disabled_by=None, source="ignore"))
+        report = self.report()["categories"]["integrations"]
+        self.assertEqual(report["monitored"], 1)
+        self.assertEqual(report["healthy"], 1)
+        self.assertEqual(report["issues"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

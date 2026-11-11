@@ -1,8 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.2.1 — 2026-11-11
 
 - Refresh the existing health notification when its displayed issues change at the same severity. Repeated identical reports remain deduplicated.
+- Exclude ignored discovery entries from integration health counts.
+- Use the persistent Home Assistant ADB identity, match Home Assistant to the resumed activity, and report failed package probes and rejected heartbeats as failures.
+- Add a component-only installer mode with verified backups, staged file hashes, Home Assistant configuration validation, restart verification, and rollback.
 
 ## 0.2.0 — 2026-11-08
 

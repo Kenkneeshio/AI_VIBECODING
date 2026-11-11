@@ -17,8 +17,10 @@
 6. Disable restore and repeat **Attempt now**; verify no setting write occurs.
 7. Re-enable restore and reboot once while an operator is present.
 8. Verify HA Companion returns, the tablet remains on the intended Wi-Fi, and Wireless debugging becomes available.
-9. From HA Green, discover the dynamic ADB endpoint and reconnect using the persistent ADB home.
+9. Read the dynamic endpoint on the tablet. If Wireless debugging is still enabled, also try the [Windows mDNS discovery helper](../README.md#find-a-changed-wireless-debugging-port) and compare its result with the tablet's address. Reconnect from HA Green using the persistent ADB home.
 10. Record firmware, Android version, setting behavior, elapsed time, and any OEM power-management interference.
+
+For an existing opted-in tablet, verify a same-signer package replacement separately. Compare the installed APK with the tested build, confirm Android retained the permission and opt-in, and check the new `MY_PACKAGE_REPLACED` result. Confirm the paired ADB session and Home Assistant launcher remain available. Complete the supervised boot steps to verify firmware behavior across a power cycle.
 
 ## Failure and rollback
 

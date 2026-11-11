@@ -1,5 +1,12 @@
 # Changelog
 
+## Coordinated audit release, `roomcraft-2026.11.11.1`
+
+- Group Roomcraft Home, private Studio, System Watchdog 0.2.1, and Tablet Keeper 0.1.1 under one source version and release record.
+- System Watchdog counts active integrations, refreshes changed alerts, and verifies tablet and heartbeat checks more reliably. Its component upgrade keeps the existing configuration and prepares a verified rollback.
+- The tablet release includes a hardened system-event receiver and a recovery tool for finding the paired tablet's current Wireless debugging port.
+- The [release audit](docs/system-audit-release-2026-11-11.md) tracks acceptance, remaining integration findings, and recovery.
+
 ## Layout snapshots and system audit
 
 - Administrators can choose **Menu → Manage → Layout snapshots** to restore one of up to three previous layouts. The current layout stays in history for an easy undo. Both Studio publish paths capture previous layouts.

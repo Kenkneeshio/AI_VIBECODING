@@ -1,5 +1,10 @@
 # Changelog
 
+## Wireless debugging port recovery
+
+- Added a read-only Windows mDNS probe that locates the connection port for a known tablet IPv4 address. It uses the existing paired ADB host for the manual reconnect documented in the user guide.
+- Verified the live discovery result against the paired tablet's current endpoint. Updated the tablet to the same-signer 0.1.1 APK in place and verified the existing grant and opt-in, actual package-replacement restoration, and Home Assistant launcher. A supervised reboot remains pending.
+
 ## Unreleased
 
 - Restricted the private boot receiver to Android's expected restore events.

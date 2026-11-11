@@ -2,7 +2,11 @@
 
 **Read this first when taking over Roomcraft work.** The linked guides hold the detailed contracts and history.
 
-## Current release snapshot (2026-11-10)
+## Coordinated release
+
+The [November 11 release audit](system-audit-release-2026-11-11.md) ties Roomcraft, private Studio, Watchdog 0.2.1, and Tablet Keeper 0.1.1 to `roomcraft-2026.11.11.1`. Verify the deployed surfaces against the audit record. Use the Watchdog component-only installer and the tablet access runbook for those runtimes. Keep their private backup and live-check evidence in the management directory.
+
+## Surface ownership and verified baseline
 
 | Surface | Verified state | Source of truth |
 | --- | --- | --- |

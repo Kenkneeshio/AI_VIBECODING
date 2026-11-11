@@ -1,5 +1,11 @@
 # Decision log
 
+## Track the system audit as one release
+
+Use one Git tag and one release audit to coordinate Roomcraft Home, private Studio, Watchdog, and the wall-tablet helper. Each runtime keeps its existing deployment and rollback mechanism. Record acceptance evidence for each surface so the household operator can see what was installed and what still needs verification.
+
+Preserve the dashboard's active design and its recovery history through the rollout. Treat intentionally ignored discovery entries as outside Watchdog's inventory. Keep vendor recovery and platform upgrades in their own maintenance windows, using live availability and documented upgrade requirements to prioritize them.
+
 ## Keep bounded dashboard layout history
 
 Give a household administrator an in-dashboard recovery path after an unwanted publish. Keep the three most recent distinct displaced designs in Home Assistant so either Studio transport and the wall tablet use one history. Compare layouts and projections by content while ignoring the image ID, which changes when an equivalent projection is uploaded again.

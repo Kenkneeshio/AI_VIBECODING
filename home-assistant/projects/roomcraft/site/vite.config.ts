@@ -1,13 +1,14 @@
 import vinext from "vinext";
 import { defineConfig } from "vite";
-import hostingConfig from "./.openai/hosting.json";
+import hostingConfig from "./.openai/hosting.json" with { type: "json" };
 import { readExecutionProfile } from "./scripts/execution-profile.mjs";
 import { configureToolEnvironment } from "./scripts/tool-environment.mjs";
-import { sites } from "./scripts/vite/sites-vite-plugin";
+import { sites } from "./scripts/vite/sites-vite-plugin.ts";
 import { connectorPreview } from "./scripts/vite/connector-preview-plugin.mjs";
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
   "00000000-0000-4000-8000-000000000000";
+const WORKER_COMPATIBILITY_DATE = "2026-05-15";
 
 const { d1, r2 } = hostingConfig;
 
@@ -17,6 +18,7 @@ const managedLinux = readExecutionProfile() === "managed-linux";
 
 const localBindingConfig = {
   main: "./worker/index.ts",
+  compatibility_date: WORKER_COMPATIBILITY_DATE,
   compatibility_flags: ["nodejs_compat"],
   d1_databases: d1
     ? [
@@ -80,7 +82,7 @@ export default defineConfig(async ({ command }) => {
                   config: {
                     name: "sites-connector-preview",
                     main: "./scripts/connector-preview/worker.mjs",
-                    compatibility_date: "2026-05-15",
+                    compatibility_date: WORKER_COMPATIBILITY_DATE,
                   },
                 },
               ],
