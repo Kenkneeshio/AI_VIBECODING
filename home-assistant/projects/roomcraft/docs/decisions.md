@@ -1,5 +1,13 @@
 # Decision log
 
+## Stage the showcase through the normal renderer
+
+Sample the camera and simulated state from elapsed demo time and focus on objects present in the published layout. Motion preferences hold the camera still while the chapters advance. The playback controller passes independent render frames through the same scene as the live view. The renderer keeps live track, cover, vacuum, and traffic animation caches separate. On exit, it resumes the latest live data and restores the camera.
+
+## Keep route calibration and location sharing private
+
+The combined road view averages the clear-road-to-current ratio of routes with fresh, calibrated data and displays how many routes contribute. Route names and entity bindings stay in the dashboard's Home Assistant configuration. Location sharing mounts the native map with an explicit source list and removes the map when closed. The source labels distinguish Home Assistant device tracking and Google Maps Location Sharing.
+
 ## Keep energy totals scoped to their meters
 
 Use a radial energy tree and a searchable directory for the same meter data. The tree emphasizes the meters that fit the viewport, and the directory provides every configured reading and its native Home Assistant source. Show separate live, daily, calendar-month, and billing-cycle values. Use the home meter for the hub and keep shared circuits and individual plugs independent to avoid double-counting.

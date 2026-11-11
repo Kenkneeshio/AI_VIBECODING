@@ -186,6 +186,38 @@ test('camera fitting is repeatable and rejects invalid scene or viewport dimensi
   assert.throws(() => fitStorybookCamera(first, {...bounds, maxX: NaN}, 1440, 810), /finite scene/);
 });
 
+test('a transient close-up centers authored features in landscape and portrait and restores the saved pose', () => {
+  const frame = {...bounds, sceneryMinZ: -285};
+  const view = normalizeCameraView({preset: 'free', azimuth: 22, tilt: 32, zoom: 1.1});
+  for (const [width, height] of [[1280, 800], [390, 680]]) {
+    const camera = makeCamera();
+    fitStorybookCamera(camera, frame, width, height, view);
+    const original = camera.projectionMatrix.clone();
+    for (const point of [new THREE.Vector3(310, 30, 450), new THREE.Vector3(762, -110, -180)]) {
+      assert.deepEqual(fitStorybookCamera(camera, frame, width, height, view, {focus: point, demoZoom: 4.2}), view);
+      const centered = point.clone().project(camera);
+      near(centered.x, 0);
+      near(centered.y, 0);
+      assert.equal(camera.zoom, 4.2);
+      const right = point.clone().add(new THREE.Vector3(25, 0, 0)).project(camera);
+      assert.ok(right.x > 0);
+    }
+    fitStorybookCamera(camera, frame, width, height, view);
+    assert.deepEqual(camera.projectionMatrix.elements, original.elements);
+  }
+});
+
+test('the transient focus weight eases away from the original framing', () => {
+  const camera = makeCamera();
+  const point = new THREE.Vector3(280, 18, 400);
+  fitStorybookCamera(camera, bounds, 1280, 800, topView);
+  const original = point.clone().project(camera);
+  fitStorybookCamera(camera, bounds, 1280, 800, topView, {focus: {...point, weight: .25}});
+  const eased = point.clone().project(camera);
+  near(eased.x, original.x * .75);
+  near(eased.y, original.y * .75);
+});
+
 test('Free view owns its drag and pinch gestures and releases them on exit', () => {
   const canvas = new EventTarget();
   const captured = new Set();

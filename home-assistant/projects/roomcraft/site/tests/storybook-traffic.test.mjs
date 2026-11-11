@@ -78,3 +78,31 @@ test('instanced cars sit on the rendered road and disappear when a feed is unava
   assert.equal(traffic.root.visible, false);
   traffic.dispose();
 });
+
+test('demo cars replay at the same elapsed time and preserve live lane positions', () => {
+  const traffic = createStorybookTraffic(road);
+  const baseline = createStorybookTraffic(road);
+  const matrix = new THREE.Matrix4();
+  const currentCars = model => {
+    const mesh = model.root.children[0];
+    return Array.from({length: mesh.count}, (_, index) => {
+      mesh.getMatrixAt(index, matrix);
+      return matrix.toArray();
+    });
+  };
+  traffic.update(200, profile('clear'));
+  baseline.update(200, profile('clear'));
+  const demo = {transientTelemetry: true};
+  traffic.update(4, profile('heavy'), demo);
+  const expected = currentCars(traffic);
+  traffic.update(6, profile('heavy'), demo);
+  assert.notDeepEqual(currentCars(traffic), expected);
+  traffic.update(0, profile('heavy'), demo);
+  traffic.update(4, profile('heavy'), demo);
+  assert.deepEqual(currentCars(traffic), expected);
+  traffic.update(201, profile('clear'));
+  baseline.update(201, profile('clear'));
+  assert.deepEqual(currentCars(traffic), currentCars(baseline));
+  traffic.dispose();
+  baseline.dispose();
+});

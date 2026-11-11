@@ -16,11 +16,11 @@ Calendar month starts on the first day in Home Assistant’s timezone. Its **Rec
 
 ### Open planning and commute tools
 
-Choose **Menu → Location sharing** to open your Google account’s sharing setup. Choose recipients and duration in Google Maps. [Google Maps Location Sharing](https://support.google.com/maps/answer/15437054)
+Choose **Menu → Location sharing** to open a map inside Roomcraft Home. Pan or zoom and select a marker for its Home Assistant details. The panel identifies the source of the configured markers. For Google account sharing controls, choose **Google sharing settings**. [Google Maps Location Sharing](https://support.google.com/maps/answer/15437054)
 
 Choose **Menu → Calendar & to-dos** for Home Assistant’s own Calendar and To-do lists.
 
-Choose **Menu → Commute traffic** for a configured route’s travel time and delay. The road cars illustrate the measured pace relative to the route’s clear-road time. The panel offers a setup link before a route is connected. [Waze Travel Time](https://www.home-assistant.io/integrations/waze_travel_time/)
+Choose **Menu → Commute traffic** for **All routes** or an individual route’s travel time and delay. The road cars illustrate the measured pace relative to clear-road times. Administrators can change destinations, route sources, and clear-road times from the panel. Use a route’s Google Maps link for directions. [Google Maps Travel Time](https://www.home-assistant.io/integrations/google_travel_time/)
 
 ### Restore a previous layout
 
@@ -30,7 +30,7 @@ Roomcraft keeps up to three distinct previous layouts from successful Studio pub
 
 Open **Menu → More options** to show or hide **Camera tiles** or turn on **Reduce motion**. These settings are saved in the current browser.
 
-Choose **Menu → 30-second demo** to show someone around the live dashboard. Follow the captions as the tour changes the view and introduces the home, its interactive objects and the outdoor animation. The demo shows current device states and leaves device and camera controls untouched. Select **Stop** or press **Escape** to finish early. Roomcraft returns to your previous view when the demo ends. With **Reduce motion** enabled in Roomcraft or on your device, the captions advance with the view held still.
+Choose **Menu → 30-second demo** for a quick showcase of presence characters, lights, fan, robot, garage, indoor animations, coastal weather, and traffic. The **Demo** badge marks simulated states. Select **Stop** or press **Escape** to return early to your previous view and the latest live readings. With **Reduce motion** enabled in Roomcraft or on your device, the chapters advance with the camera held still.
 
 Use **Menu → On the map → Detection zone** to see the radar's saved bounds as a light cyan dashed outline. For a switch with the Inovelli VZM32-SN profile, the solid amber outline and shaded area show the manufacturer's estimated coverage. The marker shows the calibrated switch position and the line points forward. Home's legend shows the rated range when available. Select the presence dimmer in 3D Studio to preview the same overlays and edit the display settings. Use a walk or sit test to confirm detection where it matters. [Inovelli field-of-view chart, manual page 33](https://help.inovelli.com/en/articles/8807172-blue-series-mmwave-presence-dimmer-switch-manual)
 

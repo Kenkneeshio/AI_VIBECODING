@@ -32,18 +32,23 @@ python ha-local/seed_storybook_energy.py --management-root <PRIVATE-HA-MANAGEMEN
 
 Open **Power → Energy map** and compare the hub and several meter readings with their Home Assistant sources. Check search, billing reset labels, Recorder’s recorded-through timestamp, missing readings, and reduced motion on both the wall tablet and a phone. Verify the energy mapping through dashboard and snapshot readback.
 
-For commute traffic, create a Home Assistant travel-time sensor for the chosen route. Put the route label, sensor ID, and clear-road reference in the private dashboard root. A route accepts a positive `baselineMinutes` or a separate `baselineEntity` with a duration in seconds, minutes, or hours. The example uses a separate sensor. Verify the route label, detail button, missing and stale states, and motion settings. [Waze Travel Time](https://www.home-assistant.io/integrations/waze_travel_time/)
+For Google traffic, use the Home Assistant Google Maps Travel Time integration. Google requires a Routes API key and a billing-enabled project. Set a project quota and limit polling to commute windows before enabling several route sensors. Home Assistant's default 10-minute polling on three routes would exceed the included monthly quota. An administrator can bind each source in **Menu → Commute traffic**. **All routes** is the default. A route accepts a positive `baselineMinutes` or a separate `baselineEntity` with a duration in seconds, minutes, or hours. A named route can remain pending while a provider is unavailable. Verify individual readings, combined coverage, freshness, and reduced motion. [Google Maps Travel Time](https://www.home-assistant.io/integrations/google_travel_time/)
 
 ```yaml
 roomcraft_commutes:
   version: 1
   routes:
     - name: Example commute
+      destination: Example destination
       entity: sensor.example_commute
       baselineEntity: sensor.example_clear_road_time
 ```
 
-Verify that **Location sharing** opens Google’s account settings and **Calendar & to-dos** opens the native Home Assistant pages. The previous runtime source is `b9b93fb3a843272c8bfc7a44a42aa1fc9c3bb0f9`. If required, reinstall those assets, restore the private pre-release dashboard backup, and verify the current Home and Studio views. The previous owner-private Site version is 72. [Google Location Sharing settings](https://support.google.com/accounts/answer/9363497)
+### Connect private location sources
+
+Set `roomcraft_location.sources` on the private dashboard root. Each source contains an `entity` ID in the `person` or `device_tracker` domain, an optional `label`, and a `provider` of `home_assistant` or `google_maps`. Use the Google label for sources installed through the Google Maps integration. Verify that **Menu → Location sharing** displays the intended markers, respects unavailable sources, and removes the map on close. Keep credentials and location values in Home Assistant. [Google Maps integration](https://www.home-assistant.io/integrations/google_maps/)
+
+For rollback of the showcase, commute and map release, rebuild and reinstall revision `347bd799f6abe2b49dad6741334b7cf328bdb8de` and restore the private pre-release dashboard backup if its settings need to be reversed. Restore the preceding private Studio deployment if shared renderer recovery is needed.
 
 ### Verify layout snapshots
 

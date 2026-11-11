@@ -1,5 +1,11 @@
 # Changelog
 
+## Dashboard showcase, commute routes, and location map
+
+- The 30-second demo uses quick close-ups and simulated lights, fan, presence, vacuum, garage, indoor, weather, and road activity. It returns to the original view and resumes live telemetry on exit.
+- The commute menu combines calibrated routes by default. Administrators can edit routes and their Home Assistant sensors. The dashboard labels partial and unavailable route coverage.
+- Location sharing opens a Home Assistant map in Roomcraft Home. A private list controls which Home Assistant and Google Maps location sources appear.
+
 ## Energy map and household shortcuts
 
 - **Power → Energy map** adds a circular tree and searchable meter directory. Select the whole-home hub, a circuit, or a smart plug to see live power, today’s energy, calendar-month energy, and billing-cycle energy. Each available source opens its Home Assistant details.

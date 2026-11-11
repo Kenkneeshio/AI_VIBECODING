@@ -283,13 +283,14 @@ function aperture(w, windowOnly, slatsEnabled, height = 31) {
   let shown = 0;
   return {
     root, anchorY: at + 1.5,
-    animate(state) {
+    animate(state, _seconds, _tracking, transientTelemetry = false) {
       const openness = coverOpenFraction(state);
-      if (openness !== null) shown = 1 - openness;
+      const visibleFraction = openness === null ? (transientTelemetry ? 0 : shown) : 1 - openness;
+      if (!transientTelemetry) shown = visibleFraction;
       const tilt = Number.isFinite(state?.attributes?.current_tilt_position)
         ? clamp(state.attributes.current_tilt_position / 100, 0, 1) : 0;
       for (let i = 0; i < slats.length; i++) {
-        const amount = clamp(shown * slats.length - i, 0, 1);
+        const amount = clamp(visibleFraction * slats.length - i, 0, 1);
         slats[i].visible = amount > 0.02;
         slats[i].scale.y = amount;
         slats[i].rotation.x = tilt * 0.9;
@@ -373,12 +374,13 @@ function garage(w, h) {
   let fraction = 0;
   return {
     root, anchorY: frameH * 0.62, anchorOffset: { x: 0, z: front },
-    animate(state, seconds = 0) {
+    animate(state, seconds = 0, _tracking, transientTelemetry = false) {
       const next = coverOpenFraction(state);
-      if (next !== null) fraction = next;
+      const visibleFraction = next ?? (transientTelemetry ? 0 : fraction);
+      if (!transientTelemetry) fraction = visibleFraction;
       doorSurface.color.setHex(live(state) ? color.mint : color.muted);
       doorInset.color.setHex(live(state) ? color.sage : color.muted);
-      const exposed = (1 - fraction) * panels.length;
+      const exposed = (1 - visibleFraction) * panels.length;
       panels.forEach((panel, index) => {
         const shown = clamp(exposed - index, 0, 1);
         panel.visible = shown > 0.02;
@@ -402,11 +404,14 @@ function hingedDoor(w) {
   box(root, width + 4, 3, 5, frame, 0, height);
   softBox(hinge, width - 2, height - 4, 4, surface, width / 2, height / 2, 0, 2);
   bead(hinge, 2.2, material(color.gold), width - 6, height * 0.47, 2.8);
+  let lastFraction = 0;
   return {
     root, anchorY: height / 2,
-    animate(state) {
+    animate(state, _seconds, _tracking, transientTelemetry = false) {
       const fraction = coverOpenFraction(state);
-      if (fraction !== null) hinge.rotation.y = -1.32 * fraction;
+      const visibleFraction = fraction ?? (transientTelemetry ? 0 : lastFraction);
+      if (!transientTelemetry) lastFraction = visibleFraction;
+      hinge.rotation.y = -1.32 * visibleFraction;
       surface.color.setHex(live(state) ? color.honey : color.muted);
     },
   };

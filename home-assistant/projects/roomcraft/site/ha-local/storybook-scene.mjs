@@ -872,6 +872,12 @@ export function createStorybookScene(canvas, layout) {
   let traffic;
   const {water} = buildStorybookNeighborhood(batch, street, GROUND_Y, plan.houseBounds,
     ground.geometry.parameters.width, ground.position.x);
+  const shoreCenter = water.shoreline.reduce((closest, point) =>
+    Math.abs(point.x - water.focusX) < Math.abs(closest.x - water.focusX) ? point : closest);
+  const sceneryFocus = {
+    road: {x: road.centerX, y: road.surfaceY + 8, z: (road.lanes[0] + road.lanes[1]) / 2},
+    coast: {x: water.focusX + 16, y: water.y, z: shoreCenter.z - 36},
+  };
   buildYard(batch, plan);
   buildReferenceLanding(batch, plan);
   buildFloors(scene, batch, plan, canvas.ownerDocument);
@@ -898,9 +904,12 @@ export function createStorybookScene(canvas, layout) {
   const trackingKey = new THREE.DirectionalLight('#fff1d8', 1.65);
   trackingKey.position.set(-4, 9, 6);
   trackingOverlay.add(trackingFill, trackingKey);
-  const people = createStorybookPeople(trackingOverlay, floorForPerson, {
+  const peopleOptions = {
     supportsRoute: walkable.supportsRoute, floorClearance: walkable.clearance,
-  });
+  };
+  const livePeople = createStorybookPeople(trackingOverlay, floorForPerson, peopleOptions);
+  let demoPeople;
+  let people = livePeople;
   const anchors = new Map();
   const roots = new Map();
   const garages = new Map();
@@ -939,6 +948,7 @@ export function createStorybookScene(canvas, layout) {
   let currentWidth = 0;
   let currentHeight = 0;
   let cameraView = normalizeCameraView();
+  let cameraFraming;
   const raycaster = new THREE.Raycaster();
   const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   const projected = new THREE.Vector3();
@@ -950,16 +960,29 @@ export function createStorybookScene(canvas, layout) {
     const deviceRatio = canvas.ownerDocument.defaultView?.devicePixelRatio || 1;
     renderer.setPixelRatio(Math.min(deviceRatio, 1.5, Math.sqrt(2700000 / (width * height))));
     renderer.setSize(width, height, false);
-    cameraView = fitStorybookCamera(camera, cameraBounds, width, height, cameraView);
+    fitStorybookCamera(camera, cameraBounds, width, height, cameraView, cameraFraming);
   }
-  function setView(value) {
+  function setView(value, framing) {
     cameraView = normalizeCameraView(value);
+    cameraFraming = framing;
     if (!disposed && currentWidth > 0 && currentHeight > 0) {
-      cameraView = fitStorybookCamera(camera, cameraBounds, currentWidth, currentHeight, cameraView);
+      fitStorybookCamera(camera, cameraBounds, currentWidth, currentHeight, cameraView, cameraFraming);
     }
     return getView();
   }
   function getView() { return {...cameraView}; }
+  function getDemoFocus(target) {
+    if (typeof target === 'string') {
+      if (Object.hasOwn(sceneryFocus, target)) return {...sceneryFocus[target]};
+      const entry = anchors.get(target);
+      if (!entry) return null;
+      const {x, z, baseY, object} = entry;
+      if (!object) return {x, y: baseY + 6, z};
+      return {x, y: object.root.position.y + (object.anchorY ?? 0) * object.root.scale.y, z};
+    }
+    if (![target?.x, target?.y].every(Number.isFinite)) return null;
+    return {x: target.x, y: (floorForPerson(target.x, target.y) ?? 0) + 22, z: target.y};
+  }
   function pointRay(x, y) {
     if (disposed || !Number.isFinite(x) || !Number.isFinite(y) || currentWidth <= 0 || currentHeight <= 0) return false;
     raycaster.setFromCamera(new THREE.Vector2(x / currentWidth * 2 - 1, 1 - y / currentHeight * 2), camera);
@@ -985,22 +1008,22 @@ export function createStorybookScene(canvas, layout) {
     }
     return null;
   }
-  function draw() {
+  function draw(transientTelemetry = false) {
     renderer.render(scene, camera);
-    const showCoverage = coverage.scene.children.length > 0;
-    if (!people.hasVisibleTracks && !showCoverage) return;
+    const showCoverage = !transientTelemetry && coverage.scene.children.length > 0;
+    if (!people?.hasVisibleTracks && !showCoverage) return;
     // Clear the house depth, while keeping the avatars' own depth and shading.
     renderer.autoClear = false;
     try {
       renderer.clearDepth();
       if (showCoverage) renderer.render(coverage.scene, camera);
-      if (people.hasVisibleTracks) renderer.render(trackingOverlay, camera);
+      if (people?.hasVisibleTracks) renderer.render(trackingOverlay, camera);
     } finally {
       renderer.autoClear = true;
     }
   }
   function render(timeSeconds = 0, statesById = {}, environment = {},
-    {animateTelemetry = true, showTelemetryPosition = true, draftPositions} = {}) {
+    {animateTelemetry = true, showTelemetryPosition = true, draftPositions, transientTelemetry = false} = {}) {
     if (disposed || currentWidth < 1 || currentHeight < 1) return;
     lighting.update(environment, statesById, groundMaterial);
     const reduceMotion = environment.reduceMotion === true;
@@ -1010,7 +1033,8 @@ export function createStorybookScene(canvas, layout) {
       traffic = createStorybookTraffic(road);
       scene.add(traffic.root);
     }
-    traffic?.update(timeSeconds, environment.traffic, {reduceMotion, night: environment.night === true});
+    traffic?.update(timeSeconds, environment.traffic, {reduceMotion, night: environment.night === true,
+      transientTelemetry});
     updatePrecipitation(telemetryTime, environment.condition);
     oceanEnvironment = environment;
     ocean.update(time, oceanEnvironment);
@@ -1019,25 +1043,41 @@ export function createStorybookScene(canvas, layout) {
       const latest = state.position;
       const validPosition = latest && Number.isFinite(latest.x) && Number.isFinite(latest.y) &&
         (!object.floorRadius || floors.clearance(latest.x, latest.y) >= object.floorRadius);
-      if (validPosition) object.telemetryPosition = latest;
-      const location = draftPositions?.[id]?.position ?? (showTelemetryPosition ? object.telemetryPosition : null);
+      if (validPosition && !transientTelemetry) object.telemetryPosition = latest;
+      const trackedPosition = transientTelemetry ? (validPosition ? latest : null) : object.telemetryPosition;
+      const location = draftPositions?.[id]?.position ?? (showTelemetryPosition ? trackedPosition : null);
       const authored = anchors.get(id);
       object.root.position.x = location?.x ?? authored.x;
       object.root.position.z = location?.y ?? authored.z;
       if (object.floorRadius) object.root.visible = Boolean(location || !showTelemetryPosition || object.dockFits);
-      object.animate?.(state, object.ambientMotion ? time : telemetryTime, Boolean(validPosition && showTelemetryPosition));
+      object.animate?.(state, object.ambientMotion ? time : telemetryTime,
+        Boolean(validPosition && showTelemetryPosition), transientTelemetry);
     }
-    people.render(timeSeconds, reduceMotion);
-    draw();
+    const nextPeople = transientTelemetry ? demoPeople : livePeople;
+    if (people !== nextPeople) {
+      people?.setVisible(false);
+      if (!transientTelemetry) demoPeople?.setTracks([], 0);
+      people = nextPeople;
+      people?.setVisible(true);
+    }
+    people?.render(timeSeconds, reduceMotion);
+    draw(transientTelemetry);
   }
-  function setPeople(tracks, timeSeconds, options) {
-    if (!disposed) people.setTracks(tracks, timeSeconds, options);
+  function setPeople(tracks, timeSeconds, options = {}) {
+    if (disposed) return;
+    if (options.transientTelemetry) {
+      if (!demoPeople && tracks?.length) {
+        demoPeople = createStorybookPeople(trackingOverlay, floorForPerson, peopleOptions);
+        demoPeople.setVisible(false);
+      }
+      demoPeople?.setTracks(tracks, timeSeconds, options);
+    } else livePeople.setTracks(tracks, timeSeconds, options);
   }
   function renderAmbient(timeSeconds) {
     if (disposed || currentWidth < 1 || currentHeight < 1) return;
     ocean.update(timeSeconds, oceanEnvironment);
     for (const object of ambientObjects) object.animate(defaultState, timeSeconds);
-    people.render(timeSeconds);
+    livePeople.render(timeSeconds);
     draw();
   }
   function anchor(itemId) {
@@ -1057,7 +1097,8 @@ export function createStorybookScene(canvas, layout) {
   function dispose() {
     if (disposed) return;
     disposed = true;
-    people.dispose();
+    livePeople.dispose();
+    demoPeople?.dispose();
     coverage.dispose();
     traffic?.dispose();
     const geometries = new Set();
@@ -1079,9 +1120,9 @@ export function createStorybookScene(canvas, layout) {
   }
   const exteriorClearance = () => projectExteriorClearance(plan, camera, currentWidth, currentHeight);
   return {
-    resize, render, anchor, setView, getView, projectToPlan, pickGarage, exteriorClearance, dispose,
+    resize, render, anchor, setView, getView, getDemoFocus, projectToPlan, pickGarage, exteriorClearance, dispose,
     hasAmbientMotion: true, renderAmbient, setPeople, setDetectionZones: coverage.setZones,
     canPlacePerson: (x, y) => Number.isFinite(floorForPerson(x, y)) && walkable.clearance(x, y) > 0,
-    get hasPeopleMotion() { return people.hasMotion; },
+    get hasPeopleMotion() { return people?.hasMotion ?? false; },
   };
 }

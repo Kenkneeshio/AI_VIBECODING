@@ -1,7 +1,8 @@
 import {readDetectionZones, readPersonTracks, trackingSnapshots, trackingStatus} from './storybook-tracking.mjs';
 import {bindLiveModelLibrary} from './storybook-library.mjs';
 import {createStorybookScene} from './storybook-scene.mjs';
-import {DEMO_DURATION_MS, sampleStorybookDemo} from './storybook-demo.mjs';
+import {createStorybookDemo, DEMO_DURATION_MS} from './storybook-demo.mjs';
+import {createStorybookDemoScenario} from './storybook-demo-frame.mjs';
 import {bindSnapshotDialog, SNAPSHOT_DIALOG_MARKUP} from './storybook-snapshots.mjs';
 import {enterFreeView, normalizeCameraView, populateCameraOptions, readSavedFreeView, resolveDefaultCameraView} from './storybook-camera.mjs';
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
@@ -10,7 +11,8 @@ import {storybookWeather, storybookWeatherMarkup, storybookWeatherStyles, update
 import {COASTAL_SKY_STYLE, COASTAL_SKY_MARKUP, updateCoastalSky} from './storybook-coastal-sky.mjs';
 import {readStorybookUtilities, utilityReading} from './storybook-utilities.mjs';
 import {bindStorybookPower, POWER_PANEL_MARKUP, POWER_PANEL_STYLE} from './storybook-power-panel.mjs';
-import {bindStorybookCommutes, COMMUTE_DIALOG_MARKUP} from './storybook-commutes.mjs';
+import {bindStorybookCommutes, COMMUTE_DIALOG_MARKUP, COMMUTE_DIALOG_STYLE} from './storybook-commutes.mjs';
+import {createStorybookLocation, STORYBOOK_LOCATION_MARKUP, STORYBOOK_LOCATION_STYLE} from './storybook-location.mjs';
 
 const TAG = 'roomcraft-storybook-card';
 const CONTROL_TAG = 'roomcraft-object-control';
@@ -156,14 +158,15 @@ class RoomcraftStorybookCard extends HTMLElement {
           width:max-content;max-width:calc(100% - 18px);padding:5px 10px;border-radius:8px;
           background:#443649;color:#fffaf0;text-align:center;font-size:12px;pointer-events:none}
         .overlay{position:absolute;inset:0;pointer-events:none}
+        .world[data-demo-beat] :is(.overlay,.tethers,.zone-legend){visibility:hidden}
         .demo{position:absolute;left:clamp(8px,1.5vw,24px);bottom:clamp(8px,1.5vw,24px);z-index:4;
           display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px 12px;
-          box-sizing:border-box;width:min(360px,calc(100% - 16px));padding:10px 12px;border:1px solid #ae9c83;
+          box-sizing:border-box;width:min(270px,calc(100% - 16px));padding:7px 9px 7px 12px;border:1px solid #ae9c83;
           border-radius:14px;background:#fff8ebf5;color:#37313b;box-shadow:0 4px 14px #21192638}
         .demo[hidden]{display:none}
-        .demo-title,.demo-description{display:block}
+        .demo-title,.demo-kicker{display:block}
         .demo-title{font-size:14px}
-        .demo-description{font-size:12px;line-height:1.35}
+        .demo-kicker{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:#6d4b69}
         .demo-stop{font:inherit;min-height:44px;padding:0 11px;border:1px solid #b3a38e;border-radius:9px;
           background:#fffdf7;color:inherit;cursor:pointer}
         .demo-stop:hover{background:#f0e5d4}
@@ -186,6 +189,8 @@ class RoomcraftStorybookCard extends HTMLElement {
         ${storybookWeatherStyles}
         ${COASTAL_SKY_STYLE}
         ${POWER_PANEL_STYLE}
+        ${COMMUTE_DIALOG_STYLE}
+        ${STORYBOOK_LOCATION_STYLE}
       </style>
       <section class="world" aria-label="Roomcraft Storybook">
         ${COASTAL_SKY_MARKUP}
@@ -208,7 +213,7 @@ class RoomcraftStorybookCard extends HTMLElement {
           </div></div>
           <div class="demo" aria-label="Dashboard demo" hidden>
             <div role="status" aria-atomic="true">
-              <strong class="demo-title"></strong><span class="demo-description"></span>
+              <span class="demo-kicker">Demo</span><strong class="demo-title"></strong>
             </div>
             <button type="button" class="demo-stop" aria-label="Stop demo">Stop</button>
             <div class="demo-progress" aria-hidden="true"><span></span></div>
@@ -290,11 +295,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         <header><h2 id="utility-title"></h2><button type="button" class="close-utility">Close</button></header>
         <div class="utility-rows"></div>
       </dialog>
-      <dialog class="link-dialog location-dialog" aria-labelledby="location-title">
-        <header><h2 id="location-title">Location sharing</h2><button type="button" data-close-link>Close</button></header>
-        <p>Google Maps location sharing setup</p>
-        <a href="https://myaccount.google.com/locationsharing" target="_blank" rel="noopener noreferrer">Open Google Location Sharing ↗</a>
-      </dialog>
+      ${STORYBOOK_LOCATION_MARKUP}
       <dialog class="link-dialog planner-dialog" aria-labelledby="planner-title">
         <header><h2 id="planner-title">Calendar &amp; to-dos</h2><button type="button" data-close-link>Close</button></header>
         <nav class="planner-links" aria-label="Household planning">
@@ -309,6 +310,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.snapshots = bindSnapshotDialog(this);
     this.power = bindStorybookPower(this);
     this.commutes = bindStorybookCommutes(this);
+    this.locationPanel = createStorybookLocation(this.shadowRoot.querySelector('.location-dialog'));
     this.world = this.shadowRoot.querySelector('.world');
     this.coastalSky = this.shadowRoot.querySelector('.coastal-sky');
     this.stage = this.shadowRoot.querySelector('.stage');
@@ -331,7 +333,6 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.demoButton = this.shadowRoot.querySelector('.demo-start');
     this.demo = this.shadowRoot.querySelector('.demo');
     this.demoTitle = this.demo.querySelector('.demo-title');
-    this.demoDescription = this.demo.querySelector('.demo-description');
     this.demoProgress = this.demo.querySelector('.demo-progress span');
     this.demoStopButton = this.demo.querySelector('.demo-stop');
     this.demoButton.addEventListener('click', () => this.startDemo());
@@ -383,6 +384,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       trigger.addEventListener('click', () => {
         this.setMainMenu(false, true);
         dialog.showModal();
+        if (trigger.dataset.linkDialog === 'location') this.locationPanel.update(this.session);
       });
       dialog.querySelector('[data-close-link]').addEventListener('click', () => dialog.close());
     }
@@ -502,9 +504,11 @@ class RoomcraftStorybookCard extends HTMLElement {
     const previous = this.session;
     this.session = value;
     this.snapshots.sync();
+    this.commutes.sync();
     if (this.devicesDrawer) this.devicesDrawer.hass = value?.connected === false ? undefined : value;
     this.refreshUtility(previous);
     this.power.refresh(previous);
+    this.locationPanel.update(value);
     this.updateDefaultViewButtons();
     this.watchPublishedLayout();
     if (previous?.connected === false && value?.connected === true) {
@@ -529,12 +533,16 @@ class RoomcraftStorybookCard extends HTMLElement {
   startDemo() {
     if (!this.scene || !this.frame || this.demoRun || this.demoButton.disabled) return;
     const view = this.scene.getView();
-    this.demoRun = {startedAt: performance.now(), view, lastView: view,
+    const scenario = createStorybookDemoScenario(this.model.layout);
+    const timeline = createStorybookDemo(view, target => this.scene.getDemoFocus(
+      target === 'coast' || target === 'road' ? target : scenario.targets[target]));
+    this.demoRun = {startedAt: performance.now(), view, timeline, scenario,
       timer: setTimeout(() => this.stopDemo(), DEMO_DURATION_MS)};
     this.setMainMenu(false);
     this.freeViewGestures?.cancel();
     this.syncFreeViewMode();
     this.overlay.inert = this.dock.inert = true;
+    this.scene.setDetectionZones([]);
     this.demo.hidden = false;
     window.addEventListener('keydown', this.onDemoEscape, true);
     this.updateDemo(this.demoRun.startedAt);
@@ -545,22 +553,30 @@ class RoomcraftStorybookCard extends HTMLElement {
   updateDemo(at) {
     const run = this.demoRun;
     if (!run) return;
-    const {title, description, view, progress, done} =
-      sampleStorybookDemo(at - run.startedAt, run.view, {reducedMotion: this.motionReduced});
-    if (done) {
+    const sample = run.timeline(at - run.startedAt, {reducedMotion: this.motionReduced});
+    if (sample.done) {
       this.stopDemo();
       return;
     }
-    if (this.demoTitle.textContent !== title) {
+    const {title, beat, view, focus, zoom, progress} = sample;
+    const previous = run.sample;
+    const previousEnvironment = run.frame?.environment;
+    run.sample = sample;
+    run.frame = run.scenario.sampleFrame(sample);
+    if (beat !== previous?.beat) {
       this.demoTitle.textContent = title;
-      this.demoDescription.textContent = description;
+      this.world.dataset.demoBeat = beat;
+    }
+    const {condition, sunElevation} = run.frame.environment;
+    if (condition !== previousEnvironment?.condition || sunElevation !== previousEnvironment?.sunElevation) {
+      this.paintWeather(run.frame.environment, false, true);
     }
     this.demoProgress.style.transform = `scaleX(${progress})`;
-    const {azimuth, tilt, zoom} = run.lastView;
-    if (azimuth !== view.azimuth || tilt !== view.tilt || zoom !== view.zoom) {
-      this.scene.setView(view);
-      run.lastView = view;
-      this.anchorDirty = true;
+    const point = previous?.focus;
+    if (!previous || previous.view.azimuth !== view.azimuth || previous.view.tilt !== view.tilt ||
+        previous.zoom !== zoom || point?.weight !== focus?.weight || point?.x !== focus?.x ||
+        point?.y !== focus?.y || point?.z !== focus?.z) {
+      this.scene.setView(view, {focus, demoZoom: zoom});
     }
   }
 
@@ -573,7 +589,10 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.demoRun = undefined;
     this.overlay.inert = this.dock.inert = false;
     this.demo.hidden = true;
+    delete this.world.dataset.demoBeat;
     this.scene?.setView(run.view);
+    this.syncDetectionZones();
+    if (this.frame) this.paintWeather(this.frame.environment, this.session?.connected === false);
     this.syncFreeViewMode();
     this.anchorDirty = true;
     if (returnFocus && hadFocus) this.menuButton.focus();
@@ -689,6 +708,8 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.loadStartupView();
       this.model = readStorybookConfig(config);
       for (const id of this.commutes.configure(config?.roomcraft_commutes)) this.model.watch.add(id);
+      this.locationPanel.configure(config?.roomcraft_location);
+      this.locationPanel.update(this.session);
       this.prepareUtilities(config);
       this.scene = createStorybookScene(this.canvas, this.model.layout);
       this.scene.setView(this.cameraView);
@@ -942,6 +963,12 @@ class RoomcraftStorybookCard extends HTMLElement {
     }
   }
 
+  paintWeather(environment, offline, demo = false) {
+    updateCoastalSky(this.coastalSky, environment, offline);
+    updateStorybookWeather(this.dock, this.weather, storybookWeather(environment, offline),
+      !demo && !offline && Boolean(this.model?.weather.weather_entity));
+  }
+
   refresh() {
     if (!this.model) return;
     const offline = this.session?.connected === false;
@@ -967,9 +994,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     if (Number.isFinite(expires)) {
       this.frameExpiryTimer = setTimeout(() => this.refresh(), Math.max(1, expires - now));
     }
-    const weather = storybookWeather(this.frame.environment, offline);
-    updateCoastalSky(this.coastalSky, this.frame.environment, offline);
-    updateStorybookWeather(this.dock, this.weather, weather, !offline && Boolean(this.model.weather.weather_entity));
+    if (!this.demoRun) this.paintWeather(this.frame.environment, offline);
     for (const {config, element, camera} of this.controls) {
       if (camera && !this.cameraTilesVisible) continue;
       const item = this.model.items.get(config.roomcraft_item_id);
@@ -998,13 +1023,15 @@ class RoomcraftStorybookCard extends HTMLElement {
       if (this.anchorDirty || !animate || at - this.lastFrame >= FRAME_INTERVAL - 1 || this.lastFrame === undefined) {
         try {
           this.updateDemo(at);
-          if (this.anchorDirty || motion || !this.demoRun) {
-            this.scene.setPeople(this.frame.people, at / 1000, {reduceMotion});
-            this.scene.render(at / 1000, this.frame.states, {...this.frame.environment, reduceMotion});
-          }
+          const demo = this.demoRun;
+          const frame = demo?.frame ?? this.frame;
+          const time = (demo?.sample.elapsedMs ?? at) / 1000;
+          const options = {reduceMotion, transientTelemetry: Boolean(demo)};
+          this.scene.setPeople(frame.people, time, options);
+          this.scene.render(time, frame.states, {...frame.environment, reduceMotion}, options);
           this.lastFrame = at;
           if (this.anchorDirty) {
-            this.positionControls();
+            if (!demo) this.positionControls();
             this.anchorDirty = false;
           }
         } catch {
@@ -1093,6 +1120,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.detectionZoneLegend.hidden = true;
     if (this.utilityDialog.open) this.utilityDialog.close();
     for (const dialog of this.linkDialogs) if (dialog.open) dialog.close();
+    this.locationPanel.configure(null);
     this.power.close();
     this.utilityRows = null;
     this.utilityPanels = null;

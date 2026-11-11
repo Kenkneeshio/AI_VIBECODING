@@ -266,6 +266,7 @@ export function createStorybookPeople(scene, floorAt = () => 0, {supportsRoute, 
     setTracks,
     render,
     dispose,
+    setVisible(visible) { group.visible = visible; },
     get hasMotion() { return !reduced && tracks.size > 0; },
     get hasVisibleTracks() { return hasVisibleTracks; },
   };

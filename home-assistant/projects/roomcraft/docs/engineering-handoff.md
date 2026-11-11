@@ -6,6 +6,10 @@ The [Codex and Grok development guide](ai-pair-development.md) covers scoped loc
 
 ## Coordinated release
 
+The showcase samples camera moves in `storybook-demo.mjs` and simulated inputs in `storybook-demo-frame.mjs`. `roomcraft-storybook.mjs` owns playback, view restoration, and input isolation. The scene uses separate demo animation state for tracked objects and vehicles. The authored layout and device bindings remain the same for live rendering and the demo.
+
+The commute panel binds one Home Assistant duration sensor and one clear-road reference per route. `storybook-commutes.mjs` validates these bindings, calculates individual and combined readings, and saves administrator edits in the private dashboard. `storybook-location.mjs` builds the native map from approved location entities and signed-in Home Assistant state. Both configurations stay outside the shared layout schema and snapshots. See the [deployment guide](deployment.md) for setup and rollback.
+
 The [November 11 release audit](system-audit-release-2026-11-11.md) ties Roomcraft, private Studio, Watchdog 0.2.1, and Tablet Keeper 0.1.1 to `roomcraft-2026.11.11.1`. Verify the deployed surfaces against the audit record. Use the Watchdog component-only installer and the tablet access runbook for those runtimes. Keep their private backup and live-check evidence in the management directory.
 
 ## Surface ownership and verified baseline
@@ -51,7 +55,7 @@ Verify live, zero, negative, and unavailable meter states, genuine Recorder gaps
 
 `storybook-energy-periods.mjs` computes the month boundary in the Home Assistant timezone and builds two bounded Recorder requests for the boundary sum and recent five-minute sums. The delta uses the same meter’s cumulative values in kWh, including across counter resets. Billing reads the native cycle entity and matches its `last_reset` to the whole-home cycle. Missing history or a mismatched reset produces an unavailable reading. [Home Assistant Recorder statistics API](https://github.com/home-assistant/core/blob/2026.10.4/homeassistant/components/recorder/websocket_api.py)
 
-`storybook-commutes.mjs` parses the private version 1 `roomcraft_commutes` route mappings and uses the selected route’s Home Assistant travel time and clear-road reference. `storybook-traffic.mjs` maps that reading to instanced miniature cars and holds them still in reduced-motion mode. The sensor is considered stale after 20 minutes. Grok Build supplied four ratio fixtures that were reviewed and incorporated into the commute tests. [Waze Travel Time](https://www.home-assistant.io/integrations/waze_travel_time/)
+`storybook-commutes.mjs` parses the private version 1 `roomcraft_commutes` route mappings and uses each route’s Home Assistant travel time and clear-road reference. `storybook-traffic.mjs` maps the selected or combined reading to instanced miniature cars and holds them still in reduced-motion mode. The sensor is considered stale after 20 minutes. Grok Build supplied four ratio fixtures that were reviewed and incorporated into the commute tests. [Google Maps Travel Time](https://www.home-assistant.io/integrations/google_travel_time/)
 
 For this release, reinstall the prior runtime from Git `b9b93fb3a843272c8bfc7a44a42aa1fc9c3bb0f9` and restore the private pre-release dashboard backup if configuration needs to be recovered. The previous owner-private Site version is 72. [Deployment and rollback](deployment.md)
 

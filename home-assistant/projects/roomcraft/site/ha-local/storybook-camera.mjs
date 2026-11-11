@@ -80,7 +80,7 @@ export function studioCameraPreferences(host) {
 }
 
 /** Fit one authored bounding box at an explicit viewport and orthographic pose. */
-export function fitStorybookCamera(camera, bounds, width, height, view = 'top') {
+export function fitStorybookCamera(camera, bounds, width, height, view = 'top', {focus, demoZoom} = {}) {
   if (![bounds?.minX, bounds?.maxX, bounds?.minZ, bounds?.maxZ, width, height].every(Number.isFinite) ||
       width <= 0 || height <= 0 || bounds.maxX < bounds.minX || bounds.maxZ < bounds.minZ) {
     throw new Error('A finite scene bounding box and viewport are required.');
@@ -122,13 +122,20 @@ export function fitStorybookCamera(camera, bounds, width, height, view = 'top') 
   const halfWidth = Math.max((frame.max.x - frame.min.x) / 2,
     (frame.max.y - frame.min.y) / 2 * ratio);
   const halfHeight = halfWidth / ratio;
-  const centerX = (frame.min.x + frame.max.x) / 2;
-  const centerY = (frame.min.y + frame.max.y) / 2;
+  let centerX = (frame.min.x + frame.max.x) / 2;
+  let centerY = (frame.min.y + frame.max.y) / 2;
+  if ([focus?.x, focus?.y, focus?.z].every(Number.isFinite)) {
+    const {x, y} = corner.set(focus.x, focus.y, focus.z).applyMatrix4(camera.matrixWorldInverse);
+    const weight = Number.isFinite(focus.weight) ? THREE.MathUtils.clamp(focus.weight, 0, 1) : 1;
+    centerX = THREE.MathUtils.lerp(centerX, x, weight);
+    centerY = THREE.MathUtils.lerp(centerY, y, weight);
+  }
   camera.left = centerX - halfWidth;
   camera.right = centerX + halfWidth;
   camera.bottom = centerY - halfHeight;
   camera.top = centerY + halfHeight;
-  camera.zoom = normalized.zoom;
+  // Demo framing is intentionally excluded from the returned camera preference.
+  camera.zoom = Number.isFinite(demoZoom) ? THREE.MathUtils.clamp(demoZoom, 0.6, 4.5) : normalized.zoom;
   camera.updateProjectionMatrix();
   return normalized;
 }

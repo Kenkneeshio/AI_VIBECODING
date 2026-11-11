@@ -61,6 +61,10 @@ test('the detached garage sits on the ground, fits the standard views, and prese
   assert.ok(visibleMeshes() < shut);
   model.animate({state: 'closed'});
   assert.equal(visibleMeshes(), shut);
+  model.animate({state: 'open'}, 0, false, true);
+  assert.ok(visibleMeshes() < shut);
+  model.animate({state: 'unavailable'});
+  assert.equal(visibleMeshes(), shut);
 });
 
 test('a garage footprint on the upstairs projection cannot steal an unrelated click', () => {

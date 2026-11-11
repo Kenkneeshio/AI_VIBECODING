@@ -24,7 +24,7 @@ export function createTrafficMotion({centerX, width, lanes}) {
   let previousTime;
   let previousPattern;
   let visible = [];
-  function update(time, profile, reduceMotion) {
+  function update(time, profile, reduceMotion, fromDemoClock = false) {
     const pattern = PATTERNS.get(profile?.severity);
     const step = Number.isFinite(previousTime) && Number.isFinite(time)
       ? THREE.MathUtils.clamp(time - previousTime, 0, .25) : 0;
@@ -34,10 +34,14 @@ export function createTrafficMotion({centerX, width, lanes}) {
       previousPattern = pattern;
     }
     if (!pattern) return visible;
-    if (!reduceMotion) {
-      const factor = profile.speedFactor;
-      const speed = Number.isFinite(factor) && factor > 0
-        ? PATTERNS.get('clear').speed * THREE.MathUtils.clamp(factor, .22, 1) : pattern.speed;
+    const factor = profile.speedFactor;
+    const speed = Number.isFinite(factor) && factor > 0
+      ? PATTERNS.get('clear').speed * THREE.MathUtils.clamp(factor, .22, 1) : pattern.speed;
+    if (fromDemoClock) {
+      const distance = !reduceMotion && Number.isFinite(time) ? Math.max(0, time) * speed : 0;
+      phases[0] = distance % span;
+      phases[1] = (distance * .94) % span;
+    } else if (!reduceMotion) {
       phases[0] = (phases[0] + step * speed) % span;
       phases[1] = (phases[1] + step * speed * .94) % span;
     }
@@ -81,6 +85,7 @@ function wheels(radius, depth, y, offset) {
 export function createStorybookTraffic(road) {
   const root = new THREE.Group();
   const motion = createTrafficMotion(road);
+  let demoMotion;
   const meshes = [];
   function layer(geometry, material) {
     const mesh = new THREE.InstancedMesh(geometry, material, motion.capacity);
@@ -113,8 +118,10 @@ export function createStorybookTraffic(road) {
   let lastSlots;
   let lastNight;
   root.visible = false;
-  function update(time, profile, {reduceMotion = false, night = false} = {}) {
-    const slots = motion.update(time, profile, reduceMotion);
+  function update(time, profile, {reduceMotion = false, night = false, transientTelemetry = false} = {}) {
+    if (transientTelemetry) demoMotion ??= createTrafficMotion(road);
+    const clock = transientTelemetry ? demoMotion : motion;
+    const slots = clock.update(time, profile, reduceMotion, transientTelemetry);
     root.visible = slots.length > 0;
     if (!root.visible) return;
     if (night !== lastNight) {

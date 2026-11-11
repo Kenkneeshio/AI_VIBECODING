@@ -1,60 +1,60 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {normalizeCameraView} from '../ha-local/storybook-camera.mjs';
-import {DEMO_DURATION_MS, sampleStorybookDemo} from '../ha-local/storybook-demo.mjs';
+import {createStorybookDemo, DEMO_DURATION_MS} from '../ha-local/storybook-demo.mjs';
 
-const original = Object.freeze({preset: 'default', azimuth: 355, tilt: 29.5, zoom: 1.03});
+const original = Object.freeze({preset: 'free', azimuth: 355, tilt: 29.5, zoom: 1.03});
+const cameraAnchors = {
+  presence: {x: -180, y: 34, z: -30}, lamps: {x: 170, y: 39, z: -42},
+  fan: {x: -180, y: 46, z: 85}, vacuum: {x: -110, y: 20, z: 16},
+  garage: {x: -390, y: -9, z: -270}, habitat: {x: 240, y: 35, z: -39},
+  coast: {x: 45, y: -22, z: -610}, road: {x: 32, y: -19, z: -450},
+};
+const sample = createStorybookDemo(original, target => cameraAnchors[target]);
 
-test('the demo starts in the current view and completes at exactly 30 seconds', () => {
+test('the demo starts in the current view and restores it at 30 seconds', () => {
   assert.equal(DEMO_DURATION_MS, 30_000);
-  const start = sampleStorybookDemo(0, original);
-  const finish = sampleStorybookDemo(DEMO_DURATION_MS, original);
-  assert.deepEqual(start.view, original);
+  const start = sample(0);
+  const end = sample(DEMO_DURATION_MS);
+  for (const shot of [start, end]) {
+    assert.deepEqual(shot.view, original);
+    assert.equal(shot.focus, null);
+  }
   assert.equal(start.progress, 0);
   assert.equal(start.done, false);
-  assert.deepEqual(finish.view, original);
-  assert.equal(finish.progress, 1);
-  assert.equal(finish.done, true);
-  assert.equal(sampleStorybookDemo(DEMO_DURATION_MS - 1, original).done, false);
-  assert.deepEqual(sampleStorybookDemo(-100, original), start);
-  assert.deepEqual(sampleStorybookDemo(NaN, original), start);
-  assert.deepEqual(sampleStorybookDemo(DEMO_DURATION_MS + 5000, original), finish);
+  assert.equal(end.progress, 1);
+  assert.equal(end.done, true);
+  assert.equal(sample(DEMO_DURATION_MS - 1).done, false);
+  assert.deepEqual(sample(-100), start);
+  assert.deepEqual(sample(NaN), start);
+  assert.deepEqual(sample(DEMO_DURATION_MS + 5000), end);
 });
 
-test('chapters change on fixed boundaries without snapping the camera', () => {
-  const captions = [
-    'Your home, live',
-    'Controls built into the scene',
-    'Weather and activity',
-    'The whole home',
-  ];
-  for (const [index, title] of captions.entries()) {
-    const at = index * 7500;
-    const current = sampleStorybookDemo(at, original);
-    assert.equal(current.title, title);
-    assert.ok(current.description);
-    if (index > 0) {
-      const previous = sampleStorybookDemo(at - 1, original);
-      assert.equal(previous.title, captions[index - 1]);
-      assert.deepEqual(current.view, previous.view);
-    }
+test('short shots glide to each world focus and retain the original preference label', () => {
+  const schedule = [['overview', 0], ['presence', 1500], ['lamps', 5200], ['fan', 8300], ['vacuum', 11300],
+    ['garage', 14400], ['habitat', 17300], ['weather', 20300], ['traffic', 24200], ['finale', 28100]];
+  for (const [beat, at] of schedule) {
+    assert.equal(sample(at).beat, beat);
+    assert.equal(sample(at).view.preset, original.preset);
+    if (at > 0) assert.deepEqual(sample(at).view, sample(at - 1).view);
+    const key = beat === 'weather' ? 'coast' : beat === 'traffic' ? 'road' : beat;
+    if (cameraAnchors[key]) assert.deepEqual(sample(at + 900).focus, {...cameraAnchors[key], weight: 1});
   }
+  assert.equal(sample(450).view.azimuth, 357.5);
+  assert.equal(sample(450).view.tilt, 25.25);
+  assert.equal(sample(9200).zoom, 3.25);
+  assert.equal(sample(9200).view.zoom, 2.5);
+  const saved = sample(6000);
+  sample(26500);
+  assert.deepEqual(sample(6000), saved);
 });
 
-test('elapsed time alone determines an eased view and rotation takes the short path', () => {
-  const middle = sampleStorybookDemo(1625, original);
-  assert.equal(middle.view.azimuth, 357.5);
-  assert.equal(middle.view.tilt, 21.75);
-  for (const at of [4000, 10_000, 25_000, 14_999, 1625]) sampleStorybookDemo(at, original);
-  assert.deepEqual(sampleStorybookDemo(1625, original), middle);
-});
-
-test('reduced motion keeps the original camera while chapters and timing still advance', () => {
-  const custom = {preset: 'free', azimuth: -12, tilt: 43, zoom: 1.8};
-  for (const at of [0, 1625, 7500, 9750, 17_000, 27_000, 30_000]) {
-    const moving = sampleStorybookDemo(at, custom);
-    const still = sampleStorybookDemo(at, custom, {reducedMotion: true});
-    assert.deepEqual(still, {...moving, view: normalizeCameraView(custom)});
+test('missing authored objects redistribute their shot time and reduced motion keeps the starting view', () => {
+  const compact = createStorybookDemo(original, target => target === 'road' ? cameraAnchors.road : null);
+  assert.equal(compact(1500).beat, 'traffic');
+  assert.equal(compact(27000).beat, 'traffic');
+  assert.equal(compact(28100).beat, 'finale');
+  for (const at of [0, 450, 6000, 18300, 24500, 29000, 30000]) {
+    const moving = sample(at);
+    assert.deepEqual(sample(at, {reducedMotion: true}), {...moving, view: original, focus: null, zoom: original.zoom});
   }
-  assert.deepEqual(custom, {preset: 'free', azimuth: -12, tilt: 43, zoom: 1.8});
 });

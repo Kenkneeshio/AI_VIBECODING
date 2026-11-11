@@ -2,6 +2,8 @@
 
 | Goal | Reason | Evidence of completion |
 | --- | --- | --- |
+| Show the dashboard to guests in half a minute | A fast showcase should work when the house is quiet or traffic data is unavailable | The scene stages close-ups and device animations with isolated render inputs, then restores the operator's view |
+| Bring routes and shared locations into Roomcraft Home | The household needs traffic context and an interactive location map without leaving the dashboard | The commute panel combines selected routes and reports coverage. The native map uses explicit location sources from Home Assistant |
 | Make every release deterministic, repeatable, standardized, modular, professional, and customer-led | Engineers and future customer installations need to reproduce a layout or release without rediscovering hidden ordering, timing, assets, or acceptance criteria | `RoomcraftEngine` owns canonical fingerprints, seeded IDs, migrations, command replay, layer plans, and asset/evidence contracts; CI enforces the technical gates and the GitHub template prompts the required customer-outcome-to-rollback record |
 | Make Roomcraft the official second-floor layout authoring tool | Avoid a static dashboard image becoming an uneditable, divergent copy and let HA users edit from their usual login | The HA `studio` panel hosts Roomcraft; import/export persists `roomcraft_layout` and the rendered plan |
 | Return from the editor to the live plan in one step | Laptop and tablet users should not need browser history or a copied URL after editing | **← Dashboard** uses the authenticated dashboard source, prompts over unpublished edits, saves a recoverable browser draft, and stays put if navigation or storage is unavailable |
