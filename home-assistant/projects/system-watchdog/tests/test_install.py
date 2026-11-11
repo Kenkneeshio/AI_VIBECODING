@@ -93,9 +93,31 @@ class InstallTests(unittest.TestCase):
         self.remote.shell.side_effect = lambda command, **_: CompletedProcess(
             [], 1 if command == "ha core check" else 0, stdout=""
         )
-        with patch.object(installer, "verify_files"):
+        with patch.object(installer, "verify_files"), patch.object(installer, "verify_paths"):
             with self.assertRaisesRegex(RuntimeError, "Previous files restored"):
                 installer.install(self.remote, self.source, self.backup, private, self.ready)
         rollback = self.commands()[-1]
         self.assertIn(f"/configuration.yaml {installer.CONFIG}", rollback)
         self.assertIn(f"/system_watchdog.yaml {installer.PRIVATE_CONFIG}", rollback)
+
+    def test_existing_include_is_preserved_and_both_yaml_files_are_verified(self):
+        private = self.root / "proposed.yaml"
+        private.write_bytes(b"sensor_entities: []\n")
+        original = b"# exact preserved file\r\nsystem_watchdog: !include system_watchdog.yaml\r\n"
+
+        def download(source, destination, *, recursive=False):
+            if source == installer.CONFIG:
+                destination.write_bytes(original)
+            else:
+                self.download(source, destination, recursive=recursive)
+
+        self.remote.download.side_effect = download
+        with patch.object(installer, "verify_files"), patch.object(installer, "verify_paths") as verify:
+            installer.install(self.remote, self.source, self.backup, private, self.ready)
+        self.assertEqual((self.backup / "configuration.yaml").read_bytes(), original)
+        self.assertFalse(any("incoming-configuration.yaml" in call.args[1] for call in self.remote.upload.call_args_list))
+        self.assertEqual(len(self.restarts()), 1)
+        self.assertEqual(verify.call_count, 4)
+        self.assertEqual(verify.call_args.args[1], [
+            (installer.CONFIG, self.backup / "configuration.yaml"), (installer.PRIVATE_CONFIG, private),
+        ])

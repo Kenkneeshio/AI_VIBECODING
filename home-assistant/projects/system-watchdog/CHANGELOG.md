@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2 — 2026-11-11
+
+- Require an authenticated Home Assistant administrator for Windows heartbeat writes.
+- Refresh private Roomcraft monitor lists from the active dashboard projection and retain the existing curated sensor settings.
+
 ## 0.2.1 — 2026-11-11
 
 - Refresh the existing health notification when its displayed issues change at the same severity. Repeated identical reports remain deduplicated.

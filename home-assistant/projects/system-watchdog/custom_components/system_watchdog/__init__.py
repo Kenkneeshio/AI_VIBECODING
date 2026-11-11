@@ -7,6 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv, discovery
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.components.http import HomeAssistantView
+from homeassistant.components.http.const import KEY_HASS_USER
 
 from .const import DEFAULT_SCAN_INTERVAL, DEFAULT_STALE_AFTER, DOMAIN, PLATFORMS
 from .coordinator import WatchdogCoordinator
@@ -35,6 +36,9 @@ class HeartbeatView(HomeAssistantView):
         self.coordinator = coordinator
 
     async def post(self, request):
+        user = request.get(KEY_HASS_USER)
+        if user is None or not user.is_admin:
+            return self.json_message("Administrator privileges are required", status_code=403)
         try:
             payload = await request.json()
             if not isinstance(payload, dict):

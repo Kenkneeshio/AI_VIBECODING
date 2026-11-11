@@ -9,7 +9,6 @@ import re
 import shlex
 import subprocess
 import sys
-import tempfile
 import time
 from datetime import datetime
 from pathlib import Path
@@ -56,9 +55,15 @@ class Remote:
 
 
 def verify_files(remote: Remote, directory: str, files: list[Path]) -> None:
-    paths = " ".join(shlex.quote(f"{directory}/{file.name}") for file in files)
+    verify_paths(remote, [(f"{directory}/{file.name}", file) for file in files])
+
+
+def verify_paths(remote: Remote, files: list[tuple[str, Path]]) -> None:
+    if not files:
+        return
+    paths = " ".join(shlex.quote(path) for path, _ in files)
     hashes = [line.split()[0] for line in remote.shell(f"sha256sum {paths}").stdout.splitlines() if line.strip()]
-    if hashes != [hashlib.sha256(file.read_bytes()).hexdigest() for file in files]:
+    if hashes != [hashlib.sha256(file.read_bytes()).hexdigest() for _, file in files]:
         raise RuntimeError("Watchdog files did not match the staged build.")
 
 
@@ -133,23 +138,37 @@ def install(remote: Remote, source: Path, backup: Path, private_config: Path | N
         apply.append(f"mv {COMPONENT} {previous}")
     apply.append(f"mv {stage} {COMPONENT}")
 
+    live_yaml: list[tuple[str, Path]] = []
     if private_config is not None:
-        remote.download(CONFIG, backup / "configuration.yaml")
+        original_config = backup / "configuration.yaml"
+        original_watchdog = backup / "system_watchdog.yaml"
+        remote.download(CONFIG, original_config)
         if had_private_config:
-            remote.download(PRIVATE_CONFIG, backup / "system_watchdog.yaml")
-        with tempfile.TemporaryDirectory(prefix="system-watchdog-") as directory:
-            proposed = Path(directory) / "configuration.yaml"
-            original = (backup / "configuration.yaml").read_text(encoding="utf-8")
-            config_text = original if re.search(r"(?m)^system_watchdog\s*:", original) else original.rstrip() + f"\n\n{INCLUDE}\n"
-            proposed.write_text(config_text, encoding="utf-8")
-            remote.upload(proposed, f"{archive}/incoming-configuration.yaml")
-            remote.upload(private_config, f"{archive}/incoming-watchdog.yaml")
+            remote.download(PRIVATE_CONFIG, original_watchdog)
+        current_yaml = [(CONFIG, original_config)]
+        if had_private_config:
+            current_yaml.append((PRIVATE_CONFIG, original_watchdog))
+        staged_yaml = [(f"{archive}/incoming-watchdog.yaml", private_config)]
+        expected_config = original_config
+        original = original_config.read_bytes().decode("utf-8")
+        if re.search(r"(?m)^system_watchdog[ \t]*:", original):
+            if not re.search(r"(?m)^system_watchdog[ \t]*:[ \t]*!include[ \t]+system_watchdog\.yaml(?:[ \t]+#.*)?[ \t]*\r?$", original):
+                raise RuntimeError("The existing Watchdog declaration does not use the managed private YAML.")
+        else:
+            newline = "\r\n" if "\r\n" in original else "\n"
+            expected_config = backup / "configuration-proposed.yaml"
+            expected_config.write_bytes((original.rstrip() + newline * 2 + INCLUDE + newline).encode("utf-8"))
+            staged_yaml.append((f"{archive}/incoming-configuration.yaml", expected_config))
+            apply.append(f"mv {archive}/incoming-configuration.yaml {CONFIG}")
+        for destination, local in staged_yaml:
+            remote.upload(local, destination)
+        verify_paths(remote, staged_yaml)
         remote.shell(f"set -e\ncp -p {CONFIG} {archive}/configuration.yaml" +
                      (f"\ncp -p {PRIVATE_CONFIG} {archive}/system_watchdog.yaml" if had_private_config else ""))
-        verify_files(remote, archive, [backup / "configuration.yaml"] +
-                     ([backup / "system_watchdog.yaml"] if had_private_config else []))
-        apply.extend((f"mv {archive}/incoming-watchdog.yaml {PRIVATE_CONFIG}",
-                      f"mv {archive}/incoming-configuration.yaml {CONFIG}"))
+        verify_files(remote, archive, [local for _, local in current_yaml])
+        verify_paths(remote, current_yaml)
+        apply.append(f"mv {archive}/incoming-watchdog.yaml {PRIVATE_CONFIG}")
+        live_yaml = [(CONFIG, expected_config), (PRIVATE_CONFIG, private_config)]
         rollback.append(f"cp -p {archive}/configuration.yaml {CONFIG}")
         if had_private_config:
             rollback.append(f"cp -p {archive}/system_watchdog.yaml {PRIVATE_CONFIG}")
@@ -161,12 +180,14 @@ def install(remote: Remote, source: Path, backup: Path, private_config: Path | N
     try:
         remote.shell("\n".join(apply))
         verify_files(remote, COMPONENT, files)
+        verify_paths(remote, live_yaml)
         if remote.shell("ha core check", check=False, timeout=180).returncode:
             raise RuntimeError("Home Assistant configuration validation failed.")
         restart_attempted = True
         restart_core(remote, archive, "restart")
         wait_ready()
         verify_files(remote, COMPONENT, files)
+        verify_paths(remote, live_yaml)
     except RestartUnconfirmed as error:
         raise RuntimeError(f"{error} Check Supervisor and the runtime before retrying. Private backup: {archive}.") from None
     except (RuntimeError, OSError, subprocess.TimeoutExpired) as error:

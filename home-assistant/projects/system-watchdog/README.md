@@ -7,7 +7,7 @@ The authenticated **System Health** view uses `custom:system-watchdog-card` to p
 ## Design
 
 - The Home Assistant custom integration runs every minute, checks configured entity availability and config-entry load state, and excludes ignored discovery entries from integration totals. It exposes one summary, eight category sensors, an issue count, and a problem binary sensor. It refreshes one persistent health notification when the displayed issues change.
-- The Windows agent runs every five minutes under the owner's Windows account. It detects Codex processes and uses the persistent HA-hosted ADB identity to verify the tablet's resumed activity and required packages. The heartbeat is successful only after Home Assistant explicitly accepts it. The agent imports the private management adapter at runtime.
+- The Windows agent runs every five minutes under the owner's Windows account. It detects Codex processes and uses the persistent HA-hosted ADB identity to verify the tablet's resumed activity and required packages. The heartbeat requires a Home Assistant administrator and is successful only after Home Assistant explicitly accepts it. The agent imports the private management adapter at runtime.
 - HA marks all external categories critical after ten minutes without a heartbeat. This is what detects a powered-off workstation or stopped agent.
 - “App healthy” currently means installed and enabled. Vendor login sessions and cloud service availability require vendor-supported APIs and are intentionally not guessed from screen pixels.
 
@@ -31,7 +31,7 @@ The private paths above are operator examples and do not contain credentials. Th
 
 ### Upgrade an existing installation
 
-Run `tools/install.py` with `--component-only` to upgrade Watchdog and retain both existing YAML files. It verifies a private backup and staged files, checks Home Assistant configuration, restarts Core, and verifies that the summary returns. A failed validation or restart check restores the previous files. Use the same tested Windows agent source for the scheduled probe, retain the prior copy, and verify an accepted heartbeat after updating it.
+Run `tools/install.py` with `--component-only` to upgrade Watchdog and retain both existing YAML files. It verifies a private backup and staged files, checks Home Assistant configuration, restarts Core, and verifies that the summary returns. A confirmed failure restores the previous files. An unconfirmed restart leaves the private rollback available for inspection. Verify an accepted Windows heartbeat after updating. The existing 0.2.1 agent can send to 0.2.2 using its protected administrator token.
 
 ```powershell
 python tools/install.py --component-only `
@@ -39,6 +39,16 @@ python tools/install.py --component-only `
   --backup-dir <private-backup-directory> `
   --host <ha-host> --ssh-key <private-ssh-key>
 ```
+
+### Refresh Roomcraft coverage
+
+Use a fresh private Home dashboard backup and a copy of the current Watchdog YAML. The generator monitors the published control and camera bindings that still match the layout. It keeps existing sensor choices and timing settings. Review the proposed file locally, add any intentionally monitored out-of-plan entities with repeatable `--extra-roomcraft-entity` arguments, then use `tools/install.py --private-config` in the planned restart window.
+
+```powershell
+python tools/build_private_config.py --dashboard-backup <private-dashboard-backup> --existing-config <private-watchdog-yaml> --output <private-proposed-watchdog-yaml>
+```
+
+For a new installation, choose the sensors explicitly before deploying the generated configuration.
 
 ## Entities
 
