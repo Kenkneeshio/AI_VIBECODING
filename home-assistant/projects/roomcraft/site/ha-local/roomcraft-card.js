@@ -493,10 +493,16 @@ class RoomcraftEditorCard extends HTMLElement {
     this._config = config || {};
     if (this._iframe) return;
     const style = document.createElement('style');
-    style.textContent = ':host{display:block;min-width:0}ha-card{display:block;overflow:hidden;background:#f4f6f1;border-radius:14px}.launch{display:flex;justify-content:flex-end;padding:6px 12px;background:#f4f6f1}button{font:inherit;color:#365a46;background:white;border:1px solid #cbd9cc;border-radius:8px;padding:8px 12px;cursor:pointer}.launch button{font-size:12px;padding:6px 10px}iframe{display:block;width:100%;height:calc(100dvh - 174px);min-height:650px;border:0}iframe[hidden],.fallback[hidden]{display:none}.fallback{min-height:320px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:24px;color:#253a2b}.fallback h2{font-size:20px;margin:0}.fallback p{max-width:460px;line-height:1.5;margin:0}@media(max-width:700px){iframe{height:calc(100dvh - 150px);min-height:530px}}';
+    style.textContent = ':host{display:block;min-width:0}ha-card{display:block;overflow:hidden;background:#f4f6f1;border-radius:14px}.launch{display:flex;justify-content:flex-end;gap:8px;padding:6px 12px;background:#f4f6f1}button,.launch a{font:inherit;color:#365a46;background:white;border:1px solid #cbd9cc;border-radius:8px;padding:8px 12px;cursor:pointer}.launch :is(button,a){font-size:12px;padding:6px 10px}.launch a{margin-right:auto;text-decoration:none}iframe{display:block;width:100%;height:calc(100dvh - 174px);min-height:650px;border:0}iframe[hidden],.fallback[hidden]{display:none}.fallback{min-height:320px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:24px;color:#253a2b}.fallback h2{font-size:20px;margin:0}.fallback p{max-width:460px;line-height:1.5;margin:0}@media(max-width:700px){iframe{height:calc(100dvh - 150px);min-height:530px}}';
     const card = document.createElement('ha-card');
     const launch = document.createElement('div');
     launch.className = 'launch';
+    if (this.dashboardPath === HOME_DASHBOARD) {
+      const home = document.createElement('a');
+      home.href = '/roomcraft-home/home';
+      home.textContent = 'Roomcraft Home';
+      launch.append(home);
+    }
     const openEditor = () => {
       const popup = window.open(this._editorUrl(), '_blank');
       if (popup) this._popup = popup;
@@ -604,15 +610,14 @@ class RoomcraftEditorCard extends HTMLElement {
         window.focus();
         this._popup.close();
       }
-      if (this.dashboardPath === HOME_DASHBOARD) {
-        // Opening a sibling Lovelace view through history alone can leave the
-        // Studio iframe mounted in Android's Companion WebView.
-        window.location.assign('/roomcraft-home/home');
-        return;
-      }
-      const path = this._hass?.panels?.[HOME_DASHBOARD] ? '/roomcraft-home/home' : '/second-floor/plan';
-      window.history.pushState(null, '', path);
-      window.dispatchEvent(new CustomEvent('location-changed', { detail: { replace: false } }));
+      const consolidated = this.dashboardPath === HOME_DASHBOARD;
+      const path = consolidated || this._hass?.panels?.[HOME_DASHBOARD]
+        ? '/roomcraft-home/home' : '/second-floor/plan';
+      const from = location.pathname + location.search + location.hash;
+      window.history.pushState(consolidated ? {from} : null, '', path);
+      window.dispatchEvent(new CustomEvent('location-changed', {
+        bubbles: true, composed: true, detail: { replace: false },
+      }));
       return;
     }
     if (message.kind !== 'request' || !Number.isSafeInteger(message.id) ||

@@ -55,7 +55,7 @@ const context = {
       return true;
     },
   },
-  location: { origin: 'http://ha.example.test' },
+  location: { origin: 'http://ha.example.test', pathname: '/roomcraft-home/studio', search: '', hash: '' },
   document: { createElement: tag => new FakeNode(tag), body: new FakeNode('body'),
     addEventListener() {}, removeEventListener() {} },
   structuredClone,
@@ -1438,9 +1438,8 @@ test('embedded editor returns to the dashboard through the signed-in Home Assist
   const navigations = [];
   const onLocationChanged = event => navigations.push(['location-changed', event.detail?.replace]);
   context.window.history = {
-    pushState: (state, title, path) => navigations.push(['pushState', state, title, path]),
+    pushState: (state, title, path) => navigations.push(['pushState', state && {...state}, title, path]),
   };
-  context.window.location = {assign: path => navigations.push(['assign', path])};
   context.window.addEventListener('location-changed', onLocationChanged);
   const card = new Card();
   const embedded = {};
@@ -1466,11 +1465,10 @@ test('embedded editor returns to the dashboard through the signed-in Home Assist
     assert.deepEqual(navigations, [
       ['pushState', null, '', '/roomcraft-home/home'], ['location-changed', false],
       ['pushState', null, '', '/second-floor/plan'], ['location-changed', false],
-      ['assign', '/roomcraft-home/home'],
+      ['pushState', {from: '/roomcraft-home/studio'}, '', '/roomcraft-home/home'], ['location-changed', false],
     ]);
   } finally {
     context.window.removeEventListener('location-changed', onLocationChanged);
     delete context.window.history;
-    delete context.window.location;
   }
 });
