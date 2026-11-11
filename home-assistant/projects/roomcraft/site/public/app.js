@@ -1301,6 +1301,7 @@
     const unpublished=dashboardPublishedProject!==projectFingerprint(project);
     if(unpublished&&!await askConfirmation('View dashboard','This layout has edits that are saved in this browser but have not been exported to Home Assistant. View the dashboard anyway?','View dashboard'))return;
     if(!saveDraftNow()&&unpublished){showToast('Browser draft could not be saved. Export layout JSON before leaving.');return;}
+    if(window.RoomcraftDashboardBridge?.navigate?.())return;
     try{window.top.location.assign(dashboardSource);}
     catch(_){window.location.assign(dashboardSource);}
   }

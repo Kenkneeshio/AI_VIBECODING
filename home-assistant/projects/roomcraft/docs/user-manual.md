@@ -10,7 +10,7 @@ Choose **Free view** to orbit. Drag across the scene to rotate and tilt. Pinch o
 
 In Studio, choose a 3D preset to select and drag objects. **Free view** dedicates the canvas to camera movement. Picking a catalog object returns to your last 3D preset for placement. The Inspector controls size, rotation, finish and device binding. Camera and interface items have labeled placeholders in editing views. Choose **2D plan** for the illustrated view. Room, wall and reference tools also switch to that view.
 
-**Dashboard look** in Studio uses the lighting and device appearance from the latest dashboard import. Turn it off for daylight while editing. The dashboard reloads the saved layout after **Export to dashboard**.
+**Dashboard look** in Studio uses the lighting and device appearance from the latest dashboard import. Turn it off for daylight while editing. The dashboard reloads the saved layout after **Export to dashboard**. In Home Assistant, **Dashboard** returns to the live view inside the same signed-in app or tab.
 
 ![Roomcraft Studio in the default overhead 3D view, with view presets, rotation, zoom, object palette and Inspector](images/editor-camera-views.png)
 

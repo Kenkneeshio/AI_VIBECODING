@@ -541,9 +541,20 @@ class RoomcraftEditorCard extends HTMLElement {
         (event.source !== this._iframe?.contentWindow &&
          (event.source !== this._popup || this._popup?.closed))) return;
     const message = event.data;
-    if (!message || message.channel !== CHANNEL || message.kind !== 'request' ||
-        !Number.isSafeInteger(message.id) || message.id < 1 ||
-        !['GET', 'POST'].includes(message.method)) return;
+    if (!message || message.channel !== CHANNEL) return;
+    if (message.kind === 'navigate') {
+      const path = this._hass?.panels?.['roomcraft-home']
+        ? '/roomcraft-home/home' : '/second-floor/plan';
+      window.history.pushState(null, '', path);
+      window.dispatchEvent(new CustomEvent('location-changed', { detail: { replace: false } }));
+      if (event.source === this._popup) {
+        window.focus();
+        this._popup.close();
+      }
+      return;
+    }
+    if (message.kind !== 'request' || !Number.isSafeInteger(message.id) ||
+        message.id < 1 || !['GET', 'POST'].includes(message.method)) return;
     let response;
     try {
       if (!this._hass?.connected) throw new Error('Home Assistant is disconnected.');

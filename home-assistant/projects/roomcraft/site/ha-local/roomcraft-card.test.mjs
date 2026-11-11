@@ -1353,3 +1353,39 @@ test('popup editor receives only its own same-origin dashboard response', async 
   assert.equal(replies[0].message.ok, true);
   assert.equal(replies[0].message.data.project.version, 2);
 });
+
+test('embedded editor returns to the dashboard through the signed-in Home Assistant router', async () => {
+  const navigations = [];
+  const onLocationChanged = event => navigations.push(['location-changed', event.detail?.replace]);
+  context.window.history = {
+    pushState: (state, title, path) => navigations.push(['pushState', state, title, path]),
+  };
+  context.window.addEventListener('location-changed', onLocationChanged);
+  const card = new Card();
+  const embedded = {};
+  card._iframe = { contentWindow: embedded };
+  card.hass = { connected: true, panels: { 'roomcraft-home': {} } };
+  const message = {
+    origin: context.location.origin,
+    source: embedded,
+    data: { channel: 'roomcraft-ha', kind: 'navigate', path: 'https://outside.example/' },
+  };
+
+  try {
+    await card._onMessage({ ...message, origin: 'https://outside.example' });
+    await card._onMessage({ ...message, source: {} });
+    await card._onMessage({ ...message, data: { ...message.data, channel: 'another-channel' } });
+    assert.deepEqual(navigations, []);
+
+    await card._onMessage(message);
+    card.hass = { connected: true, panels: {} };
+    await card._onMessage(message);
+    assert.deepEqual(navigations, [
+      ['pushState', null, '', '/roomcraft-home/home'], ['location-changed', false],
+      ['pushState', null, '', '/second-floor/plan'], ['location-changed', false],
+    ]);
+  } finally {
+    context.window.removeEventListener('location-changed', onLocationChanged);
+    delete context.window.history;
+  }
+});

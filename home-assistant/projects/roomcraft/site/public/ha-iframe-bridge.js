@@ -27,6 +27,11 @@
   });
 
   window.RoomcraftDashboardBridge = {
+    navigate() {
+      if (host.closed) return false;
+      host.postMessage({ channel: 'roomcraft-ha', kind: 'navigate' }, location.origin);
+      return true;
+    },
     request(method, payload) {
       if (method !== 'GET' && method !== 'POST') {
         return Promise.reject(new Error('Unsupported dashboard operation'));

@@ -6,7 +6,8 @@
 - Studio adds fence drawing and direct selection of interior and exterior segments. Draw by dragging or tapping both ends, then use the Inspector to edit the type, finish and endpoints.
 - Studio defaults to the lighting and device appearance from its last dashboard import. Roomcraft Home keeps the selected camera view when it refreshes after a Studio publish.
 - Published the rebuilt layout through Studio on the wall tablet. Authenticated readback matched 9 floor regions, 32 walls, 2 fences and 72 items, including the stair. Verified the new 1536 × 864 plan, all 23 prior object bindings and the tablet’s Top down default. On the tablet, drew a fence with two touches and moved an existing rail, then undid both tests before publishing.
-- Passed 117 editor and engine tests, 52 Home Assistant JavaScript tests, 15 Python tests, TypeScript, lint with zero errors, production build and release verification. The owner-private editor deployed as Site v55 from `03a9898372db92f028d13a9e6a9afee4a88f8c88`. To roll back, restore the private pre-release dashboard backup and reinstall the previous assets. Roll back the Site separately.
+- Studio’s Dashboard button returns to the published view inside the signed-in Home Assistant app. Verified the round trip on the wall tablet.
+- Passed 117 editor and engine tests, 53 Home Assistant JavaScript tests, 15 Python tests, TypeScript, lint with zero errors, production build and release verification. The owner-private editor deployed as Site v55 from `03a9898372db92f028d13a9e6a9afee4a88f8c88`. To roll back, restore the private pre-release dashboard backup and reinstall the previous assets. Roll back the Site separately.
 
 ## Free view
 
