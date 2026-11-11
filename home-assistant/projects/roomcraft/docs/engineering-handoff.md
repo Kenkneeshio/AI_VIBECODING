@@ -13,13 +13,23 @@
 | Saved layout and live scene | The Home and Studio views share one root `roomcraft_layout` and its `roomcraft_plan` projection. Earlier readback of revision 9 confirmed 9 floor regions, 32 walls, 8 fences, 72 items and 23 linked object controls. | Roomcraft Home dashboard configuration and the published plan image. |
 | Physical tablet | The earlier release verified Default, live model search, Studio handoff, aquarium placement, dimensions, Undo, and return to Roomcraft Home at 1920 × 1080. | Private screenshots and exact HTTP asset readback. See the [access runbook](tablet-access.md). |
 
-The authenticated profile defaults to `roomcraft-home`, and the system defaults to `dashboard-dashboard`. Both dashboard entries remain visible. Home and Studio live at `/roomcraft-home/home` and `/roomcraft-home/studio`. The former Floor Plan supplies the root `roomcraft_plan` picture card for export and controls. Root `roomcraft_health` supplies health popup data. Devices and sensors, indoor air, electrical readings, system health, object models and presence are available from Home's menu. The earlier prototype remains archived.
+The authenticated profile defaults to `roomcraft-home`, and the system defaults to `dashboard-dashboard`. Both dashboard entries remain visible. Home and Studio live at `/roomcraft-home/home` and `/roomcraft-home/studio`. The former Floor Plan supplies the root `roomcraft_plan` picture card for export and controls. Root `roomcraft_health` supplies health popup data. The earlier prototype remains archived.
 
 Consolidate once with `ha-local/install.py --storybook --consolidate`. It backs up both configurations and verifies the new dashboard before retirement of the legacy registration. For rollback, use the private archive to recreate a missing legacy Lovelace registration, restore both saved configurations and reinstall matching prior assets. The [deployment guide](deployment.md) records the verification and retirement sequence.
 
 The [latest release record](../CHANGELOG.md) includes browser exports, live image readback, and a wall-tablet capture. Use `npm run release:stamp-editor` after public asset edits. A fresh editor load must pick up the scripts and art together before testing object removal.
 
-The retained picture projection keeps the authored bottom-right interface positions for manual and legacy exports. Consolidated Home opens Studio, Indoor air and Electrical from the menu. Keep the shared projection aligned in `object-controls.js`, `lib/dashboard-elements.ts`, and `ha-local/roomcraft-card.js`. Preserve owner-edited positions.
+The retained picture projection keeps the authored bottom-right interface positions for manual and legacy exports. Keep the shared projection aligned in `object-controls.js`, `lib/dashboard-elements.ts`, and `ha-local/roomcraft-card.js`. Preserve owner-edited positions.
+
+## Home sky, bottom controls and street
+
+`roomcraft-storybook.mjs` places Power, Weather and Menu in the bottom action row. Power reuses the electrical readings dialog and Weather opens native details for the configured Home Assistant weather entity. The menu groups camera presets and tools with map and management actions. More options stores Camera tiles and Reduce motion preferences in the browser.
+
+`storybook-sky-bar.mjs` renders the decorative header from normalized weather presentation state. A muted sky appears when that state is unavailable. The header respects the operating system's reduced-motion setting and the dashboard preference. The Weather button carries the accessible condition and temperature reading.
+
+`storybook-street.mjs` supplies the street and two sidewalks for the shared 3D scene. The street runs along the north side of the site on the ground plane. Scene fitting includes its far edge while horizontal framing follows the house. Treat it as outdoor scenery for Home and 3D Studio. Keep it outside the editable project, device target placement and 2D export.
+
+Check the sky in daylight and at night, reduced motion, the bottom controls, and the street at tablet and phone widths. Reinstall the previous Home Assistant assets from `a3eb55a30d3e2a0ebcda8f8cb788a148db502cfd` to roll back. Roll back the owner-private Site to v65 separately if its shared 3D scene also needs rollback. [Deployment and rollback](deployment.md)
 
 ## Presence tracking and calibration
 
@@ -37,7 +47,7 @@ The shared 3D renderer draws avatars and location rings in a foreground pass aft
 
 The shared scene uses compiled geometry for supported positions and heights. People can occupy floors and stair treads. Their motion and footprints follow those surfaces and snap across gaps. Unsupported radar points are omitted. The vacuum accepts reports where the whole model fits on a floor. It holds its last valid anchor or uses a supported authored dock before a valid report arrives. Without either anchor, its model is hidden in the live scene. Studio drag and placement continue to use the authored plan.
 
-The live header consumes the weather and sun presentation state. It owns the animated sky artwork, and the scene consumes the same values for outdoor conditions and lighting. Verify object labels remain readable near viewport edges and keep touch targets usable when labels are visible.
+Verify object labels remain readable near viewport edges and keep touch targets usable when labels are visible.
 
 Acceptance checks cover parser validation and explicit vacancy, live Zigbee reports through the local bridge, two-point calibration, expiry or unavailable behavior, editor export without telemetry, and the wall tablet. Verify the old dimmer and occupancy entity IDs still resolve. Disable reporting before rolling back the integration, and restore the prior layout and assets if their bindings need to be removed.
 

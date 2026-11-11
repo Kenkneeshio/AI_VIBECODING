@@ -4,11 +4,13 @@ Roomcraft Studio edits the layout used by Roomcraft Home. Use the 3D view to arr
 
 ## Use the live dashboard
 
+Open **Roomcraft Home** in the Home Assistant sidebar for the live view. The full-width sky shows the sun by day and stars by night, with the moon when its phase is available. Clouds drift and change with the weather. **Power** opens the electrical readings, **Weather** opens native Home Assistant weather details, and **Menu** holds the remaining controls. All three are along the bottom.
+
+Use **On the map** for Object details and Presence tracking, and **View controls** for view presets, rotation, zoom and default view settings. **Manage** opens Layout Studio and popups for Object models, Devices and sensors, Indoor air and System health when configured. The labels from **Object details** show each linked control's name and current state. The toggle is saved in the current browser.
+
+Open **Menu → More options** to show or hide **Camera tiles** or turn on **Reduce motion**. These settings are saved in the current browser.
+
 Use **Menu → On the map → Detection zone** to see the radar's saved bounds as a light cyan dashed outline. For a switch with the Inovelli VZM32-SN profile, the solid amber outline and shaded area show the manufacturer's estimated coverage. The marker shows the calibrated switch position and the line points forward. Home's legend shows the rated range when available. Select the presence dimmer in 3D Studio to preview the same overlays and edit the display settings. Use a walk or sit test to confirm detection where it matters. [Inovelli field-of-view chart, manual page 33](https://help.inovelli.com/en/articles/8807172-blue-series-mmwave-presence-dimmer-switch-manual)
-
-Open **Roomcraft Home** in the Home Assistant sidebar for the live view. **Menu → Manage → Layout Studio** opens the editor. Use **On the map** for Object details and Presence tracking, and **View controls** for rotation, zoom and default view settings. **Manage** also opens popups for Object models, Devices and sensors, Indoor air, Electrical and System health when configured. The labels from **Object details** show each linked control's name and current state. The toggle is saved in the current browser.
-
-The weather beside the menu shows the sun or moon, with clouds and precipitation for the current condition. Tap the weather to open Home Assistant's weather details. Reduced motion uses still weather artwork.
 
 ## Find and edit object models
 
@@ -30,7 +32,7 @@ Characters and their location rings stay visible over furniture and walls at the
 
 ## Change the view
 
-Roomcraft Home and Studio start in **Default**. It uses your saved angle or opens directly overhead. Use **View** for **High angle**, **Dollhouse**, **Corner**, or a view from the north, east, south, or west. Directions follow the plan, with north at the top of Top down. The arrow buttons rotate the camera, the plus and minus buttons zoom, and the home-shaped reset button returns to Top down.
+Roomcraft Home and Studio start in **Default**. It uses your saved angle or opens directly overhead. In Home, open **Menu → View controls** for view presets, rotation, zoom and reset. In Studio, use **View** and its nearby camera buttons. Presets include **High angle**, **Dollhouse**, **Corner**, and views from the north, east, south or west. Directions follow the plan, with north at the top of **Top down**.
 
 Choose **Free view** to orbit. Drag across the scene to rotate and tilt. Pinch or scroll to zoom. With the scene focused, use the arrow keys and **+** or **−**. On the dashboard, drag from an open part of the scene and tap devices and cameras as usual. To open at a particular angle, choose **Free view**, set the angle and zoom, and choose **Main menu → Save as default**. Roomcraft Home and the Home Assistant Studio use the same default for your signed-in account. The private web editor saves the angle in the current browser. Choose **Main menu → Use Top down as default** to clear your saved angle. Select **Default** from **View** to return to it at any time.
 
@@ -51,6 +53,8 @@ The older 2D plan view is shown above. The left palette chooses objects, floor f
 ![Bundled corrected furnished plan used as the visual reference](../site/public/assets/floorplan.png)
 
 The canvas is a top-down plan with lightly raised walls and furniture. The balcony and stair are outdoors at left. The stair begins at the lower-left landing and descends toward the top-left. The house, balcony, and lower-left stair landing are on the second floor. The detached garage sits on the first-floor ground plane. Choose **From west** to see the height difference clearly. Doorways between upstairs rooms remain on one floor level. Bedroom, study, baths, and living spaces have different finishes. The editor uses this image as a reference and separate illustrated assets to redraw edited geometry; an edited scene can differ from individual pixels in the reference PNG.
+
+In the 3D views, a street and two sidewalks extend across the north side of the site. They appear above the house in **Top down** and follow the scene's lighting. The street is scenery outside the editable plan.
 
 ### Full-width plan export
 
@@ -137,7 +141,7 @@ The furnished scene includes bedside and office desk lamps plus room light fixtu
 
 The dining ceiling fan and its center light are two independent controls. Tap the blades to toggle the verified motor channel; hold for native details. Tap the small center lamp to toggle the verified light channel. Its compact transparent target leaves the surrounding blades available for the fan. The blades rotate in low-frame-rate steps only while the motor channel reports on, and the center adds a glow only while the light channel reports on. Reduced-motion preference stops animation without changing state. The old ceiling-fan entity and scene controls are historical and are not used by these artworks.
 
-The master humidifier and dining air purifier use the same object-first pattern. Their illustrated appliances are the buttons. Mist or airflow appears while that appliance reports on. **Menu → Manage** opens **Indoor air** and **Electrical**. A sensor row opens Home Assistant details.
+The master humidifier and dining air purifier use the same object-first pattern. Their illustrated appliances are the buttons. Mist or airflow appears while that appliance reports on. Open **Menu → Manage → Indoor air** for air readings or tap **Power** for electrical readings. A sensor row opens Home Assistant details.
 
 The robot is intentionally compact. Tap it for its authenticated map, status, Start/Pause/Dock/Locate, and available room actions; hold for native details. The robot moves on the plan only from fresh calibrated map coordinates and animates only while Home Assistant reports cleaning or returning. A fixed robot is omitted from the exported background so there is never a second frozen copy.
 
@@ -166,7 +170,7 @@ The design canvas shows stylized placeholders, not private camera frames. The da
 
 ### Read the outdoor weather
 
-Roomcraft Home shows the current condition in the header and reflects it in the scene. Tap the weather in the header to open the weather entity's native Home Assistant details. Reduced motion stops decorative animation.
+The bottom **Weather** button shows the current condition and temperature when available. Tap it for native Home Assistant details. The sky and outdoor scene reflect Home Assistant's conditions. Reduced motion holds the decorative sky still.
 
 Confirm a device's physical location in Home Assistant before placing a control. A friendly name does not prove the room. The editor stores control placement; Home Assistant performs actual device actions. A device that is unavailable or missing should be corrected in Home Assistant before use.
 

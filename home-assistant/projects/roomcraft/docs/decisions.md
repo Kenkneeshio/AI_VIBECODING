@@ -1,5 +1,11 @@
 # Decision log
 
+## Give the sky and everyday controls their own space
+
+The wall tablet needs room for the full-width weather illustration and direct access to electrical readings and weather details. Put the sky in the header and put Power, Weather and Menu along the bottom. Keep view presets and camera tools inside Menu so the artwork stays clear. Treat Power as the existing electrical readings dialog. Store camera visibility and reduced motion as browser preferences under More options.
+
+Use Home Assistant presentation state for daylight, moon phase and cloud cover. Render the street and sidewalks in the shared 3D scene beyond the north edge of the building site. Fit the camera to include this scenery while retaining the layout's horizontal framing. Keep the street outside the editable model and 2D export.
+
 ## Separate configured radar bounds from estimated coverage
 
 The configured detection rectangle and the manufacturer's nominal field of view answer different questions. Use a light cyan dashed outline for the saved XY bounds and a solid amber outline with a light fill for the optional device profile's field of view. Use the same calibration as the live targets for both outlines, the origin marker and the forward line. Home's legend includes the rated range when available. The `inovelli-vzm32-sn` profile uses a rounded centimeter trace of the published chart, which reaches about 6 m forward. The profile is a display setting and physical coverage should be checked in the room. [Inovelli field-of-view chart, manual page 33](https://help.inovelli.com/en/articles/8807172-blue-series-mmwave-presence-dimmer-switch-manual)

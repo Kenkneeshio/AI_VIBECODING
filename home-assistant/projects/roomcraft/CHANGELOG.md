@@ -1,5 +1,11 @@
 # Changelog
 
+## Full-width sky, bottom controls and a north-side street
+
+- Roomcraft Home uses the full width of the header for an animated sky. Daylight, moon phase and cloud cover follow Home Assistant, with still artwork when reduced motion is enabled.
+- **Power**, **Weather** and **Menu** sit along the bottom. Power opens electrical readings, Weather opens native Home Assistant details, and Menu contains view presets, map tools and management actions. **More options** adds browser preferences for camera tiles and reduced motion.
+- Home and 3D Studio show a street and two sidewalks on the north side of the house. The new scenery follows the camera and scene lighting.
+
 ## Clearer radar coverage overlay
 
 - **Detection zone** in Home and 3D Studio uses a light cyan dashed outline for configured bounds and a solid amber outline with a light fill for estimated coverage. A marker and forward line show the switch's calibrated position and direction.

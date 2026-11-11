@@ -10,6 +10,7 @@ import { applyModelHeight } from './storybook-size.mjs';
 import { createStorybookPeople } from './storybook-people.mjs';
 import { createFloorSupport } from './storybook-floor-support.mjs';
 import { createStorybookCoverage } from './storybook-coverage.mjs';
+import { buildStorybookStreet, storybookStreetBounds } from './storybook-street.mjs';
 
 const DEG = Math.PI / 180;
 const WALL_WIDTH = 14;
@@ -904,6 +905,8 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
   ground.position.set((minX + maxX) / 2, GROUND_Y, (minZ + maxZ) / 2);
   scene.add(ground);
   const batch = makeStaticBatch(scene);
+  const street = storybookStreetBounds(plan);
+  buildStorybookStreet(batch, street, GROUND_Y, ground.geometry.parameters.width, ground.position.x);
   buildYard(batch, plan);
   buildReferenceLanding(batch, plan);
   buildFloors(scene, batch, plan, canvas.ownerDocument);
@@ -952,7 +955,7 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
     }
     anchors.set(item.id, { x, z, baseY, object });
   }
-  const cameraBounds = {...plan.bounds};
+  const cameraBounds = {...plan.bounds, streetMinZ: street.farZ};
   for (const placement of plan.placements) {
     const object = roots.get(placement.item.id);
     if (!object) continue;

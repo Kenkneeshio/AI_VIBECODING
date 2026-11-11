@@ -108,6 +108,11 @@ export function fitStorybookCamera(camera, bounds, width, height, view = 'top') 
         frame.expandByPoint(corner.set(x, y, z).applyMatrix4(camera.matrixWorldInverse));
       }
     }
+    // Frame the far sidewalk at ground level. Including an entire volume
+    // above the street would leave unnecessary space in the angled views.
+    if (Number.isFinite(bounds.streetMinZ)) {
+      frame.expandByPoint(corner.set(x, -106, bounds.streetMinZ - 12).applyMatrix4(camera.matrixWorldInverse));
+    }
   }
   const ratio = width / height;
   const halfWidth = Math.max((frame.max.x - frame.min.x) / 2,
