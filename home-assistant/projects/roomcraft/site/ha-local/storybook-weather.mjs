@@ -22,7 +22,7 @@ const MOON_PHASES = new Set([
 ]);
 
 export function storybookWeather(environment = {}, offline = false) {
-  const {condition, daylightKnown, night, moonPhase, temperature, unit} = environment;
+  const {condition, daylightKnown, night, moonPhase, temperature, unit, sunElevation, sunRising} = environment;
   if (offline) return {label: 'Weather offline', sky: 'unknown', effect: 'unknown', moon: '', reading: ''};
   const [label, effect] = CONDITIONS.get(condition) || ['Weather unavailable', 'unknown'];
   const isNight = daylightKnown ? night : condition === 'clear-night';
@@ -33,6 +33,8 @@ export function storybookWeather(environment = {}, offline = false) {
     effect,
     moon: isNight && MOON_PHASES.has(moonPhase) ? moonPhase : '',
     reading: CONDITIONS.has(condition) && Number.isFinite(temperature) ? `${Math.round(temperature)}${unit || '°'}` : '',
+    sunElevation,
+    sunRising,
   };
 }
 

@@ -3,6 +3,15 @@ import * as THREE from 'three';
 const OVERCAST = new Set(['cloudy', 'fog', 'hail', 'lightning', 'lightning-rainy',
   'pouring', 'rainy', 'snowy', 'snowy-rainy', 'windy-variant']);
 const LIGHTS = 3;
+const LIGHT_PALETTES = {
+  night: ['#a8b8f5', '#5b536e', '#a7b8ed', '#97a5c5', '#343951'],
+  clear: ['#f2f5ff', '#998b85', '#fff0d9', '#f4f1d8', '#c0cbb4'],
+  overcast: ['#dce6f1', '#8c8797', '#e9eff9', '#ccd6c6', '#aebbb4'],
+};
+const DAYLIGHT_COLORS = Object.fromEntries(Object.entries(LIGHT_PALETTES)
+  .map(([kind, colors]) => [kind, colors.map(color => new THREE.Color(color))]));
+const LOW_SUN_COLOR = new THREE.Color('#ffc38b');
+const {clamp, lerp, smoothstep} = THREE.MathUtils;
 
 export function createStorybookLighting(renderer, scene, bounds) {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -63,17 +72,22 @@ export function createStorybookLighting(renderer, scene, bounds) {
   function update(environment, states, ground) {
     const night = environment.night === true;
     const overcast = OVERCAST.has(environment.condition);
-    const profile = night ? 'night' : overcast ? 'cloud' : 'day';
+    const elevation = Number.isFinite(environment.sunElevation)
+      ? Math.round(environment.sunElevation * 2) / 2 : night ? -12 : 35;
+    const daylight = smoothstep(elevation, -8, 19);
+    const profile = `${overcast}:${clamp(elevation, -8, 35)}`;
     if (profile !== previousEnvironment) {
-      sky.color.set(night ? '#a8b8f5' : overcast ? '#dce6f1' : '#fff4e5');
-      sky.groundColor.set(night ? '#5b536e' : '#998291');
-      sky.intensity = night ? 0.75 : overcast ? 1.33 : 1.12;
-      key.color.set(night ? '#a7b8ed' : overcast ? '#e9eff9' : '#fff0d4');
-      key.intensity = night ? 0.28 : overcast ? 0.86 : 2.14;
-      fill.intensity = night ? 0.12 : 0.23;
-      key.shadow.intensity = night ? 0.65 : overcast ? 0.39 : 0.84;
-      ground.color.set(night ? '#97a5c5' : overcast ? '#ccd6c6' : '#f4f1d8');
-      scene.background.set(night ? '#343951' : '#c0cbb4');
+      const dayColors = DAYLIGHT_COLORS[overcast ? 'overcast' : 'clear'];
+      const surfaces = [sky.color, sky.groundColor, key.color, ground.color, scene.background];
+      for (const [index, color] of surfaces.entries()) {
+        color.lerpColors(DAYLIGHT_COLORS.night[index], dayColors[index], daylight);
+      }
+      const lowSun = daylight * (1 - smoothstep(elevation, 8, 34));
+      if (!overcast) key.color.lerp(LOW_SUN_COLOR, lowSun * .8);
+      sky.intensity = lerp(.75, overcast ? 1.33 : 1.12, daylight);
+      key.intensity = lerp(.28, overcast ? .86 : 2.14, daylight);
+      fill.intensity = lerp(.12, .23, daylight);
+      key.shadow.intensity = lerp(.65, overcast ? .39 : .84, daylight);
       previousEnvironment = profile;
       previousStates = undefined;
     }
@@ -99,7 +113,7 @@ export function createStorybookLighting(renderer, scene, bounds) {
         } else light.color.set('#ffd5a2');
         light.position.copy(object.root.position);
         light.position.y += Math.max(18, object.anchorY - 9);
-        light.intensity = power * (night ? 2350 : 1250);
+        light.intensity = power * lerp(2350, 1250, daylight);
       }
       previousStates = states;
     }

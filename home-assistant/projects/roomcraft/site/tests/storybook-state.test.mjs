@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {placeStorybookDetails, placeStorybookTargets, readStorybookConfig, storybookFrame, storybookPreview} from '../ha-local/storybook-state.mjs';
+import {storybookWeather} from '../ha-local/storybook-weather.mjs';
 
 const items = [
   {id: 'motor', type: 'fan', entityId: 'switch.example_motor'},
@@ -34,6 +35,20 @@ const config = {
   ]}]}]
 };
 const model = readStorybookConfig(config);
+
+test('validated live sun altitude reaches the sky and Studio weather preview', () => {
+  const snapshot = {'sun.sun': {state: 'above_horizon', attributes: {elevation: 6.5, rising: true}}};
+  const {environment} = storybookFrame(model, snapshot);
+  assert.equal(storybookWeather(environment).sunElevation, 6.5);
+  assert.equal(storybookPreview(config, snapshot).environment.sunRising, true);
+  assert.equal(storybookWeather(environment, true).sunElevation, undefined);
+
+  const invalid = {'sun.sun': {state: 'above_horizon', attributes: {elevation: 120, rising: 'yes'}}};
+  const fallback = storybookFrame(model, invalid).environment;
+  assert.equal(fallback.daylightKnown, true);
+  assert.equal(fallback.sunElevation, undefined);
+  assert.equal(fallback.sunRising, undefined);
+});
 
 test('storybook selects only layout-owned plan controls and keeps camera event mode', () => {
   assert.equal(model.layout, config.roomcraft_layout);

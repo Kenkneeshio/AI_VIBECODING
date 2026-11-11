@@ -1,5 +1,10 @@
 # Changelog
 
+## A park beyond the street and a layered sky
+
+- Home and 3D Studio extend the scenery beyond the far sidewalk with a small park and low neighborhood buildings.
+- Home's sky adds distant mountain ridges, uneven layers of drifting clouds, and atmospheric shading around the sun and moon. When Home Assistant supplies solar elevation and direction, the illustration moves the sun and softens outdoor lighting near dawn and dusk. Outdoor rain uses shorter, subtler streaks.
+
 ## Full-width sky, bottom controls and a north-side street
 
 - Roomcraft Home uses the full width of the header for an animated sky. Daylight, moon phase and cloud cover follow Home Assistant, with still artwork when reduced motion is enabled.

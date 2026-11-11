@@ -142,18 +142,18 @@ test('an authored tall model extends the camera framing', () => {
   }
 });
 
-test('portrait and tablet framing include the north sidewalk without cropping the house', () => {
+test('portrait and tablet framing include the street and park without cropping the house', () => {
   const scene = {bounds, houseBounds: {...bounds, minZ: 240}, editableStructure: true};
   const street = storybookStreetBounds(scene);
-  assert.ok(street.farZ < street.nearZ && street.nearZ < bounds.minZ);
+  assert.ok(street.parkMinZ < street.farZ && street.farZ < street.nearZ && street.nearZ < bounds.minZ);
   assert.equal(storybookStreetBounds({...scene, editableStructure: false}).nearZ, 76);
-  const frame = {...bounds, streetMinZ: street.farZ};
+  const frame = {...bounds, sceneryMinZ: street.parkMinZ};
   for (const preset of ['top', 'dollhouse', 'corner']) {
     for (const [width, height] of [[1920, 900], [390, 680]]) {
       const camera = makeCamera();
       fitStorybookCamera(camera, frame, width, height, preset);
       for (const x of [bounds.minX, bounds.maxX]) {
-        for (const [y, z] of [[-106, street.farZ], [0, bounds.minZ], [56, bounds.maxZ]]) {
+        for (const [y, z] of [[-106, street.parkMinZ], [-106, street.farZ], [0, bounds.minZ], [56, bounds.maxZ]]) {
           const projected = new THREE.Vector3(x, y, z).project(camera);
           assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1, `${preset} ${width}×${height}`);
         }

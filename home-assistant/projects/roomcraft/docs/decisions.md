@@ -1,5 +1,11 @@
 # Decision log
 
+## Add depth beyond the house and street
+
+Give the far side of the street its own low neighborhood buildings and a small landscaped park. Draw them as scenery in the shared 3D renderer, using the street as the placement reference. Keep this scenery outside the editable project, exported 2D image and device controls.
+
+Use distant mountain ridges and layers of clouds that drift at different rates to give the sky depth. Home Assistant daylight, moon phase and weather set the palette. Optional sun elevation and rising direction guide the illustrated sun and outdoor lighting near dawn and dusk. Use the day or night palette when those attributes are missing. Respect reduced motion in both the operating system and Roomcraft.
+
 ## Give the sky and everyday controls their own space
 
 The wall tablet needs room for the full-width weather illustration and direct access to electrical readings and weather details. Put the sky in the header and put Power, Weather and Menu along the bottom. Keep view presets and camera tools inside Menu so the artwork stays clear. Treat Power as the existing electrical readings dialog. Store camera visibility and reduced motion as browser preferences under More options.

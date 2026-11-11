@@ -52,15 +52,20 @@ function vacuumPosition(element, snapshot, state, now) {
 export function storybookFrame(model, snapshot = {}, now = 0) {
   const states = Object.create(null);
   const weather = snapshot[model.weather.weather_entity];
-  const sun = snapshot[model.weather.sun_entity || 'sun.sun']?.state;
+  const sun = snapshot[model.weather.sun_entity || 'sun.sun'];
+  const {elevation, rising} = sun?.attributes ?? {};
   const environment = {
-    night: sun === 'below_horizon',
-    daylightKnown: sun === 'above_horizon' || sun === 'below_horizon',
+    night: sun?.state === 'below_horizon',
+    daylightKnown: sun?.state === 'above_horizon' || sun?.state === 'below_horizon',
     condition: weather?.state ?? 'unavailable',
     moonPhase: snapshot[model.weather.moon_entity]?.state ?? '',
     temperature: weather?.attributes?.temperature,
     unit: weather?.attributes?.temperature_unit ?? ''
   };
+  if (environment.daylightKnown) {
+    if (Number.isFinite(elevation) && Math.abs(elevation) <= 90) environment.sunElevation = elevation;
+    if (typeof rising === 'boolean') environment.sunRising = rising;
+  }
   let moving = MOTION_WEATHER.has(environment.condition);
   for (const element of model.controls) {
     if (element.type !== CONTROL) continue;

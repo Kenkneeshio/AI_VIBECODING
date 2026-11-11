@@ -10,7 +10,7 @@ import { applyModelHeight } from './storybook-size.mjs';
 import { createStorybookPeople } from './storybook-people.mjs';
 import { createFloorSupport } from './storybook-floor-support.mjs';
 import { createStorybookCoverage } from './storybook-coverage.mjs';
-import { buildStorybookStreet, storybookStreetBounds } from './storybook-street.mjs';
+import { buildStorybookNeighborhood, buildStorybookStreet, storybookStreetBounds } from './storybook-street.mjs';
 
 const DEG = Math.PI / 180;
 const WALL_WIDTH = 14;
@@ -714,7 +714,7 @@ function buildYard(batch, plan) {
   }
 }
 
-function buildWeather(scene, plan, showSkyArt) {
+function buildWeather(scene, plan, showSkyArt, sceneryMinZ = plan.bounds.minZ) {
   const { minX, maxX, minZ } = plan.houseBounds;
   const rand = seededRandom(2912);
   const bounds = plan.bounds;
@@ -752,10 +752,15 @@ function buildWeather(scene, plan, showSkyArt) {
   const recess = plan.reference?.recess;
   const isExterior = (x, z) => !(recess && x >= recess.x1 && x <= recess.x2 && z >= recess.z1 && z <= recess.z2) &&
     !plan.rooms.some(room => (!plan.editableStructure || !isOutdoorRoom(room)) && roomContains(room, x, z));
-  for (let i = 0; i < 190; i++) {
+  const north = Math.min(bounds.minZ, sceneryMinZ) - 70;
+  const rainDepth = bounds.maxZ + 70 - north;
+  for (let i = 0; i < 210; i++) {
     const x = bounds.minX - 70 + (bounds.maxX - bounds.minX + 140) * rand();
-    const z = bounds.minZ - 70 + (bounds.maxZ - bounds.minZ + 140) * rand();
-    if (isExterior(x, z)) rainLocations.push({ x, z, phase: rand() * 180 });
+    const z = north + rainDepth * rand();
+    const phase = rand() * 180;
+    const length = 8 + rand() * 8;
+    const speed = 112 + rand() * 34;
+    if (isExterior(x, z)) rainLocations.push({x, z, phase, length, speed});
   }
   const rainPositions = new Float32Array(rainLocations.length * 6);
   const snowPositions = new Float32Array(rainLocations.length * 3);
@@ -764,7 +769,7 @@ function buildWeather(scene, plan, showSkyArt) {
   rainGeometry.setAttribute('position', new THREE.BufferAttribute(rainPositions, 3).setUsage(THREE.DynamicDrawUsage));
   snowGeometry.setAttribute('position', new THREE.BufferAttribute(snowPositions, 3).setUsage(THREE.DynamicDrawUsage));
   const rain = new THREE.LineSegments(rainGeometry,
-    new THREE.LineBasicMaterial({ color: '#cce5ef', transparent: true, opacity: 0.66 }));
+    new THREE.LineBasicMaterial({color: '#d3e4ec', transparent: true, opacity: .36, depthWrite: false}));
   const snow = new THREE.Points(snowGeometry,
     new THREE.PointsMaterial({ color: '#fff6eb', size: 3.2, transparent: true, opacity: 0.8 }));
   rain.frustumCulled = snow.frustumCulled = false;
@@ -781,13 +786,14 @@ function buildWeather(scene, plan, showSkyArt) {
     const quarter = moonPhase.endsWith('quarter');
     moonShadow.position.x = (waxing ? -1 : 1) * (quarter ? 8 : moonPhase.endsWith('gibbous') ? 14 : 5);
     rain.visible = WET.has(condition);
+    rain.material.opacity = condition === 'pouring' || condition === 'lightning-rainy' ? .50 : .34;
     snow.visible = SNOW.has(condition);
     if (rain.visible || snow.visible) {
       for (const [index, drop] of rainLocations.entries()) {
-        const y = 65 - (drop.phase + motionTime * 150) % 170;
+        const y = 65 - (drop.phase + motionTime * drop.speed) % 170;
         const flakeY = 65 - (drop.phase + motionTime * 20) % 170;
         const i = index * 6;
-        rainPositions.set([drop.x, y, drop.z, drop.x - 4, y + 22, drop.z + 3], i);
+        rainPositions.set([drop.x, y, drop.z, drop.x - drop.length * .18, y + drop.length, drop.z + 2], i);
         snowPositions.set([drop.x + Math.sin(motionTime + index) * 6, flakeY, drop.z], index * 3);
       }
       rainGeometry.attributes.position.needsUpdate = rain.visible;
@@ -907,6 +913,7 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
   const batch = makeStaticBatch(scene);
   const street = storybookStreetBounds(plan);
   buildStorybookStreet(batch, street, GROUND_Y, ground.geometry.parameters.width, ground.position.x);
+  buildStorybookNeighborhood(batch, street, GROUND_Y, plan.houseBounds);
   buildYard(batch, plan);
   buildReferenceLanding(batch, plan);
   buildFloors(scene, batch, plan, canvas.ownerDocument);
@@ -916,7 +923,7 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
   const structureMeshes = scene.children.filter(node => node.isMesh);
   const lighting = createStorybookLighting(renderer, scene, plan.bounds);
   lighting.markStructure();
-  const updateWeather = buildWeather(scene, plan, showSkyArt);
+  const updateWeather = buildWeather(scene, plan, showSkyArt, street.parkMinZ);
   const footprint = plan.floorStructure.footprint;
   const floors = createFloorSupport(footprint);
   const walkable = plan.stairs.length
@@ -955,7 +962,7 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
     }
     anchors.set(item.id, { x, z, baseY, object });
   }
-  const cameraBounds = {...plan.bounds, streetMinZ: street.farZ};
+  const cameraBounds = {...plan.bounds, sceneryMinZ: street.parkMinZ};
   for (const placement of plan.placements) {
     const object = roots.get(placement.item.id);
     if (!object) continue;
