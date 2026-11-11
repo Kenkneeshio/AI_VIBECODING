@@ -1,5 +1,12 @@
 # Changelog
 
+## Camera views in the dashboard and editor
+
+- Top down is the default 3D view. Dashboard and Studio offer Dollhouse and Corner presets, rotation and zoom. Device and camera targets follow the projected scene.
+- Studio can select, drag and place objects in 3D while keeping the same layout, command history and Inspector. Room and wall tools use the 2D plan. Camera changes are presentation choices and do not alter the authored project.
+- Verification: 110 engine/editor tests, 52 Home Assistant JavaScript tests and 15 Python tests passed, along with TypeScript, production build, generated-bundle verification and lint (zero errors; 25 existing warnings). Browser checks covered projected editing and undo. Actual tablet touches verified dashboard and Studio presets and Top down reset. No household equipment was operated.
+- Deployed the HA assets with exact HTTP byte readback and a private configuration backup. The 71-item layout and Roomcraft Home profile default remain intact. Owner-private Site v52 succeeded from hosted source `dc4d4216e5a426ebaa1dc5609cee85d9624d5fd9`; its audience remained owner-only. Roll back assets from the previous Git source and restore the private installer configuration only if needed; Site rollback is separate.
+
 ## Storybook finish and Roomcraft Home
 
 - Joined the 3D floors, walls and patio structure into continuous geometry while preserving authored openings. Added directional shadows, textured materials and responsive lamp lighting.

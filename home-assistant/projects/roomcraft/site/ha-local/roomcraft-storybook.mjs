@@ -1,4 +1,5 @@
 import {createStorybookScene} from './storybook-scene.mjs';
+import {normalizeCameraView} from './storybook-camera.mjs';
 import {placeStorybookTargets, readStorybookConfig, storybookFrame} from './storybook-state.mjs';
 
 const TAG = 'roomcraft-storybook-card';
@@ -17,7 +18,14 @@ class RoomcraftStorybookCard extends HTMLElement {
         .bar{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;
           gap:4px 14px;padding:6px 14px;background:#f9f3e6;color:#3c3247;border-bottom:1px solid #d7c9b3}
         .brand{font:700 17px/1.25 Georgia,serif;letter-spacing:.025em}
-        .bar nav{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+        .bar nav,.view-controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+        .view-controls{gap:3px}
+        .view-controls label{color:#6c5e74;font-size:12px}
+        .view-controls select{min-height:44px;max-width:140px;border:1px solid #c9b8a0;border-radius:8px;
+          background:#fffaf0;color:inherit;padding:0 7px;font:inherit}
+        .bar .view-controls button{min-width:44px;font-size:20px;line-height:1}
+        .view-controls button:disabled{opacity:.35;cursor:default}
+        .view-status{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
         a,.bar button{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;
           min-height:44px;padding:0 9px;font:inherit;color:inherit;text-decoration:none}
         .bar button{border:0;background:transparent;border-radius:8px;cursor:pointer}
@@ -33,7 +41,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         .device:focus-within{z-index:3}
         .status{position:absolute;inset:0;display:grid;place-items:center;padding:20px;
           background:#e7eadb;text-align:center}
-        .status[hidden]{display:none}
+        .status[hidden],.status a[hidden],.bar button[hidden],.device[hidden],.camera[hidden]{display:none}
         .status-inner{max-width:27em}
         .status a{border-radius:9px;background:#53455e;color:#fff4e9;margin-top:8px}
         .tethers{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
@@ -43,6 +51,20 @@ class RoomcraftStorybookCard extends HTMLElement {
         <header class="bar">
           <span class="brand">Roomcraft · Storybook</span>
           <nav aria-label="Storybook navigation">
+            <div class="view-controls" role="group" aria-label="Camera view controls">
+              <label for="storybook-view">View</label>
+              <select id="storybook-view" aria-label="Camera view">
+                <option value="top">Top down</option>
+                <option value="dollhouse">Dollhouse</option>
+                <option value="corner">Corner</option>
+              </select>
+              <button type="button" data-camera="left" aria-label="Rotate view left" title="Rotate view left">↶</button>
+              <button type="button" data-camera="right" aria-label="Rotate view right" title="Rotate view right">↷</button>
+              <button type="button" data-camera="out" aria-label="Zoom out" title="Zoom out">−</button>
+              <button type="button" data-camera="in" aria-label="Zoom in" title="Zoom in">+</button>
+              <button type="button" data-camera="reset" aria-label="Reset to top down view" title="Reset to top down view">⌂</button>
+              <span class="view-status" role="status" aria-live="polite"></span>
+            </div>
             <button type="button" class="weather" hidden></button>
             <a href="/second-floor/studio">Studio</a>
             <a href="/second-floor/plan">Floor plan</a>
@@ -63,6 +85,22 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.tethers = this.shadowRoot.querySelector('.tethers');
     this.weather = this.shadowRoot.querySelector('.weather');
     this.status = this.shadowRoot.querySelector('.status');
+    this.viewSelect = this.shadowRoot.querySelector('#storybook-view');
+    this.viewStatus = this.shadowRoot.querySelector('.view-status');
+    this.cameraView = normalizeCameraView('top');
+    this.viewSelect.addEventListener('change', () => this.changeView(this.viewSelect.value));
+    for (const button of this.shadowRoot.querySelectorAll('[data-camera]')) {
+      button.addEventListener('click', () => {
+        const current = this.scene?.getView() || this.cameraView;
+        switch (button.dataset.camera) {
+          case 'left': this.changeView({...current, azimuth: current.azimuth - 15}); break;
+          case 'right': this.changeView({...current, azimuth: current.azimuth + 15}); break;
+          case 'out': this.changeView({...current, zoom: current.zoom - .15}); break;
+          case 'in': this.changeView({...current, zoom: current.zoom + .15}); break;
+          case 'reset': this.changeView('top'); break;
+        }
+      });
+    }
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.onViewportResize = () => this.resize();
     this.motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
@@ -141,6 +179,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       if (!this.isConnected || this.loading !== request) return;
       this.model = readStorybookConfig(config);
       this.scene = createStorybookScene(this.canvas, this.model.layout);
+      this.scene.setView(this.cameraView);
       this.controls = this.model.controls.map(config => {
         const camera = config.type === `custom:${CAMERA_TAG}`;
         const element = document.createElement(camera ? CAMERA_TAG : CONTROL_TAG);
@@ -160,6 +199,19 @@ class RoomcraftStorybookCard extends HTMLElement {
       clearTimeout(waitTimer);
       if (this.loading === request) this.loading = undefined;
     }
+  }
+
+  changeView(view) {
+    this.cameraView = normalizeCameraView(view);
+    this.scene?.setView(this.cameraView);
+    this.viewSelect.value = this.cameraView.preset;
+    const label = this.viewSelect.selectedOptions[0]?.textContent || 'Top down';
+    this.viewStatus.textContent = `${label} view, rotated ${Math.round(this.cameraView.azimuth)} degrees, zoom ${Math.round(this.cameraView.zoom * 100)} percent.`;
+    this.shadowRoot.querySelector('[data-camera=out]').disabled = this.cameraView.zoom <= .6;
+    this.shadowRoot.querySelector('[data-camera=in]').disabled = this.cameraView.zoom >= 2.5;
+    this.anchorDirty = true;
+    this.resize();
+    this.schedule();
   }
 
   resize() {

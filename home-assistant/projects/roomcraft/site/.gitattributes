@@ -1,0 +1,2 @@
+# Preserve the generated bundle and its upstream shader whitespace exactly.
+/public/storybook-editor.js text eol=lf -whitespace

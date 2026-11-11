@@ -433,6 +433,7 @@
       else{editorJournal.dispatch('scene.replace',{project,reason:message||'editor change'});journalCommandCount++;}
     }
     projectChangeSerial++;sceneOrderCache=null;saveSoon();draw();renderInspector();renderRoomList();renderHotspotList();updateRestoreButton();updateRecoveryButton();updateHistoryButtons();if(message)setStatus(message);
+    window.dispatchEvent?.(new CustomEvent('roomcraft-editor-change'));
   }
   function setStatus(message) { document.getElementById('statusText').textContent = message; }
   function showToast(message) { const t = document.getElementById('viewportToast'); t.textContent = message; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2800); }
@@ -705,13 +706,41 @@
   }
   function hitRoomVertex(p){if(selected?.kind!=='room')return null;const r=project.rooms.find(r=>r.id===selected.id);if(!r)return null;return r.points.findIndex(q=>Math.hypot(q.x-p.x,q.y-p.y)<12/currentView.scale);}
   function hitWallEndpoint(p,w){if(Math.hypot(p.x-w.x1,p.y-w.y1)<14/currentView.scale)return 1;if(Math.hypot(p.x-w.x2,p.y-w.y2)<14/currentView.scale)return 2;return 0;}
-  function select(kind,id){selected={kind,id};renderInspector();renderRoomList();renderHotspotList();draw();}
+  function select(kind,id){selected={kind,id};renderInspector();renderRoomList();renderHotspotList();draw();window.dispatchEvent?.(new CustomEvent('roomcraft-editor-change'));}
   function clearPlacement(){pendingTemplate=null;pendingSurface=null;pendingWallFinish=null;document.querySelectorAll('.palette-item,.surface-item,.wall-finish-item').forEach(el=>el.classList.remove('placing','active'));viewport.classList.remove('placing');renderSurfacePalette();renderWallPalette();}
+
+  function notifyEditorTool() {
+    window.dispatchEvent?.(new CustomEvent('roomcraft-editor-tool'));
+  }
+
+  function placeTemplateAt(p) {
+    if (!pendingTemplate || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return false;
+    const template = templateByType[pendingTemplate];
+    const wallMounted = template.type === 'window' || template.mount === 'wall';
+    const mount = wallMounted ? nearestWallPlacement(p) : null;
+    if (wallMounted && !mount) {
+      showToast('Click near a wall to mount this object');
+      return false;
+    }
+    snapshot();
+    const placed = item(uid('i'), template.type, template.label,
+      Math.round(mount?.x ?? p.x), Math.round(mount?.y ?? p.y),
+      template.w, template.h, mount?.rotation ?? 0);
+    if (placed.type === 'cameraThumbnail') {
+      placed.x = Math.max(0, Math.min(W, placed.x));
+      placed.y = Math.max(0, Math.min(H, placed.y));
+    }
+    project.items.push(placed);
+    selected = {kind: 'item', id: placed.id};
+    clearPlacement();
+    afterChange(`Placed ${placed.name}`);
+    return true;
+  }
 
   function onPointerDown(e){if(viewMode==='reference'){if(tool!=='pan'&&!spaceHeld&&e.button!==1){showToast('Switch to Design to edit the plan');return;}}
     e.preventDefault();canvas.setPointerCapture(e.pointerId);const p=worldPoint(e),s=screenPoint(e);currentPointer=p;
     if(tool==='pan'||spaceHeld||e.button===1){interaction={kind:'pan',start:s,tx:currentView.tx,ty:currentView.ty};viewport.classList.add('dragging');return;}
-    if(pendingTemplate){const t=templateByType[pendingTemplate],wallMounted=t.type==='window'||t.mount==='wall';const mount=wallMounted?nearestWallPlacement(p):null;if(wallMounted&&!mount){showToast('Click near a wall to mount this object');return;}snapshot();const o=item(uid('i'),t.type,t.label,Math.round(mount?.x??p.x),Math.round(mount?.y??p.y),t.w,t.h,mount?.rotation??0);if(o.type==='cameraThumbnail'){o.x=Math.max(0,Math.min(W,o.x));o.y=Math.max(0,Math.min(H,o.y));}project.items.push(o);select('item',o.id);clearPlacement();afterChange(`Placed ${o.name}`);return;}
+    if(pendingTemplate){placeTemplateAt(p);return;}
     if(pendingSurface){const r=hitRoom(p);if(r){snapshot();r.surface=pendingSurface;select('room',r.id);afterChange(`Applied ${surfaceById[pendingSurface].name} to ${r.name}`);showToast(`${r.name} floor updated`);}else showToast('Click inside a room to paint it');return;}
     if(pendingWallFinish){const w=hitWall(p);if(w){if((w.finish||'graphite')!==pendingWallFinish){snapshot();w.finish=pendingWallFinish;select('wall',w.id);afterChange(`Applied ${wallFinishById[pendingWallFinish].name} wall finish`);showToast('Wall finish updated');}else select('wall',w.id);}else showToast('Click a wall to paint it');return;}
     if(tool==='erase'){const h=hitHotspot(p),o=hitItem(p,false),near=hitItem(p),w=hitWall(p);if(o||(!h&&near)){const target=o||near;snapshot();project.items=project.items.filter(q=>q.id!==target.id);selected=null;afterChange(`Removed ${target.name}`);}else if(h){snapshot();project.hotspots=project.hotspots.filter(q=>q.id!==h.id);selected=null;afterChange(`Removed ${h.title} control`);}else if(isFixedExteriorWall(w)){showToast('The illustrated exterior shell stays fixed');}else if(w){snapshot();project.walls=project.walls.filter(q=>q.id!==w.id);selected=null;afterChange('Removed wall');}else showToast('Click an object, control, or interior wall to erase it');return;}
@@ -861,8 +890,8 @@
     if(selected.kind==='room'){const r=project.rooms.find(r=>r.id===selected.id);if(!r){selected=null;renderInspector();return;}root.innerHTML=`<div class="inspector-block"><p class="inspector-label">SELECTED ROOM</p><div class="selection-title"><span class="selection-icon">▦</span><div><h3>${htmlEscape(r.name)}</h3><p>${r.points.length} editable corners</p></div></div></div><div class="inspector-block"><p class="inspector-label">ROOM SETTINGS</p>${field('Room name','name',r.name)}<div class="field"><label for="prop-surface">Floor finish</label><select id="prop-surface" data-prop="surface">${surfaces.map(s=>`<option value="${s.id}" ${s.id===r.surface?'selected':''}>${htmlEscape(s.name)}</option>`).join('')}</select></div><p class="field-hint">Choose Room in the toolbar, then drag a corner handle to reshape this floor area.</p></div>${fixedRoomIds.has(r.id)?'<p class="field-hint">The original illustrated rooms stay in place. You can reshape and repaint them; added rooms can be removed.</p>':'<button type="button" class="danger-button" data-action="delete">Remove room</button>'}`;return;}
     const w=project.walls.find(w=>w.id===selected.id);if(!w){selected=null;renderInspector();return;}if(isFixedExteriorWall(w)){root.innerHTML=`<div class="inspector-block"><p class="inspector-label">ILLUSTRATED SHELL</p><h3>Exterior wall finish</h3><p class="field-hint">Change this wall’s finish here. Its outline remains fixed because the supplied artwork contains the exterior shell.</p><div class="field"><label for="prop-finish">Finish</label><select id="prop-finish" data-prop="finish">${wallFinishes.map(f=>`<option value="${f.id}" ${(w.finish||'graphite')===f.id?'selected':''}>${htmlEscape(f.name)}</option>`).join('')}</select></div></div>`;return;}root.innerHTML=`<div class="inspector-block"><p class="inspector-label">SELECTED WALL</p><div class="selection-title"><span class="selection-icon">╱</span><div><h3>Wall segment</h3><p>${Math.round(Math.hypot(w.x2-w.x1,w.y2-w.y1))} px long</p></div></div></div><div class="inspector-block"><p class="inspector-label">WALL FINISH</p><div class="field"><label for="prop-finish">Finish</label><select id="prop-finish" data-prop="finish">${wallFinishes.map(f=>`<option value="${f.id}" ${(w.finish||'graphite')===f.id?'selected':''}>${htmlEscape(f.name)}</option>`).join('')}</select></div></div><div class="inspector-block"><p class="inspector-label">END POINTS</p><div class="field-grid">${field('Start X','x1',w.x1,'number')}${field('Start Y','y1',w.y1,'number')}${field('End X','x2',w.x2,'number')}${field('End Y','y2',w.y2,'number')}</div><p class="field-hint">Drag a wall or its endpoint on the plan to move it. Draw new walls with the Wall tool.</p></div><button type="button" class="danger-button" data-action="delete">Remove wall</button>`;
   }
-  function setTool(next){tool=next;clearPlacement();document.querySelectorAll('[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===tool));viewport.dataset.tool=tool;setStatus(({select:'Select and drag objects, controls, walls, or rooms',pan:'Drag to pan the plan',room:'Click a room; drag its corner handles to reshape',wall:'Drag to draw a wall. Hold Shift for straight lines',erase:'Click an object, control, or wall to remove it'})[tool]);draw();}
-  function setViewMode(mode){viewMode=mode;document.getElementById('designModeButton').classList.toggle('active',mode==='design');document.getElementById('referenceModeButton').classList.toggle('active',mode==='reference');if(mode==='reference'){clearPlacement();setStatus('Starting furnished reference · controls are marked');}else setStatus('Editable design layer · rooms, walls, objects, and controls can be changed');draw();}
+  function setTool(next){tool=next;clearPlacement();document.querySelectorAll('[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===tool));viewport.dataset.tool=tool;setStatus(({select:'Select and drag objects, controls, walls, or rooms',pan:'Drag to pan the plan',room:'Click a room; drag its corner handles to reshape',wall:'Drag to draw a wall. Hold Shift for straight lines',erase:'Click an object, control, or wall to remove it'})[tool]);draw();notifyEditorTool();}
+  function setViewMode(mode){viewMode=mode;document.getElementById('designModeButton').classList.toggle('active',mode==='design');document.getElementById('referenceModeButton').classList.toggle('active',mode==='reference');if(mode==='reference'){clearPlacement();setStatus('Starting furnished reference · controls are marked');}else setStatus('Editable design layer · rooms, walls, objects, and controls can be changed');draw();notifyEditorTool();}
   function setPanel(panel){document.querySelectorAll('.panel-tab').forEach(b=>{const active=b.dataset.panel===panel;b.classList.toggle('active',active);b.setAttribute('aria-selected',String(active));});for(const name of ['objects','floors','rooms','walls'])document.getElementById(`${name}Panel`).hidden=name!==panel;}
 
   function updateProperty(key,value){
@@ -1133,7 +1162,7 @@
     document.getElementById('returnPreRecoveryButton').addEventListener('click',returnPreRecoveryLayout);
     document.getElementById('hotspotList').addEventListener('click',e=>{const linked=e.target.closest('[data-control-item]');if(linked){setViewMode('design');setTool('select');select('item',linked.dataset.controlItem);setStatus('Drag this linked object or edit its entity in the Inspector');return;}const b=e.target.closest('[data-hotspot]');if(!b)return;setViewMode('design');setTool('select');select('hotspot',b.dataset.hotspot);setStatus('Drag this Home Assistant control or edit it in the Inspector');});
     document.getElementById('surfacePalette').addEventListener('click',e=>{const b=e.target.closest('[data-surface]');if(!b)return;setViewMode('design');setTool('room');pendingSurface=b.dataset.surface;renderSurfacePalette();showToast(`Click a room to paint ${surfaceById[pendingSurface].name}`);});
-    document.getElementById('wallPalette').addEventListener('click',e=>{const b=e.target.closest('[data-wall-finish]');if(!b)return;setViewMode('design');setTool('select');pendingWallFinish=b.dataset.wallFinish;renderWallPalette();showToast(`Click a wall to paint ${wallFinishById[pendingWallFinish].name}`);});
+    document.getElementById('wallPalette').addEventListener('click',e=>{const b=e.target.closest('[data-wall-finish]');if(!b)return;setViewMode('design');setTool('select');pendingWallFinish=b.dataset.wallFinish;notifyEditorTool();renderWallPalette();showToast(`Click a wall to paint ${wallFinishById[pendingWallFinish].name}`);});
     document.getElementById('roomList').addEventListener('click',e=>{const b=e.target.closest('[data-room]');if(!b)return;setViewMode('design');setTool('room');select('room',b.dataset.room);});
     document.getElementById('inspectorContent').addEventListener('change',e=>{const el=e.target.closest('[data-prop]');if(el)updateProperty(el.dataset.prop,el.value);const v=e.target.closest('[data-variant]');if(v)updateVariant(v.value,v.dataset.variantKind||'finish');const h=e.target.closest('[data-hotspot-prop]');if(h)updateHotspotProperty(h.dataset.hotspotProp,h.value);});
     document.getElementById('inspectorContent').addEventListener('click',e=>{const a=e.target.closest('[data-action]');if(a){if(a.dataset.action==='delete')deleteSelected();if(a.dataset.action==='duplicate')duplicateSelected();if(a.dataset.action==='rotate')rotateSelected();}if(e.target.id==='openHelpButton')document.getElementById('helpDialog').showModal();});
@@ -1165,6 +1194,51 @@
   window.addEventListener('roomcraft-asset-loaded',()=>{draw();paintPalettePreviews();});
   reference.addEventListener('load',paintPalettePreviews);
   emptyShell.addEventListener('load',paintPalettePreviews);
+  window.RoomcraftEditorViewport = Object.freeze({
+    getProject: () => clone(project),
+    getSelection: () => selected ? {...selected} : null,
+    getTool: () => viewMode === 'reference' ? 'reference' : pendingWallFinish ? 'wall' : tool,
+    hasPlacement: () => Boolean(pendingTemplate),
+    showStatus: setStatus,
+    useSelectTool() {
+      if (viewMode === 'design' && tool === 'select' && !pendingWallFinish) return;
+      viewMode = 'design';
+      tool = 'select';
+      setViewMode('design');
+      setTool('select');
+    },
+    selectItem(id) {
+      if (id && project.items.some(entry => entry.id === id)) select('item', id);
+      else {
+        selected = null;
+        renderInspector();
+        draw();
+        window.dispatchEvent?.(new CustomEvent('roomcraft-editor-change'));
+      }
+    },
+    moveItem(id, x, y) {
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+      const current = project.items.find(entry => entry.id === id);
+      if (!current) return false;
+      const wallMounted = current.type === 'window' || templateByType[current.type]?.mount === 'wall';
+      const mount = wallMounted ? nearestWallPlacement({x, y}) : null;
+      if (wallMounted && !mount) return false;
+      const next = {...current, x: Math.round(mount?.x ?? x), y: Math.round(mount?.y ?? y),
+        rotation: mount?.rotation ?? current.rotation};
+      if (next.type === 'cameraThumbnail') {
+        next.x = Math.max(0, Math.min(W, next.x));
+        next.y = Math.max(0, Math.min(H, next.y));
+      }
+      clampLinkedItem(next);
+      if (next.x === current.x && next.y === current.y && next.rotation === current.rotation) return false;
+      snapshot();
+      Object.assign(current, next);
+      selected = {kind: 'item', id};
+      afterChange(`Moved ${current.name}`);
+      return true;
+    },
+    placeAt: (x, y) => placeTemplateAt({x, y})
+  });
   window.RoomcraftEditorEngine=Object.freeze({
     version:Engine.ENGINE_VERSION,
     inspect(){

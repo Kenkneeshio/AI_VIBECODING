@@ -7,6 +7,9 @@ const eslintConfig = defineConfig([
   ...nextTs,
   globalIgnores([
     "dist/**",
+    // Generated and byte-checked by build-storybook.mjs. Its source modules
+    // remain linted under ha-local, along with the handwritten public assets.
+    "public/storybook-editor.js",
     ".vinext/**",
     ".wrangler/**",
     ".sites-runtime/**",

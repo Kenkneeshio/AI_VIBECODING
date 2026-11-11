@@ -4,6 +4,7 @@ import { makeStorybookFurniture } from './storybook-furniture.mjs';
 import { makeStorybookDevice } from './storybook-devices.mjs';
 import { compileFloorStructure, compileWallStructure } from './storybook-structure.mjs';
 import { createStorybookLighting } from './storybook-lighting.mjs';
+import { fitStorybookCamera, normalizeCameraView } from './storybook-camera.mjs';
 
 const DEG = Math.PI / 180;
 const WALL_WIDTH = 14;
@@ -576,28 +577,6 @@ function buildWeather(scene, plan) {
   };
 }
 
-function cameraFit(camera, plan, width, height) {
-  const { minX, maxX, minZ, maxZ } = plan.bounds;
-  const center = new THREE.Vector3((minX + maxX) / 2, -5, (minZ + maxZ) / 2);
-  camera.position.copy(center).add(new THREE.Vector3(34, 1640, 960));
-  camera.lookAt(center);
-  camera.updateMatrixWorld();
-  const frame = new THREE.Box3();
-  for (const x of [minX - 37, maxX + 37]) for (const z of [minZ - 53, maxZ + 36]) {
-    for (const y of [-96, 92]) frame.expandByPoint(new THREE.Vector3(x, y, z).applyMatrix4(camera.matrixWorldInverse));
-  }
-  const ratio = width / height;
-  const halfWidth = Math.max((frame.max.x - frame.min.x) / 2, (frame.max.y - frame.min.y) / 2 * ratio);
-  const halfHeight = halfWidth / ratio;
-  const frameX = (frame.min.x + frame.max.x) / 2;
-  const frameY = (frame.min.y + frame.max.y) / 2;
-  camera.left = frameX - halfWidth;
-  camera.right = frameX + halfWidth;
-  camera.bottom = frameY - halfHeight;
-  camera.top = frameY + halfHeight;
-  camera.updateProjectionMatrix();
-}
-
 function tableMount(plan, placement, roots) {
   if (placement.item.type !== 'plant') return 0;
   // V2 has no furniture sockets. Flowers on a table are the sole inferred
@@ -662,6 +641,10 @@ export function createStorybookScene(canvas, layout) {
   let disposed = false;
   let currentWidth = 0;
   let currentHeight = 0;
+  let cameraView = normalizeCameraView();
+  const raycaster = new THREE.Raycaster();
+  const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const projected = new THREE.Vector3();
   const defaultState = Object.freeze({ state: 'unavailable', attributes: Object.freeze({}), presence: 'off', active: false });
   function resize(width, height) {
     if (disposed || width < 1 || height < 1 || (width === currentWidth && height === currentHeight)) return;
@@ -670,7 +653,21 @@ export function createStorybookScene(canvas, layout) {
     const deviceRatio = canvas.ownerDocument.defaultView?.devicePixelRatio || 1;
     renderer.setPixelRatio(Math.min(deviceRatio, 1.5, Math.sqrt(2700000 / (width * height))));
     renderer.setSize(width, height, false);
-    cameraFit(camera, plan, width, height);
+    cameraView = fitStorybookCamera(camera, plan.bounds, width, height, cameraView);
+  }
+  function setView(value) {
+    cameraView = normalizeCameraView(value);
+    if (!disposed && currentWidth > 0 && currentHeight > 0) {
+      cameraView = fitStorybookCamera(camera, plan.bounds, currentWidth, currentHeight, cameraView);
+    }
+    return getView();
+  }
+  function getView() { return {...cameraView}; }
+  function projectToPlan(x, y) {
+    if (disposed || !Number.isFinite(x) || !Number.isFinite(y) || currentWidth <= 0 || currentHeight <= 0) return null;
+    raycaster.setFromCamera(new THREE.Vector2(x / currentWidth * 2 - 1, 1 - y / currentHeight * 2), camera);
+    return raycaster.ray.intersectPlane(floorPlane, projected)
+      ? {x: projected.x, y: projected.z} : null;
   }
   function render(timeSeconds = 0, statesById = {}, environment = {}) {
     if (disposed || currentWidth < 1 || currentHeight < 1) return;
@@ -722,5 +719,5 @@ export function createStorybookScene(canvas, layout) {
     lighting.dispose();
     renderer.dispose();
   }
-  return { resize, render, anchor, dispose };
+  return { resize, render, anchor, setView, getView, projectToPlan, dispose };
 }

@@ -103,3 +103,18 @@ body.dashboard-transfer-busy .workbench{cursor:progress}body.dashboard-transfer-
   .palette-item{min-width:69px;max-width:79px;min-height:62px;padding:4px}
   .palette-icon,.palette-preview{height:31px}
 }
+
+.scene-view-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:5px;flex:none;padding:5px 12px;background:#fffefa;border-bottom:1px solid var(--line);color:#596359}
+.scene-view-toolbar label{font-size:11px;font-weight:700;margin-right:3px}
+.scene-view-toolbar select{border:1px solid #d8ded1;border-radius:7px;min-height:36px;padding:4px 8px;background:#fff;color:#465342;font:inherit;font-size:12px}
+.scene-view-toolbar button{border:1px solid #d8ded1;border-radius:7px;min-width:36px;min-height:36px;background:#fff;color:#465342;font-size:17px}
+.scene-view-toolbar button:disabled{opacity:.35}
+#sceneCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#sceneCanvas[hidden]{display:none}
+.viewport.scene-3d .canvas-stage,.viewport.scene-3d .canvas-corner-note{display:none}
+.viewport.scene-3d .mini-help{white-space:normal;max-width:calc(100% - 30px);text-align:center}
+.center-panel:has(.viewport.scene-3d) .toolbar-right .zoom-button,
+.center-panel:has(.viewport.scene-3d) .toolbar-right .zoom-value,
+.center-panel:has(.viewport.scene-3d) .toolbar-right .zoom-fit,
+.center-panel:has(.viewport.scene-3d) .toolbar-right .toolbar-divider{display:none}
+@media(pointer:coarse){.scene-view-toolbar button,.scene-view-toolbar select{min-width:44px;min-height:44px}}

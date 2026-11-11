@@ -1,5 +1,5 @@
 import { build } from 'esbuild';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 const site = fileURLToPath(new URL('../', import.meta.url));
@@ -15,14 +15,35 @@ const notices = await Promise.all([
   notice('robust-predicates', 'robust-predicates/LICENSE'),
   notice('splaytree', 'splaytree/Readme.md', 'The MIT License (MIT)'),
 ]);
-await build({
+const common = {
   absWorkingDir: site,
-  entryPoints: ['ha-local/roomcraft-storybook.mjs'],
-  outfile: 'dist/ha-local/roomcraft-storybook.js',
   bundle: true,
-  format: 'esm',
   target: 'es2022',
   minify: true,
   legalComments: 'inline',
   banner: {js: notices.join('\n')}
+};
+const editorPath = new URL('../public/storybook-editor.js', import.meta.url);
+const editor = await build({
+  ...common,
+  entryPoints: ['ha-local/storybook-editor.mjs'],
+  outfile: 'public/storybook-editor.js',
+  format: 'iife',
+  write: false,
 });
+if (process.argv.includes('--write-editor')) {
+  await writeFile(editorPath, editor.outputFiles[0].contents);
+} else {
+  const current = await readFile(editorPath);
+  if (!current.equals(Buffer.from(editor.outputFiles[0].contents))) {
+    throw new Error('Editor 3D bundle is stale. Run node scripts/build-storybook.mjs --write-editor and stamp the editor assets.');
+  }
+}
+if (!process.argv.includes('--check-editor') && !process.argv.includes('--write-editor')) {
+  await build({
+    ...common,
+    entryPoints: ['ha-local/roomcraft-storybook.mjs'],
+    outfile: 'dist/ha-local/roomcraft-storybook.js',
+    format: 'esm',
+  });
+}

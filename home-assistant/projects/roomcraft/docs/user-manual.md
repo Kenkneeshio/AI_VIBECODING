@@ -1,10 +1,20 @@
 # Roomcraft user manual
 
-Roomcraft is the editor for the illustrated Second Floor dashboard. Use it to make a layout, then transfer the image and controls to Home Assistant. You can also download the image, editable project, or Home Assistant YAML separately.
+Roomcraft Studio edits the layout used by Roomcraft Home. Use the 3D view to arrange objects, or the 2D plan to edit rooms and walls, then export to Home Assistant. You can also download the image, editable project, or Home Assistant YAML separately.
+
+## Change the view
+
+Roomcraft Home and Studio open in **Top down**, directly above the house. Use **View** to choose **Dollhouse** or **Corner**. The arrow buttons rotate the camera, the plus and minus buttons zoom, and the home-shaped reset button returns to Top down.
+
+In Studio, select and drag an object in any 3D view. Pick a catalog object, then click the scene to place it. The Inspector still controls its size, rotation, finish and device binding. Camera and interface items have labeled placeholders in the editor. Choose **2D plan** to use the illustrated view. Room, wall and reference tools also switch to that view. The camera controls do not change the saved layout or its furniture positions.
+
+![Roomcraft Studio in the default overhead 3D view, with view presets, rotation, zoom, object palette and Inspector](images/editor-camera-views.png)
+
+This public demonstration uses the furnished starter layout and no live household media. On your HA instance, Studio loads your published layout and shows camera and interface positions as editable labels.
 
 ![Current Home Assistant Layout Studio showing the illustrated plan, Objects, Floors, Rooms and Walls tabs, Inspector, and dashboard import and export buttons](images/editor-overview.png)
 
-The current HA-hosted Studio is shown above. The left palette chooses objects, floor finishes, rooms, or walls; the center canvas edits the plan; the right Inspector edits the selection. **Import from dashboard** and **Export to dashboard** are at the bottom of the palette. The [legacy screenshot archive](legacy/README.md) keeps the previous editor capture.
+The older 2D plan view is shown above. The left palette chooses objects, floor finishes, rooms, or walls; the center canvas edits the plan; the right Inspector edits the selection. **Import from dashboard** and **Export to dashboard** are at the bottom of the palette. The [legacy screenshot archive](legacy/README.md) keeps previous editor captures.
 
 ## The plan and its perspective
 

@@ -1,5 +1,11 @@
 # Decision log
 
+## One camera contract serves the dashboard and Studio
+
+Use explicit orthographic view inputs for preset, azimuth, tilt and zoom. Top down has zero tilt and a fixed north-up orientation. Dollhouse and Corner projections fit the same scene bounds. The scene renderer projects media and control targets through the active camera, while Studio maps pointer movement back onto the floor plane for object edits.
+
+Camera choices live in the client viewport. Geometry edits still run through the existing editor history and publishing workflow. Room and wall tools return to the 2D plan so their current handles and snapping remain available. The editor's generated 3D bundle is checked against its pinned source before a production build.
+
 ## Roomcraft Home presents the finished Storybook scene
 
 The new dashboard owns presentation. The Second Floor dashboard still owns the authored plan, bindings, and Studio. A separate promotion command backs up the authenticated profile, verifies the new view, and changes only that profile's default. The tablet follows that selection through Home Assistant Companion.

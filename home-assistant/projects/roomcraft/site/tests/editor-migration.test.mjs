@@ -85,6 +85,25 @@ function boot(savedProject, dashboardRequest, options = {}) {
     dispatch: (id, kind, event) => listeners.get(`${id}:${kind}`)(event) };
 }
 
+test('the 3D mutation bridge preserves bindings and records one undoable move', () => {
+  const scene = {version: 2, editableReferenceVersion: 6, rooms: [], walls: [], hotspots: [],
+    items: [{id: 'synthetic-lamp', type: 'lamp', name: 'Example lamp', x: 520, y: 400,
+      w: 48, h: 52, rotation: 0, entityId: 'light.example'}]};
+  const editor = boot(scene);
+  const bridge = editor.window.RoomcraftEditorViewport;
+  const before = bridge.getProject();
+  assert.equal(bridge.moveItem('synthetic-lamp', 600, 430), true);
+  assert.equal(bridge.moveItem('synthetic-lamp', 600, 430), false);
+  assert.equal(editor.window.RoomcraftEditorEngine.inspect().commandCount, 1);
+  const moved = bridge.getProject().items.find(item => item.id === 'synthetic-lamp');
+  assert.equal(moved.x, 600);
+  assert.equal(moved.entityId, 'light.example');
+  editor.dispatch('undoButton', 'click', {});
+  assert.deepEqual(bridge.getProject(), before);
+  before.items[0].x = -1000;
+  assert.notEqual(bridge.getProject().items[0].x, -1000);
+});
+
 test('the same scene and edit sequence produce the same object ID and engine evidence', () => {
   const initial = { version: 2, editableReferenceVersion: 4, rooms: [], walls: [], items: [], hotspots: [] };
   const placeCamera = () => {
