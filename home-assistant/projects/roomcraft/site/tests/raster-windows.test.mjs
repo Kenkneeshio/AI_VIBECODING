@@ -1,144 +1,111 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { runInNewContext } from 'node:vm';
+import {readFileSync} from 'node:fs';
+import {runInNewContext} from 'node:vm';
 import test from 'node:test';
-import { installRoomcraftEngine } from './engine-loader.mjs';
+import {compileStorybookPlan} from '../ha-local/storybook-scene.mjs';
+import {installRoomcraftEngine} from './engine-loader.mjs';
 
 const source = readFileSync(new URL('../public/raster-renderer.js', import.meta.url), 'utf8');
-
-function renderer(document) {
-  class ImageStub { addEventListener() {} }
-  const window = { dispatchEvent() {} };
-  installRoomcraftEngine(window);
-  runInNewContext(source, { window, Image: ImageStub, document });
-  return window.RoomcraftRasterRenderer;
-}
+const empty = {version: 2, editableReferenceVersion: 8, rooms: [], walls: [], items: []};
+const noop = () => {};
 
 function recordingCanvas() {
   const operations = [];
+  let paths = [];
+  let ring;
   const context = {
     operations,
-    save() { operations.push(['save']); },
-    restore() { operations.push(['restore']); },
+    save() {}, restore() {}, scale() {}, roundRect() {}, ellipse() {}, arc() {},
+    beginPath() { paths = []; },
+    moveTo(x, y) { ring = [[x, y]]; paths.push(ring); },
+    lineTo(x, y) { ring.push([x, y]); },
+    quadraticCurveTo() {}, closePath() {},
     translate(x, y) { operations.push(['translate', x, y]); },
     rotate(angle) { operations.push(['rotate', angle]); },
-    scale(x, y) { operations.push(['scale', x, y]); },
-    beginPath() {}, roundRect() {}, ellipse() {}, arc() {}, fill() {}, stroke() {},
-    moveTo(x, y) { operations.push(['moveTo', x, y]); },
-    lineTo(x, y) { operations.push(['lineTo', x, y]); },
-    drawImage(image, ...args) { operations.push(['image', image.name, ...args]); },
-    fillRect(x, y, width, height) {
-      operations.push(['fill', this.fillStyle, x, y, width, height]);
-    },
-    createLinearGradient() {
-      const stops = [];
-      operations.push(['gradient', stops]);
-      return { addColorStop(offset, color) { stops.push([offset, color]); } };
-    },
-    createRadialGradient() {
-      const stops = [];
-      return { addColorStop(offset, color) { stops.push([offset, color]); } };
-    },
+    fill() { operations.push(['shape', this.fillStyle, paths]); },
+    stroke() { operations.push(['stroke', this.strokeStyle, paths]); },
+    drawImage() { assert.fail('Design must not paint any reference image'); },
+    fillRect(x, y, w, h) { operations.push(['rect', this.fillStyle, x, y, w, h]); },
+    strokeRect() {},
+    createPattern() { return 'procedural pattern'; },
+    createLinearGradient() { return {addColorStop: noop}; },
+    createRadialGradient() { return {addColorStop: noop}; },
   };
   return context;
 }
 
-test('the seamless empty shell repairs source openings but renders no windows without scene items', () => {
-  const raster = renderer();
-  const canvas = recordingCanvas();
-  const original = { name: 'original', complete: true, naturalWidth: 1536 };
-  const shell = { name: 'shell', complete: true, naturalWidth: 1536 };
-  const plan = { items: [], walls: [], rooms: [] };
-  assert.equal(raster.draw(canvas, plan, plan, { original, shell }, () => {}), true);
-  const images = canvas.operations.filter(([kind]) => kind === 'image');
-  assert.deepEqual(images[0], ['image', 'shell', 0, 0, 1536, 1024]);
-  assert.equal(images.length, 11, 'one grass fill and nine matching wall strips');
-  assert.ok(images.every(([, name]) => name === 'shell'));
-  assert.deepEqual(images[1], ['image', 'shell', 528, 150, 143, 17, 528, 150, 143, 17]);
-  assert.ok(canvas.operations.some(([kind, x, y]) => kind === 'scale' && x === 1 && y === -1));
-  assert.deepEqual(images.at(-1).slice(-4), [528, 183, 143, 31], 'wall-mounted hardware coverage');
-  assert.equal(canvas.operations.filter(([kind]) => kind === 'moveTo').length, 0, 'no raised repair caps');
-  const glassStops = canvas.operations.flatMap(([kind, stops]) =>
-    kind === 'gradient' ? stops.map(([, color]) => color) : []);
-  assert.ok(!glassStops.includes('#547586'), 'no glass is rendered unless a window item exists');
+function renderer(compile) {
+  const window = {RoomcraftPlanStructure: compile};
+  const document = {createElement: () => ({getContext: recordingCanvas})};
+  installRoomcraftEngine(window);
+  runInNewContext(source, {window, document});
+  return window.RoomcraftRasterRenderer;
+}
+
+const indoor = {
+  id: 'room', surface: 'oak', points: [{x: 200, y: 400}, {x: 1200, y: 400}, {x: 1200, y: 720}, {x: 200, y: 720}],
+};
+const wall = {id: 'w9', x1: 200, y1: 400, x2: 1200, y2: 400};
+const fence = {id: 'fence', kind: 'fence', x1: 200, y1: 360, x2: 520, y2: 360, finish: 'walnut'};
+
+function wallCapAt(canvas, x, y) {
+  const inside = ring => {
+    let odd = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [ax, ay] = ring[i];
+      const [bx, by] = ring[j];
+      if ((ay > y) !== (by > y) && x < ax + (bx - ax) * (y - ay) / (by - ay)) odd = !odd;
+    }
+    return odd;
+  };
+  return canvas.operations.some(([kind, color, paths]) =>
+    kind === 'shape' && color === '#514855' && paths.filter(inside).length % 2);
+}
+
+test('an empty Design paints only terrain when rooms, walls and objects are removed', () => {
+  for (const compile of [undefined, compileStorybookPlan]) {
+    const canvas = recordingCanvas();
+    const raster = renderer(compile);
+    assert.equal(raster.draw(canvas, empty, noop), true);
+    assert.deepEqual(canvas.operations.filter(([kind]) => ['shape', 'stroke', 'rect'].includes(kind)),
+      [['rect', 'procedural pattern', 0, 0, 1536, 1024]]);
+  }
 });
 
-test('a new editable window is painted above fixed openings at its own wall angle', () => {
-  const raster = renderer();
+test('moving and deleting authored structure repaints 2D without old walls, fences or stairs', () => {
+  const raster = renderer(compileStorybookPlan);
   const canvas = recordingCanvas();
-  const original = { name: 'original', complete: true, naturalWidth: 1536 };
-  const shell = { name: 'shell', complete: true, naturalWidth: 1536 };
-  const starter = { items: [], walls: [], rooms: [] };
-  const project = { ...starter, items: [{ id: 'custom-window', type: 'window',
-    x: 900, y: 400, w: 100, h: 28, rotation: 90 }] };
-  assert.equal(raster.draw(canvas, project, starter, { original, shell }, () => {}), true);
-  const positions = canvas.operations.filter(([kind]) => kind === 'translate')
-    .map(([, x, y]) => [x, y]);
-  assert.deepEqual(positions.at(-1), [900, 400]);
-  assert.equal(positions.length, 2, 'grass repair plus the one editable window');
-  assert.ok(Math.abs(canvas.operations.filter(([kind]) => kind === 'rotate').at(-1)[1] - Math.PI / 2) < 1e-10);
+  const stairs = {id: 'stairs', type: 'stairs', x: 180, y: 500, w: 80, h: 180, rotation: 0, steps: 7};
+  const original = {...empty, rooms: [indoor], walls: [wall, fence], items: [stairs]};
+  raster.draw(canvas, original, noop);
+  assert.ok(wallCapAt(canvas, 450, 400), 'original exterior wall');
+  assert.ok(canvas.operations.some(([kind, , paths]) =>
+    kind === 'stroke' && paths[0]?.[0]?.[1] === fence.y1), 'authored rail');
+  assert.ok(canvas.operations.some(([kind, x, y]) =>
+    kind === 'translate' && x === stairs.x && y === stairs.y), 'authored stair');
+
+  const edited = recordingCanvas();
+  raster.draw(edited, {...original, walls: [{...wall, y1: 480, y2: 480}], items: []}, noop);
+  assert.ok(!wallCapAt(edited, 450, 400), 'previous wall pixels are gone');
+  assert.ok(wallCapAt(edited, 450, 480), 'moved wall paints only at new location');
+  assert.ok(!edited.operations.some(([kind]) => kind === 'stroke'), 'removed fence stays gone');
+  assert.ok(!edited.operations.some(([kind, x, y]) =>
+    kind === 'translate' && x === stairs.x && y === stairs.y), 'removed stair stays gone');
 });
 
-test('Design never paints the furnished reference while its shell loads', () => {
-  const raster = renderer();
+test('2D glazing uses the compiled solid-wall opening and disappears when removed', () => {
+  const raster = renderer(compileStorybookPlan);
   const canvas = recordingCanvas();
-  const plan = { rooms: [], walls: [], items: [] };
-  const original = { name: 'furnished-reference', complete: true, naturalWidth: 1536 };
-  const shell = { complete: false, naturalWidth: 0 };
-  assert.equal(raster.draw(canvas, plan, plan, { original, shell }, () => {}), false);
-  assert.deepEqual(canvas.operations, []);
-});
+  const glazing = {id: 'window', type: 'window', x: 900, y: 408, w: 100, h: 28, rotation: 0};
+  const layout = {...empty, rooms: [indoor], walls: [wall, fence], items: [glazing]};
+  raster.draw(canvas, layout, noop);
+  assert.deepEqual(canvas.operations.find(([kind, x]) => kind === 'translate' && x === 900),
+    ['translate', 900, 400], 'window aligns to the compiled wall centerline');
+  assert.ok(!wallCapAt(canvas, 900, 400), 'opening cuts the wall cap');
+  assert.ok(wallCapAt(canvas, 800, 400), 'neighboring wall cap remains');
 
-test('a corrupt canonical shell rejects export instead of hanging or changing render backends', async () => {
-  const raster = renderer();
-  const failed = { complete: true, naturalWidth: 0, src: 'empty-shell.png', addEventListener() {} };
-  const ready = { complete: true, naturalWidth: 1536, src: 'floorplan.png', addEventListener() {} };
-  await assert.rejects(
-    raster.prepareExport({ rooms: [] }, { rooms: [] }, { original: ready, shell: failed, wallFree: ready }),
-    /failed to decode/i
-  );
-});
-
-test('editing kitchen and bath walls clears the full old caps and leaves retained walls alone', () => {
-  const sourceCrops = [];
-  const raster = renderer({
-    createElement() {
-      const context = recordingCanvas();
-      context.drawImage = (image, x, y, w, h) => sourceCrops.push({ asset: image.name, x, y, w, h });
-      return { name: 'wall-patch', getContext: () => context };
-    },
-  });
-  const walls = [
-    { id: 'w9', x1: 302, y1: 800, x2: 1485, y2: 800 },
-    { id: 'w24', x1: 865, y1: 642, x2: 865, y2: 800 },
-    { id: 'w32', x1: 615, y1: 550, x2: 615, y2: 800 },
-    { id: 'w33', x1: 848, y1: 550, x2: 848, y2: 642 },
-  ];
-  const starter = { rooms: [], walls, items: [] };
-  const images = Object.fromEntries(['original', 'shell', 'wallFree'].map(name =>
-    [name, { name, complete: true, naturalWidth: 1536 }]));
-  const unchanged = recordingCanvas();
-  raster.draw(unchanged, starter, starter, images, () => {});
-  assert.deepEqual(sourceCrops, []);
-  assert.ok(unchanged.operations.filter(([kind]) => kind === 'image').every(([, name]) => name === 'shell'));
-
-  const movedWall = { ...walls[2], x1: 700, x2: 700 };
-  const edited = { ...starter, walls: [walls[0], walls[1], movedWall] };
-  const awaitingRepairAsset = recordingCanvas();
-  assert.equal(raster.draw(awaitingRepairAsset, edited, starter,
-    { ...images, wallFree: { complete: false } }, () => {}), false);
-  assert.deepEqual(awaitingRepairAsset.operations, []);
-
-  const canvas = recordingCanvas();
-  raster.draw(canvas, edited, starter, images, () => {});
-  assert.ok(sourceCrops.every(crop => crop.asset === 'wallFree'));
-  const repaired = (x, y) => sourceCrops.some(crop =>
-    x >= crop.x && x < crop.x + crop.w && y >= crop.y && y < crop.y + crop.h);
-  assert.ok(repaired(639, 720), 'displaced kitchen wall cap');
-  assert.ok(repaired(942, 568), 'horizontal cap at the top of the bath wall');
-  assert.ok(repaired(857, 621), 'vertical bath wall stem');
-  assert.ok(!repaired(857, 711), 'retained wall below the junction');
-  assert.ok(!repaired(639, 800), 'fixed exterior cap');
-  assert.ok(canvas.operations.some(([kind, x, y]) => kind === 'moveTo' && x === 700 && y === 550),
-    'moved wall is painted at the new coordinates');
+  const edited = recordingCanvas();
+  raster.draw(edited, {...layout, items: []}, noop);
+  assert.ok(!edited.operations.some(([kind, x]) => kind === 'translate' && x === 900));
+  assert.ok(wallCapAt(edited, 900, 400), 'wall cap closes as soon as the window is removed');
 });

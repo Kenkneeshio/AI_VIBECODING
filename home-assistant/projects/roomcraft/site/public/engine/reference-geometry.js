@@ -90,5 +90,89 @@
     return {...project, rooms, walls:[...walls.values()], items};
   }
 
-  root.RoomcraftReferenceGeometry = Object.freeze({repair, isOpenThreshold});
+  function coversSegment(wall, [x1, y1, x2, y2]) {
+    if (x1 === x2 && wall.x1 === x1 && wall.x2 === x1) {
+      return Math.min(wall.y1, wall.y2) <= Math.min(y1, y2) &&
+        Math.max(wall.y1, wall.y2) >= Math.max(y1, y2);
+    }
+    if (y1 === y2 && wall.y1 === y1 && wall.y2 === y1) {
+      return Math.min(wall.x1, wall.x2) <= Math.min(x1, x2) &&
+        Math.max(wall.x1, wall.x2) >= Math.max(x1, x2);
+    }
+    return false;
+  }
+
+  /** Convert the older reference shell into the same records used for new work. */
+  function unlockStructure(project) {
+    const byWall = new Map(project.walls.map(wall => [wall.id, wall]));
+    const trace = ['w1','w2','w3','w4','w5','w6','w7','w8','w9','w11','w12','w13','w18'];
+    if (!trace.every(id => byWall.has(id)) || !project.rooms.length) return project;
+    const vertices = project.rooms.flatMap(room => room.points);
+    for (const wall of project.walls) {
+      vertices.push({x: wall.x1, y: wall.y1}, {x: wall.x2, y: wall.y2});
+    }
+    const xs = vertices.map(point => point.x);
+    const ys = vertices.map(point => point.y);
+    const left = Math.min(...xs) - 108;
+    const edge = left + 98;
+    const top = Math.min(...ys) + 14;
+    const bottom = Math.max(...ys) + 25;
+    const landing = bottom + 57;
+    const at = id => byWall.get(id);
+    const balconyY = at('w1').y1 + 57;
+    const rooms = [...project.rooms];
+    const walls = project.walls.filter(wall => !isOpenThreshold(wall));
+    const items = [...project.items];
+
+    function patio(id, name, coordinates) {
+      if (rooms.some(room => room.id === id)) return;
+      rooms.push({id, name, outdoor: true, surface: 'patio',
+        points: coordinates.map(([x, y]) => ({x, y}))});
+    }
+    patio('reference-balcony', 'Balcony', [
+      [edge, balconyY], [at('w2').x1, balconyY], [at('w3').x1, at('w3').y1],
+      [at('w3').x2, at('w3').y2], [edge, at('w4').y2],
+    ]);
+    patio('reference-porch', 'Covered porch', [
+      [edge, at('w6').y1], [at('w7').x1, at('w7').y1], [at('w7').x2, at('w7').y2],
+      [at('w8').x1, landing], [edge, landing],
+    ]);
+    patio('reference-landing', 'Stair landing', [
+      [left, bottom], [edge + 1, bottom], [edge + 1, landing], [left, landing],
+    ]);
+
+    const rearX = at('w12').x2;
+    const rearY = Math.min(at('w11').y2, at('w12').y2);
+    const closetX = at('w18').x1;
+    if (closetX > rearX) {
+      const joins = [
+        ['reference-rear-step', [rearX, at('w12').y2, rearX, rearY]],
+        ['reference-rear-cap', [rearX, rearY, closetX, rearY]],
+      ];
+      for (const [id, span] of joins) {
+        if (span[0] === span[2] && span[1] === span[3]) continue;
+        if (!walls.some(wall => wall.id === id || wall.kind !== 'fence' && coversSegment(wall, span))) {
+          walls.push(wallAt(id, span));
+        }
+      }
+    }
+
+    const fences = [
+      ['reference-balcony-fence', [edge, balconyY, at('w2').x1, balconyY]],
+      ['reference-stair-fence', [left + 4, top, left + 4, bottom]],
+    ];
+    for (const [id, span] of fences) {
+      if (!walls.some(wall => wall.id === id || wall.kind === 'fence' && coversSegment(wall, span))) {
+        walls.push({...wallAt(id, span), kind: 'fence', finish: 'graphite'});
+      }
+    }
+    if (!items.some(item => item.id === 'reference-stairs')) {
+      items.push({id: 'reference-stairs', type: 'stairs', name: 'Exterior stairs',
+        x: (left + edge) / 2, y: (top + bottom) / 2, w: edge - left, h: bottom - top,
+        rotation: 0, steps: 14, entityId: ''});
+    }
+    return {...project, rooms, walls, items};
+  }
+
+  root.RoomcraftReferenceGeometry = Object.freeze({repair, isOpenThreshold, unlockStructure});
 })(typeof window === 'undefined' ? globalThis : window);

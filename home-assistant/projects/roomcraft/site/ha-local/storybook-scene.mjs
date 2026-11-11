@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { makeStorybookFurniture } from './storybook-furniture.mjs';
 import { makeStorybookDevice } from './storybook-devices.mjs';
-import { compileFloorStructure, compileWallStructure } from './storybook-structure.mjs';
+import { compileFloorStructure, compileWallStructure, isOutdoorRoom } from './storybook-structure.mjs';
 import { createStorybookLighting } from './storybook-lighting.mjs';
 import { fitStorybookCamera, normalizeCameraView } from './storybook-camera.mjs';
 
@@ -11,6 +11,11 @@ const WALL_WIDTH = 14;
 const WALL_HEIGHT = 56;
 const SILL = 21;
 const GROUND_Y = -111;
+const STAIR_BASE = -108;
+const DEFAULT_STEPS = 14;
+const FENCE_POST_SPACING = 28;
+const FENCE_HEIGHT = 28;
+const EMPTY_PLAN_BOUNDS = { minX: 0, maxX: 1536, minZ: 0, maxZ: 1024 };
 const FLOOR_LOOKS = {
   oak: ['#d8ad86', '#aa775d', 'board'],
   walnut: ['#a57b6e', '#755952', 'board'],
@@ -115,36 +120,103 @@ function coversAxisSegment(wall, [x1, y1, x2, y2]) {
   return false;
 }
 
+function emptyBounds() {
+  return { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
+}
+
+function includePoint(bounds, x, z) {
+  bounds.minX = Math.min(bounds.minX, x);
+  bounds.maxX = Math.max(bounds.maxX, x);
+  bounds.minZ = Math.min(bounds.minZ, z);
+  bounds.maxZ = Math.max(bounds.maxZ, z);
+}
+
+function wallPalette(wall) {
+  return Object.hasOwn(WALL_LOOKS, wall.finish) ? WALL_LOOKS[wall.finish] : WALL_LOOKS.graphite;
+}
+
+function stairGrade(stair, x, z) {
+  const dx = x - stair.x;
+  const dz = z - stair.z;
+  const cos = Math.cos(stair.angle);
+  const sin = Math.sin(stair.angle);
+  const localX = dx * cos + dz * sin;
+  const localZ = -dx * sin + dz * cos;
+  if (Math.abs(localX) > stair.item.w / 2 + 5 || Math.abs(localZ) > stair.item.h / 2 + 5) return null;
+  const fraction = THREE.MathUtils.clamp(localZ / stair.item.h + .5, 0, 1);
+  return STAIR_BASE - STAIR_BASE * fraction;
+}
+
+function touchesRoom(room, x, z) {
+  if (roomContains(room, x, z)) return true;
+  return room.points.some((a, index) => {
+    const b = room.points[(index + 1) % room.points.length];
+    const dx = b.x - a.x;
+    const dz = b.y - a.y;
+    const length2 = dx * dx + dz * dz;
+    const t = length2 ? THREE.MathUtils.clamp(((x - a.x) * dx + (z - a.y) * dz) / length2, 0, 1) : 0;
+    return Math.hypot(x - a.x - t * dx, z - a.y - t * dz) <= WALL_WIDTH / 2;
+  });
+}
+
+function compileFence(wall, rooms, stairs) {
+  const centerX = (wall.x1 + wall.x2) / 2;
+  const centerZ = (wall.y1 + wall.y2) / 2;
+  const deck = rooms.some(room => touchesRoom(room, centerX, centerZ));
+  let base1 = deck ? 0 : GROUND_Y;
+  let base2 = base1;
+  for (const stair of stairs) {
+    const start = stairGrade(stair, wall.x1, wall.y1);
+    const end = stairGrade(stair, wall.x2, wall.y2);
+    if (start !== null && end !== null) {
+      base1 = start;
+      base2 = end;
+      break;
+    }
+  }
+  const [, cap, base] = wallPalette(wall);
+  return {...wall, base1, base2, color: wall.finish ? cap : '#896e79',
+    postColor: wall.finish ? base : '#9f8183',
+    posts: Math.min(120, Math.max(1, Math.ceil(wall.length / FENCE_POST_SPACING)))};
+}
+
 // This is a read-only projection of the v2 layout. Pixel coordinates are
 // still the authored units and every wall uses the same cutaway height.
 export function compileStorybookPlan(layout) {
-  if (layout?.version !== 2 || !Array.isArray(layout.rooms) || !layout.rooms.length ||
+  const editableStructure = layout?.editableReferenceVersion >= 8;
+  if (layout?.version !== 2 || !Array.isArray(layout.rooms) ||
       !Array.isArray(layout.walls) || !Array.isArray(layout.items)) {
     throw new Error('Storybook requires a Roomcraft v2 layout with rooms, walls and items.');
   }
   const rooms = layout.rooms.filter(room => room?.points?.length >= 3 && room.points.every(
     point => Number.isFinite(point?.x) && Number.isFinite(point?.y)));
-  if (!rooms.length) throw new Error('Storybook could not find a valid room polygon.');
+  if (!rooms.length && (!editableStructure || layout.rooms.length)) {
+    throw new Error('Storybook could not find a valid room polygon.');
+  }
+  const indoorRooms = editableStructure ? rooms.filter(room => !isOutdoorRoom(room)) : rooms;
   const authoredWalls = layout.walls.map(projectWall).filter(Boolean);
+  const authoredSolids = authoredWalls.filter(wall => wall.kind !== 'fence');
   const items = layout.items.filter(item => typeof item?.id === 'string' && typeof item.type === 'string' &&
     [item.x, item.y, item.w, item.h].every(Number.isFinite) && item.w > 0 && item.h > 0);
-  const bounds = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
-  const extend = (x, z) => {
-    bounds.minX = Math.min(bounds.minX, x);
-    bounds.maxX = Math.max(bounds.maxX, x);
-    bounds.minZ = Math.min(bounds.minZ, z);
-    bounds.maxZ = Math.max(bounds.maxZ, z);
-  };
+  const bounds = emptyBounds();
+  const indoorBounds = emptyBounds();
+  const extend = (x, z) => includePoint(bounds, x, z);
   for (const room of rooms) for (const point of room.points) extend(point.x, point.y);
   for (const wall of authoredWalls) {
     extend(wall.x1, wall.y1);
     extend(wall.x2, wall.y2);
   }
-  const houseBounds = { ...bounds };
+  for (const room of indoorRooms) for (const point of room.points) includePoint(indoorBounds, point.x, point.y);
+  for (const wall of authoredSolids) {
+    includePoint(indoorBounds, wall.x1, wall.y1);
+    includePoint(indoorBounds, wall.x2, wall.y2);
+  }
+  const houseBounds = {...(Number.isFinite(indoorBounds.minX) ? indoorBounds :
+    Number.isFinite(bounds.minX) ? bounds : EMPTY_PLAN_BOUNDS)};
   // The illustrated v2 reference contains the landing and stairway in the
   // fixed shell image. Only project the authored reference silhouette here.
-  const byWallId = new Map(authoredWalls.map(wall => [wall.id, wall]));
-  const reference = ['w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'w7', 'w8', 'w9', 'w11', 'w12', 'w13', 'w18']
+  const byWallId = new Map(authoredSolids.map(wall => [wall.id, wall]));
+  const reference = !editableStructure && ['w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'w7', 'w8', 'w9', 'w11', 'w12', 'w13', 'w18']
     .every(id => byWallId.has(id)) ? {
       left: houseBounds.minX - 108,
       deckEdge: houseBounds.minX - 10,
@@ -171,7 +243,7 @@ export function compileStorybookPlan(layout) {
         z2: byWallId.get('w13').y2,
       },
     } : null;
-  const walls = authoredWalls.filter(wall => {
+  const walls = authoredSolids.filter(wall => {
     if (!reference) return true;
     // These legacy segments trace the shell's floor boundary. Their glazed
     // door leaves were removed in the approved plan, leaving level openings.
@@ -204,7 +276,7 @@ export function compileStorybookPlan(layout) {
     const end = Math.min(wall.length - 1, t + item.w / 2 - 1);
     if (end - start < 14) continue;
     wall.openings.push({ start, end });
-    const side = interiorSide(rooms, wall, centerX, centerZ);
+    const side = interiorSide(indoorRooms, wall, centerX, centerZ);
     const angle = wall.angle + (side < 0 ? Math.PI : 0);
     const midpoint = (start + end) / 2;
     windowMounts.set(item.id, {
@@ -217,7 +289,7 @@ export function compileStorybookPlan(layout) {
   const placements = items.map(item => {
     const isBlind = item.type === 'controlZone' &&
       (item.visualKind === 'window' || item.entityId?.startsWith('cover.'));
-    let mount = windowMounts.get(item.id) ?? resolveWallMount(rooms, walls, item);
+    let mount = windowMounts.get(item.id) ?? resolveWallMount(indoorRooms, walls, item);
     if (isBlind) {
       let minDistance = 52;
       for (const candidate of windowMounts.values()) {
@@ -231,19 +303,28 @@ export function compileStorybookPlan(layout) {
     const x = mount?.x ?? item.x;
     const z = mount?.z ?? item.y;
     const angle = mount?.angle ?? (Number.isFinite(item.rotation) ? item.rotation * DEG : 0);
-    const halfX = Math.min(300, (Math.abs(Math.cos(angle)) * item.w + Math.abs(Math.sin(angle)) * item.h) / 2);
-    const halfZ = Math.min(300, (Math.abs(Math.sin(angle)) * item.w + Math.abs(Math.cos(angle)) * item.h) / 2);
+    const limit = item.type === 'stairs' ? 1536 : 300;
+    const halfX = Math.min(limit, (Math.abs(Math.cos(angle)) * item.w + Math.abs(Math.sin(angle)) * item.h) / 2);
+    const halfZ = Math.min(limit, (Math.abs(Math.sin(angle)) * item.w + Math.abs(Math.cos(angle)) * item.h) / 2);
     extend(x - halfX, z - halfZ);
     extend(x + halfX, z + halfZ);
     return { item, x, z, angle, window: mount?.window, mountY: mount?.mountY, isBlind };
   });
   for (const wall of walls) wall.openings.sort((a, b) => a.start - b.start || a.end - b.end);
-  const floorStructure = compileFloorStructure(rooms, reference);
+  const stairs = placements.filter(({item}) => item.type === 'stairs').map(placement => ({
+    ...placement,
+    steps: Number.isInteger(placement.item.steps) && placement.item.steps >= 2 && placement.item.steps <= 40
+      ? placement.item.steps : DEFAULT_STEPS,
+  }));
+  const fences = authoredWalls.filter(wall => wall.kind === 'fence').map(wall => compileFence(wall, rooms, stairs));
+  const floorStructure = compileFloorStructure(rooms, reference, editableStructure);
   const wallStructure = compileWallStructure(walls.map(wall => ({
     ...wall,
-    palette: Object.hasOwn(WALL_LOOKS, wall.finish) ? WALL_LOOKS[wall.finish] : WALL_LOOKS.graphite,
+    palette: wallPalette(wall),
   })), WALL_WIDTH, WALL_HEIGHT, SILL);
-  return { rooms, walls, placements, bounds, houseBounds, reference, floorStructure, wallStructure };
+  if (!Number.isFinite(bounds.minX)) Object.assign(bounds, EMPTY_PLAN_BOUNDS);
+  return { rooms, walls, fences, stairs, placements, bounds, houseBounds, reference, floorStructure, wallStructure,
+    editableStructure };
 }
 
 function drawRing(path, points) {
@@ -452,6 +533,45 @@ function buildWalls(batch, plan) {
   }
 }
 
+function buildFences(batch, fences) {
+  const builtPosts = new Set();
+  for (const fence of fences) {
+    const {x1, y1, x2, y2, base1, base2, length, angle, posts, color, postColor} = fence;
+    const rise = base2 - base1;
+    const rail = new THREE.BoxGeometry(Math.hypot(length, rise), 5, 7);
+    rail.rotateZ(Math.atan2(rise, length));
+    batch.add(rail, color, (x1 + x2) / 2, (base1 + base2) / 2 + FENCE_HEIGHT, (y1 + y2) / 2, -angle);
+    for (let index = 0; index <= posts; index++) {
+      const fraction = index / posts;
+      const x = THREE.MathUtils.lerp(x1, x2, fraction);
+      const z = THREE.MathUtils.lerp(y1, y2, fraction);
+      const y = THREE.MathUtils.lerp(base1, base2, fraction);
+      const key = [x, y, z].map(value => Math.round(value * 1000)).join(',');
+      if (builtPosts.has(key)) continue;
+      builtPosts.add(key);
+      batch.box(5, FENCE_HEIGHT, 5, postColor, x, y + FENCE_HEIGHT / 2, z, -angle);
+    }
+  }
+}
+
+function buildStairObject({item, steps}) {
+  const root = new THREE.Group();
+  const batch = makeStaticBatch(root);
+  const run = item.h / steps;
+  const rise = -STAIR_BASE / steps;
+  for (let step = 0; step < steps; step++) {
+    const z = -item.h / 2 + run * (step + .5);
+    const y = STAIR_BASE + (step + 1) * rise;
+    const coreTop = y - 3;
+    batch.box(item.w, coreTop - GROUND_Y, run, '#a98075', 0, (GROUND_Y + coreTop) / 2, z);
+    batch.box(item.w, 3, run, step % 2 ? '#e2c2a6' : '#d5b198', 0, y - 1.5, z);
+    const nosing = Math.min(3, run);
+    batch.box(item.w + 1, 2.4, nosing, '#b68e82', 0, y - 1.8, z - run / 2 + nosing / 2);
+  }
+  batch.finish();
+  return {root, anchorY: STAIR_BASE / 2};
+}
+
 function buildReferenceLanding(batch, plan) {
   if (!plan.reference) return;
   const { left, deckEdge, stepTop, stepBottom, northDeck } = plan.reference;
@@ -524,11 +644,13 @@ function buildYard(batch, plan) {
   const width = maxX - minX;
   const depth = maxZ - minZ;
   const rand = seededRandom(150741);
-  const pathWidth = Math.min(90, width * 0.18);
-  const pathX = plan.reference ? plan.reference.left + pathWidth / 2 : minX + pathWidth / 2;
-  batch.box(pathWidth, 4, 115, '#c7baa4', pathX, -109, minZ - 88);
-  for (let i = 0; i < 5; i++) {
-    batch.box(pathWidth * 0.85, 1.8, 13, '#dbceba', pathX, -106, minZ - 137 + i * 20);
+  if (!plan.editableStructure) {
+    const pathWidth = Math.min(90, width * 0.18);
+    const pathX = plan.reference ? plan.reference.left + pathWidth / 2 : minX + pathWidth / 2;
+    batch.box(pathWidth, 4, 115, '#c7baa4', pathX, -109, minZ - 88);
+    for (let i = 0; i < 5; i++) {
+      batch.box(pathWidth * 0.85, 1.8, 13, '#dbceba', pathX, -106, minZ - 137 + i * 20);
+    }
   }
   const bushes = [[0.06, -0.075], [0.32, -0.09], [0.63, -0.11], [0.92, -0.075], [1.045, 0.32],
     [1.035, 0.74], [0.84, 1.085], [0.51, 1.08], [0.23, 1.075], [-0.135, 0.55]];
@@ -594,7 +716,7 @@ function buildWeather(scene, plan) {
   const rainLocations = [];
   const recess = plan.reference?.recess;
   const isExterior = (x, z) => !(recess && x >= recess.x1 && x <= recess.x2 && z >= recess.z1 && z <= recess.z2) &&
-    !plan.rooms.some(room => roomContains(room, x, z));
+    !plan.rooms.some(room => (!plan.editableStructure || !isOutdoorRoom(room)) && roomContains(room, x, z));
   for (let i = 0; i < 190; i++) {
     const x = bounds.minX - 70 + (bounds.maxX - bounds.minX + 140) * rand();
     const z = bounds.minZ - 70 + (bounds.maxZ - bounds.minZ + 140) * rand();
@@ -675,17 +797,20 @@ export function createStorybookScene(canvas, layout) {
   buildReferenceLanding(batch, plan);
   buildFloors(scene, batch, plan, canvas.ownerDocument);
   buildWalls(batch, plan);
+  buildFences(batch, plan.fences);
   batch.finish();
   const lighting = createStorybookLighting(renderer, scene, plan.bounds);
   lighting.markStructure();
   const updateWeather = buildWeather(scene, plan);
   const anchors = new Map();
   const roots = new Map();
+  const stairsById = new Map(plan.stairs.map(stair => [stair.item.id, stair]));
   for (const placement of plan.placements) {
     const { item, x, z, angle, window, mountY, isBlind } = placement;
     const drawItem = item.type === 'window' && window ? window : item;
-    const object = makeStorybookDevice(drawItem, { window: isBlind ? window : undefined, mountY }) ??
-      makeStorybookFurniture(drawItem);
+    const stair = stairsById.get(item.id);
+    const object = stair ? buildStairObject(stair) :
+      makeStorybookDevice(drawItem, {window: isBlind ? window : undefined, mountY}) ?? makeStorybookFurniture(drawItem);
     if (object) {
       object.root.position.set(x, 0, z);
       object.root.rotation.y = -angle;

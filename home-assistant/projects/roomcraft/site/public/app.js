@@ -45,12 +45,6 @@
   const reference = new Image();
   reference.src = assetUrl('assets/floorplan.png');
   reference.addEventListener('load', () => draw());
-  const emptyShell = new Image();
-  emptyShell.src = assetUrl('assets/empty-shell.png');
-  emptyShell.addEventListener('load', () => draw());
-  const wallFreeShell = new Image();
-  wallFreeShell.src = assetUrl('assets/wall-free-shell.png');
-  wallFreeShell.addEventListener('load', () => draw());
 
   const surfaces = [
     { id: 'oak', name: 'Warm oak', note: 'Open living · long planks', color: '#dca46c', accent: '#b77d4d' },
@@ -59,7 +53,8 @@
     { id: 'ivory', name: 'Ivory ceramic', note: 'Bath · small squares', color: '#ede5d6', accent: '#cdc3b1' },
     { id: 'blue', name: 'Blue-gray tile', note: 'Bath · fine squares', color: '#becdd0', accent: '#8da8ab' },
     { id: 'terrazzo', name: 'Soft terrazzo', note: 'Extra room · speckled', color: '#e6e1d6', accent: '#b7aea0' },
-    { id: 'sage', name: 'Sage tile', note: 'Extra room · matte', color: '#b9c9b1', accent: '#88a389' }
+    { id: 'sage', name: 'Sage tile', note: 'Extra room · matte', color: '#b9c9b1', accent: '#88a389' },
+    { id: 'patio', name: 'Patio stone', note: 'Landings and decks', color: '#d4c5ae', accent: '#ad9e86' }
   ];
   const surfaceById = Object.fromEntries(surfaces.map(s => [s.id, s]));
   const wallFinishes = [
@@ -117,7 +112,8 @@
     { type: 'floorPlant', label: 'Floor plant', icon: '❀', w: 72, h: 72, group: 'decor' },
     { type: 'artwork', label: 'Wall art', icon: '▧', w: 94, h: 56, group: 'decor' },
     { type: 'mirror', label: 'Mirror', icon: '◇', w: 72, h: 52, group: 'decor' },
-    { type: 'window', label: 'Window', icon: '▣', w: 100, h: 28, group: 'build' }
+    { type: 'window', label: 'Window', icon: '▣', w: 100, h: 28, group: 'build' },
+    { type: 'stairs', label: 'Exterior stairs', icon: '▤', w: 88, h: 430, group: 'build' }
   ];
   templates.push(...(window.RoomcraftInventory?.templates || []));
   const paletteGroups = [
@@ -240,9 +236,6 @@
     ...REFERENCE_SCENE_ITEMS_V6
   ];
   const interfaceTypes = new Set(DEFAULT_INTERFACE_ITEMS.map(o=>o.type));
-  const fixedRoomIds = new Set(STARTER.rooms.map(r => r.id));
-  const fixedExteriorWallIds = new Set(['w1','w2','w3','w4','w5','w6','w7','w8','w9','w10','w11','w12','reference-rear-step']);
-  const isFixedExteriorWall = w => !!w && fixedExteriorWallIds.has(w.id);
   const REFERENCE_MIGRATIONS = [
     {id:'reference-v1-movable-bedside-lamp',from:0,to:1,apply(state){
       const lamp=STARTER.items.find(i=>i.id==='i14');
@@ -301,23 +294,27 @@
       if(matchesKnownGeometry(garage,[{x:306,y:106,w:116,h:52,rotation:0}],3))Object.assign(garage,{x:306,y:112,w:132,h:92});
       return state;
     }},
-    {id:'reference-v7-source-geometry',from:6,to:7,apply:window.RoomcraftReferenceGeometry.repair}
+    {id:'reference-v7-source-geometry',from:6,to:7,apply:window.RoomcraftReferenceGeometry.repair},
+    {id:'reference-v8-editable-structure',from:7,to:8,apply:window.RoomcraftReferenceGeometry.unlockStructure}
   ];
 
   let hasLocalDraft = false;
   function loadProject() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return restoreFixedGeometry(clone(STARTER));
+      if (!raw) return normalizeProject(clone(STARTER));
       const parsed = JSON.parse(raw);
-      if (validProject(parsed)) {hasLocalDraft=true;return restoreFixedGeometry(parsed);}
+      if (validProject(parsed)) {hasLocalDraft=true;return normalizeProject(parsed);}
     } catch (_) { /* use starter */ }
-    return restoreFixedGeometry(clone(STARTER));
+    return normalizeProject(clone(STARTER));
   }
   function validProject(p) {
     return p && Array.isArray(p.rooms) && Array.isArray(p.walls) && Array.isArray(p.items)
-      && p.rooms.every(r => typeof r.id === 'string' && !!surfaceById[r.surface] && Array.isArray(r.points) && r.points.length >= 3 && r.points.every(q => Number.isFinite(q.x) && Number.isFinite(q.y)))
-      && p.walls.every(w => typeof w.id === 'string' && (!w.finish || !!wallFinishById[w.finish]) && [w.x1,w.y1,w.x2,w.y2].every(Number.isFinite))
+      && p.rooms.every(r => typeof r.id === 'string' && !!surfaceById[r.surface] &&
+        (r.outdoor === undefined || typeof r.outdoor === 'boolean') &&
+        Array.isArray(r.points) && r.points.length >= 3 && r.points.every(q => Number.isFinite(q.x) && Number.isFinite(q.y)))
+      && p.walls.every(w => typeof w.id === 'string' && (w.kind === undefined || w.kind === 'fence') &&
+        (!w.finish || !!wallFinishById[w.finish]) && [w.x1,w.y1,w.x2,w.y2].every(Number.isFinite))
       && p.items.every(i => typeof i.id === 'string' && templateByType[i.type] && [i.x,i.y,i.w,i.h,i.rotation].every(Number.isFinite)
         && (!Object.prototype.hasOwnProperty.call(i,'zIndex')||Number.isFinite(i.zIndex))
         && (window.RoomcraftObjectControls?.validBinding(i) ?? true)
@@ -336,12 +333,9 @@
           &&h.style&&percent(h.style.left)&&percent(h.style.top);
       })));
   }
-  function restoreFixedGeometry(p){
+  function normalizeProject(p){
     let next=Engine.normalizeScene(p);
-    next=clone(Engine.migrations.run(next,REFERENCE_MIGRATIONS,7,{versionKey:'editableReferenceVersion'}).project);
-    const rooms=new Set(next.rooms.map(r=>r.id)),walls=new Map(next.walls.map(w=>[w.id,w]));
-    for(const r of STARTER.rooms)if(fixedRoomIds.has(r.id)&&!rooms.has(r.id))next.rooms.push(clone(r));
-    for(const w of STARTER.walls)if(fixedExteriorWallIds.has(w.id)){if(walls.has(w.id)){const current=walls.get(w.id);current.x1=w.x1;current.y1=w.y1;current.x2=w.x2;current.y2=w.y2;}else next.walls.push(clone(w));}
+    next=clone(Engine.migrations.run(next,REFERENCE_MIGRATIONS,8,{versionKey:'editableReferenceVersion'}).project);
     if(!Array.isArray(next.hotspots))next.hotspots=clone(DEFAULT_HOTSPOTS);
     for(const o of next.items)clampLinkedItem(o);
     next.version=2;
@@ -367,6 +361,7 @@
   let pendingTemplate = null;
   let pendingSurface = null;
   let pendingWallFinish = null;
+  let pendingSegment = null;
   let interaction = null;
   let spaceHeld = false;
   let history = [], future = [];
@@ -380,6 +375,7 @@
     ? new URL('/second-floor/plan', location.origin).href : null;
   let dashboardPublishedProject = null;
   let dashboardDefaultProject = null;
+  let dashboardPreview = null;
   let projectChangeSerial = 0;
   let sceneOrderCache = null;
   let entityOptions = [];
@@ -435,7 +431,7 @@
       if(journalCommandCount>=70){editorJournal=createEditorJournal(project);journalCommandCount=0;journalCheckpointCount++;}
       else{editorJournal.dispatch('scene.replace',{project,reason:message||'editor change'});journalCommandCount++;}
     }
-    projectChangeSerial++;sceneOrderCache=null;saveSoon();draw();renderInspector();renderRoomList();renderHotspotList();updateRestoreButton();updateRecoveryButton();updateHistoryButtons();if(message)setStatus(message);
+    projectChangeSerial++;sceneOrderCache=null;saveSoon();draw();renderInspector();renderRoomList();renderStructureList();renderHotspotList();updateRestoreButton();updateRecoveryButton();updateHistoryButtons();if(message)setStatus(message);
     window.dispatchEvent?.(new CustomEvent('roomcraft-editor-change'));
   }
   function setStatus(message) { document.getElementById('statusText').textContent = message; }
@@ -472,20 +468,6 @@
   function polygonPath(c, points) { c.beginPath();c.moveTo(points[0].x,points[0].y);for(let i=1;i<points.length;i++)c.lineTo(points[i].x,points[i].y);c.closePath(); }
   function round(c,x,y,w,h,r=8){c.beginPath();c.roundRect(x,y,w,h,r);}
 
-  function drawBackdrop(c) {
-    c.fillStyle='#cfdfbf';c.fillRect(0,0,W,H);
-    c.fillStyle='#d6e4c5';for(let y=12;y<H;y+=39)for(let x=12;x<W;x+=39){const jitter=(x*13+y*7)%17;c.beginPath();c.arc(x+jitter,y+((x+y)%11),2,0,Math.PI*2);c.fill();}
-    c.fillStyle='#e8d8c6';round(c,158,0,198,250,7);c.fill();
-    c.fillStyle='#aeb2a5';round(c,17,210,315,708,9);c.fill();
-    c.fillStyle='#e9e7dd';round(c,33,207,287,693,5);c.fill();
-    c.fillStyle='#b7b5ad';round(c,57,218,76,597,3);c.fill();
-    for(let y=228;y<810;y+=29){c.fillStyle='#f1f0e9';c.fillRect(65,y,66,23);c.strokeStyle='#a9aca5';c.lineWidth=2;c.beginPath();c.moveTo(65,y+24);c.lineTo(131,y+24);c.stroke();}
-    c.fillStyle='#e5e3d8';c.fillRect(177,230,214,229);c.fillRect(177,593,121,207);
-    c.strokeStyle='#475351';c.lineWidth=10;c.beginPath();c.moveTo(160,220);c.lineTo(160,789);c.moveTo(171,236);c.lineTo(391,236);c.stroke();
-    c.fillStyle='#5a6660';c.fillRect(19,810,300,100);
-    c.fillStyle='#d2c5b5';c.fillRect(303,800,1190,91);
-    c.fillStyle='#65736a';c.fillRect(303,795,1190,17);
-  }
   function drawRooms(c) {
     for(const r of project.rooms){polygonPath(c,r.points);c.fillStyle=patterns[r.surface]||patterns.oak;c.fill();c.strokeStyle='#796c5944';c.lineWidth=1;c.stroke();}
   }
@@ -495,9 +477,8 @@
     c.restore();
   }
   function drawWall(c,w) {
-    if(window.RoomcraftReferenceGeometry.isOpenThreshold(w))return;
     const finish=wallFinishById[w.finish||'graphite']||wallFinishById.graphite;
-    c.save();c.lineCap='square';c.strokeStyle=finish.color;c.lineWidth=20;c.beginPath();c.moveTo(w.x1,w.y1);c.lineTo(w.x2,w.y2);c.stroke();c.strokeStyle='rgba(255,255,255,.28)';c.lineWidth=3;c.beginPath();c.moveTo(w.x1,w.y1);c.lineTo(w.x2,w.y2);c.stroke();c.restore();
+    c.save();c.lineCap='square';c.strokeStyle=finish.color;c.lineWidth=w.kind==='fence'?6:16;c.beginPath();c.moveTo(w.x1,w.y1);c.lineTo(w.x2,w.y2);c.stroke();c.restore();
   }
   function drawObject(c,o) {
     if(o.type==='controlZone')return;
@@ -587,6 +568,37 @@
     }
     c.restore();
   }
+  function drawStructureGuides(c) {
+    const guide = interaction?.kind === 'wall-draw' ? interaction : pendingSegment;
+    if (guide) {
+      const end = guide.end || guide.start;
+      c.save();
+      c.strokeStyle = '#ed7255';
+      c.lineWidth = guide.segmentKind === 'fence' ? 5 : 9;
+      c.setLineDash([12, 7]);
+      c.beginPath();
+      c.moveTo(guide.start.x, guide.start.y);
+      c.lineTo(end.x, end.y);
+      c.stroke();
+      c.setLineDash([]);
+      c.fillStyle = '#ed7255';
+      c.beginPath();
+      c.arc(guide.start.x, guide.start.y, 6, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
+    }
+    const join = interaction?.joinPoint ?? pendingSegment?.joinPoint;
+    if (!join) return;
+    c.save();
+    c.fillStyle = '#37745d';
+    c.strokeStyle = '#fffdf4';
+    c.lineWidth = 2;
+    c.beginPath();
+    c.arc(join.x, join.y, 8, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+    c.restore();
+  }
   function draw(target=ctx,clean=false,forcedMode=null) {
     const c=target; const mode=forcedMode||viewMode;
     c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
@@ -609,9 +621,10 @@
           ['humidifier','airPurifier'].includes(o.type)))return;
         drawObject(c,o);
       };
-      if(!raster?.draw(c,project,STARTER,{original:reference,shell:emptyShell,wallFree:wallFreeShell},drawDynamicObject)){
+      if(raster)raster.draw(c,project,drawDynamicObject);
+      else{
         const layers=sceneLayers();
-        drawBackdrop(c);drawRooms(c);
+        c.fillStyle='#cfdfbf';c.fillRect(0,0,W,H);drawRooms(c);
         for(const o of layers.floorItems)drawDynamicObject(o);
         for(const o of layers.regularItems)drawDynamicObject(o);
         for(const o of layers.ceilingItems)drawDynamicObject(o);
@@ -620,15 +633,7 @@
       }
       if(!clean){
         drawControlZones(c);drawHotspots(c);drawSelection(c);
-        if(interaction?.kind==='wall-draw'){
-          c.save();c.strokeStyle='#ed7255';c.lineWidth=9;c.setLineDash([12,7]);
-          c.beginPath();c.moveTo(interaction.start.x,interaction.start.y);c.lineTo(interaction.end.x,interaction.end.y);c.stroke();c.restore();
-        }
-        if(interaction?.joinPoint){
-          const {x,y}=interaction.joinPoint;
-          c.save();c.fillStyle='#37745d';c.strokeStyle='#fffdf4';c.lineWidth=2;
-          c.beginPath();c.arc(x,y,8,0,Math.PI*2);c.fill();c.stroke();c.restore();
-        }
+        drawStructureGuides(c);
         if(pendingTemplate&&currentPointer){
           const t=templateByType[pendingTemplate],wallMounted=t.type==='window'||t.mount==='wall';
           const mount=wallMounted?nearestWallPlacement(currentPointer):null;
@@ -638,7 +643,7 @@
             if(t.type==='controlZone'){
               c.strokeStyle='#237a8a';c.lineWidth=2;c.setLineDash([8,5]);
               c.strokeRect(ghost.x-ghost.w/2,ghost.y-ghost.h/2,ghost.w,ghost.h);c.setLineDash([]);
-            }else if(raster?.ready(reference))raster.drawItem(c,ghost,STARTER,reference,emptyShell,()=>drawObject(c,ghost));
+            }else if(raster)raster.drawItem(c,ghost,()=>drawObject(c,ghost));
             else drawObject(c,ghost);
             c.restore();
           }
@@ -673,30 +678,33 @@
   function screenPoint(e){const r=viewport.getBoundingClientRect();return point(e.clientX-r.left,e.clientY-r.top);}
   function worldPoint(e){const p=screenPoint(e);return point((p.x-currentView.tx)/currentView.scale+CROP_X,(p.y-currentView.ty)/currentView.scale+CROP_Y);}
   const snap = n => Math.round(n/10)*10;
-  const wallsForJoining = () => project.walls.filter(wall => !window.RoomcraftReferenceGeometry.isOpenThreshold(wall));
+  const drawSegmentTool = () => tool === 'wall' || tool === 'fence';
+  const segmentLabel = segment => segment?.kind === 'fence' ? 'fence' : 'wall';
   function wallPoint(pointer, {origin, straight=false, excludeId, grid=false}={}) {
-    const candidate = point(pointer.x,pointer.y);
+    const candidate = point(Math.max(0,Math.min(W,pointer.x)),Math.max(0,Math.min(H,pointer.y)));
     let axis;
     if(straight&&origin){
       axis=Math.abs(candidate.x-origin.x)>Math.abs(candidate.y-origin.y)?'y':'x';
       candidate[axis]=origin[axis];
     }
-    const match=snapWallEnds?window.RoomcraftWallJoins?.snapPoint(candidate,wallsForJoining(),{axis,excludeId}):null;
+    const match=snapWallEnds?window.RoomcraftWallJoins?.snapPoint(candidate,project.walls,{axis,excludeId}):null;
     const round=grid?snap:Math.round;
-    const fallback=point(round(candidate.x),round(candidate.y));
+    const fallback=point(Math.min(W,round(candidate.x)),Math.min(H,round(candidate.y)));
     if(axis)fallback[axis]=candidate[axis];
     return {position:match??fallback,match};
   }
   function joinNearbyWalls(){
     if(interaction)return;
-    const result=window.RoomcraftWallJoins?.joinNearby(wallsForJoining(),fixedExteriorWallIds);
-    if(!result?.joined){showToast('No nearby wall ends to join');return;}
-    const joinedWalls=new Map(result.walls.map(wall=>[wall.id,wall]));
+    const joiner=window.RoomcraftWallJoins;
+    const results=['wall','fence'].map(kind=>joiner.joinNearby(project.walls.filter(segment=>segmentLabel(segment)===kind)));
+    const joined=results.reduce((total,result)=>total+result.joined,0);
+    if(!joined){showToast('No nearby wall or fence ends to join');return;}
+    const joinedWalls=new Map(results.flatMap(result=>result.walls).map(wall=>[wall.id,wall]));
     snapshot();
     project.walls=project.walls.map(wall=>joinedWalls.get(wall.id)??wall);
     setViewMode('design');
-    setTool('wall');
-    const message=`Joined ${result.joined} wall end${result.joined===1?'':'s'}`;
+    setTool('structure');
+    const message=`Joined ${joined} segment end${joined===1?'':'s'}`;
     afterChange(message);
     showToast(message);
   }
@@ -719,10 +727,11 @@
   function hitSelectedItemHandle(p){if(selected?.kind!=='item')return null;const o=project.items.find(i=>i.id===selected.id);if(!o)return null;const q=itemLocalPoint(p,o),reach=Math.max(11,11/currentView.scale);for(const [sx,sy] of [[-1,-1],[1,-1],[1,1],[-1,1]])if(Math.hypot(q.x-sx*(o.w/2+7),q.y-sy*(o.h/2+7))<=reach)return {item:o,sx,sy};return null;}
   function hitHotspot(p){const linkedEntities=new Set(project.items.map(o=>o.entityId).filter(Boolean));for(let i=project.hotspots.length-1;i>=0;i--){const h=project.hotspots[i];if(linkedEntities.has(h.entity))continue;const q=hotspotPoint(h);if(Math.hypot(p.x-q.x,p.y-q.y)<=Math.max(25,12/currentView.scale))return h;}return null;}
   function segmentDistance(p,w){const vx=w.x2-w.x1,vy=w.y2-w.y1;const len=vx*vx+vy*vy;const t=len?Math.max(0,Math.min(1,((p.x-w.x1)*vx+(p.y-w.y1)*vy)/len)):0;return Math.hypot(p.x-(w.x1+t*vx),p.y-(w.y1+t*vy));}
-  function hitWall(p){let found=null,dist=14/currentView.scale;for(const w of wallsForJoining()){const d=segmentDistance(p,w);if(d<dist){dist=d;found=w;}}return found;}
+  function hitWall(p){let found=null,dist=14/currentView.scale;for(const w of project.walls){const d=segmentDistance(p,w);if(d<dist){dist=d;found=w;}}return found;}
   function nearestWallPlacement(p){
     let nearest=null;
-    for(const w of wallsForJoining()){
+    for(const w of project.walls){
+      if(w.kind==='fence')continue;
       const vx=w.x2-w.x1,vy=w.y2-w.y1,len=vx*vx+vy*vy;
       if(!len)continue;
       const t=Math.max(0,Math.min(1,((p.x-w.x1)*vx+(p.y-w.y1)*vy)/len));
@@ -742,8 +751,8 @@
   }
   function hitRoomVertex(p){if(selected?.kind!=='room')return null;const r=project.rooms.find(r=>r.id===selected.id);if(!r)return null;return r.points.findIndex(q=>Math.hypot(q.x-p.x,q.y-p.y)<12/currentView.scale);}
   function hitWallEndpoint(p,w){if(Math.hypot(p.x-w.x1,p.y-w.y1)<14/currentView.scale)return 1;if(Math.hypot(p.x-w.x2,p.y-w.y2)<14/currentView.scale)return 2;return 0;}
-  function select(kind,id){selected={kind,id};renderInspector();renderRoomList();renderHotspotList();draw();window.dispatchEvent?.(new CustomEvent('roomcraft-editor-change'));}
-  function clearPlacement(){pendingTemplate=null;pendingSurface=null;pendingWallFinish=null;document.querySelectorAll('.palette-item,.surface-item,.wall-finish-item').forEach(el=>el.classList.remove('placing','active'));viewport.classList.remove('placing');renderSurfacePalette();renderWallPalette();}
+  function select(kind,id){selected={kind,id};renderInspector();renderRoomList();renderStructureList();renderHotspotList();draw();window.dispatchEvent?.(new CustomEvent('roomcraft-editor-change'));}
+  function clearPlacement(){pendingTemplate=null;pendingSurface=null;pendingWallFinish=null;pendingSegment=null;document.querySelectorAll('.palette-item,.surface-item,.wall-finish-item').forEach(el=>el.classList.remove('placing','active'));viewport.classList.remove('placing');renderSurfacePalette();renderWallPalette();}
 
   function notifyEditorTool() {
     window.dispatchEvent?.(new CustomEvent('roomcraft-editor-tool'));
@@ -773,30 +782,87 @@
     return true;
   }
 
-  function onPointerDown(e){if(viewMode==='reference'){if(tool!=='pan'&&!spaceHeld&&e.button!==1){showToast('Switch to Design to edit the plan');return;}}
+  function updateSegmentGuide(guide, p, straight) {
+    const {position, match} = wallPoint(p, {origin: guide.start, straight, grid: true});
+    guide.end = position;
+    guide.joinPoint = match;
+  }
+  function startSegment(p, screen, event) {
+    const {position, match} = wallPoint(p, {grid: true});
+    interaction = {
+      kind: 'wall-draw',
+      segmentKind: tool,
+      start: pendingSegment?.start ?? position,
+      end: position,
+      startScreen: screen,
+      joinPoint: match,
+      pointerId: event.pointerId,
+      fromTap: Boolean(pendingSegment),
+    };
+    draw();
+  }
+  function finishSegment(event) {
+    const draft = interaction;
+    updateSegmentGuide(draft, worldPoint(event), event.shiftKey);
+    const screen = screenPoint(event);
+    const dragged = Math.hypot(screen.x - draft.startScreen.x, screen.y - draft.startScreen.y) >= 5;
+    if ((draft.fromTap || dragged) && Math.hypot(draft.end.x - draft.start.x, draft.end.y - draft.start.y) > 12) {
+      pendingSegment = null;
+      snapshot();
+      const segment = wall(uid('w'), draft.start.x, draft.start.y, draft.end.x, draft.end.y);
+      segment.finish = 'graphite';
+      if (draft.segmentKind === 'fence') segment.kind = 'fence';
+      project.walls.push(segment);
+      select('wall', segment.id);
+      afterChange(`Drew ${segmentLabel(segment)}`);
+      return;
+    }
+    pendingSegment = {start: draft.start, segmentKind: draft.segmentKind, joinPoint: draft.joinPoint};
+    setStatus(`Tap the end point to finish the ${draft.segmentKind}`);
+  }
+  function startStructureMove(p, pointerId) {
+    const current = selected?.kind === 'wall' ? project.walls.find(segment => segment.id === selected.id) : null;
+    const segment = current && hitWallEndpoint(p, current) ? current : hitWall(p);
+    if (!segment) return false;
+    select('wall', segment.id);
+    interaction = {kind:'wall-move', id:segment.id, start:p, initial:clone(segment),
+      endpoint:hitWallEndpoint(p, segment), pointerId, snapshot:false};
+    setStatus(`Selected ${segmentLabel(segment)} · drag the segment or a handle`);
+    return true;
+  }
+  function onPointerDown(e){
+    if(e.button>1||interaction?.pointerId!==undefined)return;
+    if(viewMode==='reference'&&tool!=='pan'&&!spaceHeld&&e.button!==1){showToast('Switch to Design to edit the plan');return;}
     e.preventDefault();canvas.setPointerCapture(e.pointerId);const p=worldPoint(e),s=screenPoint(e);currentPointer=p;
     if(tool==='pan'||spaceHeld||e.button===1){interaction={kind:'pan',start:s,tx:currentView.tx,ty:currentView.ty};viewport.classList.add('dragging');return;}
     if(pendingTemplate){placeTemplateAt(p);return;}
-    if(pendingSurface){const r=hitRoom(p);if(r){snapshot();r.surface=pendingSurface;select('room',r.id);afterChange(`Applied ${surfaceById[pendingSurface].name} to ${r.name}`);showToast(`${r.name} floor updated`);}else showToast('Click inside a room to paint it');return;}
-    if(pendingWallFinish){const w=hitWall(p);if(w){if((w.finish||'graphite')!==pendingWallFinish){snapshot();w.finish=pendingWallFinish;select('wall',w.id);afterChange(`Applied ${wallFinishById[pendingWallFinish].name} wall finish`);showToast('Wall finish updated');}else select('wall',w.id);}else showToast('Click a wall to paint it');return;}
-    if(tool==='erase'){const h=hitHotspot(p),o=hitItem(p,false),near=hitItem(p),w=hitWall(p);if(o||(!h&&near)){const target=o||near;snapshot();project.items=project.items.filter(q=>q.id!==target.id);selected=null;afterChange(`Removed ${target.name}`);}else if(h){snapshot();project.hotspots=project.hotspots.filter(q=>q.id!==h.id);selected=null;afterChange(`Removed ${h.title} control`);}else if(isFixedExteriorWall(w)){showToast('The illustrated exterior shell stays fixed');}else if(w){snapshot();project.walls=project.walls.filter(q=>q.id!==w.id);selected=null;afterChange('Removed wall');}else showToast('Click an object, control, or interior wall to erase it');return;}
-    if(tool==='wall'){
-      const {position,match}=wallPoint(p,{grid:true});
-      interaction={kind:'wall-draw',start:position,end:position,joinPoint:match};draw();return;
+    if(pendingSurface){const r=hitRoom(p);if(r){select('room',r.id);updateProperty('surface',pendingSurface);}else showToast('Tap inside a floor area to apply the finish');return;}
+    if(pendingWallFinish){const w=hitWall(p);if(w){if((w.finish||'graphite')!==pendingWallFinish){snapshot();w.finish=pendingWallFinish;select('wall',w.id);afterChange(`Applied ${wallFinishById[pendingWallFinish].name} ${segmentLabel(w)} finish`);}else select('wall',w.id);}else showToast('Tap a wall or fence to apply the finish');return;}
+    if(tool==='erase'){const h=hitHotspot(p),o=hitItem(p,false),near=hitItem(p),w=hitWall(p);if(o||(!h&&near)){const target=o||near;snapshot();project.items=project.items.filter(q=>q.id!==target.id);selected=null;afterChange(`Removed ${target.name}`);}else if(h){snapshot();project.hotspots=project.hotspots.filter(q=>q.id!==h.id);selected=null;afterChange(`Removed ${h.title} control`);}else if(w){snapshot();project.walls=project.walls.filter(q=>q.id!==w.id);selected=null;afterChange(`Removed ${segmentLabel(w)}`);}else showToast('Tap an object, control, wall, or fence to erase it');return;}
+    if(drawSegmentTool()){startSegment(p,s,e);return;}
+    if(tool==='structure'){
+      if(!startStructureMove(p,e.pointerId)){selected=null;renderInspector();renderStructureList();draw();}
+      return;
     }
     if(tool==='room'){const vertex=hitRoomVertex(p);if(vertex>=0){interaction={kind:'room-vertex',id:selected.id,index:vertex,snapshot:false};return;}const r=hitRoom(p);if(r){select('room',r.id);setStatus(`Selected ${r.name} · drag a corner to reshape`);}else{selected=null;renderInspector();draw();}return;}
     const handle=hitSelectedItemHandle(p);if(handle){const o=handle.item,a=o.rotation*Math.PI/180,lx=-handle.sx*o.w/2,ly=-handle.sy*o.h/2;interaction={kind:'item-resize',id:o.id,start:p,w:o.w,h:o.h,rotation:o.rotation,anchor:point(o.x+lx*Math.cos(a)-ly*Math.sin(a),o.y+lx*Math.sin(a)+ly*Math.cos(a)),sx:handle.sx,sy:handle.sy,snapshot:false};setStatus(`Resize ${o.name} · hold Shift to keep its proportions`);return;}
     const o=hitItem(p,false);if(o){select('item',o.id);interaction={kind:'item-move',id:o.id,start:p,x:o.x,y:o.y,snapshot:false};setStatus(`Selected ${o.name}`);return;}
     const h=hitHotspot(p);if(h){const q=hotspotPoint(h);select('hotspot',h.id);interaction={kind:'hotspot-move',id:h.id,start:p,x:q.x,y:q.y,snapshot:false};setStatus(`Selected ${h.title} control`);return;}
     const near=hitItem(p);if(near){select('item',near.id);interaction={kind:'item-move',id:near.id,start:p,x:near.x,y:near.y,snapshot:false};setStatus(`Selected ${near.name}`);return;}
-    const w=hitWall(p);if(w){select('wall',w.id);if(isFixedExteriorWall(w)){showToast('The illustrated exterior shell stays fixed');return;}interaction={kind:'wall-move',id:w.id,start:p,initial:clone(w),endpoint:hitWallEndpoint(p,w),snapshot:false};setStatus('Selected wall');return;}
+    if(startStructureMove(p,e.pointerId))return;
     const r=hitRoom(p);if(r){select('room',r.id);setStatus(`Selected ${r.name}`);}else{selected=null;renderInspector();draw();}
   }
-  function onPointerMove(e){const p=worldPoint(e),s=screenPoint(e);currentPointer=p;if(!interaction){if(pendingTemplate)draw();if(tool==='select'&&!pendingTemplate)canvas.style.cursor=hitSelectedItemHandle(p)?'nwse-resize':hitItem(p)?'grab':hitHotspot(p)?'pointer':'';return;}
+  function onPointerMove(e){const p=worldPoint(e),s=screenPoint(e);currentPointer=p;
+    if(!interaction){
+      if(pendingSegment)updateSegmentGuide(pendingSegment,p,e.shiftKey);
+      if(pendingTemplate||pendingSegment)draw();
+      if(tool==='select'&&!pendingTemplate)canvas.style.cursor=hitSelectedItemHandle(p)?'nwse-resize':hitItem(p)?'grab':hitHotspot(p)?'pointer':'';
+      return;
+    }
+    if(interaction.pointerId!==undefined&&e.pointerId!==interaction.pointerId)return;
     if(interaction.kind==='pan'){currentView.tx=interaction.tx+s.x-interaction.start.x;currentView.ty=interaction.ty+s.y-interaction.start.y;applyView();return;}
     if(interaction.kind==='wall-draw'){
-      const {position,match}=wallPoint(p,{origin:interaction.start,straight:e.shiftKey,grid:true});
-      interaction.end=position;interaction.joinPoint=match;draw();return;
+      updateSegmentGuide(interaction,p,e.shiftKey);draw();return;
     }
     if(interaction.kind==='item-move'){const o=project.items.find(o=>o.id===interaction.id);if(!o)return;const dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;
       if(o.type==='window'||templateByType[o.type]?.mount==='wall'){
@@ -835,7 +901,7 @@
       const w=project.walls.find(w=>w.id===interaction.id);
       if(!w)return;
       const dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;
-      if(Math.hypot(dx,dy)>2&&!interaction.snapshot){snapshot();interaction.snapshot=true;}
+      if(Math.hypot(dx,dy)*currentView.scale>=4&&!interaction.snapshot){snapshot();interaction.snapshot=true;}
       if(!interaction.snapshot)return;
       const {initial,endpoint}=interaction;
       if(endpoint){
@@ -852,7 +918,28 @@
       draw();return;
     }
   }
-  function onPointerUp(e){if(!interaction)return;const kind=interaction.kind;if(kind==='wall-draw'){const {start,end}=interaction;if(Math.hypot(end.x-start.x,end.y-start.y)>12){snapshot();const w=wall(uid('w'),start.x,start.y,end.x,end.y);w.finish='graphite';project.walls.push(w);select('wall',w.id);afterChange('Drew wall');}}else if(interaction.snapshot){afterChange(kind==='room-vertex'?'Reshaped room':kind==='wall-move'?'Moved wall':kind==='hotspot-move'?'Moved Home Assistant control':kind==='item-resize'?'Resized object':'Moved object');}interaction=null;viewport.classList.remove('dragging');draw();}
+  function onPointerUp(e){
+    if(!interaction||(interaction.pointerId!==undefined&&e.pointerId!==interaction.pointerId))return;
+    const {kind,id,snapshot:changed}=interaction;
+    if(kind==='wall-draw')finishSegment(e);
+    else if(changed){
+      const message=kind==='wall-move'
+        ? `Moved ${segmentLabel(project.walls.find(segment=>segment.id===id))}`
+        : ({'room-vertex':'Reshaped room','hotspot-move':'Moved Home Assistant control','item-resize':'Resized object'})[kind]||'Moved object';
+      afterChange(message);
+    }
+    interaction=null;
+    viewport.classList.remove('dragging');
+    draw();
+  }
+  function onPointerCancel(e) {
+    if(!interaction||(interaction.pointerId!==undefined&&e.pointerId!==interaction.pointerId))return;
+    if(interaction.kind==='wall-move'&&interaction.snapshot&&history.length){project=history.pop();updateHistoryButtons();}
+    if(interaction.kind==='wall-draw'||interaction.kind==='wall-move'){
+      interaction=null;
+      draw();
+    }else onPointerUp(e);
+  }
 
   function htmlEscape(s){return String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
   function renderCategoryOptions(){
@@ -901,7 +988,7 @@
       p.strokeRect(-t.w/2,-t.h/2,t.w,t.h);p.setLineDash([]);
       p.fillStyle='#14505e';p.font='700 14px system-ui, sans-serif';p.textAlign='center';p.textBaseline='middle';
       p.fillText('TAP AREA',0,0,Math.max(24,t.w-10));
-    }else if(raster?.ready(reference))raster.drawItem(p,preview,STARTER,reference,emptyShell,()=>drawObject(p,preview));
+    }else if(raster)raster.drawItem(p,preview,()=>drawObject(p,preview));
     else drawObject(p,preview);
     canvas.dataset.painted='true';
   }
@@ -909,6 +996,16 @@
   function renderSurfacePalette(){document.getElementById('surfacePalette').innerHTML=surfaces.map(s=>`<button type="button" class="surface-item ${pendingSurface===s.id?'active':''}" data-surface="${s.id}"><span class="swatch" style="background-color:${s.color};background-image:linear-gradient(90deg,transparent 46%,${s.accent}55 49%,transparent 52%),linear-gradient(transparent 46%,${s.accent}55 49%,transparent 52%)"></span><span><strong>${htmlEscape(s.name)}</strong><small>${htmlEscape(s.note)}</small></span></button>`).join('');}
   function renderWallPalette(){document.getElementById('wallPalette').innerHTML=wallFinishes.map(f=>`<button type="button" class="wall-finish-item surface-item ${pendingWallFinish===f.id?'active':''}" data-wall-finish="${f.id}"><span class="swatch" style="background:${f.color}"></span><span><strong>${htmlEscape(f.name)}</strong><small>${htmlEscape(f.note)}</small></span></button>`).join('');}
   function renderRoomList(){document.getElementById('roomList').innerHTML=project.rooms.map(r=>{const s=surfaceById[r.surface]||surfaceById.oak;return `<button type="button" class="room-item ${selected?.kind==='room'&&selected.id===r.id?'active':''}" data-room="${htmlEscape(r.id)}"><span class="room-color" style="background:${s.color}"></span><span><strong>${htmlEscape(r.name)}</strong><small>${htmlEscape(s.name)}</small></span></button>`;}).join('');}
+  function renderStructureList() {
+    const list = document.getElementById('structureList');
+    const options = project.walls.map((segment, index) => {
+      const type = segment.kind === 'fence' ? 'Fence' : 'Wall';
+      const start = `${Math.round(segment.x1)}, ${Math.round(segment.y1)}`;
+      return `<option value="${htmlEscape(segment.id)}">${type} ${index + 1} · ${start}</option>`;
+    });
+    list.innerHTML = '<option value="">Select a wall or fence</option>' + options.join('');
+    list.value = selected?.kind === 'wall' ? selected.id : '';
+  }
   function renderHotspotList(){
     const linked=project.items.filter(o=>o.type!=='cameraThumbnail'&&validEntityId(o.entityId));
     const linkedEntities=new Set(linked.map(o=>o.entityId));
@@ -925,8 +1022,8 @@
   }
   function readPreRecoveryLayout(){try{const raw=localStorage.getItem(BEFORE_RECOVERY_KEY);if(!raw)return null;const parsed=JSON.parse(raw);return validProject(parsed)?parsed:null;}catch(_){return null;}}
   function updateRecoveryButton(){const b=document.getElementById('recoverDraftButton');if(b)b.hidden=!readPreviousDraft();const back=document.getElementById('returnPreRecoveryButton');if(back)back.hidden=!readPreRecoveryLayout();}
-  function recoverPreviousDraft(){const previous=readPreviousDraft();if(!previous){showToast('No previous browser draft found');return;}if(!readPreRecoveryLayout()){try{localStorage.setItem(BEFORE_RECOVERY_KEY,projectFingerprint(project));}catch(_){showToast('Could not save current layout; export JSON first');return;}}snapshot();project=restoreFixedGeometry(clone(previous));selected=null;clearPlacement();afterChange('Recovered previous browser draft',{authoritative:true});showToast('Previous draft restored; pre-recovery layout saved');}
-  function returnPreRecoveryLayout(){const before=readPreRecoveryLayout();if(!before){showToast('No pre-recovery layout found');return;}snapshot();project=restoreFixedGeometry(clone(before));selected=null;clearPlacement();localStorage.removeItem(BEFORE_RECOVERY_KEY);afterChange('Returned to pre-recovery layout',{authoritative:true});showToast('Pre-recovery layout restored');}
+  function recoverPreviousDraft(){const previous=readPreviousDraft();if(!previous){showToast('No previous browser draft found');return;}if(!readPreRecoveryLayout()){try{localStorage.setItem(BEFORE_RECOVERY_KEY,projectFingerprint(project));}catch(_){showToast('Could not save current layout; export JSON first');return;}}snapshot();project=normalizeProject(clone(previous));selected=null;clearPlacement();afterChange('Recovered previous browser draft',{authoritative:true});showToast('Previous draft restored; pre-recovery layout saved');}
+  function returnPreRecoveryLayout(){const before=readPreRecoveryLayout();if(!before){showToast('No pre-recovery layout found');return;}snapshot();project=normalizeProject(clone(before));selected=null;clearPlacement();localStorage.removeItem(BEFORE_RECOVERY_KEY);afterChange('Returned to pre-recovery layout',{authoritative:true});showToast('Pre-recovery layout restored');}
   function field(label,key,value,type='text'){return `<div class="field"><label for="prop-${key}">${label}</label><input id="prop-${key}" data-prop="${key}" type="${type}" value="${htmlEscape(value)}" ${type==='number'?'step="1"':''}></div>`;}
   function hotspotField(label,key,value,type='text'){return `<div class="field"><label for="hotspot-${key}">${label}</label><input id="hotspot-${key}" data-hotspot-prop="${key}" type="${type}" value="${htmlEscape(value)}" ${type==='number'?'step="0.01" min="0" max="100"':''}></div>`;}
   function variantField(t,type){
@@ -945,15 +1042,94 @@
     if(legacy.length<2)return '';
     return `<div class="field"><label for="prop-catalog-variant">Color / finish</label><select id="prop-catalog-variant" data-variant data-variant-kind="finish">${legacy.map(v=>`<option value="${htmlEscape(v.type)}" ${v.type===type?'selected':''}>${htmlEscape(v.label.split(' · ').at(-1))}</option>`).join('')}</select></div>`;
   }
-  function renderInspector(){const root=document.getElementById('inspectorContent');if(!selected){root.innerHTML=`<div class="empty-inspector"><div class="empty-art">⌂</div><h3>A blank canvas for ideas.</h3><p>Select an object, control, room, or wall to see its settings. The starting furnished image is one click away in Reference view.</p><button class="secondary-button" id="openHelpButton" type="button" style="margin-top:19px">How to use the builder</button></div>`;return;}
+  function renderRoomInspector(room) {
+    const outdoor = room.outdoor ?? (room.surface === 'patio');
+    const finishes = surfaces.map(surface => `<option value="${surface.id}" ${room.surface===surface.id?'selected':''}>${htmlEscape(surface.name)}</option>`).join('');
+    return `<div class="inspector-block"><p class="inspector-label">SELECTED ROOM</p>
+      <div class="selection-title"><span class="selection-icon">▦</span><div><h3>${outdoor?'Outdoor floor':'Room floor'}</h3><p>${room.points.length} editable corners</p></div></div></div>
+      <div class="inspector-block">${field('Room name','name',room.name)}
+      <div class="field"><label for="prop-surface">Floor finish</label><select id="prop-surface" data-prop="surface">${finishes}</select></div>
+      <div class="field"><label for="prop-outdoor">Floor type</label><select id="prop-outdoor" data-prop="outdoor"><option value="false" ${outdoor?'':'selected'}>Indoor floor</option><option value="true" ${outdoor?'selected':''}>Outdoor landing</option></select></div>
+      <p class="field-hint">Choose Room in the toolbar, then drag a corner handle to reshape this floor area.</p></div>
+      <button type="button" class="danger-button" data-action="delete">Remove floor area</button>`;
+  }
+  function renderStructureInspector(segment) {
+    const fence = segment.kind === 'fence';
+    const title = fence ? 'Fence' : 'Wall';
+    const finishes = wallFinishes.map(finish => `<option value="${finish.id}" ${(segment.finish||'graphite')===finish.id?'selected':''}>${htmlEscape(finish.name)}</option>`).join('');
+    const length = Math.round(Math.hypot(segment.x2-segment.x1,segment.y2-segment.y1));
+    return `<div class="inspector-block"><p class="inspector-label">STRUCTURE</p>
+      <div class="selection-title"><span class="selection-icon">${fence?'▥':'╱'}</span><div><h3>${title} segment</h3><p>${length} px long</p></div></div></div>
+      <div class="inspector-block">
+      <div class="field"><label for="prop-kind">Segment type</label><select id="prop-kind" data-prop="kind"><option value="wall" ${fence?'':'selected'}>Wall</option><option value="fence" ${fence?'selected':''}>Fence</option></select></div>
+      <div class="field"><label for="prop-finish">Finish</label><select id="prop-finish" data-prop="finish">${finishes}</select></div></div>
+      <div class="inspector-block"><p class="inspector-label">END POINTS</p>
+      <div class="field-grid">${field('Start X','x1',segment.x1,'number')}${field('Start Y','y1',segment.y1,'number')}${field('End X','x2',segment.x2,'number')}${field('End Y','y2',segment.y2,'number')}</div>
+      <p class="field-hint">Drag the segment to move it, or drag an end handle to reshape it.</p></div>
+      <button type="button" class="danger-button" data-action="delete">Remove ${title.toLowerCase()}</button>`;
+  }
+  function renderInspector(){const root=document.getElementById('inspectorContent');if(!selected){root.innerHTML=`<div class="empty-inspector"><div class="empty-art">⌂</div><h3>A blank canvas for ideas.</h3><p>Select an object, room, wall, or fence to see its settings.</p><button class="secondary-button" id="openHelpButton" type="button" style="margin-top:19px">How to use the builder</button></div>`;return;}
     if(selected.kind==='item'){const o=project.items.find(o=>o.id===selected.id);if(!o){selected=null;renderInspector();return;}const t=templateByType[o.type];root.innerHTML=window.RoomcraftObjectControls.renderInspector(o,t,field,variantField,htmlEscape,entityOptions);return;}
     if(selected.kind==='hotspot'){const h=project.hotspots.find(h=>h.id===selected.id);if(!h){selected=null;renderInspector();return;}const x=parseFloat(h.style.left),y=parseFloat(h.style.top);root.innerHTML=`<div class="inspector-block"><p class="inspector-label">HOME ASSISTANT CONTROL</p><div class="selection-title"><span class="selection-icon">${h.entity.startsWith('cover.')?'▥':'✦'}</span><div><h3>${htmlEscape(h.title)}</h3><p>${htmlEscape(h.entity)}</p></div></div></div><div class="inspector-block"><p class="inspector-label">CONTROL & POSITION</p>${hotspotField('Title','title',h.title)}${hotspotField('Entity ID','entity',h.entity)}<div class="field-grid">${hotspotField('Left (%)','left',x,'number')}${hotspotField('Top (%)','top',y,'number')}</div><div class="field"><label for="hotspot-tap">Tap action</label><select id="hotspot-tap" data-hotspot-prop="tap"><option value="toggle" ${h.tap_action?.action==='toggle'?'selected':''}>Toggle</option><option value="more-info" ${h.tap_action?.action==='more-info'?'selected':''}>More info</option></select></div><div class="field"><label for="hotspot-hold">Hold action</label><select id="hotspot-hold" data-hotspot-prop="hold"><option value="none" ${!h.hold_action?'selected':''}>None</option><option value="more-info" ${h.hold_action?.action==='more-info'?'selected':''}>More info</option></select></div><p class="field-hint">Drag the marker on the plan or edit its percentage position here. It is included in Home Assistant YAML and editable JSON.</p></div><button type="button" class="danger-button" data-action="delete">Remove control</button>`;return;}
-    if(selected.kind==='room'){const r=project.rooms.find(r=>r.id===selected.id);if(!r){selected=null;renderInspector();return;}root.innerHTML=`<div class="inspector-block"><p class="inspector-label">SELECTED ROOM</p><div class="selection-title"><span class="selection-icon">▦</span><div><h3>${htmlEscape(r.name)}</h3><p>${r.points.length} editable corners</p></div></div></div><div class="inspector-block"><p class="inspector-label">ROOM SETTINGS</p>${field('Room name','name',r.name)}<div class="field"><label for="prop-surface">Floor finish</label><select id="prop-surface" data-prop="surface">${surfaces.map(s=>`<option value="${s.id}" ${s.id===r.surface?'selected':''}>${htmlEscape(s.name)}</option>`).join('')}</select></div><p class="field-hint">Choose Room in the toolbar, then drag a corner handle to reshape this floor area.</p></div>${fixedRoomIds.has(r.id)?'<p class="field-hint">The original illustrated rooms stay in place. You can reshape and repaint them; added rooms can be removed.</p>':'<button type="button" class="danger-button" data-action="delete">Remove room</button>'}`;return;}
-    const w=project.walls.find(w=>w.id===selected.id);if(!w){selected=null;renderInspector();return;}if(isFixedExteriorWall(w)){root.innerHTML=`<div class="inspector-block"><p class="inspector-label">ILLUSTRATED SHELL</p><h3>Exterior wall finish</h3><p class="field-hint">Change this wall’s finish here. Its outline remains fixed because the supplied artwork contains the exterior shell.</p><div class="field"><label for="prop-finish">Finish</label><select id="prop-finish" data-prop="finish">${wallFinishes.map(f=>`<option value="${f.id}" ${(w.finish||'graphite')===f.id?'selected':''}>${htmlEscape(f.name)}</option>`).join('')}</select></div></div>`;return;}root.innerHTML=`<div class="inspector-block"><p class="inspector-label">SELECTED WALL</p><div class="selection-title"><span class="selection-icon">╱</span><div><h3>Wall segment</h3><p>${Math.round(Math.hypot(w.x2-w.x1,w.y2-w.y1))} px long</p></div></div></div><div class="inspector-block"><p class="inspector-label">WALL FINISH</p><div class="field"><label for="prop-finish">Finish</label><select id="prop-finish" data-prop="finish">${wallFinishes.map(f=>`<option value="${f.id}" ${(w.finish||'graphite')===f.id?'selected':''}>${htmlEscape(f.name)}</option>`).join('')}</select></div></div><div class="inspector-block"><p class="inspector-label">END POINTS</p><div class="field-grid">${field('Start X','x1',w.x1,'number')}${field('Start Y','y1',w.y1,'number')}${field('End X','x2',w.x2,'number')}${field('End Y','y2',w.y2,'number')}</div><p class="field-hint">Drag a wall or its endpoint on the plan to move it. Draw new walls with the Wall tool.</p></div><button type="button" class="danger-button" data-action="delete">Remove wall</button>`;
+    const collection=selected.kind==='room'?project.rooms:project.walls;
+    const record=collection.find(entry=>entry.id===selected.id);
+    if(!record){selected=null;renderInspector();return;}
+    root.innerHTML=selected.kind==='room'?renderRoomInspector(record):renderStructureInspector(record);
   }
-  function setTool(next){tool=next;clearPlacement();document.querySelectorAll('[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===tool));viewport.dataset.tool=tool;setStatus(({select:'Select and drag objects, controls, walls, or rooms',pan:'Drag to pan the plan',room:'Click a room; drag its corner handles to reshape',wall:'Drag to draw a wall. Hold Shift for straight lines',erase:'Click an object, control, or wall to remove it'})[tool]);draw();notifyEditorTool();}
+  function setTool(next){
+    tool=next;
+    clearPlacement();
+    document.querySelectorAll('[data-tool]').forEach(button=>{
+      const active=button.dataset.tool===tool;
+      button.classList.toggle('active',active);
+      button.setAttribute('aria-pressed',String(active));
+    });
+    viewport.dataset.tool=tool;
+    canvas.style.cursor='';
+    if(drawSegmentTool()||tool==='structure')setPanel('walls');
+    const instructions={
+      select:'Select and drag objects, controls, walls, or rooms',
+      pan:'Drag to pan the plan',
+      room:'Tap a floor, then drag a corner to reshape it',
+      wall:'Drag to draw a wall or tap its two ends',
+      fence:'Drag to draw a fence or tap its two ends',
+      structure:'Tap a wall or fence to select it. Drag either end to reshape it.',
+      erase:'Tap an object, control, wall, or fence to remove it'
+    };
+    draw();notifyEditorTool();setStatus(instructions[tool]);
+  }
   function setViewMode(mode){viewMode=mode;document.getElementById('designModeButton').classList.toggle('active',mode==='design');document.getElementById('referenceModeButton').classList.toggle('active',mode==='reference');if(mode==='reference'){clearPlacement();setStatus('Starting furnished reference · controls are marked');}else setStatus('Editable design layer · rooms, walls, objects, and controls can be changed');draw();notifyEditorTool();}
   function setPanel(panel){document.querySelectorAll('.panel-tab').forEach(b=>{const active=b.dataset.panel===panel;b.classList.toggle('active',active);b.setAttribute('aria-selected',String(active));});for(const name of ['objects','floors','rooms','walls'])document.getElementById(`${name}Panel`).hidden=name!==panel;}
+
+  function updateStructureProperty(segment,key,value) {
+    if(key==='kind'){
+      if(!['wall','fence'].includes(value)||segmentLabel(segment)===value)return;
+      snapshot();
+      if(value==='fence')segment.kind='fence';else delete segment.kind;
+      afterChange(`Changed segment to ${value}`);
+      return;
+    }
+    if(key==='finish'){
+      if(!wallFinishById[value]||(segment.finish||'graphite')===value)return;
+      snapshot();
+      segment.finish=value;
+      afterChange(`Applied ${wallFinishById[value].name} ${segmentLabel(segment)} finish`);
+      return;
+    }
+    if(!['x1','y1','x2','y2'].includes(key))return;
+    const coordinate=Number(value);
+    if(String(value).trim()===''||!Number.isFinite(coordinate)){renderInspector();return;}
+    const next={...segment,[key]:Math.max(0,Math.min(key.startsWith('x')?W:H,coordinate))};
+    if(Math.hypot(next.x2-next.x1,next.y2-next.y1)<=2){
+      showToast('Move the ends farther apart');
+      renderInspector();
+      return;
+    }
+    if(next[key]===segment[key])return;
+    snapshot();
+    segment[key]=next[key];
+    afterChange(`Updated ${segmentLabel(segment)} end point`);
+  }
 
   function updateProperty(key,value){
     if(!selected)return;
@@ -962,11 +1138,21 @@
     else if(selected.kind==='wall')target=project.walls.find(w=>w.id===selected.id);
     else target=project.rooms.find(r=>r.id===selected.id);
     if(!target)return;
-    if(selected.kind==='wall'&&key==='finish'){
-      if(!wallFinishById[value]||(target.finish||'graphite')===value)return;
-      snapshot();target.finish=value;afterChange(`Applied ${wallFinishById[value].name} wall finish`);return;
+    if(selected.kind==='wall'){updateStructureProperty(target,key,value);return;}
+    if(selected.kind==='room'&&key==='outdoor'){
+      if(!['true','false'].includes(value))return;
+      const outdoor=value==='true';
+      if((target.outdoor??(target.surface==='patio'))===outdoor)return;
+      snapshot();target.outdoor=outdoor;afterChange('Updated floor type');return;
     }
-    if(selected.kind==='wall'&&isFixedExteriorWall(target))return;
+    if(selected.kind==='room'&&key==='surface'){
+      if(!surfaceById[value]||target.surface===value)return;
+      snapshot();
+      target.outdoor??=target.surface==='patio';
+      target.surface=value;
+      afterChange(`Applied ${surfaceById[value].name} to ${target.name}`);
+      return;
+    }
     if(selected.kind==='item'&&window.RoomcraftObjectControls.isBindingKey(key)){
       if(target.type==='cameraThumbnail')return;
       const update=window.RoomcraftObjectControls.propertyUpdate(key,value);
@@ -1026,7 +1212,7 @@
   function updateHotspotProperty(key,value){if(selected?.kind!=='hotspot')return;const h=project.hotspots.find(h=>h.id===selected.id);if(!h)return;let next=value;if(key==='left'||key==='top'){const n=Number(value);if(!Number.isFinite(n))return;next=`${Math.max(0,Math.min(100,n)).toFixed(2)}%`;}else if(key==='entity'){if(!/^[a-z_]+\.[a-z0-9_]+$/i.test(value)){showToast('Use an entity ID like light.living_room');renderInspector();return;}}else if(key==='tap'&& !['toggle','more-info'].includes(value))return;else if(key==='hold'&& !['none','more-info'].includes(value))return;else if(key!=='title'&&key!=='entity')return;
     const current=key==='left'||key==='top'?h.style[key]:key==='tap'?h.tap_action?.action:key==='hold'?h.hold_action?.action||'none':h[key];if(next===current)return;snapshot();if(key==='left'||key==='top')h.style[key]=next;else if(key==='tap')h.tap_action={action:next};else if(key==='hold'){if(next==='none')delete h.hold_action;else h.hold_action={action:next};}else h[key]=next;afterChange(`Updated ${h.title} control`);
   }
-  function deleteSelected(){if(!selected)return;if(selected.kind==='room'&&fixedRoomIds.has(selected.id)){showToast('Original illustrated rooms stay in the plan');return;}if(selected.kind==='wall'&&fixedExteriorWallIds.has(selected.id)){showToast('The illustrated exterior shell stays fixed');return;}snapshot();if(selected.kind==='item')project.items=project.items.filter(i=>i.id!==selected.id);else if(selected.kind==='hotspot')project.hotspots=project.hotspots.filter(h=>h.id!==selected.id);else if(selected.kind==='wall')project.walls=project.walls.filter(w=>w.id!==selected.id);else project.rooms=project.rooms.filter(r=>r.id!==selected.id);selected=null;afterChange('Removed selection');}
+  function deleteSelected(){if(!selected)return;snapshot();if(selected.kind==='item')project.items=project.items.filter(i=>i.id!==selected.id);else if(selected.kind==='hotspot')project.hotspots=project.hotspots.filter(h=>h.id!==selected.id);else if(selected.kind==='wall')project.walls=project.walls.filter(w=>w.id!==selected.id);else project.rooms=project.rooms.filter(r=>r.id!==selected.id);selected=null;afterChange('Removed selection');}
   function duplicateSelected(){if(selected?.kind!=='item')return;const o=project.items.find(i=>i.id===selected.id);if(!o)return;snapshot();const n=clone(o);n.id=uid('i');n.x+=26;n.y+=26;if(n.type==='cameraThumbnail'){n.x=Math.min(W,n.x);n.y=Math.min(H,n.y);}clampLinkedItem(n);n.name=`${o.name} copy`;project.items.push(n);select('item',n.id);afterChange('Duplicated object');}
   function rotateSelected(){if(selected?.kind!=='item')return;const o=project.items.find(i=>i.id===selected.id);if(!o)return;snapshot();o.rotation=(o.rotation+90)%360;afterChange('Rotated object');}
   function addRoom(){snapshot();const r=room(uid('r'),'New room','terrazzo',[[570,420],[790,420],[790,580],[570,580]],[580,440]);project.rooms.push(r);setTool('room');select('room',r.id);setPanel('rooms');afterChange('Added editable room');showToast('Drag the corner handles to reshape your room');}
@@ -1041,7 +1227,7 @@
   function download(name,type,content){const blob=content instanceof Blob?content:new Blob([content],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);}
   function exportJson(){download('roomcraft-editable-layout.json','application/json',JSON.stringify(Engine.canonicalize(project),null,2));showToast('Editable layout JSON downloaded');}
   async function renderDetailedPng(){
-    await Promise.all([window.RoomcraftRasterRenderer?.prepareExport(project,STARTER,{original:reference,shell:emptyShell,wallFree:wallFreeShell}),window.RoomcraftObjectArt?.prepareExport?.()]);
+    await window.RoomcraftObjectArt?.prepareExport?.();
     const out=document.createElement('canvas');out.width=VIEW_W;out.height=VIEW_H;draw(out.getContext('2d'),true,'design');return out;
   }
   async function exportPng(){try{showToast('Preparing detailed artwork…');const out=await renderDetailedPng();out.toBlob(blob=>{if(blob){download('roomcraft-second-floor.png','image/png',blob);showToast('Detailed PNG plan downloaded');}},'image/png');}catch(_){showToast('Could not load a detailed image asset for export');}}
@@ -1063,7 +1249,7 @@
     download('roomcraft-home-assistant.yaml','text/yaml',yaml);
     showToast('Home Assistant YAML with object buttons and menu downloaded');
   }
-  function importProject(file){if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(String(reader.result));if(!validProject(parsed))throw new Error('Invalid project format');snapshot();project=restoreFixedGeometry(parsed);selected=null;clearPlacement();afterChange('Imported project',{authoritative:true});showToast('Project imported');fitView();}catch(err){showToast('Could not import this project JSON');}};reader.readAsText(file);}
+  function importProject(file){if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(String(reader.result));if(!validProject(parsed))throw new Error('Invalid project format');snapshot();project=normalizeProject(parsed);selected=null;clearPlacement();afterChange('Imported project',{authoritative:true});showToast('Project imported');fitView();}catch(err){showToast('Could not import this project JSON');}};reader.readAsText(file);}
 
   function setDashboardStatus(message,isError=false){const status=document.getElementById('dashboardTransferStatus');status.textContent=message;status.classList.toggle('error',isError);setStatus(message);}
   function setDashboardBusy(busy){dashboardTransferBusy=busy;document.body.classList.toggle('dashboard-transfer-busy',busy);for(const id of ['importDashboardButton','exportDashboardButton'])document.getElementById(id).disabled=busy;}
@@ -1129,7 +1315,7 @@
       next={...next,hotspots:data.hotspots.filter(h=>!linkedEntities.has(h.entity)).map(h=>({...h,id:previousIds.get(h.entity)||h.id}))};
     }
     if(!validProject(next))throw new Error('Dashboard layout or controls are not compatible with this editor');
-    return {next,hasEditable};
+    return {next,hasEditable,preview:data.storybookPreview??null};
   }
   async function loadDashboardDefault(){
     setDashboardBusy(true);
@@ -1140,13 +1326,13 @@
       rememberDashboardSource(data.source);
       updateEntityOptions(data);
       if(!data.revision)throw new Error('Dashboard revision is missing');
-      const {next,hasEditable}=projectFromDashboard(data);
+      const {next,hasEditable,preview}=projectFromDashboard(data);
       dashboardRevision=data.revision;
       // A slow dashboard read must never replace an in-progress local edit.
-      if(projectChangeSerial!==initialSerial||interaction||pendingTemplate||document.activeElement?.closest?.('#inspectorContent')){
+      if(projectChangeSerial!==initialSerial||interaction||pendingTemplate||pendingSegment||document.activeElement?.closest?.('#inspectorContent')){
         setDashboardStatus('Browser edits kept. Import from dashboard when ready.');return;
       }
-      const current=restoreFixedGeometry(clone(next));
+      const current=normalizeProject(clone(next));
       const different=hasLocalDraft&&projectFingerprint(project)!==projectFingerprint(current);
       if(different){
         try{
@@ -1156,7 +1342,7 @@
           return;
         }
       }
-      project=current;dashboardDefaultProject=clone(current);selected=null;afterChange('Loaded current Home Assistant layout',{authoritative:true});dashboardPublishedProject=projectFingerprint(project);fitView();
+      project=current;dashboardDefaultProject=clone(current);dashboardPreview=preview;selected=null;afterChange('Loaded current Home Assistant layout',{authoritative:true});dashboardPublishedProject=projectFingerprint(project);fitView();
       const detail=hasEditable?'Current editable dashboard layout loaded':'Current dashboard controls loaded with the starting editable plan';
       setDashboardStatus(different?detail+' · previous browser draft available to recover':detail);
     }catch(error){
@@ -1173,12 +1359,12 @@
       rememberDashboardSource(data.source);
       updateEntityOptions(data);
       if(!data.revision)throw new Error('Dashboard revision is missing');
-      const {next,hasEditable}=projectFromDashboard(data);
+      const {next,hasEditable,preview}=projectFromDashboard(data);
       const detail=hasEditable?'its saved editable Roomcraft layout':'its current controls and the starting editable plan';
       if(!await askConfirmation('Import dashboard layout',`Import ${detail} from Home Assistant? This replaces the layout saved in this browser. You can undo the import during this session or export your current layout as JSON first.`,'Import layout')){
         setDashboardStatus('Dashboard import canceled');return;
       }
-      snapshot();project=restoreFixedGeometry(clone(next));dashboardDefaultProject=clone(project);dashboardRevision=data.revision;selected=null;clearPlacement();setViewMode('design');afterChange('Imported from Home Assistant dashboard',{authoritative:true});dashboardPublishedProject=projectFingerprint(project);fitView();
+      snapshot();project=normalizeProject(clone(next));dashboardDefaultProject=clone(project);dashboardPreview=preview;dashboardRevision=data.revision;selected=null;clearPlacement();setViewMode('design');afterChange('Imported from Home Assistant dashboard',{authoritative:true});dashboardPublishedProject=projectFingerprint(project);fitView();
       const message=hasEditable?'Editable layout imported from dashboard':'Dashboard controls imported. Its image has no editable Roomcraft data, so the starting furnishings were used.';
       setDashboardStatus(message);showToast(message);
     }catch(error){const message=`Import failed: ${error.message||'Home Assistant is unavailable'}`;setDashboardStatus(message,true);showToast(message);}
@@ -1210,10 +1396,14 @@
   }
 
   function bindEvents(){
-    canvas.addEventListener('pointerdown',onPointerDown);canvas.addEventListener('pointermove',onPointerMove);canvas.addEventListener('pointerup',onPointerUp);canvas.addEventListener('pointercancel',onPointerUp);
+    canvas.addEventListener('pointerdown',onPointerDown);canvas.addEventListener('pointermove',onPointerMove);canvas.addEventListener('pointerup',onPointerUp);canvas.addEventListener('pointercancel',onPointerCancel);
     viewport.addEventListener('wheel',e=>{e.preventDefault();const s=screenPoint(e);zoomAt(e.deltaY<0?1.12:.89,s.x,s.y);},{passive:false});
     document.querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click',()=>{setViewMode('design');setTool(b.dataset.tool);}));
-    document.querySelectorAll('.panel-tab').forEach(b=>b.addEventListener('click',()=>setPanel(b.dataset.panel)));
+    document.querySelectorAll('.panel-tab').forEach(button=>button.addEventListener('click',()=>{
+      const panel=button.dataset.panel;
+      setPanel(panel);
+      if(panel==='walls'){setViewMode('design');setTool('structure');}
+    }));
     document.getElementById('objectsPanel').addEventListener('click',e=>{
       const button=e.target.closest('[data-template]');
       if(!button)return;
@@ -1234,7 +1424,12 @@
     document.getElementById('returnPreRecoveryButton').addEventListener('click',returnPreRecoveryLayout);
     document.getElementById('hotspotList').addEventListener('click',e=>{const linked=e.target.closest('[data-control-item]');if(linked){setViewMode('design');setTool('select');select('item',linked.dataset.controlItem);setStatus('Drag this linked object or edit its entity in the Inspector');return;}const b=e.target.closest('[data-hotspot]');if(!b)return;setViewMode('design');setTool('select');select('hotspot',b.dataset.hotspot);setStatus('Drag this Home Assistant control or edit it in the Inspector');});
     document.getElementById('surfacePalette').addEventListener('click',e=>{const b=e.target.closest('[data-surface]');if(!b)return;setViewMode('design');setTool('room');pendingSurface=b.dataset.surface;renderSurfacePalette();showToast(`Click a room to paint ${surfaceById[pendingSurface].name}`);});
-    document.getElementById('wallPalette').addEventListener('click',e=>{const b=e.target.closest('[data-wall-finish]');if(!b)return;setViewMode('design');setTool('select');pendingWallFinish=b.dataset.wallFinish;notifyEditorTool();renderWallPalette();showToast(`Click a wall to paint ${wallFinishById[pendingWallFinish].name}`);});
+    document.getElementById('wallPalette').addEventListener('click',e=>{const b=e.target.closest('[data-wall-finish]');if(!b)return;setViewMode('design');setTool('structure');pendingWallFinish=b.dataset.wallFinish;renderWallPalette();showToast(`Tap a wall or fence to apply ${wallFinishById[pendingWallFinish].name}`);});
+    document.getElementById('structureList').addEventListener('change',e=>{
+      const id=e.target.value;
+      if(!project.walls.some(segment=>segment.id===id))return;
+      setViewMode('design');setTool('structure');select('wall',id);
+    });
     document.getElementById('snapWallEnds').addEventListener('change',e=>{snapWallEnds=e.target.checked;});
     document.getElementById('joinWallsButton').addEventListener('click',joinNearbyWalls);
     document.getElementById('roomList').addEventListener('click',e=>{const b=e.target.closest('[data-room]');if(!b)return;setViewMode('design');setTool('room');select('room',b.dataset.room);});
@@ -1259,17 +1454,16 @@
     menu.addEventListener('click',e=>{const b=e.target.closest('[data-export]');if(!b)return;showMenu(false);if(b.dataset.export==='png')exportPng();if(b.dataset.export==='json')exportJson();if(b.dataset.export==='yaml')exportHaYaml();});
     document.addEventListener('pointerdown',e=>{if(!e.target.closest('.menu-wrap'))showMenu(false);});
     document.getElementById('importButton').addEventListener('click',()=>document.getElementById('importFile').click());document.getElementById('importFile').addEventListener('change',e=>{importProject(e.target.files[0]);e.target.value='';});
-    document.getElementById('resetButton').addEventListener('click',async()=>{if(!await askConfirmation('Reset layout','Load the current Home Assistant layout? Your current browser draft can be exported as JSON first, and this change is undoable in this session.','Load current layout'))return;snapshot();project=restoreFixedGeometry(clone(dashboardDefaultProject||STARTER));selected=null;clearPlacement();afterChange(dashboardDefaultProject?'Loaded current Home Assistant layout':'Loaded starting furnished plan',{authoritative:true});fitView();});
-    window.addEventListener('keydown',e=>{if(dashboardTransferBusy)return;const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo();return;}if(e.key===' '){e.preventDefault();spaceHeld=true;return;}if(e.key==='Escape'){const canceled=interaction;interaction=null;viewport.classList.remove('dragging');if(canceled?.snapshot&&history.length){project=history.pop();future=[];afterChange('Canceled drag',{resetIdentity:true});}clearPlacement();selected=null;renderInspector();updateHistoryButtons();draw();return;}if((e.key==='Delete'||e.key==='Backspace')&&selected){e.preventDefault();deleteSelected();return;}const shortcuts={v:'select',h:'pan',r:'room',w:'wall',e:'erase'};const shortcut=shortcuts[e.key.toLowerCase()];if(shortcut){setViewMode('design');setTool(shortcut);}});
+    document.getElementById('resetButton').addEventListener('click',async()=>{if(!await askConfirmation('Reset layout','Load the current Home Assistant layout? Your current browser draft can be exported as JSON first, and this change is undoable in this session.','Load current layout'))return;snapshot();project=normalizeProject(clone(dashboardDefaultProject||STARTER));selected=null;clearPlacement();afterChange(dashboardDefaultProject?'Loaded current Home Assistant layout':'Loaded starting furnished plan',{authoritative:true});fitView();});
+    window.addEventListener('keydown',e=>{if(dashboardTransferBusy)return;const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo();return;}if(e.key===' '){e.preventDefault();spaceHeld=true;return;}if(e.key==='Escape'){const canceled=interaction;interaction=null;viewport.classList.remove('dragging');if(canceled?.snapshot&&history.length){project=history.pop();future=[];afterChange('Canceled drag',{resetIdentity:true});}clearPlacement();selected=null;renderInspector();renderStructureList();updateHistoryButtons();draw();return;}if((e.key==='Delete'||e.key==='Backspace')&&selected){e.preventDefault();deleteSelected();return;}const shortcuts={v:'select',h:'pan',r:'room',w:'wall',f:'fence',e:'erase'};const shortcut=shortcuts[e.key.toLowerCase()];if(shortcut){setViewMode('design');setTool(shortcut);}});
     window.addEventListener('keyup',e=>{if(e.key===' ')spaceHeld=false;});
     window.addEventListener('resize',fitView);
   }
 
   window.addEventListener('roomcraft-asset-loaded',()=>{draw();paintPalettePreviews();});
-  reference.addEventListener('load',paintPalettePreviews);
-  emptyShell.addEventListener('load',paintPalettePreviews);
   window.RoomcraftEditorViewport = Object.freeze({
     getProject: () => clone(project),
+    getPreview: () => dashboardPreview,
     getSelection: () => selected ? {...selected} : null,
     getTool: () => viewMode === 'reference' ? 'reference' : pendingWallFinish ? 'wall' : tool,
     hasPlacement: () => Boolean(pendingTemplate),
@@ -1334,5 +1528,5 @@
     exportCommandLog:()=>editorJournal.exportLog(),
     renderPlan:()=>Engine.render.partitionSceneItems(project.items,window.RoomcraftInventory?.byType).plan
   });
-  renderCategoryOptions();bindEvents();renderPalette();renderSurfacePalette();renderWallPalette();renderRoomList();renderHotspotList();renderInspector();updateRestoreButton();updateRecoveryButton();updateHistoryButtons();setTool('select');fitView();draw();loadDashboardDefault();
+  renderCategoryOptions();bindEvents();renderPalette();renderSurfacePalette();renderWallPalette();renderStructureList();renderRoomList();renderHotspotList();renderInspector();updateRestoreButton();updateRecoveryButton();updateHistoryButtons();setTool('select');fitView();draw();loadDashboardDefault();
 })();

@@ -185,9 +185,6 @@ test('restored kitchen, bath and bedroom fixtures are independently rendered wit
   const window = loadRuntime();
   installRoomcraftEngine(window);
   runInNewContext(rasterSource, { window, Image: class Image { addEventListener() {} } });
-  const original = { complete: true, naturalWidth: 1536 };
-  const shell = { complete: true, naturalWidth: 1536 };
-  const starter = { items: [] };
   const recipes = [
     ['kitchen-worktop', 'kitchenWorktop', 106, 127],
     ['bath-one-fixtures', 'bathFixtures', 73, 117],
@@ -200,7 +197,7 @@ test('restored kitchen, bath and bedroom fixtures are independently rendered wit
     const item = { id, type, x: 420, y: 510, w: w * 1.25, h: h * 0.75, rotation: 90 };
     const renderFixture = () => {
       const canvas = traceCanvas();
-      window.RoomcraftRasterRenderer.drawItem(canvas, item, starter, original, shell,
+      window.RoomcraftRasterRenderer.drawItem(canvas, item,
         object => assert.equal(window.RoomcraftObjectArt.draw(canvas, object), true, type));
       return canvas;
     };

@@ -10,6 +10,8 @@ Choose **Free view** to orbit. Drag across the scene to rotate and tilt. Pinch o
 
 In Studio, choose a 3D preset to select and drag objects. **Free view** dedicates the canvas to camera movement. Picking a catalog object returns to your last 3D preset for placement. The Inspector controls size, rotation, finish and device binding. Camera and interface items have labeled placeholders in editing views. Choose **2D plan** for the illustrated view. Room, wall and reference tools also switch to that view.
 
+**Dashboard look** in Studio uses the lighting and device appearance from the latest dashboard import. Turn it off for daylight while editing. The dashboard reloads the saved layout after **Export to dashboard**.
+
 ![Roomcraft Studio in the default overhead 3D view, with view presets, rotation, zoom, object palette and Inspector](images/editor-camera-views.png)
 
 This public demonstration uses the furnished starter layout and no live household media. On your HA instance, Studio loads your published layout and shows camera and interface positions as editable labels.
@@ -28,7 +30,7 @@ The canvas is a top-down plan with lightly raised walls and furniture. The balco
 
 The full-width view uses the existing drawing and keeps every original column, x0–1536. It shows project y80–944 as a 1536 × 864 image, an exact 16:9 shape. The authored house, stair, balcony, rooms, and furnishings do not change size or position in the editable 1536 × 1024 project. When you move a lamp, fan, control, or camera frame in Studio and export, Roomcraft places its Home Assistant target over the matching object in the displayed image. Keep the camera frame inside the visible lower exterior before exporting; it remains movable in the editor. The image fills the tablet width by showing less sky and ground, without clipping the sides or stretching the house.
 
-The original reference is a single PNG, but Design mode reconstructs its removable contents as scene items. Rugs, original windows, cabinetry, bath fixtures, furniture, lights, controls, and newly placed catalog objects can all be selected, moved, resized, rotated, or removed independently. The clean shell retains only the building structure. Check **Design** against **Reference** after a large move to compare the editable reconstruction with the source image.
+The original reference is a single PNG, but Design mode reconstructs its removable contents as scene items. Rugs, original windows, cabinetry, bath fixtures, furniture, lights, controls, and newly placed catalog objects can all be selected, moved, resized, rotated, or removed independently. Floors, walls, railings, and stairs also come from editable layout records. Check **Design** against **Reference** after a large move to compare the editable reconstruction with the source image.
 
 ![Public-safe Roomcraft plan capture with recessed windows, corrected sofa, movable room lighting, ceiling fan, and a camera placeholder without private media](images/published-plan.png)
 
@@ -86,13 +88,13 @@ Open **Floors**, choose a finish, then click the room to paint. A selected room'
 
 For clean results, keep room polygons inside their walls and avoid overlapping neighboring floors. If a new room covers an existing room, reshape its points or remove it.
 
-## 4. Change walls
+## 4. Change walls and fences
 
-Choose **Wall** and drag from the start point to the end point. Hold **Shift** for a straight horizontal or vertical segment. Open the **Walls** palette to choose graphite, plaster, sage, or walnut, then click a wall to apply the finish. Choose **Select** to click a wall; drag an interior segment or its endpoints, or enter exact coordinates in the Inspector. Choose **Erase** to remove an interior wall. The original illustrated exterior shell keeps its outline aligned with the reference art, but its finish can be changed.
+Choose **Wall** or **Fence** and drag from the start to the end. You can also tap each endpoint. Hold **Shift** for a horizontal or vertical segment. Open **Walls** to select any segment, including exterior walls and balcony rails. Drag the segment or an endpoint, or enter exact coordinates in the Inspector. The Inspector also changes the type and finish and removes the selected segment.
 
-Open **Walls** to control **Snap wall ends**. Draw a wall or drag an endpoint near another corner or wall centerline. The green dot shows where it will join. **Join nearby wall ends** closes gaps up to 18 project pixels as one edit, so **Undo** restores the previous positions. The 3D view gives the walls a shared height and preserves the larger openings shown on the plan.
+Open **Walls** to control **Snap segment ends**. Draw a wall or fence, or drag an endpoint near another corner or wall centerline. The green dot shows the snap point. **Join nearby ends** closes small gaps up to 18 project pixels as one edit, so **Undo** restores the previous positions. The 3D view gives the walls a shared height and preserves the larger openings shown on the plan.
 
-After changing a wall, check its adjoining floor polygon and any nearby window or wall-mounted object. These are separate editable layers.
+Use **Rooms** for the balcony and porch surfaces and **Objects** for the exterior stair. After changing a wall, check the adjoining floor polygon and any nearby window or wall-mounted object. These are separate editable layers.
 
 ## 5. Link lights, fans, controls, and cameras to Home Assistant
 
@@ -184,7 +186,7 @@ The shipped drawer has **On plan**, **All entities**, search with registry avail
 | A linked lamp or fan shows no live state | Check that its `light.*` or `fan.*` entity exists in Home Assistant, then import the current dashboard layout and export again. An unbound object stays decorative. |
 | Camera thumbnail shows unavailable | Check that frame's `camera.*`, optional `image.*`, and event sensors in HA. An event still needs HA's authenticated image proxy. The garage requests a stream after a tap; the doorbell attempts one during an event; the overhead mounts native media. **LIVE** requires decoded playback. A failed stream returns to a preview or unavailable message. |
 | Floor looks misplaced | Select **Room**, inspect its corner handles, and keep the polygon within the room. |
-| A wall cannot move | The illustrated exterior shell is fixed. Select or draw an interior wall. |
+| A wall or fence is hard to select | Open Walls and select the segment from the list. Edit its endpoints in the Inspector. |
 | Dashboard export says the dashboard changed | Import the dashboard again, compare changes, and retry. |
 | Dashboard image updates but browser shows the prior image | Reload the Home Assistant view; its browser may still hold the earlier image. |
 | Layout Studio shows **Configuration error** after a card update | Reload the affected Home Assistant tab. If the error persists, check the registered Roomcraft card resource and dashboard configuration using the [deployment guide](deployment.md). The cause of the observed transient error was not confirmed. |

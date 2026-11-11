@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { storybookPreview } from "../../../ha-local/storybook-state.mjs";
 import { SCENE_HEIGHT, SCENE_WIDTH, editableDashboardHotspots, validCameraThumbnail, validObjectControl, withUpdatedPlanCard } from "../../../lib/dashboard-elements";
 
 const DASHBOARD_PATH = "second-floor";
@@ -300,20 +301,22 @@ export async function GET(request: Request): Promise<Response> {
     const dashboard = await getConfig(socket);
     const card = findCard(dashboard);
     const states = await socket.call("get_states");
-    const entityOptions = Array.isArray(states) ? states.filter((item) => isObject(item) &&
+    const records = Array.isArray(states) ? states.filter((item) => isObject(item) &&
       typeof item.entity_id === "string" && /^[a-z_]+\.[a-z0-9_]+$/.test(item.entity_id))
-      .map((item) => ({
+      : [];
+    const entityOptions = records.map((item) => ({
         entity_id: item.entity_id,
         name: isObject(item.attributes) && typeof item.attributes.friendly_name === "string"
           ? item.attributes.friendly_name.slice(0, 120) : item.entity_id,
         domain: String(item.entity_id).split(".")[0],
         area: "",
-      })) : [];
+      }));
     return json({
       project: isObject(dashboard.roomcraft_layout) ? dashboard.roomcraft_layout : null,
       imageUrl: absoluteImageUrl(config.haOrigin, card.image),
       hotspots: editableDashboardHotspots(card.elements, card.roomcraft_scene),
       entityOptions,
+      storybookPreview: storybookPreview(dashboard, Object.fromEntries(records.map(item => [item.entity_id, item]))),
       source: `${config.haOrigin}/${DASHBOARD_PATH}/${VIEW_PATH}`,
       revision: await revisionOf(dashboard),
     });

@@ -1,5 +1,11 @@
 # Decision log
 
+## The saved project owns every structural piece
+
+Reference revision 8 converts the old shell into editable deck polygons, one stair object and fence segments. Existing solid wall and window geometry carries forward. Studio and Roomcraft Home share a projection from those records, so a deleted wall stays deleted and a new fence can appear in the 2D plan and 3D views. The furnished illustration remains available in Reference.
+
+The dashboard reloads the published layout on Home Assistant's [Lovelace update event](https://github.com/home-assistant/frontend/blob/dev/src/data/lovelace.ts). Studio's Dashboard look uses a read-only appearance snapshot from its latest import. The snapshot stays in memory while authors edit and remains separate from the layout.
+
 ## Free view makes the canvas a camera control
 
 Free view is an explicit camera mode shared by Roomcraft Home and Studio. Starting Free view keeps the current heading and zoom and lifts an overhead view to a slight angle. Dragging or pinching is handled on the canvas. Dashboard overlays keep their own tap targets, and Studio uses a separate mode for canvas editing so an orbit cannot move a furnishing.

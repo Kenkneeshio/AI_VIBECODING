@@ -126,3 +126,54 @@ test('opposed room finishes share a continuous floor slab through their threshol
   assert.deepEqual(floorStructure.regions.filter(({polygons}) => covers(polygons, 600, 450))
     .map(({surface}) => surface), ['blue']);
 });
+
+test('editable structure uses outdoor floors, stairs and fence records independently', () => {
+  const source = sample();
+  source.editableReferenceVersion = 8;
+  source.rooms.push({
+    id: 'deck', surface: 'oak', outdoor: true,
+    points: [{x: 20, y: 210}, {x: 110, y: 210}, {x: 110, y: 310}, {x: 20, y: 310}],
+  });
+  source.items.push({id: 'stairs', type: 'stairs', x: 80, y: 430, w: 50, h: 180, rotation: 0, steps: 9});
+  source.walls.push(
+    {id: 'stair-rail', kind: 'fence', x1: 56, y1: 340, x2: 56, y2: 520},
+    {id: 'deck-rail', kind: 'fence', x1: 20, y1: 210, x2: 110, y2: 210},
+    {id: 'garden-fence', kind: 'fence', x1: 5, y1: 390, x2: 5, y2: 510},
+  );
+  const plan = compileStorybookPlan(source);
+  assert.equal(plan.stairs[0].steps, 9);
+  assert.deepEqual(plan.walls.map(wall => wall.id), ['synthetic-wall']);
+  assert.deepEqual(plan.fences.map(({id, base1, base2}) => [id, base1, base2]), [
+    ['stair-rail', -108, 0], ['deck-rail', 0, 0], ['garden-fence', -111, -111],
+  ]);
+  assert.ok(covers(plan.floorStructure.footprint, 60, 260));
+  assert.ok(!covers(plan.floorStructure.foundation, 60, 260));
+  assert.ok(covers(plan.floorStructure.foundation, 200, 260));
+
+  const edited = compileStorybookPlan({...source, rooms: [], walls: [], items: []});
+  assert.deepEqual(edited.walls, []);
+  assert.deepEqual(edited.fences, []);
+  assert.deepEqual(edited.stairs, []);
+  assert.deepEqual(edited.floorStructure.footprint, []);
+  assert.deepEqual(edited.floorStructure.foundation, []);
+});
+
+test('legacy wall IDs cannot regenerate a hidden shell in an editable plan', () => {
+  const source = sample();
+  source.walls = [
+    ['w1', 400, 193, 799, 193], ['w2', 400, 193, 400, 408], ['w3', 400, 408, 342, 468],
+    ['w4', 342, 468, 158, 468], ['w5', 158, 468, 158, 590], ['w6', 158, 590, 248, 590],
+    ['w7', 248, 590, 302, 651], ['w8', 302, 651, 302, 800], ['w9', 302, 800, 1485, 800],
+    ['w11', 1485, 178, 1133, 178], ['w12', 799, 193, 1066, 193], ['w13', 799, 193, 799, 485],
+    ['w18', 1133, 178, 1133, 210],
+  ].map(([id, x1, y1, x2, y2]) => ({id, x1, y1, x2, y2}));
+  const legacy = compileStorybookPlan({...source, editableReferenceVersion: 7});
+  assert.ok(legacy.reference);
+  assert.ok(legacy.walls.some(wall => wall.id.startsWith('reference-recess-')));
+  const editable = compileStorybookPlan({...source, editableReferenceVersion: 8});
+  assert.equal(editable.reference, null);
+  assert.deepEqual(editable.walls.map(wall => wall.id), source.walls.map(wall => wall.id));
+  assert.deepEqual(editable.fences, []);
+  assert.deepEqual(editable.stairs, []);
+  assert.ok(!covers(editable.floorStructure.footprint, 80, 845));
+});

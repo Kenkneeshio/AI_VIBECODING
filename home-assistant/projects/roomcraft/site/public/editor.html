@@ -7,7 +7,7 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <title>Roomcraft — Second Floor Builder</title>
   <meta name="description" content="A detailed illustrated room builder based on the second-floor home plan.">
-  <link rel="stylesheet" href="styles.css?v=ca3ba6aec10f9c25">
+  <link rel="stylesheet" href="styles.css?v=98b63ee0714c3fbc">
 </head>
 <body>
   <div class="app-shell">
@@ -45,7 +45,7 @@
         </div>
 
         <div class="reference-card">
-          <div class="reference-thumb"><img src="assets/floorplan.png?v=ca3ba6aec10f9c25" alt="The original furnished second-floor reference"></div>
+          <div class="reference-thumb"><img src="assets/floorplan.png?v=98b63ee0714c3fbc" alt="The original furnished second-floor reference"></div>
           <div class="reference-copy"><strong>Starting reference</strong><span>Original furnished image</span></div>
           <button type="button" class="text-button" id="showReferenceButton">View</button>
         </div>
@@ -85,10 +85,14 @@
           <button type="button" class="secondary-button full-width" id="newRoomButton">＋ Add room</button>
         </section>
 
-        <section class="panel-content" id="wallsPanel" aria-label="Wall tools" hidden>
-          <label class="wall-snap-option"><input type="checkbox" id="snapWallEnds" checked> Snap wall ends</label>
-          <button type="button" class="secondary-button full-width" id="joinWallsButton">Join nearby wall ends</button>
-          <p class="help-copy">Draw with the Wall tool or drag an endpoint to a corner or another wall. A green dot marks the join. Choose a finish to paint a wall.</p>
+        <section class="panel-content" id="wallsPanel" aria-label="Wall and fence tools" hidden>
+          <div class="structure-tools">
+            <button type="button" class="secondary-button full-width structure-select" data-tool="structure">Edit walls and fences</button>
+            <select id="structureList" aria-label="Select a wall or fence"><option value="">Select a wall or fence</option></select>
+            <label class="wall-snap-option"><input type="checkbox" id="snapWallEnds" checked> Snap segment ends</label>
+            <button type="button" class="secondary-button full-width" id="joinWallsButton">Join nearby ends</button>
+          </div>
+          <p class="help-copy">Choose Wall or Fence, then drag a line or tap its two ends. A green dot marks a snap. Choose a finish to paint a wall or fence.</p>
           <div id="wallPalette" class="surface-list"></div>
         </section>
 
@@ -112,7 +116,8 @@
             <button type="button" class="tool" data-tool="pan" title="Pan (H)" aria-label="Pan"><span>✋</span><small>Pan</small></button>
             <button type="button" class="tool" data-tool="room" title="Edit rooms (R)" aria-label="Edit rooms"><span>▦</span><small>Room</small></button>
             <button type="button" class="tool" data-tool="wall" title="Draw wall (W)" aria-label="Draw wall"><span>╱</span><small>Wall</small></button>
-            <button type="button" class="tool" data-tool="erase" title="Erase object or wall (E)" aria-label="Erase"><span>⌫</span><small>Erase</small></button>
+            <button type="button" class="tool" data-tool="fence" title="Draw fence (F)" aria-label="Draw fence"><span>▥</span><small>Fence</small></button>
+            <button type="button" class="tool" data-tool="erase" title="Erase object, wall or fence (E)" aria-label="Erase"><span>⌫</span><small>Erase</small></button>
           </div>
           <div class="toolbar-right">
             <button type="button" class="view-button active" id="designModeButton">Design</button>
@@ -165,7 +170,7 @@
     <form method="dialog"><button class="dialog-close" aria-label="Close" value="cancel">×</button></form>
     <p class="eyebrow">HOW IT WORKS</p><h2>A little room to play.</h2>
     <p>Design begins with the furnished image originally used for your Home Assistant Second Floor dashboard. Unchanged areas keep its source pixels; movable objects use deterministic, material-rich miniature artwork. Reference shows the starting image.</p>
-    <ul><li><strong>Objects:</strong> search the catalog or choose a category, then click the plan to place one. Drag an object to move it, drag a corner to resize it, and use the Inspector for position, rotation, construction style, real-world size class, finish, and device links.</li><li><strong>Furniture variants:</strong> Style changes the object's construction, Size applies that design's authored footprint, and Color / finish changes its material appearance without unexpectedly resizing a custom layout.</li><li><strong>Dashboard interface:</strong> the sun/moon, clock, device menu, edit button, status badges, and all camera frames are ordinary editor items. Find them in Dashboard interface or Cameras & controls, then move, resize, rotate, duplicate, or remove them like furniture.</li><li><strong>Artwork:</strong> choose Focus canvas to expand the plan; click the zoom percentage to inspect seams, joinery, upholstery, wood grain, hardware, and lighting at actual size.</li><li><strong>Lights:</strong> each room has a movable fixture. Enter its Home Assistant light or switch entity in the Inspector so the fixture itself becomes the dashboard control. A 4-pixel red/green dot shows the actual toggle state.</li><li><strong>Camera:</strong> place a Camera thumbnail, assign camera and event-image entities, then drag and resize its frame. Latest event shows a still; Live uses a camera stream only when Home Assistant provides one.</li><li><strong>Floors and rooms:</strong> choose a finish, then click a room; drag room corners in Room mode.</li><li><strong>Walls:</strong> choose a finish and click any wall. Draw and move interior segments; exterior walls can be refinished while their illustrated outline stays fixed.</li><li><strong>Layouts:</strong> browser edits save locally. When connected, the current Home Assistant layout loads on opening and is also the editor's reset target; a different browser draft remains recoverable. Export to dashboard to keep your design as the official plan, or use JSON to move it between browsers.</li><li><strong>Home Assistant:</strong> Import from dashboard loads its saved editable layout. Export to dashboard sends this design, image, and controls to your Second Floor dashboard. Use the Dashboard button in the header to return; unpublished edits are saved as a browser draft. PNG and YAML downloads remain available for manual setup.</li></ul>
+    <ul><li><strong>Objects:</strong> search the catalog or choose a category, then click the plan to place one. Drag an object to move it, drag a corner to resize it, and use the Inspector for position, rotation, construction style, real-world size class, finish, and device links.</li><li><strong>Furniture variants:</strong> Style changes the object's construction, Size applies that design's authored footprint, and Color / finish changes its material appearance without unexpectedly resizing a custom layout.</li><li><strong>Dashboard interface:</strong> the sun/moon, clock, device menu, edit button, status badges, and all camera frames are ordinary editor items. Find them in Dashboard interface or Cameras & controls, then move, resize, rotate, duplicate, or remove them like furniture.</li><li><strong>Artwork:</strong> choose Focus canvas to expand the plan; click the zoom percentage to inspect seams, joinery, upholstery, wood grain, hardware, and lighting at actual size.</li><li><strong>Lights:</strong> each room has a movable fixture. Enter its Home Assistant light or switch entity in the Inspector so the fixture itself becomes the dashboard control. A 4-pixel red/green dot shows the actual toggle state.</li><li><strong>Camera:</strong> place a Camera thumbnail, assign camera and event-image entities, then drag and resize its frame. Latest event shows a still; Live uses a camera stream only when Home Assistant provides one.</li><li><strong>Floors and rooms:</strong> choose a finish, then click a room; drag room corners in Room mode.</li><li><strong>Walls and fences:</strong> choose Wall or Fence, then drag a line or tap its two ends. Use the Walls panel to select existing segments, drag their end handles, or edit coordinates and finish in the Inspector.</li><li><strong>Layouts:</strong> browser edits save locally. When connected, the current Home Assistant layout loads on opening and is also the editor's reset target; a different browser draft remains recoverable. Export to dashboard to keep your design as the official plan, or use JSON to move it between browsers.</li><li><strong>Home Assistant:</strong> Import from dashboard loads its saved editable layout. Export to dashboard sends this design, image, and controls to your Second Floor dashboard. Use the Dashboard button in the header to return; unpublished edits are saved as a browser draft. PNG and YAML downloads remain available for manual setup.</li></ul>
     <button class="primary-button" value="cancel" onclick="this.closest('dialog').close()">Let's build</button>
   </dialog>
   <dialog id="confirmationDialog" class="app-dialog confirmation-dialog" aria-labelledby="confirmationTitle" aria-describedby="confirmationMessage">
@@ -177,21 +182,21 @@
       <button type="button" class="primary-button" id="confirmationAccept">Continue</button>
     </div>
   </dialog>
-  <script src="editor-assets.js?v=ca3ba6aec10f9c25" defer></script>
-  <script src="engine/deterministic-core.js?v=ca3ba6aec10f9c25" defer></script>
-  <script src="engine/project-runtime.js?v=ca3ba6aec10f9c25" defer></script>
-  <script src="engine/render-contract.js?v=ca3ba6aec10f9c25" defer></script>
-  <script src="engine/verification-harness.js?v=ca3ba6aec10f9c25" defer></script>
-  <script src="engine/wall-joins.js?v=ca3ba6aec10f9c25" defer></script>
-  <script src="engine/reference-geometry.js?v=ca3ba6aec10f9c25" defer></script>
-  <script src="ha-iframe-bridge.js?v=ca3ba6aec10f9c25" defer></script>
-  <script src="inventory.js?v=ca3ba6aec10f9c25" defer></script>
-  <script src="catalog-variants.js?v=ca3ba6aec10f9c25" defer></script>
-  <script src="raster-renderer.js?v=ca3ba6aec10f9c25" defer></script>
-  <script src="object-art.js?v=ca3ba6aec10f9c25" defer></script>
-  <script src="object-controls.js?v=ca3ba6aec10f9c25" defer></script>
-  <script src="app.js?v=ca3ba6aec10f9c25" defer></script>
-  <script src="responsive-inspector.js?v=ca3ba6aec10f9c25" defer></script>
-  <script src="storybook-editor.js?v=ca3ba6aec10f9c25" defer></script>
+  <script src="editor-assets.js?v=98b63ee0714c3fbc" defer></script>
+  <script src="engine/deterministic-core.js?v=98b63ee0714c3fbc" defer></script>
+  <script src="engine/project-runtime.js?v=98b63ee0714c3fbc" defer></script>
+  <script src="engine/render-contract.js?v=98b63ee0714c3fbc" defer></script>
+  <script src="engine/verification-harness.js?v=98b63ee0714c3fbc" defer></script>
+  <script src="engine/wall-joins.js?v=98b63ee0714c3fbc" defer></script>
+  <script src="engine/reference-geometry.js?v=98b63ee0714c3fbc" defer></script>
+  <script src="ha-iframe-bridge.js?v=98b63ee0714c3fbc" defer></script>
+  <script src="inventory.js?v=98b63ee0714c3fbc" defer></script>
+  <script src="catalog-variants.js?v=98b63ee0714c3fbc" defer></script>
+  <script src="raster-renderer.js?v=98b63ee0714c3fbc" defer></script>
+  <script src="object-art.js?v=98b63ee0714c3fbc" defer></script>
+  <script src="object-controls.js?v=98b63ee0714c3fbc" defer></script>
+  <script src="app.js?v=98b63ee0714c3fbc" defer></script>
+  <script src="responsive-inspector.js?v=98b63ee0714c3fbc" defer></script>
+  <script src="storybook-editor.js?v=98b63ee0714c3fbc" defer></script>
 </body>
 </html>

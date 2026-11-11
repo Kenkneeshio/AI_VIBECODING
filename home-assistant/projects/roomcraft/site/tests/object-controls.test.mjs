@@ -164,7 +164,7 @@ test('transparent control area produces no bitmap artwork', () => {
   const canvas = new Proxy({}, { get: () => { throw new Error('Unexpected bitmap paint'); } });
   window.RoomcraftRasterRenderer.drawItem(canvas, {
     id: 'zone', type: 'controlZone', x: 100, y: 100, w: 80, h: 40, rotation: 0
-  }, { items: [] }, null, null, () => { throw new Error('Unexpected fallback art'); });
+  }, () => { throw new Error('Unexpected fallback art'); });
 });
 
 test('movable furniture and lights use floor-free vector art instead of source crops', () => {
@@ -177,7 +177,7 @@ test('movable furniture and lights use floor-free vector art instead of source c
     'sideTable', 'dresser', 'nightstand', 'bookcase', 'stool', 'lamp', 'ceilingLight',
     'pendantLight', 'floorLamp', 'tableLamp', 'wallSconce']) {
     window.RoomcraftRasterRenderer.drawItem({}, { id: `test-${type}`, type, x: 100, y: 100,
-      w: 80, h: 60, rotation: 0 }, { items: [] }, null, null, item => fallbackTypes.push(item.type));
+      w: 80, h: 60, rotation: 0 }, item => fallbackTypes.push(item.type));
   }
   assert.deepEqual(Array.from(fallbackTypes), ['sofa', 'table', 'chair', 'bed', 'desk', 'armchair',
     'coffeeTable', 'sideTable', 'dresser', 'nightstand', 'bookcase', 'stool', 'lamp',

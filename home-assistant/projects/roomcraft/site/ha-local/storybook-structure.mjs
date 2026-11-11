@@ -84,18 +84,23 @@ function visibleRegions(entries) {
   return {footprint: covered, regions: result.reverse()};
 }
 
-export function compileFloorStructure(rooms, reference) {
+export function isOutdoorRoom(room) {
+  return room.outdoor === true || (room.outdoor !== false && room.surface === 'patio');
+}
+
+export function compileFloorStructure(rooms, reference, editableStructure = false) {
   const roomRegions = rooms.map(room => ({
     surface: room.surface,
     points: ring(room.points),
     polygons: [polygon(ring(room.points))],
+    outdoor: editableStructure && isOutdoorRoom(room),
   }));
   const bridges = [];
   for (const [index, first] of roomRegions.entries()) {
     for (const second of roomRegions.slice(index + 1)) {
       for (const a of edges(first.points)) for (const b of edges(second.points)) {
         const shape = floorBridge(a, b, first.points, second.points);
-        if (shape) bridges.push({surface: first.surface, polygons: [shape]});
+        if (shape) bridges.push({surface: first.surface, polygons: [shape], outdoor: first.outdoor || second.outdoor});
       }
     }
   }
@@ -113,9 +118,11 @@ export function compileFloorStructure(rooms, reference) {
       ]});
     }
   }
-  const enclosed = [...interiorRegions, ...bridges, ...roomRegions];
-  const floors = visibleRegions([...deckRegions, ...enclosed]);
-  const foundation = reference ? unite(enclosed.flatMap(entry => entry.polygons)) : [];
+  const regions = [...bridges, ...roomRegions];
+  const enclosed = [...interiorRegions, ...regions.filter(entry => !entry.outdoor)];
+  const outdoors = [...deckRegions, ...regions.filter(entry => entry.outdoor)];
+  const floors = visibleRegions([...outdoors, ...enclosed]);
+  const foundation = reference || editableStructure ? unite(enclosed.flatMap(entry => entry.polygons)) : [];
   return {...floors, foundation};
 }
 

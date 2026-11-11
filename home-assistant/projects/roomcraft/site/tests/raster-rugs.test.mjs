@@ -44,7 +44,7 @@ function record() {
 function draw(renderer, rugStyle, geometry = {}) {
   const { canvas, operations } = record();
   const item = { id: 'rug', type: 'rug', x: 140, y: 150, w: 120, h: 90, rotation: 0, rugStyle, ...geometry };
-  renderer.drawItem(canvas, item, { items: [] }, undefined, undefined,
+  renderer.drawItem(canvas, item,
     () => assert.fail('A rug must render without reference, floor, or fallback artwork'));
   return operations;
 }

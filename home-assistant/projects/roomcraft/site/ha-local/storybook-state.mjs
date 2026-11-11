@@ -78,6 +78,30 @@ export function storybookFrame(model, snapshot = {}, now = 0) {
   return {states, environment, moving};
 }
 
+/** Render-only dashboard appearance for Studio. Send only attributes used by the miniature. */
+export function storybookPreview(config, snapshot) {
+  let model;
+  try {
+    model = readStorybookConfig(config);
+  } catch {
+    return null;
+  }
+  const frame = storybookFrame(model, snapshot);
+  const states = Object.create(null);
+  for (const [id, state] of Object.entries(frame.states)) {
+    const attributes = {};
+    for (const key of ['brightness', 'percentage', 'current_position', 'current_tilt_position']) {
+      if (Number.isFinite(state.attributes[key])) attributes[key] = state.attributes[key];
+    }
+    const rgb = state.attributes.rgb_color;
+    if (Array.isArray(rgb) && rgb.length === 3 && rgb.every(Number.isFinite)) attributes.rgb_color = rgb;
+    if (ACTIVE_HVAC.has(state.attributes.hvac_action)) attributes.hvac_action = state.attributes.hvac_action;
+    states[id] = {entityId: model.items.get(id).entityId, state: state.state,
+      active: state.active, presence: state.presence, attributes};
+  }
+  return {states, environment: frame.environment};
+}
+
 /**
  * Keep targets centered whenever possible. Prioritize the most precise fixture
  * first and place nearby targets on a bounded grid when hit areas intersect.

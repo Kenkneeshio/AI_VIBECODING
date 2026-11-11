@@ -1,7 +1,7 @@
 import {createStorybookScene} from './storybook-scene.mjs';
 import {enterFreeView, normalizeCameraView, populateCameraOptions} from './storybook-camera.mjs';
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
-import {placeStorybookTargets, readStorybookConfig, storybookFrame} from './storybook-state.mjs';
+import {placeStorybookTargets, readStorybookConfig, storybookFrame, storybookPreview} from './storybook-state.mjs';
 
 const TAG = 'roomcraft-storybook-card';
 const CONTROL_TAG = 'roomcraft-object-control';
@@ -140,6 +140,8 @@ class RoomcraftStorybookCard extends HTMLElement {
   set hass(value) {
     const previous = this.session;
     this.session = value;
+    this.watchPublishedLayout();
+    if (previous?.connected === false && value?.connected === true) this.reset();
     if (!this.model) {
       this.load();
       return;
@@ -150,7 +152,25 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   getCardSize() { return 8; }
 
+  static preview(config, states) {
+    return storybookPreview(config, states);
+  }
+
+  watchPublishedLayout() {
+    const connection = this.isConnected ? this.session?.connection : undefined;
+    if (connection === this.configConnection) return;
+    this.configSubscription?.then(unsubscribe => unsubscribe()).catch(() => {});
+    this.configConnection = connection;
+    this.configSubscription = connection?.subscribeEvents?.(event => {
+      if (!this.isConnected || this.configConnection !== connection || event?.data?.url_path !== this.dashboard) return;
+      this.reset();
+      this.load();
+    }, 'lovelace_updated');
+    this.configSubscription?.catch(() => {});
+  }
+
   connectedCallback() {
+    this.watchPublishedLayout();
     this.freeViewGestures = bindFreeViewGestures(this.canvas, {
       getView: () => this.scene ? this.cameraView : null,
       onChange: view => this.changeView(view, {announce: false}),
@@ -164,6 +184,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this.watchPublishedLayout();
     this.freeViewGestures?.dispose();
     this.freeViewGestures = undefined;
     this.resizeObserver.disconnect();

@@ -589,6 +589,7 @@ class RoomcraftEditorCard extends HTMLElement {
       imageUrl,
       hotspots: editableHotspots(card.elements, card.roomcraft_scene),
       entityOptions,
+      storybookPreview: customElements.get('roomcraft-storybook-card')?.preview?.(config, this._hass?.states),
       source: `${location.origin}/${DASHBOARD}/${PLAN_VIEW}`,
       revision,
     };

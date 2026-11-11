@@ -1,4 +1,4 @@
-import {createStorybookScene} from './storybook-scene.mjs';
+import {compileStorybookPlan, createStorybookScene} from './storybook-scene.mjs';
 import {CAMERA_PRESETS, enterFreeView, populateCameraOptions} from './storybook-camera.mjs';
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
 import {placeStorybookTargets} from './storybook-state.mjs';
@@ -68,6 +68,15 @@ export function mountStorybookEditor(document, host) {
     in: document.getElementById('sceneZoomIn'),
   };
   const resetButton = document.getElementById('sceneReset');
+  const look = document.createElement('label');
+  look.className = 'scene-dashboard-look';
+  look.hidden = true;
+  look.title = 'Lighting and device appearance from the last dashboard import';
+  const lookCheckbox = document.createElement('input');
+  lookCheckbox.type = 'checkbox';
+  lookCheckbox.checked = true;
+  look.append(lookCheckbox, ' Dashboard look');
+  choice.closest('.scene-view-toolbar')?.append(look);
   const outline = document.createElement('div');
   outline.className = 'scene-selection';
   outline.setAttribute('aria-hidden', 'true');
@@ -111,14 +120,25 @@ export function mountStorybookEditor(document, host) {
   function setStatus(text) {
     api.showStatus?.(text);
   }
-  function draw(preview) {
+  function draw(dragPreview) {
     if (!scene || !is3D()) return;
     const {width, height} = currentSize();
     if (!width || !height) return;
     scene.resize(width, height);
-    scene.render(0, preview ?? {}, {
-      night: false, condition: 'sunny', daylightKnown: true, reduceMotion: true,
-    });
+    const dashboard = api.getPreview?.();
+    look.hidden = !dashboard?.environment;
+    const usingDashboard = !look.hidden && lookCheckbox.checked;
+    const states = Object.create(null);
+    if (usingDashboard) {
+      for (const item of project.items) {
+        const state = dashboard.states?.[item.id];
+        if (state && state.entityId === item.entityId) states[item.id] = state;
+      }
+    }
+    for (const [id, state] of Object.entries(dragPreview ?? {})) states[id] = {...states[id], ...state};
+    const environment = usingDashboard ? dashboard.environment
+      : {night: false, condition: 'sunny', daylightKnown: true};
+    scene.render(0, states, {...environment, reduceMotion: true});
     if (isFree()) return;
     const targets = [];
     for (const [id, marker] of markers) {
@@ -195,6 +215,7 @@ export function mountStorybookEditor(document, host) {
     viewport.classList.toggle('scene-3d', is3D());
     updateButtons();
     if (!is3D()) {
+      look.hidden = true;
       setStatus('Plan view · edit rooms, walls, floors and objects');
       return;
     }
@@ -214,6 +235,7 @@ export function mountStorybookEditor(document, host) {
     mode = 'plan';
     choice.value = mode;
     canvas.hidden = true;
+    look.hidden = true;
     updateCanvasInteraction();
     markerLayer.style.display = 'none';
     leaders.style.display = 'none';
@@ -372,11 +394,13 @@ export function mountStorybookEditor(document, host) {
   const zoomOut = () => changeCamera(current => ({...current, zoom: current.zoom / 1.2}));
   const zoomIn = () => changeCamera(current => ({...current, zoom: current.zoom * 1.2}));
   const resetView = () => choose('top');
+  const changeLook = () => draw();
   buttons.left?.addEventListener('click', rotateLeft);
   buttons.right?.addEventListener('click', rotateRight);
   buttons.out?.addEventListener('click', zoomOut);
   buttons.in?.addEventListener('click', zoomIn);
   resetButton?.addEventListener('click', resetView);
+  lookCheckbox.addEventListener('change', changeLook);
   choice.addEventListener('change', onChoice);
   canvas.addEventListener('pointerdown', onPointerDown);
   canvas.addEventListener('pointermove', onPointerMove);
@@ -408,6 +432,8 @@ export function mountStorybookEditor(document, host) {
       outline.remove();
       markerLayer.remove();
       leaders.remove();
+      look.remove();
+      lookCheckbox.removeEventListener('change', changeLook);
       if (miniHelp) miniHelp.textContent = planHelp;
       buttons.left?.removeEventListener('click', rotateLeft);
       buttons.right?.removeEventListener('click', rotateRight);
@@ -430,5 +456,7 @@ export function mountStorybookEditor(document, host) {
 }
 
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  window.RoomcraftPlanStructure = compileStorybookPlan;
   mountStorybookEditor(document, window);
+  window.dispatchEvent(new Event('roomcraft-asset-loaded'));
 }

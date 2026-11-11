@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {placeStorybookTargets, readStorybookConfig, storybookFrame} from '../ha-local/storybook-state.mjs';
+import {placeStorybookTargets, readStorybookConfig, storybookFrame, storybookPreview} from '../ha-local/storybook-state.mjs';
 
 const items = [
   {id: 'motor', type: 'fan', entityId: 'switch.example_motor'},
@@ -71,6 +71,23 @@ test('storybook vacuum coordinates require real, fresh, in-bounds data', () => {
   };
   assert.deepEqual(storybookFrame(model, snapshot, Date.parse('2025-01-01T12:01:00Z')).states.robot.position, {x: 22, y: 100});
   assert.equal(storybookFrame(model, snapshot, Date.parse('2025-01-01T12:25:00Z')).states.robot.position, undefined);
+});
+
+test('Studio receives matching lighting and only attributes used by the miniature', () => {
+  const snapshot = {
+    'switch.example_lamp': {state: 'on', attributes: {brightness: 185, rgb_color: [210, 160, 90],
+      picture: 'fixture-url'}},
+    'sun.sun': {state: 'below_horizon'},
+    'vacuum.example': {state: 'cleaning'},
+    'camera.example_map': {last_updated: '2025-01-01T12:00:00Z', attributes: {vacuum_position: {x: 10, y: 20}}},
+  };
+  const preview = storybookPreview(config, snapshot);
+  assert.deepEqual(preview.environment, storybookFrame(model, snapshot).environment);
+  assert.deepEqual(preview.states.hub, {entityId: 'switch.example_lamp', state: 'on',
+    active: true, presence: 'unavailable', attributes: {brightness: 185, rgb_color: [210, 160, 90]}});
+  assert.equal(preview.states.camera, undefined);
+  assert.equal(preview.states.robot.position, undefined);
+  assert.equal(storybookPreview({}, snapshot), null);
 });
 
 test('co-located fan and light stay individually tappable inside a tablet viewport', () => {

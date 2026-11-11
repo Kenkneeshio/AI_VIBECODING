@@ -7,7 +7,7 @@ The [JSON Schema](../layout.schema.json) describes Roomcraft layout version 2 sh
 | `version` | Format version. Current bridge accepts `2`. |
 | `editableReferenceVersion` | Optional starter-art migration marker. It prevents restored fixtures from reappearing after a user removes them. |
 | `rooms[]` | Room ID, display name, floor surface ID, polygon points, optional label point. |
-| `walls[]` | Wall ID and two endpoints in canvas coordinates; optional finish. |
+| `walls[]` | Segment ID and two endpoints in canvas coordinates, with optional finish and `kind: "fence"`. A missing kind means a solid wall. |
 | `items[]` | Catalog type, name, center, size, rotation, and optional HA binding. Bound items generate custom on-plan controls; `controlZone` is a movable invisible hit area. `visualKind` optionally selects a live device treatment, including `vacuum`; `lightForm` preserves a validated live-light silhouette. A vacuum can carry an optional authenticated map-camera binding. Camera thumbnails each carry their own optional event-image entity, preview mode, and event triggers. |
 | `hotspots[]` | Legacy, independent `state-icon` controls with entity, title, action, and percentage position. Bound item controls are derived from `items[]` instead. |
 
