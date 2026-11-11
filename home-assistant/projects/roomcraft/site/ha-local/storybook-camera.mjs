@@ -11,6 +11,7 @@ export const CAMERA_PRESETS = Object.freeze({
   east: cameraPreset('From east', 90, 42),
   south: cameraPreset('From south', 0, 42),
   west: cameraPreset('From west', 270, 42),
+  free: cameraPreset('Free view', 0, 25),
 });
 
 /** Keep the same preset labels and order in the dashboard and Studio. */
@@ -40,6 +41,11 @@ export function normalizeCameraView(value = 'top') {
     tilt: Number.isFinite(input.tilt) ? THREE.MathUtils.clamp(input.tilt, 0, 65) : base.tilt,
     zoom: Number.isFinite(input.zoom) ? THREE.MathUtils.clamp(input.zoom, 0.6, 2.5) : base.zoom,
   };
+}
+
+export function enterFreeView(value) {
+  const current = normalizeCameraView(value);
+  return {...current, preset: 'free', tilt: current.tilt || CAMERA_PRESETS.free.tilt};
 }
 
 /** Fit one authored bounding box at an explicit viewport and orthographic pose. */

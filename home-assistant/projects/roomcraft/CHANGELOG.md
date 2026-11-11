@@ -1,5 +1,12 @@
 # Changelog
 
+## Free view
+
+- Added **Free view** to Roomcraft Home and Studio. Drag or swipe to rotate and tilt, and pinch or scroll to zoom. The canvas supports arrow keys and zoom keys when focused.
+- Dashboard controls remain available as tap targets. In Studio, Free view uses canvas gestures for the camera, and presets support object editing. The home-shaped button resets to Top down.
+- Verified touch orbit in both live Home Assistant surfaces on the wall tablet. Isolated Chrome WebGL checks covered drag, touch swipe, pinch, wheel, keyboard, reset, overlay taps and Studio placement. The release passed 115 editor and engine tests, 52 Home Assistant JavaScript tests, 15 Python tests, TypeScript, lint with zero errors and the production build.
+- Verified exact installed dashboard and editor files and read back the saved layout. The owner-private editor deployed as Site v54 from `8a811f32dc67ca272f1aa30c352399c5fe010064`. Roll back by reinstalling the previous Home Assistant assets and restoring the private installer backup if needed. Site rollback is independent.
+
 ## Rebuilt reference geometry and wall joins
 
 - Matched the original marked floor plan and approved Roomcraft illustration. Restored both open balcony passages, the rear wall step, study and closet jambs, a continuous bathroom divider, and the east-facing bed. Corrected the sectional and dining chairs in both renderers and restored the recessed double sink in 3D.

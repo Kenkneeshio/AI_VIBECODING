@@ -8,10 +8,10 @@
 | --- | --- | --- |
 | Public source | Roomcraft is under `home-assistant/projects/roomcraft/` in `Kenkneeshio/AI_VIBECODING`; the full-width release retains all source columns in a 16:9 image, with coordinated control mapping and updated engineering/manual guidance. | GitHub `main` for code and reviewed documentation. A GitHub commit does not deploy a runtime. |
 | Official editor | Home Assistant **Second Floor → Layout Studio** at `/second-floor/studio`, installed on one HA 2026.10 instance. The signed-in HA user's session supplies dashboard access through `custom:roomcraft-editor-card`. | HA-hosted card and static assets installed from `site/`. |
-| Optional cloud editor | Owner-private Site v53 deployed from hosted source `0535a7f4e25f38300f1ad6aaa3dfebb31d539ba6`. The owner-only audience was verified. | Site deployment and its authenticated server bridge. |
+| Optional cloud editor | Owner-private Site v54 deployed from hosted source `8a811f32dc67ca272f1aa30c352399c5fe010064`. The owner-only audience was verified. | Site deployment and its authenticated server bridge. |
 | Object catalog and art | The editor has 333 choices. The detailed 2D renderer and deterministic 3D recipes share layout records; materials, furniture, devices, structure, lighting and camera projection are separate modules. | `site/public/inventory.js`, `catalog-variants.js`, the canvas renderers and `site/ha-local/storybook-*.mjs`. |
 | Saved layout and live plan | Studio exported reference revision 7. Authenticated readback matched the reviewed 6 rooms, 34 walls and 71 items. Roomcraft Home reads the same layout as the refreshed 1536 × 864 2D plan. | Home Assistant dashboard configuration and the published plan image. |
-| Physical tablet | Verified the repaired plan in Studio, its wall join controls and the Studio export. A fresh 1920 × 1080 HA Companion launch opened Roomcraft Home in Top down. Touch checks switched to High angle and From east before returning to Top down. | Private screenshots and exact HTTP asset readback. See the [access runbook](tablet-access.md). |
+| Physical tablet | Verified touch orbit in Free view on Roomcraft Home and Studio at 1920 × 1080. The profile selects Roomcraft Home and a fresh launch opens in Top down. | Private screenshots and exact HTTP asset readback. See the [access runbook](tablet-access.md). |
 
 The default Home Assistant dashboard is an **owner profile preference**. The promotion helper sets it explicitly after a private backup; the authenticated profile currently selects `roomcraft-home`. Routine asset installation preserves that choice. The old Main Dashboard remains a reference for the curated control drawer; the `ishioho` project is a separate legacy prototype.
 
@@ -185,6 +185,8 @@ For each follow-on change, record the data source, offline behavior, accessible 
 ## Shared 3D scene and camera views
 
 Both Studio and the dashboard use the ordered presets in `storybook-camera.mjs` with explicit azimuth, tilt and zoom. The default is directly overhead. Camera changes never enter the canonical layout. Studio's adapter `storybook-editor.mjs` calls the existing editor mutation boundary for placement and committed drags. Its generated `public/storybook-editor.js` is rebuilt with `node scripts/build-storybook.mjs --write-editor`, followed by `npm run release:stamp-editor`. Git preserves its LF line endings so the production build can compare its bytes against the generated output on Windows and Linux.
+
+`storybook-orbit.mjs` owns Free view pointer capture, two-finger pinch, wheel zoom and focused-canvas keys. It binds to the canvas on both surfaces. The dashboard projects device and camera anchors through the active pose, and Studio routes Free view canvas gestures to the camera. Selecting a preset or changing editing tools releases captured pointers.
 
 `public/engine/wall-joins.js` handles endpoint snapping and the explicit batch join. `public/engine/reference-geometry.js` applies reference revision 7 in Studio to matching stock geometry. To publish the corrected layout, import the live plan in updated Studio, review the geometry in 2D and 3D, then export through the existing Home Assistant bridge. Use the protected dashboard backup and the previous asset release to reverse the update.
 

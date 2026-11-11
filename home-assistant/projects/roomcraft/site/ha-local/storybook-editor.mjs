@@ -1,5 +1,6 @@
 import {createStorybookScene} from './storybook-scene.mjs';
-import {CAMERA_PRESETS, populateCameraOptions} from './storybook-camera.mjs';
+import {CAMERA_PRESETS, enterFreeView, populateCameraOptions} from './storybook-camera.mjs';
+import {bindFreeViewGestures} from './storybook-orbit.mjs';
 import {placeStorybookTargets} from './storybook-state.mjs';
 
 const SELECT_RADIUS = 22;
@@ -88,17 +89,20 @@ export function mountStorybookEditor(document, host) {
   const markers = new Map();
   const miniHelp = document.getElementById('miniHelp');
   const planHelp = miniHelp?.textContent;
+  const editorCanvasLabel = canvas.getAttribute('aria-label') ?? 'Editable three-dimensional home view';
 
   let scene;
   let project;
   let fingerprint;
   let view = {preset: 'top'};
   let mode = choice.value;
+  let lastEditableMode = 'top';
   let drag;
   let resizeFrame;
   let disposed = false;
 
   const is3D = () => mode !== 'plan';
+  const isFree = () => mode === 'free';
   const currentSize = () => canvas.getBoundingClientRect();
   const pointerPoint = event => {
     const box = currentSize();
@@ -115,6 +119,7 @@ export function mountStorybookEditor(document, host) {
     scene.render(0, preview ?? {}, {
       night: false, condition: 'sunny', daylightKnown: true, reduceMotion: true,
     });
+    if (isFree()) return;
     const targets = [];
     for (const [id, marker] of markers) {
       const anchor = scene.anchor(id);
@@ -159,39 +164,57 @@ export function mountStorybookEditor(document, host) {
   function updateButtons() {
     for (const button of Object.values(buttons)) if (button) button.disabled = !is3D();
   }
+  function updateCanvasInteraction() {
+    canvas.tabIndex = isFree() ? 0 : -1;
+    canvas.style.cursor = isFree() ? 'grab' : '';
+    canvas.setAttribute('aria-label', isFree()
+      ? 'Free view. Use arrow keys to orbit and plus or minus to zoom.'
+      : editorCanvasLabel);
+  }
   function choose(next) {
+    orbit.cancel();
     restoreDrag();
-    mode = Object.hasOwn(CAMERA_PRESETS, next) ? next : 'plan';
+    const previousView = scene?.getView() ?? view;
+    const nextMode = Object.hasOwn(CAMERA_PRESETS, next) ? next : 'plan';
+    if (nextMode !== 'plan') api.useSelectTool?.();
+    mode = nextMode;
+    if (is3D() && !isFree()) lastEditableMode = mode;
     choice.value = mode;
     canvas.hidden = !is3D();
-    markerLayer.style.display = is3D() ? 'block' : 'none';
-    leaders.style.display = is3D() ? 'block' : 'none';
-    if (miniHelp) miniHelp.textContent = is3D()
-      ? 'Drag objects to move them. Scroll to zoom; use the view controls to rotate.'
-      : planHelp;
+    updateCanvasInteraction();
+    const showMarkers = is3D() && !isFree();
+    markerLayer.style.display = showMarkers ? 'block' : 'none';
+    leaders.style.display = showMarkers ? 'block' : 'none';
+    if (!showMarkers) outline.style.display = 'none';
+    if (miniHelp) {
+      if (isFree()) miniHelp.textContent = 'Drag or swipe to orbit. Pinch or scroll to zoom.';
+      else miniHelp.textContent = is3D()
+        ? 'Drag objects to move them. Scroll to zoom; use the view controls to rotate.'
+        : planHelp;
+    }
     viewport.classList.toggle('scene-3d', is3D());
     updateButtons();
     if (!is3D()) {
-      outline.style.display = 'none';
       setStatus('Plan view · edit rooms, walls, floors and objects');
       return;
     }
-    api.useSelectTool?.();
-    const nextView = {preset: mode};
+    const nextView = isFree() ? enterFreeView(previousView) : {preset: mode};
+    view = scene ? scene.setView(nextView) : nextView;
     refresh();
     if (!scene) return;
-    scene.setView(nextView);
-    view = scene.getView();
-    draw();
-    setStatus('3D view · select and drag objects, or place an object from the catalog');
+    setStatus(isFree()
+      ? 'Free view · choose an editable view to move objects'
+      : '3D view · select and drag objects, or place an object from the catalog');
   }
   function fail() {
+    orbit.cancel();
     scene?.dispose();
     scene = undefined;
     fingerprint = undefined;
     mode = 'plan';
     choice.value = mode;
     canvas.hidden = true;
+    updateCanvasInteraction();
     markerLayer.style.display = 'none';
     leaders.style.display = 'none';
     if (miniHelp) miniHelp.textContent = planHelp;
@@ -230,7 +253,7 @@ export function mountStorybookEditor(document, host) {
           });
           marker.addEventListener('pointerdown', event => onPointerDown(event, item.id));
           marker.addEventListener('click', event => {
-            if (event.detail === 0) {
+            if (!isFree() && event.detail === 0) {
               api.selectItem(item.id);
               draw();
             }
@@ -253,6 +276,7 @@ export function mountStorybookEditor(document, host) {
   const onTool = () => {
     const tool = api.getTool();
     if (is3D() && tool !== 'select') choose('plan');
+    else if (isFree() && api.hasPlacement()) choose(lastEditableMode);
     else if (is3D()) draw();
   };
   const onChoice = () => choose(choice.value);
@@ -260,8 +284,16 @@ export function mountStorybookEditor(document, host) {
     host.cancelAnimationFrame(resizeFrame);
     resizeFrame = host.requestAnimationFrame(() => draw());
   };
+  const orbit = bindFreeViewGestures(canvas, {
+    getView: () => isFree() ? scene?.getView() : null,
+    onChange: next => {
+      if (!scene || !isFree()) return;
+      view = scene.setView(next);
+      onResize();
+    },
+  });
   const onPointerDown = (event, forcedId = null) => {
-    if (!is3D() || !scene || event.button !== 0 || drag) return;
+    if (!is3D() || isFree() || !scene || event.button !== 0 || drag) return;
     event.preventDefault();
     event.stopPropagation();
     const screen = pointerPoint(event);
@@ -286,7 +318,7 @@ export function mountStorybookEditor(document, host) {
     draw();
   };
   const onPointerMove = event => {
-    if (!is3D()) return;
+    if (!is3D() || isFree()) return;
     event.stopPropagation();
     if (!drag || drag.pointerId !== event.pointerId || !scene) return;
     const screen = pointerPoint(event);
@@ -298,7 +330,7 @@ export function mountStorybookEditor(document, host) {
     draw({[drag.item.id]: {position: drag.position}});
   };
   const onPointerUp = event => {
-    if (!is3D()) return;
+    if (!is3D() || isFree()) return;
     event.stopPropagation();
     if (!drag || drag.pointerId !== event.pointerId) return;
     const finished = drag;
@@ -310,16 +342,21 @@ export function mountStorybookEditor(document, host) {
     } else draw();
   };
   const onPointerCancel = event => {
+    if (isFree()) return;
     if (drag?.pointerId === event.pointerId) restoreDrag();
     event.stopPropagation();
   };
   const onWheel = event => {
-    if (!is3D()) return;
+    if (!is3D() || isFree()) return;
     event.preventDefault();
     event.stopPropagation();
     changeCamera(current => ({...current, zoom: current.zoom * (event.deltaY < 0 ? 1.1 : 1 / 1.1)}));
   };
   const onKey = event => {
+    if (isFree() && event.target === canvas && (event.key === 'Delete' || event.key === 'Backspace')) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
     if (event.key === 'Escape' && drag) {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -361,6 +398,9 @@ export function mountStorybookEditor(document, host) {
     dispose() {
       disposed = true;
       restoreDrag();
+      orbit.dispose();
+      mode = 'plan';
+      updateCanvasInteraction();
       observer.disconnect();
       host.cancelAnimationFrame(resizeFrame);
       scene?.dispose();

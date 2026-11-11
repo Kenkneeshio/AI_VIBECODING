@@ -6,7 +6,9 @@ Roomcraft Studio edits the layout used by Roomcraft Home. Use the 3D view to arr
 
 Roomcraft Home and Studio open in **Top down**, directly above the house. Use **View** for **High angle**, **Dollhouse**, **Corner**, or a view from the north, east, south, or west. Directions follow the plan, with north at the top of Top down. The arrow buttons rotate the camera, the plus and minus buttons zoom, and the home-shaped reset button returns to Top down.
 
-In Studio, select and drag an object in any 3D view. Pick a catalog object, then click the scene to place it. The Inspector still controls its size, rotation, finish and device binding. Camera and interface items have labeled placeholders in the editor. Choose **2D plan** to use the illustrated view. Room, wall and reference tools also switch to that view. The camera controls do not change the saved layout or its furniture positions.
+Choose **Free view** to orbit. Drag across the scene to rotate and tilt. Pinch or scroll to zoom. With the scene focused, use the arrow keys and **+** or **−**. On the dashboard, drag from an open part of the scene and tap devices and cameras as usual.
+
+In Studio, choose a 3D preset to select and drag objects. **Free view** dedicates the canvas to camera movement. Picking a catalog object returns to your last 3D preset for placement. The Inspector controls size, rotation, finish and device binding. Camera and interface items have labeled placeholders in editing views. Choose **2D plan** for the illustrated view. Room, wall and reference tools also switch to that view.
 
 ![Roomcraft Studio in the default overhead 3D view, with view presets, rotation, zoom, object palette and Inspector](images/editor-camera-views.png)
 

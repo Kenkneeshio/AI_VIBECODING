@@ -1214,7 +1214,18 @@
     viewport.addEventListener('wheel',e=>{e.preventDefault();const s=screenPoint(e);zoomAt(e.deltaY<0?1.12:.89,s.x,s.y);},{passive:false});
     document.querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click',()=>{setViewMode('design');setTool(b.dataset.tool);}));
     document.querySelectorAll('.panel-tab').forEach(b=>b.addEventListener('click',()=>setPanel(b.dataset.panel)));
-    document.getElementById('objectsPanel').addEventListener('click',e=>{const b=e.target.closest('[data-template]');if(!b)return;setViewMode('design');setTool('select');pendingTemplate=b.dataset.template;viewport.classList.add('placing');renderPalette();const t=templateByType[pendingTemplate];showToast(t.mount==='wall'||t.type==='window'?'Click near a wall to mount it':t.form==='gate'?'Click across the stair opening; rotate in the Inspector as needed':`Click the plan to place ${t.label}`);});
+    document.getElementById('objectsPanel').addEventListener('click',e=>{
+      const button=e.target.closest('[data-template]');
+      if(!button)return;
+      setViewMode('design');
+      setTool('select');
+      pendingTemplate=button.dataset.template;
+      viewport.classList.add('placing');
+      renderPalette();
+      notifyEditorTool();
+      const template=templateByType[pendingTemplate];
+      showToast(template.mount==='wall'||template.type==='window'?'Click near a wall to mount it':template.form==='gate'?'Click across the stair opening; rotate in the Inspector as needed':`Click the plan to place ${template.label}`);
+    });
     document.getElementById('objectSearch').addEventListener('input',()=>{document.getElementById('objectsPanel').scrollTop=0;document.getElementById('inventoryStrip').scrollLeft=0;renderPalette();});
     document.getElementById('objectCategory').addEventListener('change',()=>{document.getElementById('objectsPanel').scrollTop=0;document.getElementById('inventoryStrip').scrollLeft=0;renderPalette();});
     document.getElementById('restoreFurnishingsButton').addEventListener('click',restoreReferenceItems);

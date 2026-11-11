@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
-import {CAMERA_PRESETS, fitStorybookCamera, normalizeCameraView} from '../ha-local/storybook-camera.mjs';
+import {CAMERA_PRESETS, enterFreeView, fitStorybookCamera, normalizeCameraView} from '../ha-local/storybook-camera.mjs';
+import {bindFreeViewGestures} from '../ha-local/storybook-orbit.mjs';
 
 const bounds = {minX: 20, maxX: 1510, minZ: 110, maxZ: 850};
 const topView = {preset: 'top', azimuth: 0, tilt: 0, zoom: 1};
@@ -79,4 +80,41 @@ test('camera fitting is repeatable and rejects invalid scene or viewport dimensi
   assert.deepEqual(first.projectionMatrix.elements, second.projectionMatrix.elements);
   assert.throws(() => fitStorybookCamera(first, bounds, 0, 800), /finite scene/);
   assert.throws(() => fitStorybookCamera(first, {...bounds, maxX: NaN}, 1440, 810), /finite scene/);
+});
+
+test('Free view owns its drag and pinch gestures and releases them on exit', () => {
+  const canvas = new EventTarget();
+  const captured = new Set();
+  canvas.setPointerCapture = id => captured.add(id);
+  canvas.hasPointerCapture = id => captured.has(id);
+  canvas.releasePointerCapture = id => captured.delete(id);
+  canvas.focus = () => {};
+  let view = topView;
+  const gesture = bindFreeViewGestures(canvas, {getView: () => view, onChange: next => { view = next; }});
+  const pointer = (type, id, x, y) => canvas.dispatchEvent(Object.assign(
+    new Event(type, {cancelable: true}), {pointerId: id, pointerType: 'touch', button: 0, clientX: x, clientY: y}));
+
+  assert.equal(pointer('pointerdown', 1, 100, 100), true);
+  assert.equal(captured.size, 0);
+  view = enterFreeView({...normalizeCameraView('corner'), zoom: 1.2});
+  const start = view;
+  assert.equal(pointer('pointerdown', 1, 100, 100), false);
+  pointer('pointermove', 1, 140, 130);
+  assert.notEqual(view.azimuth, start.azimuth);
+  assert.notEqual(view.tilt, start.tilt);
+  assert.equal(view.zoom, start.zoom);
+
+  pointer('pointerdown', 2, 240, 130);
+  const beforePinch = view;
+  pointer('pointermove', 2, 290, 130);
+  near(view.zoom, beforePinch.zoom * 1.5);
+  assert.equal(view.azimuth, beforePinch.azimuth);
+  assert.equal(view.tilt, beforePinch.tilt);
+  gesture.cancel();
+  assert.equal(captured.size, 0);
+  const canceled = view;
+  pointer('pointermove', 1, 300, 300);
+  assert.equal(view, canceled);
+  gesture.dispose();
+  assert.equal(pointer('pointerdown', 3, 100, 100), true);
 });

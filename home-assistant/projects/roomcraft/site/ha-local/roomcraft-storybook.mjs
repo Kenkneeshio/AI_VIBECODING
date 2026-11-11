@@ -1,5 +1,6 @@
 import {createStorybookScene} from './storybook-scene.mjs';
-import {normalizeCameraView, populateCameraOptions} from './storybook-camera.mjs';
+import {enterFreeView, normalizeCameraView, populateCameraOptions} from './storybook-camera.mjs';
+import {bindFreeViewGestures} from './storybook-orbit.mjs';
 import {placeStorybookTargets, readStorybookConfig, storybookFrame} from './storybook-state.mjs';
 
 const TAG = 'roomcraft-storybook-card';
@@ -33,6 +34,11 @@ class RoomcraftStorybookCard extends HTMLElement {
         :focus-visible{outline:2px solid #74516f;outline-offset:2px}
         .stage{position:relative;min-height:272px;height:calc(100dvh - 118px);isolation:isolate}
         canvas{display:block;width:100%;height:100%}
+        canvas[data-free-view]{cursor:grab;touch-action:none}
+        canvas[data-free-view]:active{cursor:grabbing}
+        .free-view-hint{position:absolute;top:9px;left:50%;transform:translateX(-50%);box-sizing:border-box;
+          width:max-content;max-width:calc(100% - 18px);padding:5px 10px;border-radius:8px;
+          background:#443649;color:#fffaf0;text-align:center;font-size:12px;pointer-events:none}
         .overlay{position:absolute;inset:0;pointer-events:none}
         .device,.camera{position:absolute;transform:translate(-50%,-50%);pointer-events:auto}
         .camera{z-index:1}
@@ -68,6 +74,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         </header>
         <div class="stage">
           <canvas role="img" aria-label="Three-dimensional cutaway of the second floor"></canvas>
+          <span id="free-view-hint" class="free-view-hint" hidden>Drag or use arrow keys to orbit. Pinch, scroll, or use +/− to zoom.</span>
           <svg class="tethers" aria-hidden="true"></svg>
           <div class="overlay"></div>
           <div class="status"><div class="status-inner">
@@ -83,9 +90,13 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.status = this.shadowRoot.querySelector('.status');
     this.viewSelect = this.shadowRoot.querySelector('#storybook-view');
     this.viewStatus = this.shadowRoot.querySelector('.view-status');
+    this.freeViewHint = this.shadowRoot.querySelector('#free-view-hint');
     this.cameraView = normalizeCameraView('top');
     populateCameraOptions(this.viewSelect);
-    this.viewSelect.addEventListener('change', () => this.changeView(this.viewSelect.value));
+    this.viewSelect.addEventListener('change', () => {
+      const preset = this.viewSelect.value;
+      this.changeView(preset === 'free' ? enterFreeView(this.cameraView) : preset);
+    });
     for (const button of this.shadowRoot.querySelectorAll('[data-camera]')) {
       button.addEventListener('click', () => {
         const current = this.scene?.getView() || this.cameraView;
@@ -104,6 +115,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.onMotionChange = () => this.schedule();
     this.onVisibility = () => {
       if (document.hidden) {
+        this.freeViewGestures?.cancel();
         cancelAnimationFrame(this.animationFrame);
         this.animationFrame = undefined;
       } else this.schedule();
@@ -139,6 +151,10 @@ class RoomcraftStorybookCard extends HTMLElement {
   getCardSize() { return 8; }
 
   connectedCallback() {
+    this.freeViewGestures = bindFreeViewGestures(this.canvas, {
+      getView: () => this.scene ? this.cameraView : null,
+      onChange: view => this.changeView(view, {announce: false}),
+    });
     this.resizeObserver.observe(this.stage);
     window.addEventListener('resize', this.onViewportResize);
     window.visualViewport?.addEventListener('resize', this.onViewportResize);
@@ -148,6 +164,8 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this.freeViewGestures?.dispose();
+    this.freeViewGestures = undefined;
     this.resizeObserver.disconnect();
     window.removeEventListener('resize', this.onViewportResize);
     window.visualViewport?.removeEventListener('resize', this.onViewportResize);
@@ -177,6 +195,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.model = readStorybookConfig(config);
       this.scene = createStorybookScene(this.canvas, this.model.layout);
       this.scene.setView(this.cameraView);
+      this.syncFreeViewMode();
       this.controls = this.model.controls.map(config => {
         const camera = config.type === `custom:${CAMERA_TAG}`;
         const element = document.createElement(camera ? CAMERA_TAG : CONTROL_TAG);
@@ -198,16 +217,33 @@ class RoomcraftStorybookCard extends HTMLElement {
     }
   }
 
-  changeView(view) {
+  syncFreeViewMode() {
+    const active = Boolean(this.scene) && this.cameraView.preset === 'free';
+    this.canvas.toggleAttribute('data-free-view', active);
+    this.freeViewHint.hidden = !active;
+    if (active) {
+      this.canvas.tabIndex = 0;
+      this.canvas.setAttribute('aria-describedby', this.freeViewHint.id);
+    } else {
+      this.canvas.removeAttribute('tabindex');
+      this.canvas.removeAttribute('aria-describedby');
+    }
+  }
+
+  changeView(view, {announce = true} = {}) {
     this.cameraView = normalizeCameraView(view);
     this.scene?.setView(this.cameraView);
-    this.viewSelect.value = this.cameraView.preset;
-    const label = this.viewSelect.selectedOptions[0]?.textContent || 'Top down';
-    this.viewStatus.textContent = `${label} view, rotated ${Math.round(this.cameraView.azimuth)} degrees, zoom ${Math.round(this.cameraView.zoom * 100)} percent.`;
+    if (announce) {
+      this.freeViewGestures?.cancel();
+      this.viewSelect.value = this.cameraView.preset;
+      this.syncFreeViewMode();
+      const label = this.viewSelect.selectedOptions[0]?.textContent || 'Top down';
+      this.viewStatus.textContent = `${label} view, rotated ${Math.round(this.cameraView.azimuth)} degrees, zoom ${Math.round(this.cameraView.zoom * 100)} percent.`;
+      this.resize();
+    }
     this.shadowRoot.querySelector('[data-camera=out]').disabled = this.cameraView.zoom <= .6;
     this.shadowRoot.querySelector('[data-camera=in]').disabled = this.cameraView.zoom >= 2.5;
     this.anchorDirty = true;
-    this.resize();
     this.schedule();
   }
 
@@ -315,6 +351,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   reset() {
+    this.freeViewGestures?.cancel();
     cancelAnimationFrame(this.animationFrame);
     this.animationFrame = undefined;
     this.loading = undefined;
@@ -324,6 +361,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.tethers.replaceChildren();
     this.scene?.dispose();
     this.scene = undefined;
+    this.syncFreeViewMode();
     this.width = this.height = undefined;
     this.failed = false;
   }

@@ -1,5 +1,9 @@
 # Decision log
 
+## Free view makes the canvas a camera control
+
+Free view is an explicit camera mode shared by Roomcraft Home and Studio. Starting Free view keeps the current heading and zoom and lifts an overhead view to a slight angle. Dragging or pinching is handled on the canvas. Dashboard overlays keep their own tap targets, and Studio uses a separate mode for canvas editing so an orbit cannot move a furnishing.
+
 ## Restore the source plan and join walls in project space
 
 The owner-marked Floorplanner plan defines the room and passage topology. The approved Roomcraft illustration defines the current plan coordinates, stair orientation and removable door leaves. Reference revision 7 applies measured fixes to stock wall and floor groups and reorients the stock bed. The published layout keeps its version 2 schema, device bindings and project dimensions.
