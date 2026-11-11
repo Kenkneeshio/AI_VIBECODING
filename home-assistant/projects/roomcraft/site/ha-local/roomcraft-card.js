@@ -586,7 +586,7 @@ class RoomcraftEditorCard extends HTMLElement {
       return;
     }
     if (message.kind !== 'request' || !Number.isSafeInteger(message.id) ||
-        message.id < 1 || !['GET', 'POST', 'CAMERA_GET', 'CAMERA_SET'].includes(message.method)) return;
+        message.id < 1 || !['GET', 'POST', 'CAMERA_GET', 'CAMERA_SET', 'TRACK_GET'].includes(message.method)) return;
     let response;
     try {
       if (!this._hass?.connected) throw new Error('Home Assistant is disconnected.');
@@ -596,6 +596,13 @@ class RoomcraftEditorCard extends HTMLElement {
         case 'POST': data = await this._writeDashboard(message.payload); break;
         case 'CAMERA_GET': data = await RoomcraftEditorCard.readStartupView(this._hass, DASHBOARD); break;
         case 'CAMERA_SET': data = await RoomcraftEditorCard.writeStartupView(this._hass, DASHBOARD, message.payload); break;
+        case 'TRACK_GET': {
+          const ids = message.payload;
+          if (!Array.isArray(ids) || ids.length > 12 || !ids.every(id =>
+            typeof id === 'string' && /^sensor\.[a-z0-9_]+$/.test(id))) throw new Error('Invalid tracking sources.');
+          data = customElements.get('roomcraft-storybook-card')?.trackSnapshots?.(this._hass.states || {}, ids) || {};
+          break;
+        }
       }
       response = { channel: CHANNEL, kind: 'response', id: message.id, ok: true, data };
     } catch (error) {

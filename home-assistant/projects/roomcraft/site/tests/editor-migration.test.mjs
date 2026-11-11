@@ -112,6 +112,32 @@ test('the 3D mutation bridge preserves bindings and records one undoable move', 
   assert.notEqual(bridge.getProject().items[0].x, -1000);
 });
 
+test('Studio saves radar calibration through the Inspector and keeps live samples out of the layout', () => {
+  const radar = {id:'radar', type:'presenceSwitch', name:'Radar', x:300, y:400, w:36, h:20, rotation:90};
+  const project = {version:2, editableReferenceVersion:9, rooms:[], walls:[], items:[radar], hotspots:[]};
+  const editor = boot(project);
+  const bridge = editor.window.RoomcraftEditorViewport;
+  bridge.selectItem(radar.id);
+  const closest = (match, target) => selector => selector === match ? target : null;
+  editor.dispatch('inspectorContent', 'change', {target:{closest:closest('[data-prop]', {
+    dataset:{prop:'presenceTrackEntityId'}, value:'sensor.radar_targets',
+  })}});
+  for (const [id, value] of [['presence-track-scale', {value:'100'}],
+    ['presence-track-heading', {value:'0'}], ['presence-track-flip', {checked:false}]]) editor.elements.set(id, value);
+  editor.dispatch('inspectorContent', 'click', {target:{closest:closest('[data-action]', {
+    dataset:{action:'calibrate-presence'},
+  })}});
+  const saved = editor.read();
+  assert.equal(saved.items[0].presenceTrackEntityId, 'sensor.radar_targets');
+  assert.deepEqual(saved.items[0].presenceTrackTransform, [0,-1,300,1,0,400]);
+  bridge.setPersonPreview([{id:'sample', x:280, y:440}]);
+  assert.deepEqual(editor.read(), saved);
+  assert.deepEqual(boot(saved).read().items[0], saved.items[0]);
+  editor.dispatch('undoButton', 'click', {});
+  assert.equal(editor.read().items[0].presenceTrackTransform, undefined);
+  assert.equal(editor.read().items[0].presenceTrackEntityId, 'sensor.radar_targets');
+});
+
 test('joining walls closes a T junction, keeps a doorway, and is one undoable edit', () => {
   const walls = [
     {id:'test-header', x1:500, y1:400, x2:700, y2:400, finish:'plaster'},

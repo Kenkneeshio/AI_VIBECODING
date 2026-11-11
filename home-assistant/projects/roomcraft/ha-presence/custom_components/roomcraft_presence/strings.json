@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Roomcraft Presence",
+        "description": "Discover supported Inovelli switches already paired with ZHA. Radar reporting is enabled separately for each device."
+      }
+    },
+    "abort": {
+      "already_configured": "Roomcraft Presence is already configured."
+    }
+  }
+}

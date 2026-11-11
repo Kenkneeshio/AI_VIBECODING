@@ -1,5 +1,13 @@
 # Changelog
 
+## Live presence tracking
+
+- Added an opt-in Home Assistant bridge for Inovelli VZM32-SN switches already paired with ZHA. It exposes anonymous radar target counts, positions and zone reports while retaining the switch's ordinary occupancy sensor.
+- A presence switch object can bind the radar sensor and store a floor-plan calibration. Home Assistant Studio previews recent positions while Roomcraft Home displays anonymous animated characters and offers **Main menu → Presence tracking** for radar count and recent zone reports.
+- The shared projection discards stale and out-of-plan positions. The saved layout contains only the entity binding and calibration. Live radar data stays in authenticated Home Assistant.
+- Installed the bridge and verified persistent reporting on the paired switch after a Core restart. Home Assistant received live positions and zone reports. The wall tablet showed a live character and the matching radar count. The published living-room switch has a starting calibration; final placement should be checked against two known spots.
+- Passed 144 editor and engine tests, 54 Home Assistant JavaScript tests, 20 Python tests, TypeScript, lint with zero errors and the production build. The owner-private editor deployed as Site v60 from `4aec6692e652724a19c4ad718f5252e660873f13`. It can edit tracking bindings and calibration; the live preview uses the signed-in Home Assistant editor.
+
 ## Object models, dimensions, and a simpler dashboard
 
 - **Default** is a view choice. It resolves the saved camera angle or opens overhead. Main menu groups the secondary controls in Studio and Roomcraft Home.

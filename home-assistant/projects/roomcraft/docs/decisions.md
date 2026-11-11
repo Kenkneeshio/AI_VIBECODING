@@ -1,5 +1,11 @@
 # Decision log
 
+## Keep radar telemetry local and separate from the saved plan
+
+The household can preview where the switch detects movement and see recent radar counts on the tablet. Keep the switch paired with ZHA and attach a local listener to its existing radar cluster. An administrator enables detailed reporting for one device at a time. Stock occupancy remains an independent automation input. An explicit vacancy can report zero, while silence alone leaves count unknown.
+
+The presence switch stores the source entity and a measured plan transform. Authenticated Home Assistant surfaces use fresh positions to animate anonymous characters, and the live menu reports recent counts and zones. The private Site can edit the binding and transform. Coordinates, track IDs and timestamps stay in Home Assistant runtime state and outside the saved project, exported art and Recorder attributes. [Inovelli radar report contract](https://help.inovelli.com/en/articles/12773613-blue-series-mmwave-presence-dimmer-switch-advanced-mmwave-configuration)
+
 ## Browse models from either surface and author through Studio
 
 Studio and Roomcraft Home use a shared catalog and searchable library for placed objects, available devices, and models. A live action opens Studio with one same-origin session handoff. Device identifiers stay out of the navigation URL. Studio validates the action against the current layout and keeps it in the browser draft until publication. Compatible model swaps retain the item identity, binding and footprint.

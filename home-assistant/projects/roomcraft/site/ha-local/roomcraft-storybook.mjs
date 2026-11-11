@@ -1,3 +1,4 @@
+import {readPersonTracks, trackingSnapshots, trackingStatus} from './storybook-tracking.mjs';
 import {bindLiveModelLibrary} from './storybook-library.mjs';
 import {createStorybookScene} from './storybook-scene.mjs';
 import {enterFreeView, normalizeCameraView, populateCameraOptions, readSavedFreeView, resolveDefaultCameraView} from './storybook-camera.mjs';
@@ -37,6 +38,15 @@ class RoomcraftStorybookCard extends HTMLElement {
         .main-menu button:disabled{opacity:.35;cursor:default}
         .main-menu button:hover,.main-menu a:hover{background:#f2e9d9;text-decoration:none}
         .main-menu hr{margin:4px 6px;border:0;border-top:1px solid #e8dfce}
+        .tracking-dialog{box-sizing:border-box;width:min(420px,calc(100% - 24px));max-height:75dvh;overflow:auto;
+          border:1px solid #c9b8a0;border-radius:14px;background:#fffaf0;color:#3c3247;padding:16px}
+        .tracking-dialog::backdrop{background:#182a2a9c}
+        .tracking-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+        .tracking-dialog h2{font-size:17px;margin:0}
+        .tracking-dialog button{font:inherit;min-height:44px;padding:6px 12px;border:1px solid #c9b8a0;
+          border-radius:7px;background:#fffaf0;color:inherit}
+        .tracking-list p{margin:10px 0 0;padding:8px;border:1px solid #eee2cf;border-radius:7px}
+        .tracking-list small{display:block;margin-top:3px}
         .view-status{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
         a,.bar button{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;
           min-height:44px;padding:0 9px;font:inherit;color:inherit;text-decoration:none}
@@ -78,6 +88,7 @@ class RoomcraftStorybookCard extends HTMLElement {
               <button type="button" class="main-menu-button" aria-expanded="false" aria-controls="storybook-main-menu">Main menu <span aria-hidden="true">⌄</span></button>
               <div class="main-menu" id="storybook-main-menu" hidden>
                 <a href="/second-floor/studio?panel=models" data-open-models>Object models</a>
+                <button type="button" class="open-tracking" hidden>Presence tracking</button>
                 <a href="/second-floor/studio">Studio</a>
                 <a href="/second-floor/plan">Floor plan</a>
                 <button type="button" class="weather" hidden></button>
@@ -102,7 +113,11 @@ class RoomcraftStorybookCard extends HTMLElement {
             <div role="status">Opening the storybook…</div><a href="/second-floor/plan" hidden>Open floor plan</a>
           </div></div>
         </div>
-      </section>`;
+      </section>
+      <dialog class="tracking-dialog" aria-label="Presence tracking">
+        <header><h2>Presence tracking</h2><button type="button" class="close-tracking">Close</button></header>
+        <div class="tracking-list"></div>
+      </dialog>`;
     bindLiveModelLibrary(this);
     this.stage = this.shadowRoot.querySelector('.stage');
     this.canvas = this.shadowRoot.querySelector('canvas');
@@ -119,6 +134,15 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.cameraView = resolveDefaultCameraView(null);
     this.menuButton = this.shadowRoot.querySelector('.main-menu-button');
     this.mainMenu = this.shadowRoot.querySelector('.main-menu');
+    this.trackingButton = this.shadowRoot.querySelector('.open-tracking');
+    this.trackingDialog = this.shadowRoot.querySelector('.tracking-dialog');
+    this.trackingList = this.shadowRoot.querySelector('.tracking-list');
+    this.trackingButton.addEventListener('click', () => {
+      this.setMainMenu(false, true);
+      this.paintTracking();
+      this.trackingDialog.showModal();
+    });
+    this.shadowRoot.querySelector('.close-tracking').addEventListener('click', () => this.trackingDialog.close());
     this.menuButton.addEventListener('click', () => this.setMainMenu(this.mainMenu.hidden));
     this.onMenuPointerDown = event => {
       const path = event.composedPath();
@@ -224,6 +248,10 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   getCardSize() { return 8; }
+
+  static trackSnapshots(states, ids) {
+    return trackingSnapshots(states, ids);
+  }
 
   static preview(config, states) {
     return storybookPreview(config, states);
@@ -423,10 +451,42 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.schedule();
   }
 
+  paintTracking() {
+    const sources = this.model?.layout.items.filter(item => item.type === 'presenceSwitch' && item.presenceTrackEntityId) || [];
+    this.trackingList.replaceChildren();
+    for (const item of sources) {
+      const {count, zones} = trackingStatus(item, this.session?.connected ? this.session.states : {}, Date.now());
+      const row = document.createElement('p');
+      const label = document.createElement('strong');
+      label.textContent = item.name;
+      const status = document.createElement('small');
+      status.textContent = count === null ? 'Awaiting a recent radar report' :
+        count + (count === 1 ? ' radar target' : ' radar targets');
+      row.append(label, status);
+      if (zones.some(value => value !== null)) {
+        const details = document.createElement('small');
+        details.textContent = zones.map((value, index) => value === null ? '' :
+          'Zone ' + (index + 1) + ' ' + (value ? 'occupied' : 'clear')).filter(Boolean).join(' · ');
+        row.append(details);
+      }
+      this.trackingList.append(row);
+    }
+  }
+
   refresh() {
     if (!this.model) return;
     const offline = this.session?.connected === false;
-    this.frame = storybookFrame(this.model, offline ? {} : this.session.states, Date.now());
+    const states = offline ? {} : this.session.states;
+    const now = Date.now();
+    this.frame = storybookFrame(this.model, states, now);
+    this.frame.people = readPersonTracks(this.model.layout.items, states, now);
+    this.trackingButton.hidden = !this.model.layout.items.some(item => item.type === 'presenceSwitch' && item.presenceTrackEntityId);
+    if (this.trackingDialog.open) this.paintTracking();
+    clearTimeout(this.trackExpiryTimer);
+    if (this.frame.people.length) {
+      const expires = Math.min(...this.frame.people.map(track => track.expiresAt));
+      this.trackExpiryTimer = setTimeout(() => this.refresh(), Math.max(1, expires - now));
+    }
     this.weather.hidden = !this.model.weather.weather_entity;
     const {condition, temperature, unit} = this.frame.environment;
     const reading = Number.isFinite(temperature) ? ` · ${Math.round(temperature)}${unit}` : '';
@@ -447,9 +507,11 @@ class RoomcraftStorybookCard extends HTMLElement {
     if (this.animationFrame !== undefined || !this.scene || !this.frame || document.hidden) return;
     this.animationFrame = requestAnimationFrame(at => {
       this.animationFrame = undefined;
-      const motion = (this.frame.moving || this.scene.hasAmbientMotion) && !this.motionPreference.matches;
+      const motion = (this.frame.moving || this.scene.hasAmbientMotion || this.frame.people.length) &&
+        !this.motionPreference.matches;
       if (this.anchorDirty || !motion || at - this.lastFrame >= FRAME_INTERVAL - 1 || this.lastFrame === undefined) {
         try {
+          this.scene.setPeople(this.frame.people, at / 1000, {reduceMotion: this.motionPreference.matches});
           this.scene.render(at / 1000, this.frame.states,
             {...this.frame.environment, reduceMotion: this.motionPreference.matches});
           this.lastFrame = at;
@@ -516,6 +578,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   reset() {
     this.freeViewGestures?.cancel();
     cancelAnimationFrame(this.animationFrame);
+    clearTimeout(this.trackExpiryTimer);
     this.animationFrame = undefined;
     this.loading = undefined;
     this.model = undefined;

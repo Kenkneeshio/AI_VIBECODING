@@ -33,7 +33,7 @@
       return true;
     },
     request(method, payload) {
-      if (!['GET', 'POST', 'CAMERA_GET', 'CAMERA_SET'].includes(method)) {
+      if (!['GET', 'POST', 'CAMERA_GET', 'CAMERA_SET', 'TRACK_GET'].includes(method)) {
         return Promise.reject(new Error('Unsupported dashboard operation'));
       }
       const id = ++sequence;
@@ -41,7 +41,7 @@
         const timeout = setTimeout(() => {
           pending.delete(id);
           reject(new Error('Home Assistant did not answer the editor'));
-        }, method === 'POST' ? 70000 : 15000);
+        }, method === 'POST' ? 70000 : method === 'TRACK_GET' ? 4000 : 15000);
         pending.set(id, { resolve, reject, timeout });
         if (host.closed) {
           clearTimeout(timeout);

@@ -1,0 +1,18 @@
+set_reporting:
+  name: Set radar reporting
+  description: Bind the supported switch's radar cluster to the local coordinator and set detailed target reporting. Disabling stops target reports.
+  fields:
+    enabled:
+      name: Enable reporting
+      required: true
+      selector:
+        boolean:
+    device_id:
+      name: Inovelli switch
+      description: Required if more than one supported switch is paired.
+      selector:
+        device:
+          filter:
+            - integration: zha
+              manufacturer: Inovelli
+              model: VZM32-SN

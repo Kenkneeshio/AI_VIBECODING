@@ -32,6 +32,7 @@ jobs:
       - run: npm test
       - run: node --test ha-local/roomcraft-card.test.mjs ha-local/roomcraft-weather-outdoor.test.mjs
       - run: python3 -m unittest discover -s ha-local -p 'test_*.py'
+      - run: python3 -m unittest discover -s ../ha-presence/tests -p 'test_*.py'
       - run: npx tsc --noEmit
       - run: npm run lint
       - run: npm run build

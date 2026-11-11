@@ -44,6 +44,12 @@ Do not put telemetry such as current light state or robot coordinates in this fi
 
 The engine canonicalizes object keys while retaining documented array order. Equivalent projects therefore have the same SHA-256 project fingerprint even when property insertion order differs. Starter-art migrations run on the separate `editableReferenceVersion` track, are named and ordered, and must pass a second-run idempotency check. See the [deterministic engine contract](engine-contract.md) before adding a field, migration, layer, or exporter.
 
+## Radar calibration
+
+A `presenceSwitch` can save `presenceTrackEntityId` as a `sensor.*` reference and `presenceTrackTransform` as six finite coefficients `[a,b,c,d,e,f]`. The transform computes `planX = a*x + b*y + c` and `planY = d*x + e*y + f` from sensor-local coordinates. Each coefficient is bounded by 10,000 in magnitude. The absolute determinant `|a*e - b*d|` must exceed `0.00001`. An unset or invalid transform leaves positions unplotted.
+
+The `entityId` and `presenceEntityId` retain their existing dimmer and occupancy behavior. Radar count, target IDs, coordinates, velocity and zone reports are transient Home Assistant data. Saved layout JSON retains the source and calibration. Layout exports and the 2D plan image exclude live radar readings. [Radar sensor contract](../ha-presence/README.md)
+
 ## Bound objects and camera previews
 
 A light or fan item with `entityId` is still ordinary editable artwork. Export derives a `custom:roomcraft-object-control` picture element from that binding at the item's current coordinates; its state comes from Home Assistant. An unbound fixture remains visual only. A `controlZone` item with an entity binding exports the same control as an invisible movable hit area and adds no pixels to the PNG. Its center can overlap another item, as with a fan-light toggle over fan artwork. The separate `hotspots[]` array retains legacy `state-icon` elements; do not duplicate a bound object there. Keep real entity IDs in the private dashboard project; public examples use placeholders.

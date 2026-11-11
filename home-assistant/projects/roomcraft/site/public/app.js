@@ -323,6 +323,7 @@
   let dashboardPublishedProject = null;
   let dashboardDefaultProject = null;
   let dashboardPreview = null;
+  let personPreview = [];
   let projectChangeSerial = 0;
   let sceneOrderCache = null;
   let entityOptions = [];
@@ -546,6 +547,34 @@
     c.stroke();
     c.restore();
   }
+  function drawPersonPreview(c) {
+    for (const person of personPreview) {
+      c.save();
+      c.translate(person.x, person.y);
+      c.fillStyle = '#3e595460';
+      c.beginPath();
+      c.ellipse(0, 1, 11, 5, 0, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = '#779e8b';
+      c.strokeStyle = '#fffae8';
+      c.lineWidth = 1.7;
+      c.beginPath();
+      c.ellipse(0, -4, 8, 6, 0, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+      c.fillStyle = '#f5ca9e';
+      c.beginPath();
+      c.arc(0, -12, 6.8, 0, Math.PI * 2);
+      c.fill();
+      c.stroke();
+      c.fillStyle = '#664b47';
+      c.beginPath();
+      c.arc(0, -12, 6, Math.PI, 2 * Math.PI);
+      c.fill();
+      c.restore();
+    }
+  }
+
   function draw(target=ctx,clean=false,forcedMode=null) {
     const c=target; const mode=forcedMode||viewMode;
     c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
@@ -579,6 +608,7 @@
         for(const o of layers.windowItems)drawDynamicObject(o);
       }
       if(!clean){
+        drawPersonPreview(c);
         drawControlZones(c);drawHotspots(c);drawSelection(c);
         drawStructureGuides(c);
         if(pendingTemplate&&currentPointer){
@@ -1149,13 +1179,25 @@
       return;
     }
     if(selected.kind==='item'&&window.RoomcraftObjectControls.isBindingKey(key)){
-      if(target.type==='cameraThumbnail')return;
-      const update=window.RoomcraftObjectControls.propertyUpdate(key,value);
-      if(!update.valid){showToast(key==='controlIcon'?'Use an icon like mdi:lightbulb':'Choose a valid button setting');renderInspector();return;}
-      if(target[key]===update.value||(!target[key]&&update.value===undefined))return;
+      const tracking = key === 'presenceTrackEntityId' || key === 'presenceTrackTransform';
+      if (target.type === 'cameraThumbnail' || (tracking && target.type !== 'presenceSwitch')) return;
+      const update = window.RoomcraftObjectControls.propertyUpdate(key, value);
+      if (!update.valid) {
+        const errors = {
+          presenceTrackEntityId: 'Enter a sensor entity ID like sensor.radar_targets.',
+          presenceTrackTransform: 'Enter six finite values with a valid position scale.',
+          controlIcon: 'Use an icon like mdi:lightbulb',
+        };
+        showToast(errors[key] || 'Choose a valid button setting');
+        renderInspector();
+        return;
+      }
+      if (JSON.stringify(target[key]) === JSON.stringify(update.value)) return;
       snapshot();
-      if(update.value===undefined)delete target[key];else target[key]=update.value;
-      afterChange('Updated dashboard button');return;
+      if (update.value === undefined) delete target[key];
+      else target[key] = update.value;
+      afterChange(tracking ? 'Updated person tracking' : 'Updated dashboard button');
+      return;
     }
     if(selected.kind==='item'&&target.type==='cameraThumbnail'&&key==='imageEntityId'&&!(key in target))target.imageEntityId='';
     if(selected.kind==='item'&&target.type==='cameraThumbnail'&&key==='eventEntityIds'){
@@ -1186,6 +1228,19 @@
     if(selected.kind==='item')clampLinkedItem(target);
     afterChange(`Updated ${key}`);
   }
+  function calibratePresence() {
+    const item = selected?.kind === 'item' && project.items.find(entry => entry.id === selected.id);
+    const scale = document.getElementById('presence-track-scale').value;
+    const heading = document.getElementById('presence-track-heading').value;
+    const flipped = document.getElementById('presence-track-flip').checked;
+    const transform = window.RoomcraftObjectControls.presenceCalibration(item, Number(scale), Number(heading), flipped);
+    if (!transform) {
+      showToast('Enter a scale from 1 to 1000 plan pixels per metre and a rotation offset.');
+      return;
+    }
+    updateProperty('presenceTrackTransform', transform.join(', '));
+  }
+
   function beginModelPlacement(type, entityId = '') {
     const template = Object.hasOwn(templateByType,type) && templateByType[type];
     if (!template || entityId && !Models.canMap(entityId, template)) return false;
@@ -1497,7 +1552,7 @@
     document.getElementById('inspectorContent').addEventListener('change',e=>{
       if (e.target.matches?.('[data-lock-dimensions]')) { lockObjectDimensions = e.target.checked; return; }
       const el=e.target.closest('[data-prop]');if(el)updateProperty(el.dataset.prop,el.value);const v=e.target.closest('[data-variant]');if(v)updateVariant(v.value,v.dataset.variantKind||'finish');const h=e.target.closest('[data-hotspot-prop]');if(h)updateHotspotProperty(h.dataset.hotspotProp,h.value);});
-    document.getElementById('inspectorContent').addEventListener('click',e=>{const a=e.target.closest('[data-action]');if(a){if(a.dataset.action==='delete')deleteSelected();if(a.dataset.action==='duplicate')duplicateSelected();if(a.dataset.action==='rotate')rotateSelected();if(a.dataset.action==='reset-dimensions')resetObjectDimensions();}if(e.target.id==='openHelpButton')document.getElementById('helpDialog').showModal();});
+    document.getElementById('inspectorContent').addEventListener('click',e=>{const a=e.target.closest('[data-action]');if(a){if(a.dataset.action==='delete')deleteSelected();if(a.dataset.action==='duplicate')duplicateSelected();if(a.dataset.action==='rotate')rotateSelected();if(a.dataset.action==='reset-dimensions')resetObjectDimensions();if(a.dataset.action==='calibrate-presence')calibratePresence();}if(e.target.id==='openHelpButton')document.getElementById('helpDialog').showModal();});
     document.getElementById('newRoomButton').addEventListener('click',addRoom);
     document.getElementById('designModeButton').addEventListener('click',()=>setViewMode('design'));
     document.getElementById('referenceModeButton').addEventListener('click',()=>setViewMode('reference'));
@@ -1541,6 +1596,11 @@
   window.RoomcraftEditorViewport = Object.freeze({
     getProject: () => clone(project),
     getPreview: () => dashboardPreview,
+    setPersonPreview(people) {
+      if (!people.length && !personPreview.length) return;
+      personPreview = people;
+      draw();
+    },
     getSelection: () => selected ? {...selected} : null,
     getTool: () => viewMode === 'reference' ? 'reference' : pendingWallFinish ? 'wall' : tool,
     hasPlacement: () => Boolean(pendingTemplate),

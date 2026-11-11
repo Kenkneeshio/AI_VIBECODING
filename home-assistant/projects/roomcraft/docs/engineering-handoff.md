@@ -19,6 +19,14 @@ The [latest release record](../CHANGELOG.md) includes browser exports, live imag
 
 The interface-control placement contract is a 48 × 48 bottom-right row in project space: `uiEdit` at `(1350, 864)`, `uiStatusAir` at `(1410, 864)`, and `uiStatusElectrical` at `(1470, 864)`. The full-width dashboard transform places all three at `top: 90.74%`, above the forecast strip. `object-controls.js`, `lib/dashboard-elements.ts`, and `ha-local/roomcraft-card.js` must keep their shared CSS-variable visual contract aligned. Status popups at this vertical position open upward; actions and severity classification remain unchanged. These items are owner-editable data, so do not add a recurring migration that overwrites later placement.
 
+## Presence tracking and calibration
+
+The [Roomcraft Presence integration](../ha-presence/README.md) attaches to the stock ZHA radar cluster for each already paired Inovelli VZM32-SN. Discovery leaves radio settings alone. An administrator enables reporting per switch through `roomcraft_presence.set_reporting`, which verifies the coordinator bind and reporting attribute. The bridge expires target frames to unknown after eight seconds of silence. An explicit zero-target frame or native ZHA vacancy supplies zero. Recorder excludes tracks, zones and timestamps from attributes.
+
+`storybook-tracking.mjs` validates the bridge schema and applies the saved transform before handing transient plan positions to `storybook-people.mjs`. It displays positions only when they are under 4.5 seconds old, limits tracks per source, and rejects points outside the plan. Zone flags have their own timestamp. The authenticated Studio iframe requests only the bounded set of radar sources bound to its draft. The standalone Site has no position feed. Exports and release packages contain the reusable code and layout metadata.
+
+Acceptance checks cover parser validation and explicit vacancy, live Zigbee reports through the local bridge, two-point calibration, expiry or unavailable behavior, editor export without telemetry, and the wall tablet. Verify the old dimmer and occupancy entity IDs still resolve. Disable reporting before rolling back the integration, and restore the prior layout and assets if their bindings need to be removed.
+
 ### Visual-correction contract and migration version 4
 
 The current source corrects a cross-layer visual regression without changing the 1536 × 1024 design space or 1536 × 864 presentation crop. Treat these details as one coordinated release:

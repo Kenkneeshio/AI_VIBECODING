@@ -74,6 +74,34 @@ test('vacuum bindings export an authenticated map camera and editor controls', (
   assert.match(inspector, /maps live vacuum coordinates to plan pixels/);
 });
 
+test('radar calibration binds a presence switch to a sensor and rejects unusable transforms', () => {
+  const c = controls();
+  const item = { type: 'presenceSwitch', name: 'Presence dimmer', x: 300, y: 400, w: 36, h: 20, rotation: 90 };
+  const transform = c.presenceCalibration(item, 100, 0, false);
+  assert.deepEqual(Array.from(transform, value => value || 0), [0, -1, 300, 1, 0, 400]);
+  assert.deepEqual(Array.from(c.presenceCalibration(item, 75, -90, true), value => value || 0),
+    [-0.75, 0, 300, 0, 0.75, 400]);
+  assert.equal(c.presenceCalibration(item, 0, 0, false), undefined);
+  const binding = {...item, presenceTrackEntityId: 'sensor.radar_targets', presenceTrackTransform: transform};
+  assert.equal(c.validBinding(binding), true);
+  assert.equal(c.validBinding({...binding, type: 'lamp'}), false);
+  assert.equal(c.validBinding({...binding, presenceTrackEntityId: ''}), false);
+  assert.equal(c.propertyUpdate('presenceTrackEntityId', ' sensor.radar_targets ').value, binding.presenceTrackEntityId);
+  assert.equal(c.propertyUpdate('presenceTrackEntityId', 'binary_sensor.example_presence').valid, false);
+  assert.deepEqual(Array.from(c.propertyUpdate('presenceTrackTransform', '0, -1, 300, 1, 0, 400').value),
+    [0, -1, 300, 1, 0, 400]);
+  assert.equal(c.propertyUpdate('presenceTrackTransform', '1, 2, 300, 2, 4, 400').valid, false);
+  assert.equal(c.propertyUpdate('presenceTrackTransform', '1, 0, , 0, 1, 400').valid, false);
+  assert.equal(c.propertyUpdate('presenceTrackTransform', '1, 0, 300, 0, 0.000001, 400').valid, false);
+  const inspector = c.renderInspector(binding, {icon:'◉', label:'Presence dimmer'}, () => '', () => '', String,
+    [{entity_id:'sensor.radar_targets', domain:'sensor', name:'Radar targets', area:'Living room'},
+      {entity_id:'switch.dimmer', domain:'switch', name:'Dimmer', area:'Living room'}]);
+  assert.match(inspector, /PERSON TRACKING/);
+  assert.match(inspector, /data-prop="presenceTrackEntityId"/);
+  assert.match(inspector, /data-action="calibrate-presence"/);
+  assert.match(inspector, /data-prop="presenceTrackTransform"/);
+});
+
 test('a fan can show its switch state while tap and hold run separate scenes', () => {
   const c = controls();
   const fan = {

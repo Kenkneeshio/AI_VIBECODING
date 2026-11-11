@@ -10,6 +10,16 @@ Select a placed object and open **Dimensions** in the Inspector. Enter width and
 
 Search **Fish Aquarium** or **Lizard Terrarium** to place the animated tanks. They animate in 3D and use a still illustration in the 2D plan, and the 3D animation respects the device's reduced-motion setting.
 
+## Track presence on the 3D plan
+
+Open **Main menu → Presence tracking** in Roomcraft Home to see the bound switches' radar target counts and recent zone reports. A calibrated switch can show one anonymous character for each fresh target. The sensor can miss an occupant or pick up moving objects, so its count is an estimate of detected targets. It has no heart-rate or breathing-rate reading.
+
+An administrator enables detailed reporting for the compatible switch in Home Assistant. In Home Assistant Studio, select its presence switch object and set **Radar targets entity** to the device's **Radar target count** sensor. The existing occupancy indicator on the switch continues to follow its occupancy binding.
+
+Use **Plan pixels per metre**, **Rotation offset**, and **Flip radar left and right** to align the radar with the drawing. Select **Use switch position** to apply those settings from the placed switch. Have someone stand at two known points, preferably at different distances and on different sides of the switch, and adjust until their positions agree with the plan. Use **Export to dashboard** to publish the calibration. The advanced transform field accepts six affine coefficients when additional adjustment is needed.
+
+Characters leave the live view when fresh positions stop. Each switch tracks independently, so overlapping coverage can show the same person twice. Positions stay in Roomcraft Home and authenticated Home Assistant Studio. Layout exports and the private web editor contain the saved calibration. [Home Assistant presence setup](../ha-presence/README.md)
+
 ## Change the view
 
 Roomcraft Home and Studio start in **Default**. It uses your saved angle or opens directly overhead. Use **View** for **High angle**, **Dollhouse**, **Corner**, or a view from the north, east, south, or west. Directions follow the plan, with north at the top of Top down. The arrow buttons rotate the camera, the plus and minus buttons zoom, and the home-shaped reset button returns to Top down.

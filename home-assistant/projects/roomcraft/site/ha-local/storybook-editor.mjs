@@ -2,10 +2,13 @@ import {compileStorybookPlan, createStorybookScene} from './storybook-scene.mjs'
 import {CAMERA_PRESETS, enterFreeView, populateCameraOptions, resolveDefaultCameraView, studioCameraPreferences} from './storybook-camera.mjs';
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
 import {placeStorybookTargets} from './storybook-state.mjs';
+import {readPersonTracks} from './storybook-tracking.mjs';
 
 const SELECT_RADIUS = 22;
 const MIN_DRAG = 5;
 const AMBIENT_FRAME_INTERVAL = 1000 / 12;
+const TRACK_INTERVAL_MS = 1000;
+const TRACK_SOURCE_LIMIT = 12;
 
 /** Fill a free viewport slot when a dense group exceeds the local anchor grid. */
 export function placeEditorMarkers(targets, width, height) {
@@ -76,6 +79,8 @@ export function mountStorybookEditor(document, host) {
   const defaultStatus = document.getElementById('sceneDefaultStatus');
   const preferences = studioCameraPreferences(host);
   const motionPreference = host.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const trackingBridge = host.location?.pathname?.startsWith('/local/roomcraft/')
+    ? host.RoomcraftDashboardBridge : null;
   const look = document.createElement('label');
   look.className = 'scene-dashboard-look';
   look.hidden = true;
@@ -123,6 +128,14 @@ export function mountStorybookEditor(document, host) {
   let cameraChanged = false;
   let savedStartupView = null;
   let defaultBusy = false;
+  let trackingItems = [];
+  let trackingIds = [];
+  let trackingKey = '';
+  let trackingGeneration = 0;
+  let trackingTimer;
+  let trackingRequest = false;
+  let trackSnapshots = {};
+  let displayedPeople = {key: '', scene: null, reduceMotion: false};
 
   const is3D = () => mode !== 'plan';
   const isFree = () => mode === 'free';
@@ -135,7 +148,8 @@ export function mountStorybookEditor(document, host) {
     api.showStatus?.(text);
   }
   function syncAmbientAnimation() {
-    const enabled = !disposed && scene?.hasAmbientMotion && is3D() && !document.hidden && !motionPreference?.matches;
+    const enabled = !disposed && (scene?.hasAmbientMotion || scene?.hasPeopleMotion)
+      && is3D() && !document.hidden && !motionPreference?.matches;
     if (!enabled) {
       host.cancelAnimationFrame(ambientFrame);
       ambientFrame = undefined;
@@ -152,6 +166,77 @@ export function mountStorybookEditor(document, host) {
       syncAmbientAnimation();
     });
   }
+  function updatePeople(redraw = true) {
+    const activeScene = is3D() ? scene : null;
+    const reduceMotion = motionPreference?.matches === true;
+    const tracks = canTrack() ? readPersonTracks(trackingItems, trackSnapshots) : [];
+    const key = JSON.stringify(tracks);
+    if (key === displayedPeople.key && activeScene === displayedPeople.scene
+      && reduceMotion === displayedPeople.reduceMotion) return;
+    displayedPeople = {key, scene: activeScene, reduceMotion};
+    if (activeScene) {
+      activeScene.setPeople(tracks, (host.performance?.now() ?? 0) / 1000, {reduceMotion});
+      if (redraw) draw();
+    }
+    api.setPersonPreview?.(activeScene ? [] : tracks);
+  }
+
+  function canTrack() {
+    return Boolean(trackingBridge?.request && trackingIds.length && !disposed && !document.hidden);
+  }
+
+  async function readTracking(checkExpiry = true) {
+    if (checkExpiry) updatePeople();
+    if (trackingRequest || !canTrack()) return;
+    trackingRequest = true;
+    const generation = trackingGeneration;
+    try {
+      const snapshots = await trackingBridge.request('TRACK_GET', trackingIds);
+      if (generation === trackingGeneration && canTrack()) {
+        trackSnapshots = snapshots && typeof snapshots === 'object' ? snapshots : {};
+        updatePeople();
+      }
+    } catch {
+      if (generation === trackingGeneration) {
+        trackSnapshots = {};
+        updatePeople();
+      }
+    } finally {
+      trackingRequest = false;
+    }
+  }
+
+  function syncTracking() {
+    if (canTrack()) {
+      if (trackingTimer === undefined) {
+        trackingTimer = host.setInterval(readTracking, TRACK_INTERVAL_MS);
+        void readTracking(false);
+      }
+    } else {
+      if (trackingTimer !== undefined) {
+        host.clearInterval(trackingTimer);
+        trackingTimer = undefined;
+        trackingGeneration++;
+        trackSnapshots = {};
+      }
+    }
+  }
+
+  function configureTracking(items) {
+    trackingItems = items.filter(item => item.type === 'presenceSwitch'
+      && /^sensor\.[a-z0-9_]+$/.test(item.presenceTrackEntityId)
+      && Array.isArray(item.presenceTrackTransform));
+    const ids = [...new Set(trackingItems.map(item => item.presenceTrackEntityId))].slice(0, TRACK_SOURCE_LIMIT);
+    const key = ids.join(',');
+    if (key !== trackingKey) {
+      trackingKey = key;
+      trackingIds = ids;
+      trackingGeneration++;
+      trackSnapshots = {};
+    }
+    syncTracking();
+  }
+
   function draw(dragPreview) {
     syncAmbientAnimation();
     if (!scene || !is3D()) return;
@@ -269,6 +354,7 @@ export function mountStorybookEditor(document, host) {
     viewport.classList.toggle('scene-3d', is3D());
     updateButtons();
     if (!is3D()) {
+      refresh();
       syncAmbientAnimation();
       look.hidden = true;
       setStatus('Plan view · edit rooms, walls, floors and objects');
@@ -301,11 +387,14 @@ export function mountStorybookEditor(document, host) {
     viewport.classList.remove('scene-3d');
     outline.style.display = 'none';
     updateButtons();
+    updatePeople(false);
     setStatus('3D view is unavailable on this screen. Plan view is ready.');
   }
   function refresh() {
-    if (disposed || !is3D()) return;
+    if (disposed) return;
     const nextProject = api.getProject();
+    configureTracking(nextProject.items);
+    if (!is3D()) { updatePeople(); return; }
     const nextFingerprint = JSON.stringify(nextProject);
     try {
       if (!scene || nextFingerprint !== fingerprint) {
@@ -343,6 +432,7 @@ export function mountStorybookEditor(document, host) {
         }
       }
       updateButtons();
+      updatePeople(false);
       draw();
     } catch { fail(); }
   }
@@ -458,8 +548,9 @@ export function mountStorybookEditor(document, host) {
   const zoomIn = () => changeCamera(current => ({...current, zoom: current.zoom * 1.2}));
   const resetView = () => choose('top');
   const changeLook = () => draw();
-  const onMotionPreference = () => draw();
-  document.addEventListener('visibilitychange', syncAmbientAnimation);
+  const onMotionPreference = () => { updatePeople(false); draw(); };
+  const onVisibility = () => { syncTracking(); updatePeople(); syncAmbientAnimation(); };
+  document.addEventListener('visibilitychange', onVisibility);
   motionPreference?.addEventListener('change', onMotionPreference);
   async function loadStartupView() {
     defaultBusy = true;
@@ -526,7 +617,8 @@ export function mountStorybookEditor(document, host) {
     dispose() {
       disposed = true;
       syncAmbientAnimation();
-      document.removeEventListener('visibilitychange', syncAmbientAnimation);
+      syncTracking();
+      document.removeEventListener('visibilitychange', onVisibility);
       motionPreference?.removeEventListener('change', onMotionPreference);
       restoreDrag();
       orbit.dispose();

@@ -6,6 +6,7 @@ import { compileFloorStructure, compileWallStructure, isOutdoorRoom } from './st
 import { createStorybookLighting } from './storybook-lighting.mjs';
 import { fitStorybookCamera, normalizeCameraView } from './storybook-camera.mjs';
 import { applyModelHeight } from './storybook-size.mjs';
+import { createStorybookPeople } from './storybook-people.mjs';
 
 const DEG = Math.PI / 180;
 const WALL_WIDTH = 14;
@@ -854,6 +855,23 @@ export function projectExteriorClearance(plan, camera, width, height) {
   return [...rails, ...stairs];
 }
 
+function trackedFloor(plan) {
+  const surfaces = plan.floorStructure.footprint.map(polygon => polygon.map(ring => ({
+    points: ring.map(([x, y]) => ({x, y})),
+  })));
+  return (x, z) => {
+    if (surfaces.some(([outer, ...holes]) =>
+      roomContains(outer, x, z) && !holes.some(hole => roomContains(hole, x, z)))) return 0;
+    for (const stair of plan.stairs) {
+      const grade = stairGrade(stair, x, z);
+      if (grade === null) continue;
+      const step = Math.min(stair.steps, Math.floor(stair.steps * (grade - STAIR_BASE) / -STAIR_BASE) + 1);
+      return STAIR_BASE + (-STAIR_BASE / stair.steps) * step;
+    }
+    return null;
+  };
+}
+
 export function createStorybookScene(canvas, layout) {
   const plan = compileStorybookPlan(layout);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'low-power' });
@@ -881,6 +899,7 @@ export function createStorybookScene(canvas, layout) {
   const lighting = createStorybookLighting(renderer, scene, plan.bounds);
   lighting.markStructure();
   const updateWeather = buildWeather(scene, plan);
+  const people = createStorybookPeople(scene, trackedFloor(plan));
   const anchors = new Map();
   const roots = new Map();
   const garages = new Map();
@@ -980,11 +999,16 @@ export function createStorybookScene(canvas, layout) {
       }
       object.animate?.(state, object.ambientMotion ? time : telemetryTime);
     }
+    people.render(timeSeconds, reduceMotion);
     renderer.render(scene, camera);
   }
+  function setPeople(tracks, timeSeconds, options) {
+    if (!disposed) people.setTracks(tracks, timeSeconds, options);
+  }
   function renderAmbient(timeSeconds) {
-    if (disposed || currentWidth < 1 || currentHeight < 1 || !ambientObjects.length) return;
+    if (disposed || currentWidth < 1 || currentHeight < 1 || (!ambientObjects.length && !people.hasMotion)) return;
     for (const object of ambientObjects) object.animate(defaultState, timeSeconds);
+    people.render(timeSeconds);
     renderer.render(scene, camera);
   }
   function anchor(itemId) {
@@ -1003,6 +1027,7 @@ export function createStorybookScene(canvas, layout) {
   function dispose() {
     if (disposed) return;
     disposed = true;
+    people.dispose();
     const geometries = new Set();
     const materials = new Set();
     const textures = new Set();
@@ -1023,6 +1048,7 @@ export function createStorybookScene(canvas, layout) {
   const exteriorClearance = () => projectExteriorClearance(plan, camera, currentWidth, currentHeight);
   return {
     resize, render, anchor, setView, getView, projectToPlan, pickGarage, exteriorClearance, dispose,
-    hasAmbientMotion: ambientObjects.length > 0, renderAmbient,
+    hasAmbientMotion: ambientObjects.length > 0, renderAmbient, setPeople,
+    get hasPeopleMotion() { return people.hasMotion; },
   };
 }

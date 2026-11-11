@@ -87,6 +87,8 @@ function runtimeCandidates(siteRoot = SITE_ROOT, projectRoot = PROJECT_ROOT) {
     join(siteRoot, 'ha-local', 'roomcraft-weather-outdoor.js'),
     join(siteRoot, 'ha-local', 'roomcraft-storybook.mjs'),
     join(siteRoot, 'ha-local', 'storybook-state.mjs'),
+    join(siteRoot, 'ha-local', 'storybook-tracking.mjs'),
+    join(siteRoot, 'ha-local', 'storybook-people.mjs'),
     join(siteRoot, 'ha-local', 'storybook-camera.mjs'),
     join(siteRoot, 'ha-local', 'storybook-orbit.mjs'),
     join(siteRoot, 'ha-local', 'storybook-editor.mjs'),

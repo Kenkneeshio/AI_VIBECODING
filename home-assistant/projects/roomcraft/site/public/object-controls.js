@@ -6,7 +6,9 @@
   const lightForms = new Set(['table_lamp', 'bud_lamp', 'cloud_floor_lamp', 'bloom_ceiling', 'star_pendant', 'acorn_sconce']);
   const iconPattern = /^mdi:[a-z0-9-]+$/i;
   const bindingKeys = new Set(['tapAction', 'holdAction', 'tapEntityId', 'holdEntityId', 'presenceEntityId',
-    'controlLabel', 'controlIcon', 'visualKind', 'vacuumMapEntityId', 'vacuumPositionTransform']);
+    'controlLabel', 'controlIcon', 'visualKind', 'vacuumMapEntityId', 'vacuumPositionTransform',
+    'presenceTrackEntityId', 'presenceTrackTransform']);
+  const radarEntityPattern = /^sensor\.[a-z0-9_]+$/;
   const entityPattern = /^[a-z_]+\.[a-z0-9_]+$/i;
   const sceneWidth = 1536;
   const sceneHeight = 864;
@@ -37,6 +39,25 @@
     }).filter(Boolean).sort((a,b) => (a.name || a.entity_id).localeCompare(b.name || b.entity_id)).slice(0, 1500);
   }
 
+  function validPresenceTransform(transform) {
+    return Array.isArray(transform) && transform.length === 6
+      && [...transform].every(value => Number.isFinite(value) && Math.abs(value) <= 10000)
+      && Math.abs(transform[0] * transform[4] - transform[1] * transform[3]) > 1e-5;
+  }
+
+  function presenceCalibration(item, pixelsPerMetre, headingOffset, flipLeftRight) {
+    if (item?.type !== 'presenceSwitch' || ![item.x, item.y, item.rotation].every(Number.isFinite)
+      || !Number.isFinite(pixelsPerMetre) || pixelsPerMetre < 1 || pixelsPerMetre > 1000
+      || !Number.isFinite(headingOffset)) return undefined;
+    // Wall placement uses its local positive Y axis for the room-facing side.
+    const radians = ((item.rotation + headingOffset) % 360) * Math.PI / 180;
+    const scale = pixelsPerMetre / 100;
+    const sideways = flipLeftRight ? -scale : scale;
+    return [sideways * Math.cos(radians), -scale * Math.sin(radians), item.x,
+      sideways * Math.sin(radians), scale * Math.cos(radians), item.y]
+      .map(value => Number(value.toFixed(6)));
+  }
+
   function validBinding(item) {
     return (!('tapAction' in item) || actions.has(item.tapAction))
       && (!('holdAction' in item) || actions.has(item.holdAction))
@@ -46,6 +67,11 @@
         && (!item.holdEntityId || entityPattern.test(item.holdEntityId)))
       && (!('presenceEntityId' in item) || typeof item.presenceEntityId === 'string'
         && (!item.presenceEntityId || /^binary_sensor\.[a-z0-9_]+$/i.test(item.presenceEntityId)))
+      && (!('presenceTrackEntityId' in item) || item.type === 'presenceSwitch'
+        && typeof item.presenceTrackEntityId === 'string'
+        && radarEntityPattern.test(item.presenceTrackEntityId))
+      && (!('presenceTrackTransform' in item) || item.type === 'presenceSwitch'
+        && validPresenceTransform(item.presenceTrackTransform))
       && (!('controlLabel' in item) || (typeof item.controlLabel === 'string' && item.controlLabel.length <= 80))
       && (!('controlIcon' in item) || (typeof item.controlIcon === 'string' && (!item.controlIcon || iconPattern.test(item.controlIcon))))
       && (!('visualKind' in item) || visualKinds.has(item.visualKind))
@@ -72,6 +98,17 @@
     if (key === 'presenceEntityId') {
       return !value || /^binary_sensor\.[a-z0-9_]+$/i.test(value)
         ? { valid: true, value: value || undefined } : { valid: false };
+    }
+    if (key === 'presenceTrackEntityId') {
+      return !value || radarEntityPattern.test(value)
+        ? { valid: true, value: value || undefined } : { valid: false };
+    }
+    if (key === 'presenceTrackTransform') {
+      if (!value) return { valid: true, value: undefined };
+      const parts = value.split(',').map(part => part.trim());
+      const numbers = parts.map(Number);
+      return parts.every(Boolean) && validPresenceTransform(numbers)
+        ? { valid: true, value: numbers } : { valid: false };
     }
     if (key === 'vacuumMapEntityId') {
       return !value || /^camera\.[a-z0-9_]+$/i.test(value)
@@ -269,6 +306,31 @@
       + '<datalist id="' + listId + '">' + values + '</datalist></div>';
   }
 
+  function trackingInspector(item, escape, entityOptions) {
+    const transform = item.presenceTrackTransform;
+    const calibrated = validPresenceTransform(transform);
+    const scale = calibrated ? Math.round(Math.hypot(transform[1], transform[4]) * 1000) / 10 : 100;
+    const heading = calibrated ? Math.atan2(-transform[1], transform[4]) * 180 / Math.PI - item.rotation : 0;
+    const offset = Math.round(((heading % 360 + 540) % 360 - 180) * 10) / 10;
+    const flipped = calibrated && transform[0] * transform[4] - transform[1] * transform[3] < 0;
+    return '<div class="inspector-block"><p class="inspector-label">PERSON TRACKING</p>'
+      + entityField('Radar targets entity', 'presenceTrackEntityId', item.presenceTrackEntityId || '',
+        entityOptions, 'sensor', escape)
+      + '<p class="field-hint">Characters follow recent positions from this radar sensor. Preview live positions in Home Assistant Studio and publish the layout to use the calibration on the dashboard.</p>'
+      + '<div class="field-grid">'
+      + '<div class="field"><label for="presence-track-scale">Plan pixels per metre</label>'
+      + '<input id="presence-track-scale" type="number" min="1" max="1000" step="any" value="' + scale + '"></div>'
+      + '<div class="field"><label for="presence-track-heading">Rotation offset (°)</label>'
+      + '<input id="presence-track-heading" type="number" step="any" value="' + offset + '"></div></div>'
+      + '<label class="wall-snap-option"><input id="presence-track-flip" type="checkbox"'
+      + (flipped ? ' checked' : '') + '> Flip radar left and right</label>'
+      + '<button type="button" class="secondary-button full-width" data-action="calibrate-presence">Use switch position</button>'
+      + '<p class="field-hint">Start with the switch position and its room-facing direction. Adjust the scale and rotation while someone stands at a known point on the plan.</p>'
+      + '<div class="field"><label for="prop-presenceTrackTransform">Position transform (advanced)</label>'
+      + '<input id="prop-presenceTrackTransform" data-prop="presenceTrackTransform" type="text" value="'
+      + escape((transform || []).join(', ')) + '" placeholder="a, b, c, d, e, f" autocomplete="off"></div></div>';
+  }
+
   function renderInspector(item, template, field, variantField, escape, entityOptions = [], dimensions = {}) {
     const camera = item.type === 'cameraThumbnail';
     const zone = item.type === 'controlZone';
@@ -343,12 +405,13 @@
     return '<div class="inspector-block"><p class="inspector-label">SELECTED OBJECT</p>'
       + '<div class="selection-title"><span class="selection-icon">' + template.icon + '</span><div><h3>' + escape(item.name)
       + '</h3><p>' + escape(template.label) + '</p></div></div></div>'
-      + appearance + sizing + link + '<button type="button" class="danger-button" data-action="delete">Remove object</button>';
+      + appearance + sizing + (item.type === 'presenceSwitch' ? trackingInspector(item, escape, entityOptions) : '')
+      + link + '<button type="button" class="danger-button" data-action="delete">Remove object</button>';
   }
 
   window.RoomcraftObjectControls = {
     isBindingKey: key => bindingKeys.has(key),
-    validBinding, propertyUpdate, effectiveTapAction, effectiveHoldAction,
+    validBinding, propertyUpdate, presenceCalibration, effectiveTapAction, effectiveHoldAction,
     normalizeEntityOptions, manualDashboardElements, manualYaml, renderInspector, visualKind
   };
 })();
