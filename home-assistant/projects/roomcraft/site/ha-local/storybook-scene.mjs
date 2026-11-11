@@ -9,6 +9,7 @@ import { fitStorybookCamera, normalizeCameraView } from './storybook-camera.mjs'
 import { applyModelHeight } from './storybook-size.mjs';
 import { createStorybookPeople } from './storybook-people.mjs';
 import { createFloorSupport } from './storybook-floor-support.mjs';
+import { createStorybookCoverage } from './storybook-coverage.mjs';
 
 const DEG = Math.PI / 180;
 const WALL_WIDTH = 14;
@@ -921,17 +922,7 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
   // The tracker is a foreground overlay. Use the same camera so the character
   // stays anchored to the measured floor position behind walls and furniture.
   const trackingOverlay = new THREE.Scene();
-  const coverageOverlay = new THREE.Scene();
-  const coverageFill = new THREE.MeshBasicMaterial({
-    color: '#57e7de', side: THREE.DoubleSide, transparent: true, opacity: 0.17, depthWrite: false,
-  });
-  const coverageEdge = new THREE.LineBasicMaterial({color: '#b0fff3', transparent: true, opacity: 0.9, depthWrite: false});
-  const nominalFill = new THREE.MeshBasicMaterial({
-    color: '#ffc16a', side: THREE.DoubleSide, transparent: true, opacity: 0.25, depthWrite: false,
-  });
-  const nominalEdge = new THREE.LineDashedMaterial({
-    color: '#ffc16a', dashSize: 10, gapSize: 6, transparent: true, opacity: 0.98, depthWrite: false,
-  });
+  const coverage = createStorybookCoverage();
   const trackingFill = new THREE.HemisphereLight('#fff5e1', '#c9bfd7', 1.8);
   const trackingKey = new THREE.DirectionalLight('#fff1d8', 1.65);
   trackingKey.position.set(-4, 9, 6);
@@ -1025,13 +1016,13 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
   }
   function draw() {
     renderer.render(scene, camera);
-    const showCoverage = coverageOverlay.children.length > 0;
+    const showCoverage = coverage.scene.children.length > 0;
     if (!people.hasVisibleTracks && !showCoverage) return;
     // Clear the house depth, while keeping the avatars' own depth and shading.
     renderer.autoClear = false;
     try {
       renderer.clearDepth();
-      if (showCoverage) renderer.render(coverageOverlay, camera);
+      if (showCoverage) renderer.render(coverage.scene, camera);
       if (people.hasVisibleTracks) renderer.render(trackingOverlay, camera);
     } finally {
       renderer.autoClear = true;
@@ -1065,20 +1056,6 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
   function setPeople(tracks, timeSeconds, options) {
     if (!disposed) people.setTracks(tracks, timeSeconds, options);
   }
-  function setDetectionZones(zones) {
-    for (const mesh of coverageOverlay.children) mesh.geometry.dispose();
-    coverageOverlay.clear();
-    for (const {points, kind} of zones) {
-      const nominal = kind === 'nominal';
-      const vertices = points.map(({x,y}) => new THREE.Vector3(x, nominal ? 0.5 : 0.35, y));
-      const fill = new THREE.BufferGeometry().setFromPoints(vertices);
-      fill.setIndex(THREE.ShapeUtils.triangulateShape(points.map(({x,y}) => new THREE.Vector2(x, y)), []).flat());
-      const border = new THREE.Line(new THREE.BufferGeometry().setFromPoints([...vertices, vertices[0]]),
-        nominal ? nominalEdge : coverageEdge);
-      if (nominal) border.computeLineDistances();
-      coverageOverlay.add(new THREE.Mesh(fill, nominal ? nominalFill : coverageFill), border);
-    }
-  }
   function renderAmbient(timeSeconds) {
     if (disposed || currentWidth < 1 || currentHeight < 1 || (!ambientObjects.length && !people.hasMotion)) return;
     for (const object of ambientObjects) object.animate(defaultState, timeSeconds);
@@ -1103,11 +1080,7 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
     if (disposed) return;
     disposed = true;
     people.dispose();
-    setDetectionZones([]);
-    coverageFill.dispose();
-    coverageEdge.dispose();
-    nominalFill.dispose();
-    nominalEdge.dispose();
+    coverage.dispose();
     const geometries = new Set();
     const materials = new Set();
     const textures = new Set();
@@ -1128,7 +1101,7 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
   const exteriorClearance = () => projectExteriorClearance(plan, camera, currentWidth, currentHeight);
   return {
     resize, render, anchor, setView, getView, projectToPlan, pickGarage, exteriorClearance, dispose,
-    hasAmbientMotion: ambientObjects.length > 0, renderAmbient, setPeople, setDetectionZones,
+    hasAmbientMotion: ambientObjects.length > 0, renderAmbient, setPeople, setDetectionZones: coverage.setZones,
     canPlacePerson: (x, y) => Number.isFinite(floorForPerson(x, y)) && walkable.clearance(x, y) > 0,
     get hasPeopleMotion() { return people.hasMotion; },
   };

@@ -13,6 +13,7 @@ test('detection zone uses the radar calibration and clips to the editable map', 
   const zone = {id:'radar', ...source, presenceTrackZone:[-600,600,0,600]};
   assert.deepEqual(readDetectionZones([zone]), [{
     id:'radar', kind:'configured', points:[{x:0,y:0},{x:600,y:0},{x:600,y:1024},{x:0,y:1024}],
+    origin:{x:600,y:400}, forward:{x:-1,y:0},
   }]);
   assert.deepEqual(readDetectionZones([{...zone,presenceTrackZone:[10,-10,0,600]}, source]), []);
 });
@@ -23,6 +24,8 @@ test('project the Inovelli forward lobe independently of the configured rectangl
   const [configured, nominal] = readDetectionZones([switchItem]);
   assert.equal(configured.kind, 'configured');
   assert.equal(nominal.kind, 'nominal');
+  assert.equal(configured.rangeMeters, undefined);
+  assert.equal(nominal.rangeMeters, 6);
   assert.deepEqual(nominal.points.find(point => point.x === 200), {x:200,y:500});
   assert.deepEqual(nominal.points.find(point => point.x === 800), {x:800,y:500});
   assert.ok(nominal.points.length > 20);
@@ -31,6 +34,27 @@ test('project the Inovelli forward lobe independently of the configured rectangl
   const clipped = readDetectionZones([{...switchItem,presenceTrackTransform:[0,-1,300,1,0,100]}]);
   assert.ok(clipped.some(zone => zone.kind === 'nominal' && zone.points.some(point => point.x === 0)));
   assert.ok(clipped.every(zone => zone.points.every(({x,y}) => x >= 0 && y >= 0)));
+  for (const zone of clipped) {
+    assert.deepEqual(zone.origin, {x:300,y:100});
+    assert.deepEqual(zone.forward, {x:-1,y:0});
+  }
+  assert.equal(clipped.find(zone => zone.kind === 'nominal').rangeMeters, 6);
+});
+
+test('coverage markers follow affine radar +Y and are omitted when their origin is clipped', () => {
+  const item = {id:'radar', ...source, presenceTrackZone:[-50,50,0,100]};
+  const [normal] = readDetectionZones([{...item,presenceTrackTransform:[1,3,400,-1,4,500]}]);
+  const [mirrored] = readDetectionZones([{...item,presenceTrackTransform:[-1,3,400,1,4,500]}]);
+  assert.deepEqual(normal.origin, {x:400,y:500});
+  assert.deepEqual(mirrored.origin, normal.origin);
+  assert.deepEqual(normal.forward, {x:.6,y:.8});
+  assert.deepEqual(mirrored.forward, normal.forward);
+  const clipped = readDetectionZones([{...item,presenceTrackProfile:'inovelli-vzm32-sn',
+    presenceTrackTransform:[1,1,-25,0,1,100]}]);
+  assert.deepEqual(clipped.map(zone => zone.kind), ['configured', 'nominal']);
+  assert.ok(clipped.every(zone => zone.points.some(point => point.x === 0)));
+  assert.ok(clipped.every(zone => !Object.hasOwn(zone, 'origin') && !Object.hasOwn(zone, 'forward')));
+  assert.equal(clipped[1].rangeMeters, 6);
 });
 
 test('map coordinates from multiple radars and keep source-scoped track identities', () => {

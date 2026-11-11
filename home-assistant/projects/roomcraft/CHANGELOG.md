@@ -1,5 +1,10 @@
 # Changelog
 
+## Clearer radar coverage overlay
+
+- **Detection zone** in Home and 3D Studio uses a light cyan dashed outline for configured bounds and a solid amber outline with a light fill for estimated coverage. A marker and forward line show the switch's calibrated position and direction.
+- Home's legend shows the rated range when the radar profile provides one. The coverage outline comes from the manufacturer's chart and is an estimate for the installation.
+
 ## Radar coverage and movement on the plan
 
 - **Detection zone** in Roomcraft Home and 3D Studio distinguishes configured bounds with a cyan rectangle and estimated Inovelli VZM32-SN coverage with a dashed amber outline. The optional sensor profile identifies the matching model. The nominal outline uses rounded centimeter readings from the manufacturer's field-of-view chart.

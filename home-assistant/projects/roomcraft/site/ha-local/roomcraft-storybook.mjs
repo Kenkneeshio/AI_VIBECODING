@@ -101,10 +101,15 @@ class RoomcraftStorybookCard extends HTMLElement {
           max-width:calc(100% - 24px);box-sizing:border-box;margin:0;padding:7px 9px;list-style:none;
           border:1px solid #c8e7e959;border-radius:9px;background:#13262eea;color:#f5f8ec;
           font-size:12px;line-height:1.35;pointer-events:none}
-        .zone-legend li{display:flex;align-items:center;gap:6px}
+        .zone-legend li{display:flex;align-items:center;gap:7px}
         .zone-legend[hidden],.zone-legend li[hidden]{display:none}
-        .zone-legend i{flex:none;width:15px;border-top:2px solid #b0fff3}
-        .zone-legend [data-zone-kind=nominal] i{border-top:2px dashed #ffcf87}
+        .zone-legend i{position:relative;flex:none;width:16px;height:9px;box-sizing:border-box;border-radius:2px}
+        .zone-legend [data-zone-kind=configured] i{border:1px dashed #b0fff3}
+        .zone-legend [data-zone-kind=nominal] i{border:1px solid #ffcf87;background:#ffb85545}
+        .zone-legend [data-zone-kind=origin] i::before{content:'';position:absolute;left:0;top:1px;width:7px;
+          height:7px;box-sizing:border-box;border:1px solid #ffcf87;border-radius:50%;background:#13262e}
+        .zone-legend [data-zone-kind=origin] i::after{content:'';position:absolute;left:6px;right:0;top:1px;
+          height:7px;background:#ffcf87;clip-path:polygon(0 43%,65% 43%,65% 7%,100% 50%,65% 93%,65% 57%,0 57%)}
         .view-status{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
         a,.bar button{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;
           min-height:44px;padding:0 9px;font:inherit;color:inherit;text-decoration:none}
@@ -189,7 +194,8 @@ class RoomcraftStorybookCard extends HTMLElement {
           <div class="overlay"></div>
           <ul class="zone-legend" id="detection-zone-legend" aria-label="Radar coverage legend" hidden>
             <li data-zone-kind="configured"><i aria-hidden="true"></i>Configured detection zone</li>
-            <li data-zone-kind="nominal"><i aria-hidden="true"></i>Nominal radar coverage (estimate)</li>
+            <li data-zone-kind="nominal"><i aria-hidden="true"></i><span>Rated coverage (estimate)</span></li>
+            <li data-zone-kind="origin"><i aria-hidden="true"></i>Sensor position and aim</li>
           </ul>
           <div class="status"><div class="status-inner">
             <div role="status">Opening Roomcraft…</div>
@@ -510,7 +516,16 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.detectionZoneLegend.hidden = !visible;
     this.detectionZoneLegend.querySelector('[data-zone-kind=configured]').hidden =
       !zones.some(zone => zone.kind === 'configured' || !zone.kind);
-    this.detectionZoneLegend.querySelector('[data-zone-kind=nominal]').hidden = !zones.some(zone => zone.kind === 'nominal');
+    const nominal = zones.filter(zone => zone.kind === 'nominal');
+    const nominalRow = this.detectionZoneLegend.querySelector('[data-zone-kind=nominal]');
+    nominalRow.hidden = nominal.length === 0;
+    const range = nominal[0]?.rangeMeters;
+    const showRange = Number.isFinite(range) && range > 0 && nominal.every(zone => zone.rangeMeters === range);
+    nominalRow.querySelector('span').textContent = showRange
+      ? `Rated coverage (estimate, up to ${range} m)`
+      : 'Rated coverage (estimate)';
+    this.detectionZoneLegend.querySelector('[data-zone-kind=origin]').hidden =
+      !zones.some(zone => [zone.origin?.x, zone.origin?.y, zone.forward?.x, zone.forward?.y].every(Number.isFinite));
     this.scene?.setDetectionZones(visible ? zones : []);
     this.anchorDirty = true;
     this.schedule();

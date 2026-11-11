@@ -98,6 +98,7 @@ function runtimeCandidates(siteRoot = SITE_ROOT, projectRoot = PROJECT_ROOT) {
     join(siteRoot, 'ha-local', 'storybook-lighting.mjs'),
     join(siteRoot, 'ha-local', 'storybook-structure.mjs'),
     join(siteRoot, 'ha-local', 'storybook-floor-support.mjs'),
+    join(siteRoot, 'ha-local', 'storybook-coverage.mjs'),
     join(siteRoot, 'ha-local', 'publish_storybook_dashboard.py'),
     join(siteRoot, 'ha-local', 'test_publish_storybook_dashboard.py'),
     join(siteRoot, 'ha-local', 'storybook-scene.mjs'),
