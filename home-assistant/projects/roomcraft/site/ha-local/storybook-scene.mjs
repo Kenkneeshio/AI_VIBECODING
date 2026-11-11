@@ -8,8 +8,9 @@ import { fitStorybookCamera, normalizeCameraView } from './storybook-camera.mjs'
 
 const DEG = Math.PI / 180;
 const WALL_WIDTH = 14;
+const WALL_HEIGHT = 56;
 const SILL = 21;
-const LINTEL = 52;
+const GROUND_Y = -111;
 const FLOOR_LOOKS = {
   oak: ['#d8ad86', '#aa775d', 'board'],
   walnut: ['#a57b6e', '#755952', 'board'],
@@ -21,7 +22,7 @@ const FLOOR_LOOKS = {
   patio: ['#e5cfb2', '#a98d7e', 'tile'],
 };
 const WALL_LOOKS = {
-  graphite: ['#eee0c9', '#937984', '#725d6d'],
+  graphite: ['#eee0c9', '#514855', '#725d6d'],
   plaster: ['#f4e6d4', '#c3a393', '#b18b84'],
   sage: ['#dce0bf', '#8fa18c', '#667d74'],
   walnut: ['#d0a991', '#a47d6f', '#755a56'],
@@ -72,15 +73,7 @@ function interiorSide(rooms, wall, x, z) {
   return right && !left ? -1 : 1;
 }
 
-function wallHeight(wall, bounds) {
-  const nearEdge = Math.min(wall.y1, wall.y2) > bounds.maxZ - 96 && Math.abs(wall.dx) > 0.4;
-  const rearEdge = Math.max(wall.y1, wall.y2) < bounds.minZ + 50;
-  if (wall.openings.length || rearEdge) return 64;
-  if (nearEdge) return 13;
-  return Math.abs(wall.dz) > 0.7 ? 50 : 31;
-}
-
-function resolveWallMount(rooms, walls, houseBounds, item) {
+function resolveWallMount(rooms, walls, item) {
   if (!Object.hasOwn(MOUNT_HEIGHT, item.type)) return null;
   const match = nearestWall(walls, item.x, item.y);
   if (!match || match.distance > 38) return null;
@@ -92,12 +85,38 @@ function resolveWallMount(rooms, walls, houseBounds, item) {
     x: centerX - wall.dz * inset,
     z: centerZ + wall.dx * inset,
     angle: wall.angle + (side < 0 ? Math.PI : 0),
-    mountY: Math.min(MOUNT_HEIGHT[item.type], Math.max(20, wallHeight(wall, houseBounds) - 15)),
+    mountY: Math.min(MOUNT_HEIGHT[item.type], WALL_HEIGHT - 8),
   };
 }
 
+function projectWall(wall) {
+  if (![wall?.x1, wall?.y1, wall?.x2, wall?.y2].every(Number.isFinite)) return null;
+  const sx = wall.x2 - wall.x1;
+  const sz = wall.y2 - wall.y1;
+  const length = Math.hypot(sx, sz);
+  if (length < 1) return null;
+  return {...wall, dx: sx / length, dz: sz / length, length, angle: Math.atan2(sz, sx), openings: []};
+}
+
+function matchesSegment(wall, [x1, y1, x2, y2]) {
+  return (wall.x1 === x1 && wall.y1 === y1 && wall.x2 === x2 && wall.y2 === y2) ||
+    (wall.x1 === x2 && wall.y1 === y2 && wall.x2 === x1 && wall.y2 === y1);
+}
+
+function coversAxisSegment(wall, [x1, y1, x2, y2]) {
+  if (x1 === x2 && wall.x1 === x1 && wall.x2 === x1) {
+    return Math.min(wall.y1, wall.y2) <= Math.min(y1, y2) &&
+      Math.max(wall.y1, wall.y2) >= Math.max(y1, y2);
+  }
+  if (y1 === y2 && wall.y1 === y1 && wall.y2 === y1) {
+    return Math.min(wall.x1, wall.x2) <= Math.min(x1, x2) &&
+      Math.max(wall.x1, wall.x2) >= Math.max(x1, x2);
+  }
+  return false;
+}
+
 // This is a read-only projection of the v2 layout. Pixel coordinates are
-// still the authored units; cutaway heights are renderer profile values.
+// still the authored units and every wall uses the same cutaway height.
 export function compileStorybookPlan(layout) {
   if (layout?.version !== 2 || !Array.isArray(layout.rooms) || !layout.rooms.length ||
       !Array.isArray(layout.walls) || !Array.isArray(layout.items)) {
@@ -106,14 +125,7 @@ export function compileStorybookPlan(layout) {
   const rooms = layout.rooms.filter(room => room?.points?.length >= 3 && room.points.every(
     point => Number.isFinite(point?.x) && Number.isFinite(point?.y)));
   if (!rooms.length) throw new Error('Storybook could not find a valid room polygon.');
-  const walls = layout.walls.flatMap(wall => {
-    if (![wall?.x1, wall?.y1, wall?.x2, wall?.y2].every(Number.isFinite)) return [];
-    const sx = wall.x2 - wall.x1;
-    const sz = wall.y2 - wall.y1;
-    const length = Math.hypot(sx, sz);
-    if (length < 1) return [];
-    return [{ ...wall, dx: sx / length, dz: sz / length, length, angle: Math.atan2(sz, sx), openings: [] }];
-  });
+  const authoredWalls = layout.walls.map(projectWall).filter(Boolean);
   const items = layout.items.filter(item => typeof item?.id === 'string' && typeof item.type === 'string' &&
     [item.x, item.y, item.w, item.h].every(Number.isFinite) && item.w > 0 && item.h > 0);
   const bounds = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
@@ -124,14 +136,14 @@ export function compileStorybookPlan(layout) {
     bounds.maxZ = Math.max(bounds.maxZ, z);
   };
   for (const room of rooms) for (const point of room.points) extend(point.x, point.y);
-  for (const wall of walls) {
+  for (const wall of authoredWalls) {
     extend(wall.x1, wall.y1);
     extend(wall.x2, wall.y2);
   }
   const houseBounds = { ...bounds };
   // The illustrated v2 reference contains the landing and stairway in the
   // fixed shell image. Only project the authored reference silhouette here.
-  const byWallId = new Map(walls.map(wall => [wall.id, wall]));
+  const byWallId = new Map(authoredWalls.map(wall => [wall.id, wall]));
   const reference = ['w1', 'w2', 'w3', 'w4', 'w5', 'w6', 'w7', 'w8', 'w9', 'w11', 'w12', 'w13', 'w18']
     .every(id => byWallId.has(id)) ? {
       left: houseBounds.minX - 108,
@@ -155,20 +167,32 @@ export function compileStorybookPlan(layout) {
       ].map(([x, y]) => ({ x, y })),
       recess: {
         x1: byWallId.get('w12').x2, x2: byWallId.get('w18').x1,
-        northLeft: byWallId.get('w12').y2,
         z1: Math.min(byWallId.get('w11').y2, byWallId.get('w12').y2),
         z2: byWallId.get('w13').y2,
       },
     } : null;
+  const walls = authoredWalls.filter(wall => {
+    if (!reference) return true;
+    // These legacy segments trace the shell's floor boundary. Their glazed
+    // door leaves were removed in the approved plan, leaving level openings.
+    return !(wall.id === 'w3' && matchesSegment(wall, [400, 408, 342, 468])) &&
+      !(wall.id === 'w7' && matchesSegment(wall, [248, 590, 302, 651]));
+  });
   if (reference) {
     extend(reference.left, reference.stepTop);
     extend(reference.deckEdge, reference.deckBottom);
-    const {x1, x2, northLeft: y1, z1: y2} = reference.recess;
-    const length = Math.hypot(x2 - x1, y2 - y1);
-    if (x2 > x1 && length > 0) {
-      walls.push({id: 'reference-recess', x1, y1, x2, y2, length,
-        dx: (x2 - x1) / length, dz: (y2 - y1) / length,
-        angle: Math.atan2(y2 - y1, x2 - x1), openings: []});
+    const {x1, x2, z1} = reference.recess;
+    if (x2 > x1) {
+      const rearJog = [
+        [x1, byWallId.get('w12').y2, x1, z1],
+        [x1, z1, x2, z1],
+      ];
+      for (const [index, segment] of rearJog.entries()) {
+        if (walls.some(wall => coversAxisSegment(wall, segment))) continue;
+        const [startX, startY, endX, endY] = segment;
+        const wall = projectWall({id: `reference-recess-${index}`, x1: startX, y1: startY, x2: endX, y2: endY});
+        if (wall) walls.push(wall);
+      }
     }
   }
   const windowMounts = new Map();
@@ -193,7 +217,7 @@ export function compileStorybookPlan(layout) {
   const placements = items.map(item => {
     const isBlind = item.type === 'controlZone' &&
       (item.visualKind === 'window' || item.entityId?.startsWith('cover.'));
-    let mount = windowMounts.get(item.id) ?? resolveWallMount(rooms, walls, houseBounds, item);
+    let mount = windowMounts.get(item.id) ?? resolveWallMount(rooms, walls, item);
     if (isBlind) {
       let minDistance = 52;
       for (const candidate of windowMounts.values()) {
@@ -217,9 +241,8 @@ export function compileStorybookPlan(layout) {
   const floorStructure = compileFloorStructure(rooms, reference);
   const wallStructure = compileWallStructure(walls.map(wall => ({
     ...wall,
-    height: wallHeight(wall, houseBounds),
     palette: Object.hasOwn(WALL_LOOKS, wall.finish) ? WALL_LOOKS[wall.finish] : WALL_LOOKS.graphite,
-  })), WALL_WIDTH, SILL, LINTEL);
+  })), WALL_WIDTH, WALL_HEIGHT, SILL);
   return { rooms, walls, placements, bounds, houseBounds, reference, floorStructure, wallStructure };
 }
 
@@ -354,6 +377,9 @@ function buildFloors(scene, batch, plan, document) {
   for (const area of plan.floorStructure.footprint) {
     addSlab(batch, area, -22, 0, '#a67e76', true);
   }
+  for (const area of plan.floorStructure.foundation) {
+    addSlab(batch, area, GROUND_Y - 1, -22, '#a18e84', true);
+  }
 }
 
 function indexed(geometry) {
@@ -384,9 +410,45 @@ function addSlab(batch, polygon, bottom, top, surface, openTop = false) {
   batch.add(indexed(geometry), surface, 0, bottom, 0);
 }
 
+function wallSidesGeometry(sides, height) {
+  const positions = [];
+  const indices = [];
+  const uv = [];
+  for (const [[ax, az], [bx, bz]] of sides) {
+    const vertex = positions.length / 3;
+    const width = Math.hypot(bx - ax, bz - az);
+    positions.push(ax, 0, az, ax, height, az, bx, height, bz, bx, 0, bz);
+    indices.push(vertex, vertex + 1, vertex + 2, vertex, vertex + 2, vertex + 3);
+    uv.push(0, 0, 0, height, width, height, width, 0);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function wallHorizontalGeometry(polygon, underside) {
+  const geometry = new THREE.ShapeGeometry(joinedShape(polygon));
+  geometry.rotateX(-Math.PI / 2);
+  if (underside) {
+    const triangles = geometry.index.array;
+    for (let i = 0; i < triangles.length; i += 3) {
+      [triangles[i + 1], triangles[i + 2]] = [triangles[i + 2], triangles[i + 1]];
+    }
+    geometry.computeVertexNormals();
+  }
+  return geometry;
+}
+
 function buildWalls(batch, plan) {
-  for (const {polygons, bottom, top, surface} of plan.wallStructure) {
-    for (const area of polygons) addSlab(batch, area, bottom, top, surface);
+  for (const {faces, bottom, top, surface} of plan.wallStructure) {
+    for (const area of faces.top) batch.add(wallHorizontalGeometry(area, false), surface, 0, top, 0);
+    for (const area of faces.bottom) batch.add(wallHorizontalGeometry(area, true), surface, 0, bottom, 0);
+    if (faces.sides.length) {
+      batch.add(wallSidesGeometry(faces.sides, top - bottom), surface, 0, bottom, 0);
+    }
   }
 }
 
@@ -606,7 +668,7 @@ export function createStorybookScene(canvas, layout) {
   });
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(6200, 4200), groundMaterial);
   ground.rotation.x = -Math.PI / 2;
-  ground.position.set((minX + maxX) / 2, -111, (minZ + maxZ) / 2);
+  ground.position.set((minX + maxX) / 2, GROUND_Y, (minZ + maxZ) / 2);
   scene.add(ground);
   const batch = makeStaticBatch(scene);
   buildYard(batch, plan);

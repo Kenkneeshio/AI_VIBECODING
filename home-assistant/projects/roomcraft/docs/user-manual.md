@@ -4,7 +4,7 @@ Roomcraft Studio edits the layout used by Roomcraft Home. Use the 3D view to arr
 
 ## Change the view
 
-Roomcraft Home and Studio open in **Top down**, directly above the house. Use **View** to choose **Dollhouse** or **Corner**. The arrow buttons rotate the camera, the plus and minus buttons zoom, and the home-shaped reset button returns to Top down.
+Roomcraft Home and Studio open in **Top down**, directly above the house. Use **View** for **High angle**, **Dollhouse**, **Corner**, or a view from the north, east, south, or west. Directions follow the plan, with north at the top of Top down. The arrow buttons rotate the camera, the plus and minus buttons zoom, and the home-shaped reset button returns to Top down.
 
 In Studio, select and drag an object in any 3D view. Pick a catalog object, then click the scene to place it. The Inspector still controls its size, rotation, finish and device binding. Camera and interface items have labeled placeholders in the editor. Choose **2D plan** to use the illustrated view. Room, wall and reference tools also switch to that view. The camera controls do not change the saved layout or its furniture positions.
 
@@ -87,6 +87,8 @@ For clean results, keep room polygons inside their walls and avoid overlapping n
 ## 4. Change walls
 
 Choose **Wall** and drag from the start point to the end point. Hold **Shift** for a straight horizontal or vertical segment. Open the **Walls** palette to choose graphite, plaster, sage, or walnut, then click a wall to apply the finish. Choose **Select** to click a wall; drag an interior segment or its endpoints, or enter exact coordinates in the Inspector. Choose **Erase** to remove an interior wall. The original illustrated exterior shell keeps its outline aligned with the reference art, but its finish can be changed.
+
+Open **Walls** to control **Snap wall ends**. Draw a wall or drag an endpoint near another corner or wall centerline. The green dot shows where it will join. **Join nearby wall ends** closes gaps up to 18 project pixels as one edit, so **Undo** restores the previous positions. The 3D view gives the walls a shared height and preserves the larger openings shown on the plan.
 
 After changing a wall, check its adjoining floor polygon and any nearby window or wall-mounted object. These are separate editable layers.
 

@@ -177,6 +177,7 @@
     ],
     hotspots: DEFAULT_HOTSPOTS
   };
+  Object.assign(STARTER, window.RoomcraftReferenceGeometry.repair(STARTER));
   // These fixtures are drawn by the editor. They do not exist in the supplied
   // PNG, so they stay separate from STARTER's image-backed furniture.
   const DEFAULT_ROOM_FIXTURES = [
@@ -240,7 +241,7 @@
   ];
   const interfaceTypes = new Set(DEFAULT_INTERFACE_ITEMS.map(o=>o.type));
   const fixedRoomIds = new Set(STARTER.rooms.map(r => r.id));
-  const fixedExteriorWallIds = new Set(['w1','w2','w3','w4','w5','w6','w7','w8','w9','w10','w11','w12']);
+  const fixedExteriorWallIds = new Set(['w1','w2','w3','w4','w5','w6','w7','w8','w9','w10','w11','w12','reference-rear-step']);
   const isFixedExteriorWall = w => !!w && fixedExteriorWallIds.has(w.id);
   const REFERENCE_MIGRATIONS = [
     {id:'reference-v1-movable-bedside-lamp',from:0,to:1,apply(state){
@@ -299,7 +300,8 @@
       const garage=state.items.find(current=>current.type==='garageDoor'&&/garage door/i.test(current.name||''));
       if(matchesKnownGeometry(garage,[{x:306,y:106,w:116,h:52,rotation:0}],3))Object.assign(garage,{x:306,y:112,w:132,h:92});
       return state;
-    }}
+    }},
+    {id:'reference-v7-source-geometry',from:6,to:7,apply:window.RoomcraftReferenceGeometry.repair}
   ];
 
   let hasLocalDraft = false;
@@ -336,11 +338,11 @@
   }
   function restoreFixedGeometry(p){
     let next=Engine.normalizeScene(p);
+    next=clone(Engine.migrations.run(next,REFERENCE_MIGRATIONS,7,{versionKey:'editableReferenceVersion'}).project);
     const rooms=new Set(next.rooms.map(r=>r.id)),walls=new Map(next.walls.map(w=>[w.id,w]));
     for(const r of STARTER.rooms)if(fixedRoomIds.has(r.id)&&!rooms.has(r.id))next.rooms.push(clone(r));
     for(const w of STARTER.walls)if(fixedExteriorWallIds.has(w.id)){if(walls.has(w.id)){const current=walls.get(w.id);current.x1=w.x1;current.y1=w.y1;current.x2=w.x2;current.y2=w.y2;}else next.walls.push(clone(w));}
     if(!Array.isArray(next.hotspots))next.hotspots=clone(DEFAULT_HOTSPOTS);
-    next=clone(Engine.migrations.run(next,REFERENCE_MIGRATIONS,6,{versionKey:'editableReferenceVersion'}).project);
     for(const o of next.items)clampLinkedItem(o);
     next.version=2;
     return Engine.normalizeScene(next);
@@ -360,6 +362,7 @@
   let journalCommandCount = 0, journalCheckpointCount = 0;
   let selected = null;
   let tool = 'select';
+  let snapWallEnds = true;
   let viewMode = 'design';
   let pendingTemplate = null;
   let pendingSurface = null;
@@ -492,6 +495,7 @@
     c.restore();
   }
   function drawWall(c,w) {
+    if(window.RoomcraftReferenceGeometry.isOpenThreshold(w))return;
     const finish=wallFinishById[w.finish||'graphite']||wallFinishById.graphite;
     c.save();c.lineCap='square';c.strokeStyle=finish.color;c.lineWidth=20;c.beginPath();c.moveTo(w.x1,w.y1);c.lineTo(w.x2,w.y2);c.stroke();c.strokeStyle='rgba(255,255,255,.28)';c.lineWidth=3;c.beginPath();c.moveTo(w.x1,w.y1);c.lineTo(w.x2,w.y2);c.stroke();c.restore();
   }
@@ -620,6 +624,11 @@
           c.save();c.strokeStyle='#ed7255';c.lineWidth=9;c.setLineDash([12,7]);
           c.beginPath();c.moveTo(interaction.start.x,interaction.start.y);c.lineTo(interaction.end.x,interaction.end.y);c.stroke();c.restore();
         }
+        if(interaction?.joinPoint){
+          const {x,y}=interaction.joinPoint;
+          c.save();c.fillStyle='#37745d';c.strokeStyle='#fffdf4';c.lineWidth=2;
+          c.beginPath();c.arc(x,y,8,0,Math.PI*2);c.fill();c.stroke();c.restore();
+        }
         if(pendingTemplate&&currentPointer){
           const t=templateByType[pendingTemplate],wallMounted=t.type==='window'||t.mount==='wall';
           const mount=wallMounted?nearestWallPlacement(currentPointer):null;
@@ -664,6 +673,33 @@
   function screenPoint(e){const r=viewport.getBoundingClientRect();return point(e.clientX-r.left,e.clientY-r.top);}
   function worldPoint(e){const p=screenPoint(e);return point((p.x-currentView.tx)/currentView.scale+CROP_X,(p.y-currentView.ty)/currentView.scale+CROP_Y);}
   const snap = n => Math.round(n/10)*10;
+  const wallsForJoining = () => project.walls.filter(wall => !window.RoomcraftReferenceGeometry.isOpenThreshold(wall));
+  function wallPoint(pointer, {origin, straight=false, excludeId, grid=false}={}) {
+    const candidate = point(pointer.x,pointer.y);
+    let axis;
+    if(straight&&origin){
+      axis=Math.abs(candidate.x-origin.x)>Math.abs(candidate.y-origin.y)?'y':'x';
+      candidate[axis]=origin[axis];
+    }
+    const match=snapWallEnds?window.RoomcraftWallJoins?.snapPoint(candidate,wallsForJoining(),{axis,excludeId}):null;
+    const round=grid?snap:Math.round;
+    const fallback=point(round(candidate.x),round(candidate.y));
+    if(axis)fallback[axis]=candidate[axis];
+    return {position:match??fallback,match};
+  }
+  function joinNearbyWalls(){
+    if(interaction)return;
+    const result=window.RoomcraftWallJoins?.joinNearby(wallsForJoining(),fixedExteriorWallIds);
+    if(!result?.joined){showToast('No nearby wall ends to join');return;}
+    const joinedWalls=new Map(result.walls.map(wall=>[wall.id,wall]));
+    snapshot();
+    project.walls=project.walls.map(wall=>joinedWalls.get(wall.id)??wall);
+    setViewMode('design');
+    setTool('wall');
+    const message=`Joined ${result.joined} wall end${result.joined===1?'':'s'}`;
+    afterChange(message);
+    showToast(message);
+  }
   function pointInPolygon(pt,points){let inside=false;for(let i=0,j=points.length-1;i<points.length;j=i++){const a=points[i],b=points[j];if(((a.y>pt.y)!==(b.y>pt.y))&&(pt.x<(b.x-a.x)*(pt.y-a.y)/(b.y-a.y)+a.x))inside=!inside;}return inside;}
   function hitRoom(p){for(let i=project.rooms.length-1;i>=0;i--){if(pointInPolygon(p,project.rooms[i].points))return project.rooms[i];}return null;}
   function itemLocalPoint(p,o){const r=-o.rotation*Math.PI/180,dx=p.x-o.x,dy=p.y-o.y;return point(dx*Math.cos(r)-dy*Math.sin(r),dx*Math.sin(r)+dy*Math.cos(r));}
@@ -683,10 +719,10 @@
   function hitSelectedItemHandle(p){if(selected?.kind!=='item')return null;const o=project.items.find(i=>i.id===selected.id);if(!o)return null;const q=itemLocalPoint(p,o),reach=Math.max(11,11/currentView.scale);for(const [sx,sy] of [[-1,-1],[1,-1],[1,1],[-1,1]])if(Math.hypot(q.x-sx*(o.w/2+7),q.y-sy*(o.h/2+7))<=reach)return {item:o,sx,sy};return null;}
   function hitHotspot(p){const linkedEntities=new Set(project.items.map(o=>o.entityId).filter(Boolean));for(let i=project.hotspots.length-1;i>=0;i--){const h=project.hotspots[i];if(linkedEntities.has(h.entity))continue;const q=hotspotPoint(h);if(Math.hypot(p.x-q.x,p.y-q.y)<=Math.max(25,12/currentView.scale))return h;}return null;}
   function segmentDistance(p,w){const vx=w.x2-w.x1,vy=w.y2-w.y1;const len=vx*vx+vy*vy;const t=len?Math.max(0,Math.min(1,((p.x-w.x1)*vx+(p.y-w.y1)*vy)/len)):0;return Math.hypot(p.x-(w.x1+t*vx),p.y-(w.y1+t*vy));}
-  function hitWall(p){let found=null,dist=14/currentView.scale;for(const w of project.walls){const d=segmentDistance(p,w);if(d<dist){dist=d;found=w;}}return found;}
+  function hitWall(p){let found=null,dist=14/currentView.scale;for(const w of wallsForJoining()){const d=segmentDistance(p,w);if(d<dist){dist=d;found=w;}}return found;}
   function nearestWallPlacement(p){
     let nearest=null;
-    for(const w of project.walls){
+    for(const w of wallsForJoining()){
       const vx=w.x2-w.x1,vy=w.y2-w.y1,len=vx*vx+vy*vy;
       if(!len)continue;
       const t=Math.max(0,Math.min(1,((p.x-w.x1)*vx+(p.y-w.y1)*vy)/len));
@@ -744,7 +780,10 @@
     if(pendingSurface){const r=hitRoom(p);if(r){snapshot();r.surface=pendingSurface;select('room',r.id);afterChange(`Applied ${surfaceById[pendingSurface].name} to ${r.name}`);showToast(`${r.name} floor updated`);}else showToast('Click inside a room to paint it');return;}
     if(pendingWallFinish){const w=hitWall(p);if(w){if((w.finish||'graphite')!==pendingWallFinish){snapshot();w.finish=pendingWallFinish;select('wall',w.id);afterChange(`Applied ${wallFinishById[pendingWallFinish].name} wall finish`);showToast('Wall finish updated');}else select('wall',w.id);}else showToast('Click a wall to paint it');return;}
     if(tool==='erase'){const h=hitHotspot(p),o=hitItem(p,false),near=hitItem(p),w=hitWall(p);if(o||(!h&&near)){const target=o||near;snapshot();project.items=project.items.filter(q=>q.id!==target.id);selected=null;afterChange(`Removed ${target.name}`);}else if(h){snapshot();project.hotspots=project.hotspots.filter(q=>q.id!==h.id);selected=null;afterChange(`Removed ${h.title} control`);}else if(isFixedExteriorWall(w)){showToast('The illustrated exterior shell stays fixed');}else if(w){snapshot();project.walls=project.walls.filter(q=>q.id!==w.id);selected=null;afterChange('Removed wall');}else showToast('Click an object, control, or interior wall to erase it');return;}
-    if(tool==='wall'){interaction={kind:'wall-draw',start:point(snap(p.x),snap(p.y)),end:point(snap(p.x),snap(p.y))};draw();return;}
+    if(tool==='wall'){
+      const {position,match}=wallPoint(p,{grid:true});
+      interaction={kind:'wall-draw',start:position,end:position,joinPoint:match};draw();return;
+    }
     if(tool==='room'){const vertex=hitRoomVertex(p);if(vertex>=0){interaction={kind:'room-vertex',id:selected.id,index:vertex,snapshot:false};return;}const r=hitRoom(p);if(r){select('room',r.id);setStatus(`Selected ${r.name} · drag a corner to reshape`);}else{selected=null;renderInspector();draw();}return;}
     const handle=hitSelectedItemHandle(p);if(handle){const o=handle.item,a=o.rotation*Math.PI/180,lx=-handle.sx*o.w/2,ly=-handle.sy*o.h/2;interaction={kind:'item-resize',id:o.id,start:p,w:o.w,h:o.h,rotation:o.rotation,anchor:point(o.x+lx*Math.cos(a)-ly*Math.sin(a),o.y+lx*Math.sin(a)+ly*Math.cos(a)),sx:handle.sx,sy:handle.sy,snapshot:false};setStatus(`Resize ${o.name} · hold Shift to keep its proportions`);return;}
     const o=hitItem(p,false);if(o){select('item',o.id);interaction={kind:'item-move',id:o.id,start:p,x:o.x,y:o.y,snapshot:false};setStatus(`Selected ${o.name}`);return;}
@@ -755,7 +794,10 @@
   }
   function onPointerMove(e){const p=worldPoint(e),s=screenPoint(e);currentPointer=p;if(!interaction){if(pendingTemplate)draw();if(tool==='select'&&!pendingTemplate)canvas.style.cursor=hitSelectedItemHandle(p)?'nwse-resize':hitItem(p)?'grab':hitHotspot(p)?'pointer':'';return;}
     if(interaction.kind==='pan'){currentView.tx=interaction.tx+s.x-interaction.start.x;currentView.ty=interaction.ty+s.y-interaction.start.y;applyView();return;}
-    if(interaction.kind==='wall-draw'){let x=snap(p.x),y=snap(p.y);if(e.shiftKey){if(Math.abs(x-interaction.start.x)>Math.abs(y-interaction.start.y))y=interaction.start.y;else x=interaction.start.x;}interaction.end=point(x,y);draw();return;}
+    if(interaction.kind==='wall-draw'){
+      const {position,match}=wallPoint(p,{origin:interaction.start,straight:e.shiftKey,grid:true});
+      interaction.end=position;interaction.joinPoint=match;draw();return;
+    }
     if(interaction.kind==='item-move'){const o=project.items.find(o=>o.id===interaction.id);if(!o)return;const dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;
       if(o.type==='window'||templateByType[o.type]?.mount==='wall'){
         const mount=nearestWallPlacement(point(interaction.x+dx,interaction.y+dy));
@@ -789,7 +831,26 @@
     }
     if(interaction.kind==='hotspot-move'){const h=project.hotspots.find(h=>h.id===interaction.id);if(!h)return;const dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;if(Math.hypot(dx,dy)>2&&!interaction.snapshot){snapshot();interaction.snapshot=true;}if(interaction.snapshot){h.style.left=`${Math.max(0,Math.min(100,(interaction.x+dx)/W*100)).toFixed(2)}%`;h.style.top=`${Math.max(0,Math.min(100,(interaction.y+dy)/H*100)).toFixed(2)}%`;draw();}return;}
     if(interaction.kind==='room-vertex'){const r=project.rooms.find(r=>r.id===interaction.id);if(!r)return;if(!interaction.snapshot){snapshot();interaction.snapshot=true;}r.points[interaction.index]=point(Math.round(p.x),Math.round(p.y));draw();return;}
-    if(interaction.kind==='wall-move'){const w=project.walls.find(w=>w.id===interaction.id);if(!w)return;const dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;if(Math.hypot(dx,dy)>2&&!interaction.snapshot){snapshot();interaction.snapshot=true;}if(interaction.snapshot){const a=interaction.initial;if(interaction.endpoint===1){w.x1=Math.round(a.x1+dx);w.y1=Math.round(a.y1+dy);}else if(interaction.endpoint===2){w.x2=Math.round(a.x2+dx);w.y2=Math.round(a.y2+dy);}else{w.x1=Math.round(a.x1+dx);w.y1=Math.round(a.y1+dy);w.x2=Math.round(a.x2+dx);w.y2=Math.round(a.y2+dy);}draw();}return;}
+    if(interaction.kind==='wall-move'){
+      const w=project.walls.find(w=>w.id===interaction.id);
+      if(!w)return;
+      const dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;
+      if(Math.hypot(dx,dy)>2&&!interaction.snapshot){snapshot();interaction.snapshot=true;}
+      if(!interaction.snapshot)return;
+      const {initial,endpoint}=interaction;
+      if(endpoint){
+        const x='x'+endpoint,y='y'+endpoint;
+        const {position,match}=wallPoint(point(initial[x]+dx,initial[y]+dy),{excludeId:w.id});
+        const other=3-endpoint;
+        if(Math.hypot(position.x-w['x'+other],position.y-w['y'+other])>2){
+          w[x]=position.x;w[y]=position.y;interaction.joinPoint=match;
+        }
+      }else{
+        w.x1=Math.round(initial.x1+dx);w.y1=Math.round(initial.y1+dy);
+        w.x2=Math.round(initial.x2+dx);w.y2=Math.round(initial.y2+dy);
+      }
+      draw();return;
+    }
   }
   function onPointerUp(e){if(!interaction)return;const kind=interaction.kind;if(kind==='wall-draw'){const {start,end}=interaction;if(Math.hypot(end.x-start.x,end.y-start.y)>12){snapshot();const w=wall(uid('w'),start.x,start.y,end.x,end.y);w.finish='graphite';project.walls.push(w);select('wall',w.id);afterChange('Drew wall');}}else if(interaction.snapshot){afterChange(kind==='room-vertex'?'Reshaped room':kind==='wall-move'?'Moved wall':kind==='hotspot-move'?'Moved Home Assistant control':kind==='item-resize'?'Resized object':'Moved object');}interaction=null;viewport.classList.remove('dragging');draw();}
 
@@ -1163,6 +1224,8 @@
     document.getElementById('hotspotList').addEventListener('click',e=>{const linked=e.target.closest('[data-control-item]');if(linked){setViewMode('design');setTool('select');select('item',linked.dataset.controlItem);setStatus('Drag this linked object or edit its entity in the Inspector');return;}const b=e.target.closest('[data-hotspot]');if(!b)return;setViewMode('design');setTool('select');select('hotspot',b.dataset.hotspot);setStatus('Drag this Home Assistant control or edit it in the Inspector');});
     document.getElementById('surfacePalette').addEventListener('click',e=>{const b=e.target.closest('[data-surface]');if(!b)return;setViewMode('design');setTool('room');pendingSurface=b.dataset.surface;renderSurfacePalette();showToast(`Click a room to paint ${surfaceById[pendingSurface].name}`);});
     document.getElementById('wallPalette').addEventListener('click',e=>{const b=e.target.closest('[data-wall-finish]');if(!b)return;setViewMode('design');setTool('select');pendingWallFinish=b.dataset.wallFinish;notifyEditorTool();renderWallPalette();showToast(`Click a wall to paint ${wallFinishById[pendingWallFinish].name}`);});
+    document.getElementById('snapWallEnds').addEventListener('change',e=>{snapWallEnds=e.target.checked;});
+    document.getElementById('joinWallsButton').addEventListener('click',joinNearbyWalls);
     document.getElementById('roomList').addEventListener('click',e=>{const b=e.target.closest('[data-room]');if(!b)return;setViewMode('design');setTool('room');select('room',b.dataset.room);});
     document.getElementById('inspectorContent').addEventListener('change',e=>{const el=e.target.closest('[data-prop]');if(el)updateProperty(el.dataset.prop,el.value);const v=e.target.closest('[data-variant]');if(v)updateVariant(v.value,v.dataset.variantKind||'finish');const h=e.target.closest('[data-hotspot-prop]');if(h)updateHotspotProperty(h.dataset.hotspotProp,h.value);});
     document.getElementById('inspectorContent').addEventListener('click',e=>{const a=e.target.closest('[data-action]');if(a){if(a.dataset.action==='delete')deleteSelected();if(a.dataset.action==='duplicate')duplicateSelected();if(a.dataset.action==='rotate')rotateSelected();}if(e.target.id==='openHelpButton')document.getElementById('helpDialog').showModal();});

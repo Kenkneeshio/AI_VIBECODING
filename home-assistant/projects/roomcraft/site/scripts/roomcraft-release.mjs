@@ -18,13 +18,17 @@ const REQUIRED_ENGINE_GLOBALS = Object.freeze([
   'RoomcraftDeterminismCore',
   'RoomcraftProjectRuntime',
   'RoomcraftRenderContract',
-  'RoomcraftEngine'
+  'RoomcraftEngine',
+  'RoomcraftWallJoins',
+  'RoomcraftReferenceGeometry'
 ]);
 export const REQUIRED_ENGINE_SOURCES = Object.freeze([
   'engine/deterministic-core.js',
   'engine/project-runtime.js',
   'engine/render-contract.js',
-  'engine/verification-harness.js'
+  'engine/verification-harness.js',
+  'engine/wall-joins.js',
+  'engine/reference-geometry.js'
 ]);
 const ALLOWED_RUNTIME_EXTENSIONS = new Set([
   '.css', '.html', '.js', '.json', '.md', '.mjs', '.mts', '.png', '.py', '.sh', '.svg', '.ts', '.tsx'

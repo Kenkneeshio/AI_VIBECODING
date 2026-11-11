@@ -50,7 +50,7 @@
   const extraTextures = {terrazzo:new Image(),sage:new Image()};
   for(const image of Object.values(extraTextures))image.addEventListener('load',()=>{floorLayers.clear();window.dispatchEvent(new Event('roomcraft-asset-loaded'));});
   let textileTile;
-  const fixedExteriorWalls=new Set(['w1','w2','w3','w4','w5','w6','w7','w8','w9','w10','w11','w12']);
+  const fixedExteriorWalls=new Set(['w1','w2','w3','w4','w5','w6','w7','w8','w9','w10','w11','w12','reference-rear-step']);
   // Source-space ownership for the editable interior of empty-shell.png.
   // Geometry lines approximate the plan; these bounds include the illustrated
   // cap, reveal, and shadow. Shared joins use a hard cut. Free floor edges
@@ -60,6 +60,7 @@
     w14: [[762, 465, 987, 531, 'lrb']],
     w15: [[1037, 441, 1174, 530, 'lrb']],
     w16: [[1035, 212, 1094, 299, 'lr'], [1035, 299, 1094, 360, 'lb']],
+    'reference-study-jamb': [[1041, 437, 1090, 469, 'ltr']],
     w17: [[1094, 297, 1118, 345, 'tb']],
     w18: [[1115, 189, 1142, 217, 'lrb']],
     w19: [[1118, 285, 1175, 441, 'tr']],
@@ -74,6 +75,8 @@
     w30: [[1369, 579, 1425, 655, 'lr']],
     w32: [[591, 541, 671, 794, 'ltr']],
     w33: [[827, 541, 878, 639, 'lt'], [878, 541, 971, 612, 'trb']],
+    'reference-bath-header': [[878, 541, 971, 612, 'trb']],
+    'reference-closet-jamb': [[1369, 568, 1425, 594, 'lrb']],
   };
   // w25 and w28 describe the two room boundaries of one illustrated divider.
   // w27 and w31 have no separate source pixels.

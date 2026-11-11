@@ -1,7 +1,7 @@
 import {createStorybookScene} from './storybook-scene.mjs';
+import {CAMERA_PRESETS, populateCameraOptions} from './storybook-camera.mjs';
 import {placeStorybookTargets} from './storybook-state.mjs';
 
-const CAMERA_PRESETS = new Set(['top', 'dollhouse', 'corner']);
 const SELECT_RADIUS = 22;
 const MIN_DRAG = 5;
 
@@ -59,6 +59,7 @@ export function mountStorybookEditor(document, host) {
   const viewport = document.getElementById('viewport');
   const choice = document.getElementById('sceneView');
   if (!api || !canvas || !viewport || !choice) return null;
+  populateCameraOptions(choice, true);
   const buttons = {
     left: document.getElementById('sceneRotateLeft'),
     right: document.getElementById('sceneRotateRight'),
@@ -92,7 +93,7 @@ export function mountStorybookEditor(document, host) {
   let project;
   let fingerprint;
   let view = {preset: 'top'};
-  let mode = CAMERA_PRESETS.has(choice.value) ? choice.value : 'top';
+  let mode = choice.value;
   let drag;
   let resizeFrame;
   let disposed = false;
@@ -160,7 +161,7 @@ export function mountStorybookEditor(document, host) {
   }
   function choose(next) {
     restoreDrag();
-    mode = CAMERA_PRESETS.has(next) ? next : 'plan';
+    mode = Object.hasOwn(CAMERA_PRESETS, next) ? next : 'plan';
     choice.value = mode;
     canvas.hidden = !is3D();
     markerLayer.style.display = is3D() ? 'block' : 'none';
@@ -178,8 +179,9 @@ export function mountStorybookEditor(document, host) {
     api.useSelectTool?.();
     const nextView = {preset: mode};
     refresh();
-    scene?.setView(nextView);
-    view = scene?.getView() ?? nextView;
+    if (!scene) return;
+    scene.setView(nextView);
+    view = scene.getView();
     draw();
     setStatus('3D view · select and drag objects, or place an object from the catalog');
   }

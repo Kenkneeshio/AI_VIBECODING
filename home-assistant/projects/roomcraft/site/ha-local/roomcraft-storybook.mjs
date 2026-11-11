@@ -1,5 +1,5 @@
 import {createStorybookScene} from './storybook-scene.mjs';
-import {normalizeCameraView} from './storybook-camera.mjs';
+import {normalizeCameraView, populateCameraOptions} from './storybook-camera.mjs';
 import {placeStorybookTargets, readStorybookConfig, storybookFrame} from './storybook-state.mjs';
 
 const TAG = 'roomcraft-storybook-card';
@@ -53,11 +53,7 @@ class RoomcraftStorybookCard extends HTMLElement {
           <nav aria-label="Storybook navigation">
             <div class="view-controls" role="group" aria-label="Camera view controls">
               <label for="storybook-view">View</label>
-              <select id="storybook-view" aria-label="Camera view">
-                <option value="top">Top down</option>
-                <option value="dollhouse">Dollhouse</option>
-                <option value="corner">Corner</option>
-              </select>
+              <select id="storybook-view" aria-label="Camera view"></select>
               <button type="button" data-camera="left" aria-label="Rotate view left" title="Rotate view left">↶</button>
               <button type="button" data-camera="right" aria-label="Rotate view right" title="Rotate view right">↷</button>
               <button type="button" data-camera="out" aria-label="Zoom out" title="Zoom out">−</button>
@@ -88,6 +84,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.viewSelect = this.shadowRoot.querySelector('#storybook-view');
     this.viewStatus = this.shadowRoot.querySelector('.view-status');
     this.cameraView = normalizeCameraView('top');
+    populateCameraOptions(this.viewSelect);
     this.viewSelect.addEventListener('change', () => this.changeView(this.viewSelect.value));
     for (const button of this.shadowRoot.querySelectorAll('[data-camera]')) {
       button.addEventListener('click', () => {

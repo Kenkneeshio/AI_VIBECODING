@@ -6,6 +6,8 @@ import { installRoomcraftEngine } from './engine-loader.mjs';
 
 const source = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
 const controlsSource = readFileSync(new URL('../public/object-controls.js', import.meta.url), 'utf8');
+const wallSources = ['wall-joins.js', 'reference-geometry.js'].map(name =>
+  readFileSync(new URL(`../public/engine/${name}`, import.meta.url), 'utf8'));
 const storageKey = 'roomcraft.second-floor.v2';
 const crop = { x: 0, y: 80, width: 1536, height: 864 };
 
@@ -64,6 +66,7 @@ function boot(savedProject, dashboardRequest, options = {}) {
     ...(dashboardRequest ? { RoomcraftDashboardBridge: { request: dashboardRequest } } : {}) };
   window.top = window;
   installRoomcraftEngine(window);
+  for (const wallSource of wallSources) runInNewContext(wallSource, { window });
   runInNewContext(controlsSource, { window });
   const localStorage = {
     getItem(key) { return data.get(key) ?? null; },
@@ -102,6 +105,44 @@ test('the 3D mutation bridge preserves bindings and records one undoable move', 
   assert.deepEqual(bridge.getProject(), before);
   before.items[0].x = -1000;
   assert.notEqual(bridge.getProject().items[0].x, -1000);
+});
+
+test('joining walls closes a T junction, keeps a doorway, and is one undoable edit', () => {
+  const walls = [
+    {id:'test-header', x1:500, y1:400, x2:700, y2:400, finish:'plaster'},
+    {id:'test-jamb', x1:620, y1:413, x2:620, y2:490, finish:'sage'},
+    {id:'test-after-door', x1:620, y1:542, x2:620, y2:602},
+  ];
+  const editor = boot({version:2, editableReferenceVersion:7, rooms:[], walls, items:[], hotspots:[]});
+  const readWalls = () => editor.window.RoomcraftEditorViewport.getProject().walls;
+  const before = readWalls();
+  editor.dispatch('joinWallsButton', 'click', {});
+  const joined = readWalls();
+  assert.equal(joined.find(w => w.id === 'test-jamb').y1, 400);
+  assert.equal(joined.find(w => w.id === 'test-jamb').finish, 'sage');
+  assert.equal(joined.find(w => w.id === 'test-after-door').y1, 542);
+  editor.dispatch('joinWallsButton', 'click', {});
+  assert.equal(editor.window.RoomcraftEditorEngine.inspect().commandCount, 1);
+  editor.dispatch('undoButton', 'click', {});
+  assert.deepEqual(readWalls(), before);
+  editor.pointer('pointerdown', 680, 411);
+  editor.pointer('pointermove', 680, 463);
+  editor.pointer('pointerup', 680, 463);
+  const added = readWalls().find(w => !before.some(prior => prior.id === w.id));
+  assert.deepEqual([added.x1, added.y1, added.x2, added.y2], [680, 400, 680, 460]);
+});
+
+test('reference geometry repair reorients only the original bed and keeps its binding', () => {
+  const bed = {id:'i6', type:'bed', name:'My bed', x:1331, y:373, w:213, h:194, rotation:0, entityId:'switch.example'};
+  const from = items => boot({version:2, editableReferenceVersion:6, rooms:[], walls:[], items, hotspots:[]})
+    .window.RoomcraftEditorViewport.getProject();
+  const repaired = from([bed]);
+  assert.equal(repaired.editableReferenceVersion, 7);
+  assert.equal(repaired.items[0].rotation, 90);
+  assert.equal(repaired.items[0].entityId, 'switch.example');
+  const custom = from([{...bed, x:1300, rotation:15}]);
+  assert.equal(custom.items[0].x, 1300);
+  assert.equal(custom.items[0].rotation, 15);
 });
 
 test('the same scene and edit sequence produce the same object ID and engine evidence', () => {
@@ -248,7 +289,7 @@ test('migrates a saved plan into movable lamp and room fixtures without duplicat
   editor.pointer('pointermove', 1393, 516);
   editor.pointer('pointerup', 1393, 516);
   const migrated = editor.read();
-  assert.equal(migrated.editableReferenceVersion, 6);
+  assert.equal(migrated.editableReferenceVersion, 7);
   assert.equal(migrated.items.filter(i => i.id === 'i14').length, 1);
   assert.equal(migrated.items.filter(i => i.id.startsWith('fixture-')).length, 7);
   assert.equal(migrated.items.find(i => i.id === 'office-desk-lamp')?.type, 'lamp');
@@ -281,7 +322,7 @@ test('remove all objects stays empty after reload and restore rebuilds the compl
   editor.dispatch('confirmationAccept', 'click', {});
   await removing;
   const empty = editor.read();
-  assert.equal(empty.editableReferenceVersion, 6);
+  assert.equal(empty.editableReferenceVersion, 7);
   assert.equal(empty.items.length, 0);
 
   const reopened = boot(empty);
@@ -307,7 +348,7 @@ test('v6 owns the final shell object and separates fan, fan light, and detached 
   editor.pointer('pointermove',599.5,190.5);
   editor.pointer('pointerup',599.5,190.5);
   const migrated = editor.read();
-  assert.equal(migrated.editableReferenceVersion, 6);
+  assert.equal(migrated.editableReferenceVersion, 7);
   assert.equal(migrated.items.filter(i => i.id === 'living-wall-unit').length, 1);
   assert.equal(migrated.items.find(i=>i.id==='fan').type,'fans-five-blade-fan-white');
   assert.deepEqual(

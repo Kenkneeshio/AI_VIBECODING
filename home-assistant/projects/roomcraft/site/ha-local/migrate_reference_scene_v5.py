@@ -64,7 +64,7 @@ def migrate_dashboard(current):
     if project.get("version") != 2 or not isinstance(project.get("items"), list):
         raise MigrationError("The Roomcraft layout version is unsupported.")
     reference_version = project.get("editableReferenceVersion", 0)
-    if not isinstance(reference_version, int) or reference_version not in {4, 5, TARGET_VERSION}:
+    if not isinstance(reference_version, int) or reference_version < 4:
         raise MigrationError("The editable reference version is unsupported.")
     if reference_version >= TARGET_VERSION:
         return result

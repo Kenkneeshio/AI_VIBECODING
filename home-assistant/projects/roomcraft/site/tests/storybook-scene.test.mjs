@@ -76,12 +76,38 @@ test('short drafting gaps and mitered wall corners close while a doorway stays o
   const plan = compileStorybookPlan(source);
   const floorLevelWalls = plan.wallStructure.filter(({bottom, top}) => bottom < 10 && top > 10)
     .flatMap(({polygons}) => polygons);
-  const caps = plan.wallStructure.filter(({bottom, top}) => bottom <= 65 && top > 65)
+  const caps = plan.wallStructure.filter(({top}) => top === 58)
     .flatMap(({polygons}) => polygons);
   assert.ok(covers(floorLevelWalls, 104, 204));
   assert.ok(covers(caps, 425, 210));
   assert.ok(!covers(floorLevelWalls, 570, 210));
   assert.ok(!covers(caps, 570, 210));
+});
+
+test('walls share one cap height, close L and T junctions, and expose only solid boundaries', () => {
+  const source = sample();
+  source.walls.push(
+    {id: 'angled-end', x1: 770, y1: 220, x2: 810, y2: 260, finish: 'sage'},
+    {id: 'interior-tee', x1: 300, y1: 226, x2: 300, y2: 440, finish: 'walnut'},
+    {id: 'beside-glass', x1: 400, y1: 226, x2: 400, y2: 440},
+    {id: 'front-edge', x1: 110, y1: 700, x2: 760, y2: 700},
+  );
+  const {wallStructure} = compileStorybookPlan(source);
+  const caps = wallStructure.filter(({top}) => top === 58).flatMap(({faces}) => faces.top);
+  const atGlass = wallStructure.filter(({bottom, top}) => bottom <= 35 && top > 35)
+    .flatMap(({polygons}) => polygons);
+  assert.ok(covers(caps, 300, 219));
+  assert.ok(covers(caps, 765, 215));
+  assert.ok(covers(caps, 400, 700));
+  assert.ok(!covers(caps, 400, 210));
+  assert.ok(!covers(atGlass, 400, 210));
+  assert.ok(!covers(atGlass, 400, 219));
+  assert.ok(covers(atGlass, 300, 219));
+  assert.ok(!wallStructure.some(({top, faces}) => top === 56 && faces.top.length));
+  const teeInternalSides = wallStructure.filter(({bottom, top}) => bottom <= 35 && top > 35)
+    .flatMap(({faces}) => faces.sides).filter(([[ax, az], [bx, bz]]) =>
+      ax === 293 && bx === 293 && Math.min(az, bz) < 217 && Math.max(az, bz) > 217);
+  assert.deepEqual(teeInternalSides, []);
 });
 
 test('opposed room finishes share a continuous floor slab through their threshold', () => {

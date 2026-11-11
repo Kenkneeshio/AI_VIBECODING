@@ -373,7 +373,13 @@
   }
   function drawSofa(c,o,t,p){
     let w=o.w,h=o.h,f=t.form;
-    if(f==='cloudSofa'&&h>w){c.save();c.rotate(Math.PI/2);const done=drawSofa(c,{...o,w:h,h:w},{...t,form:'cloudSofa'},p);c.restore();return done;}
+    if(f==='cloudSofa'&&h>w){
+      c.save();
+      c.rotate(o.type==='sofa'?-Math.PI/2:Math.PI/2);
+      const done=drawSofa(c,{...o,w:h,h:w},t,p);
+      c.restore();
+      return done;
+    }
     const x=-w/2,y=-h/2;
     if(f==='chaiseSofa'){
       furnitureFoot(c,x+4,y+4,w-8,h-10,16);fabricPanel(c,x+4,y+6,w-8,h-14,16,p,{depth:6,piping:true});
@@ -405,20 +411,24 @@
     pillow(c,x+w*.62,y+mainH*.42,w*.15,mainH*.28,{...p,base:p.accent},-.15);return true;
   }
   function drawDining(c,o,t,p){
-    const w=o.w,h=o.h,f=t.form,round=f==='roundDining',six=f==='rectDining';
-    const cw=Math.max(19,Math.min(w,h)*(six ? .16 : .19)),ch=cw*.92;
+    const w=o.w,h=o.h,f=t.form,round=f==='roundDining',six=f==='rectDining',legacy=o.type==='table';
+    const cw=Math.max(19,Math.min(w,h)*(legacy ? .24 : six ? .16 : .19)),ch=cw*.92;
     const chairs=six?[
       [-w*.29,-h*.39,0],[0,-h*.39,0],[w*.29,-h*.39,0],[-w*.29,h*.39,Math.PI],[0,h*.39,Math.PI],[w*.29,h*.39,Math.PI]
     ]:[[-w*.28,-h*.38,0],[w*.28,-h*.38,0],[-w*.28,h*.38,Math.PI],[w*.28,h*.38,Math.PI]];
     if(round){chairs.splice(0,chairs.length,[0,-h*.43,0],[w*.43,0,Math.PI/2],[0,h*.43,Math.PI],[-w*.43,0,-Math.PI/2]);}
-    for(const [cx,cy,a] of chairs)chairTop(c,cx,cy,cw,ch,a,p);
+    if(legacy){chairs.splice(0,chairs.length,[0,-h*.39,0],[w*.42,0,Math.PI/2],[0,h*.39,Math.PI],[-w*.42,0,-Math.PI/2]);}
+    const chairPalette=legacy?{...p,base:'#58637b',accent:'#737e95',dark:'#4e4051'}:p;
+    for(const [cx,cy,a] of chairs)chairTop(c,cx,cy,cw,ch,a,chairPalette);
     if(round){
       oval(c,3,7,w*.3,h*.3,'rgba(47,39,31,.18)');disc(c,0,3,Math.min(w,h)*.15,p.dark);brass(c,-3,-3,6,h*.22,2);
       const g=c.createRadialGradient(-w*.12,-h*.12,2,0,0,Math.min(w,h)*.31);g.addColorStop(0,p.detail);g.addColorStop(.45,p.accent);g.addColorStop(1,p.dark);disc(c,0,0,Math.min(w,h)*.29,g,p.dark,1.6);clippedTexture(c,-w*.28,-h*.28,w*.56,h*.56,w*.28,'wood');
     }else{
-      const tw=w*(six ? .69 : .54),th=h*(six ? .52 : .48);woodPanel(c,-tw/2,-th/2,tw,th,Math.min(13,th*.22),p,7);
+      const tw=w*(legacy ? .75 : six ? .69 : .54),th=h*(legacy ? .56 : six ? .52 : .48);
+      woodPanel(c,-tw/2,-th/2,tw,th,Math.min(13,th*.22),p,7);
       for(const lx of [-tw*.34,tw*.28])for(const ly of [-th*.3,th*.22])taperedLeg(c,lx,ly,tw*.07,th*.36,p.dark);
       c.strokeStyle='rgba(92,56,34,.28)';c.lineWidth=1;c.beginPath();c.moveTo(-tw*.18,-th*.45);c.lineTo(-tw*.18,th*.45);c.moveTo(tw*.18,-th*.45);c.lineTo(tw*.18,th*.45);c.stroke();
+      if(legacy)rr(c,-tw*.41,-th*.12,tw*.82,th*.24,2,p.detail);
     }
     return true;
   }
@@ -1109,6 +1119,7 @@
         accent:['bed','chair','armchair'].includes(o.type)?'#d8e1cf':'#d7ad7d',
         detail:'#fff3dc',dark:['bed','chair','armchair'].includes(o.type)?'#6e637b':'#674832'
       };
+      if(o.type==='sofa')Object.assign(palette,{base:'#ceb79a',accent:'#bca087',detail:'#e5d1b8',dark:'#7e6756'});
       c.save();c.translate(o.x,o.y);c.rotate((o.rotation||0)*Math.PI/180);c.lineJoin='round';c.lineCap='round';
       const drawn=['lamp','tableLamp','floorLamp','ceilingLight','pendantLight','wallSconce'].includes(o.type)
         ?drawCraftedLight(c,o,{form:craftedForm},palette)

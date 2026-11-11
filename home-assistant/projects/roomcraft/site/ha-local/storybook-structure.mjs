@@ -1,7 +1,7 @@
 import polygonClipping from 'polygon-clipping';
 
 const {difference, union} = polygonClipping;
-const JOIN_LIMIT = 18;
+export const WALL_JOIN_LIMIT = 18;
 const EPSILON = 0.001;
 
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1];
@@ -51,7 +51,7 @@ function floorBridge(a, b, first, second) {
   const side = normal(a.tangent);
   const [bStart, bEnd] = [b.start, b.end].map(point => minus(point, a.start));
   const signed = dot(bStart, side);
-  if (Math.abs(signed) < 0.1 || Math.abs(signed) > JOIN_LIMIT ||
+  if (Math.abs(signed) < 0.1 || Math.abs(signed) > WALL_JOIN_LIMIT ||
       Math.abs(signed - dot(bEnd, side)) > 0.1) return null;
   const bRange = [dot(bStart, a.tangent), dot(bEnd, a.tangent)].sort((x, y) => x - y);
   const start = Math.max(0, bRange[0]);
@@ -99,96 +99,157 @@ export function compileFloorStructure(rooms, reference) {
       }
     }
   }
-  const referenceRegions = [];
+  const deckRegions = [];
+  const interiorRegions = [];
   if (reference) {
     const {left, deckEdge, stepBottom, deckBottom, northDeck, southDeck, recess} = reference;
-    referenceRegions.push({surface: 'patio', polygons: [
+    deckRegions.push({surface: 'patio', polygons: [
       polygon(ring(northDeck)), polygon(ring(southDeck)),
       polygon(rectangle(left, stepBottom, deckEdge + 1, deckBottom)),
     ]});
     if (recess.x2 > recess.x1 && recess.z2 > recess.z1) {
-      referenceRegions.push({surface: 'oak', polygons: [
-        polygon([[recess.x1, recess.northLeft], [recess.x2, recess.z1], [recess.x2, recess.z2],
-          [recess.x1, recess.z2]]),
+      interiorRegions.push({surface: 'oak', polygons: [
+        polygon(rectangle(recess.x1, recess.z1, recess.x2, recess.z2)),
       ]});
     }
   }
-  return visibleRegions([...referenceRegions, ...bridges, ...roomRegions]);
+  const enclosed = [...interiorRegions, ...bridges, ...roomRegions];
+  const floors = visibleRegions([...deckRegions, ...enclosed]);
+  const foundation = reference ? unite(enclosed.flatMap(entry => entry.polygons)) : [];
+  return {...floors, foundation};
 }
 
-function endpointJoints(walls) {
-  const pairs = [];
+function miterCorner(center, a, b, halfWidth) {
+  const turn = cross(a, b);
+  if (Math.abs(turn) < 0.13) return null;
+  const outside = Math.sign(turn) * -halfWidth;
+  const first = offset(center, normal(a), outside);
+  const second = offset(center, normal(b), -outside);
+  const extension = cross(minus(second, first), b) / turn;
+  const miter = offset(first, a, extension);
+  if (Math.hypot(...minus(miter, center)) > halfWidth * 2.5) return polygon([center, first, second]);
+  return polygon([center, first, miter, second]);
+}
+
+function intersectLines(a, b) {
+  const turn = cross(a.tangent, b.tangent);
+  if (Math.abs(turn) < 0.13) return null;
+  const delta = minus(b.point, a.point);
+  return [cross(delta, b.tangent) / turn, cross(delta, a.tangent) / turn];
+}
+
+function wallJoints(walls) {
   const endpoints = walls.flatMap(wall => [
     {wall, point: [wall.x1, wall.y1], tangent: [wall.dx, wall.dz]},
     {wall, point: [wall.x2, wall.y2], tangent: [-wall.dx, -wall.dz]},
   ]);
-  for (const [index, a] of endpoints.entries()) for (const b of endpoints.slice(index + 1)) {
-    if (a.wall === b.wall) continue;
-    const distance = Math.hypot(...minus(a.point, b.point));
-    if (distance > JOIN_LIMIT) continue;
-    // Closely spaced opposed ends and corners describe drafting joins.
-    // Parallel wall sides already touch when the authored width covers them.
-    if (distance > EPSILON && dot(a.tangent, b.tangent) > 0.92) continue;
-    pairs.push({a, b, distance});
+  const joints = [];
+  for (const [index, a] of endpoints.entries()) {
+    for (const b of endpoints.slice(index + 1)) {
+      if (a.wall === b.wall) continue;
+      const delta = minus(b.point, a.point);
+      if (Math.hypot(...delta) > WALL_JOIN_LIMIT) continue;
+      const crossing = intersectLines(a, b);
+      if (crossing && crossing.every(t => t >= -WALL_JOIN_LIMIT && t <= EPSILON)) {
+        joints.push({a, b, center: offset(a.point, a.tangent, crossing[0])});
+      } else if (!crossing && dot(a.tangent, b.tangent) < 0 &&
+          dot(delta, a.tangent) <= EPSILON && dot(delta, b.tangent) >= -EPSILON) {
+        joints.push({a, b});
+      }
+    }
+    for (const wall of walls) {
+      if (a.wall === wall) continue;
+      const b = {wall, point: [wall.x1, wall.y1], tangent: [wall.dx, wall.dz]};
+      const crossing = intersectLines(a, b);
+      if (!crossing) continue;
+      const [alongEnd, alongWall] = crossing;
+      if (alongEnd < -WALL_JOIN_LIMIT || alongEnd >= -EPSILON ||
+          alongWall <= EPSILON || alongWall >= wall.length - EPSILON ||
+          wall.openings.some(({start, end}) => alongWall >= start && alongWall <= end)) continue;
+      joints.push({a, center: offset(a.point, a.tangent, alongEnd)});
+    }
   }
-  return pairs;
+  return joints;
 }
 
-function jointFootprint({a, b, distance}, halfWidth) {
-  if (distance > EPSILON) return strip(a.point, b.point, halfWidth, 0.1);
-  const turn = cross(a.tangent, b.tangent);
-  if (Math.abs(turn) < EPSILON) return null;
-  const outside = Math.sign(turn) * -halfWidth;
-  const first = offset(a.point, normal(a.tangent), outside);
-  const second = offset(b.point, normal(b.tangent), -outside);
-  const extension = cross(minus(second, first), b.tangent) / turn;
-  const miter = offset(first, a.tangent, extension);
-  if (Math.hypot(...minus(miter, a.point)) > halfWidth * 2.5) return polygon([a.point, first, second]);
-  return polygon([a.point, first, miter, second]);
+function jointFootprints({a, b, center}, halfWidth) {
+  if (!center) return [strip(a.point, b.point, halfWidth, 0.1)].filter(Boolean);
+  return [
+    strip(a.point, center, halfWidth, 0.1),
+    b && strip(b.point, center, halfWidth, 0.1),
+    b && miterCorner(center, a.tangent, b.tangent, halfWidth),
+  ].filter(Boolean);
+}
+
+function boundarySegments(polygons) {
+  return polygons.flatMap(rings => rings.flatMap(points => points.slice(1)
+    .map((point, index) => [points[index], point])));
+}
+
+function exposedSides(regions, boundary) {
+  return boundarySegments(regions).flatMap(([start, end]) => {
+    const delta = minus(end, start);
+    const length = Math.hypot(...delta);
+    if (length < EPSILON) return [];
+    const tangent = delta.map(value => value / length);
+    return boundary.flatMap(([outerStart, outerEnd]) => {
+      const a = minus(outerStart, start);
+      const b = minus(outerEnd, start);
+      if (Math.abs(cross(a, tangent)) > EPSILON || Math.abs(cross(b, tangent)) > EPSILON) return [];
+      const [outerLeft, outerRight] = [dot(a, tangent), dot(b, tangent)].sort((x, y) => x - y);
+      const left = Math.max(0, outerLeft);
+      const right = Math.min(length, outerRight);
+      return right - left > EPSILON ? [[offset(start, tangent, left), offset(start, tangent, right)]] : [];
+    });
+  });
+}
+
+function exposedPolygons(polygons, adjacent) {
+  return adjacent?.length ? difference(polygons, adjacent) : polygons;
 }
 
 /** Merge cross-sections at common heights so caps, trims and wall bodies
  * meet at one polygon boundary, including inside and outside corner turns. */
-export function compileWallStructure(walls, width, sill, lintel) {
+export function compileWallStructure(walls, width, height, sill) {
   const parts = [];
   const add = (shape, from, to, surface, priority = 0) => {
     if (shape && to > from) parts.push({shape, from, to, surface, priority});
   };
   for (const wall of walls) {
-    const {height, palette: [body, cap, base]} = wall;
+    const {palette: [body, cap, base]} = wall;
     const start = [wall.x1, wall.y1];
     const direction = [wall.dx, wall.dz];
     const span = (left, right, from, to, thickness, surface, priority) => {
       if (right - left > EPSILON) add(strip(offset(start, direction, left),
         offset(start, direction, right), thickness / 2), from, to, surface, priority);
     };
-    if (wall.openings.length) {
-      span(0, wall.length, 0, sill, width, body, 2);
-      span(0, wall.length, lintel, height, width, body, 2);
-      let end = 0;
-      for (const opening of wall.openings) {
-        span(end, opening.start, sill, lintel, width, body, 2);
-        end = Math.max(end, opening.end);
-      }
-      span(end, wall.length, sill, lintel, width, body, 2);
-    } else span(0, wall.length, 0, height, width, body, 2);
-    span(0, wall.length, height - 1, height + 2, width + 3, cap, 1);
+    // The cutaway exposes the glazed head in overhead view. The sill is
+    // continuous; the solid body and cap end at the authored window jambs.
+    const bodyBase = wall.openings.length ? sill : 0;
+    const solid = (left, right) => {
+      span(left, right, bodyBase, height, width, body, 2);
+      span(left, right, height - 1, height + 2, width + 3, cap, 1);
+    };
+    if (bodyBase) span(0, wall.length, 0, bodyBase, width, body, 2);
+    let previous = 0;
+    for (const opening of wall.openings) {
+      solid(previous, opening.start);
+      previous = Math.max(previous, opening.end);
+    }
+    solid(previous, wall.length);
     span(0, wall.length, 0, 3, width + 3, base, 1);
   }
-  for (const joint of endpointJoints(walls)) {
-    const first = joint.a.wall;
-    const second = joint.b.wall;
-    const lower = first.height <= second.height ? first : second;
-    const [body, cap, base] = lower.palette;
-    const full = jointFootprint(joint, width / 2);
-    const trim = jointFootprint(joint, (width + 3) / 2);
-    add(full, 0, lower.height, body, 2);
-    add(trim, lower.height - 1, lower.height + 2, cap, 1);
-    add(trim, 0, 3, base, 1);
+  for (const joint of wallJoints(walls)) {
+    const [body, cap, base] = joint.a.wall.palette;
+    for (const full of jointFootprints(joint, width / 2)) add(full, 0, height, body, 2);
+    for (const trim of jointFootprints(joint, (width + 3) / 2)) {
+      add(trim, height - 1, height + 2, cap, 1);
+      add(trim, 0, 3, base, 1);
+    }
   }
 
   const levels = [...new Set(parts.flatMap(({from, to}) => [from, to]))].sort((a, b) => a - b);
-  return levels.slice(1).flatMap((top, index) => {
+  const slices = levels.slice(1).map((top, index) => {
     const bottom = levels[index];
     const groups = new Map();
     const active = parts.filter(part => part.from <= bottom && part.to >= top);
@@ -196,6 +257,17 @@ export function compileWallStructure(walls, width, sill, lintel) {
       if (!groups.has(surface)) groups.set(surface, {surface, polygons: []});
       groups.get(surface).polygons.push(shape);
     }
-    return visibleRegions([...groups.values()]).regions.map(region => ({...region, bottom, top}));
+    return {...visibleRegions([...groups.values()]), bottom, top};
+  });
+  return slices.flatMap(({regions, footprint, bottom, top}, index) => {
+    const boundary = boundarySegments(footprint);
+    return regions.map(region => ({
+      ...region, bottom, top,
+      faces: {
+        top: exposedPolygons(region.polygons, slices[index + 1]?.footprint),
+        bottom: bottom === 0 ? [] : exposedPolygons(region.polygons, slices[index - 1]?.footprint),
+        sides: exposedSides(region.polygons, boundary),
+      },
+    }));
   });
 }

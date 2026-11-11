@@ -253,11 +253,14 @@ function aperture(w, windowOnly, slatsEnabled, height = 31) {
   const openWidth = Math.max(12, w - 6);
   const frame = material(color.oat);
   if (windowOnly) {
-    box(root, openWidth, height, 3.2, material(color.glass, { roughness: 0.32 }), 0, at, 0);
+    const glass = material(color.glass, {roughness: 0.32});
+    box(root, openWidth, height, 3.2, glass, 0, at, 0);
     for (const x of [-openWidth / 2 + 1.6, 0, openWidth / 2 - 1.6]) {
       box(root, 3.2, height + 2, 7.5, frame, x, at);
     }
-    box(root, openWidth + 2, 3.5, 8, frame, 0, at + height / 2);
+    const headY = at + height / 2;
+    box(root, openWidth, 1.8, 7, glass, 0, headY + 0.35);
+    for (const z of [-4.25, 4.25]) box(root, openWidth + 2, 3.2, 1.5, frame, 0, headY, z);
     box(root, openWidth + 3, 3.8, 11, frame, 0, at - height / 2, 1.4);
     box(root, openWidth, 1.35, 0.5, material(color.cream), 0, at + 6.2, 2);
   }

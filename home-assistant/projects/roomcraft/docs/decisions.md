@@ -1,5 +1,11 @@
 # Decision log
 
+## Restore the source plan and join walls in project space
+
+The owner-marked Floorplanner plan defines the room and passage topology. The approved Roomcraft illustration defines the current plan coordinates, stair orientation and removable door leaves. Reference revision 7 applies measured fixes to stock wall and floor groups and reorients the stock bed. The published layout keeps its version 2 schema, device bindings and project dimensions.
+
+Studio snaps endpoints to corners and wall centerlines within 18 project pixels. The batch join is an explicit undoable edit and shares the same geometry operation used on the traced kitchen and bath seam. The 3D renderer unions wall sections at one cap height, retains openings and removes hidden coplanar faces. The 2D raster baseline follows the corrected reference so Studio does not paint a second wall over the same artwork.
+
 ## One camera contract serves the dashboard and Studio
 
 Use explicit orthographic view inputs for preset, azimuth, tilt and zoom. Top down has zero tilt and a fixed north-up orientation. Dollhouse and Corner projections fit the same scene bounds. The scene renderer projects media and control targets through the active camera, while Studio maps pointer movement back onto the floor plane for object edits.

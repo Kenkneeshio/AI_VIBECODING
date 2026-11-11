@@ -11,6 +11,8 @@ const color = Object.freeze({
   lilac: '#aca0c8', lilacLight: '#d7c9e1', blue: '#81a6b5', aqua: '#b4d6d3',
   ceramic: '#f2e6e0', shadow: '#a38898', glass: '#577b91', darkGlass: '#344459',
   brass: '#c39257', binding: '#b29386', blueWater: '#9ac3bf',
+  oatmeal: '#dac3a4', upholsteryShadow: '#bca087', denim: '#58637b',
+  steel: '#bbc9cd', basinSteel: '#879aa4',
 });
 
 const finishes = Object.freeze({
@@ -23,16 +25,17 @@ const finishes = Object.freeze({
 
 const woods = new Set([color.oak, color.oakLight, color.walnut]);
 const textiles = new Set([color.sage, color.moss, color.linen, color.lilac, color.lilacLight,
-  color.blush, color.peach]);
+  color.blush, color.peach, color.oatmeal, color.upholsteryShadow, color.denim]);
 
 function furnitureMaterial(tint, grainDirection) {
   const detail = woods.has(tint) ? 1 : textiles.has(tint) ? 2 : 0;
   const glass = tint === color.glass || tint === color.darkGlass || tint === color.blueWater;
   const brass = tint === color.brass;
+  const stainless = tint === color.steel || tint === color.basinSteel;
   const material = new THREE.MeshStandardMaterial({
     color: tint,
-    roughness: brass ? .37 : glass ? .33 : tint === color.ceramic ? .44 : detail === 1 ? .64 : .89,
-    metalness: brass ? .42 : 0,
+    roughness: brass || stainless ? .37 : glass ? .33 : tint === color.ceramic ? .44 : detail === 1 ? .64 : .89,
+    metalness: brass ? .42 : stainless ? .28 : 0,
   });
   if (!detail) return material;
   material.onBeforeCompile = shader => {
@@ -162,22 +165,28 @@ function pillow(p, x, y, z, width, depth, tint, angle) {
 function sofa(p, w, d, tint, type) {
   const sectional = type === 'sofa' || type.includes('cloud-sofa');
   const vertical = sectional && d > w;
+  const legacy = type === 'sofa';
+  // The original sectional backs onto the west wall and its short return
+  // sits at the south end. Other catalog sectionals keep their authored shape.
+  const returnSide = legacy ? 1 : -1;
+  const base = legacy ? color.upholsteryShadow : color.moss;
+  const back = legacy ? color.oatmeal : color.sage;
   const mainWidth = vertical ? w * .50 : w;
   const mainDepth = sectional && !vertical ? d * .57 : d;
   const mainX = vertical ? -w * .25 : 0;
   const mainZ = sectional && !vertical ? -d * .215 : 0;
   const arm = Math.min(w, d) * .10;
   feet(p, mainX, mainZ, mainWidth, mainDepth, 5);
-  p.box(mainX, 5, mainZ, mainWidth * .97, 22, mainDepth * .98, color.moss, 8);
+  p.box(mainX, 5, mainZ, mainWidth * .97, 22, mainDepth * .98, base, 8);
   if (sectional) {
     const returnWidth = vertical ? w * .52 : w * .34;
     const returnDepth = vertical ? d * .38 : d * .46;
     const returnX = vertical ? w * .22 : -w * .32;
-    const returnZ = vertical ? -d * .30 : d * .25;
+    const returnZ = vertical ? returnSide * d * .30 : d * .25;
     feet(p, returnX, returnZ, returnWidth, returnDepth, 5);
-    p.box(returnX, 5, returnZ, returnWidth, 22, returnDepth, color.moss, 8);
+    p.box(returnX, 5, returnZ, returnWidth, 22, returnDepth, base, 8);
     p.box(returnX, 25, returnZ, returnWidth * .96, 12, returnDepth * .9, tint, 5);
-    if (vertical) p.box(returnX, 29, -d * .464, returnWidth, 26, arm, color.sage, 6);
+    if (vertical) p.box(returnX, 29, returnSide * d * .464, returnWidth, 26, arm, back, 6);
   }
   const count = type.includes('loveseat') || type.includes('chaise') ? 2 : 3;
   if (vertical) {
@@ -185,20 +194,21 @@ function sofa(p, w, d, tint, type) {
     for (let i = 0; i < count; i++) {
       const z = -d * .44 + span * (i + .5);
       p.box(mainX + arm * .18, 25, z, mainWidth * .76, 12, span - 3, tint, 5);
-      p.box(mainX - mainWidth * .39, 27, z, mainWidth * .22, 31, span - 1, color.sage, 8);
+      p.box(mainX - mainWidth * .39, 27, z, mainWidth * .22, 31, span - 1, back, 8);
     }
-    p.box(mainX, 29, d * .445, mainWidth * .88, 20, arm, color.sage, 6);
-    pillow(p, mainX + mainWidth * .13, 35, -d * .31, mainWidth * .42, span * .49, color.peach, -.18);
+    p.box(mainX, 29, -returnSide * d * .445, mainWidth * .88, 20, arm, back, 6);
+    pillow(p, mainX + mainWidth * .13, 35, -d * .31, mainWidth * .42, span * .49,
+      legacy ? color.sage : color.peach, -.18);
     pillow(p, mainX + mainWidth * .12, 35, d * .28, mainWidth * .40, span * .45, color.linen, .20);
   } else {
     const span = w * .80 / count;
     for (let i = 0; i < count; i++) {
       const x = -w * .4 + span * (i + .5);
       p.box(x, 25, mainZ + mainDepth * .08, span - 3, 12, mainDepth * .70, tint, 6);
-      p.box(x, 27, mainZ - mainDepth * .39, span - 1, 31, mainDepth * .24, color.sage, 7);
+      p.box(x, 27, mainZ - mainDepth * .39, span - 1, 31, mainDepth * .24, back, 7);
     }
     for (const x of [-w * .442, w * .442]) {
-      p.box(x, 26, mainZ, arm, 22, mainDepth * .89, color.sage, 6);
+      p.box(x, 26, mainZ, arm, 22, mainDepth * .89, back, 6);
     }
     pillow(p, -w * .27, 35, mainZ - mainDepth * .15, w * .18, mainDepth * .34, color.peach, -.18);
     pillow(p, w * .27, 35, mainZ - mainDepth * .12, w * .17, mainDepth * .33, color.linen, .20);
@@ -229,6 +239,17 @@ function table(p, w, d, tint, type) {
   const round = type.includes('round-dining');
   const rectangular = type.includes('rectangular-dining');
   const four = !rectangular;
+  if (type === 'table') {
+    chair(p, 0, -d * .39, w * .20, d * .23, 0, color.denim);
+    chair(p, 0, d * .39, w * .20, d * .23, Math.PI, color.denim);
+    chair(p, -w * .415, 0, w * .17, d * .27, Math.PI / 2, color.denim);
+    chair(p, w * .415, 0, w * .17, d * .27, -Math.PI / 2, color.denim);
+    feet(p, 0, 0, w * .69, d * .49, 35);
+    p.box(0, 32, 0, w * .72, 6, d * .50, color.walnut, 3);
+    p.box(0, 37, 0, w * .79, 8, d * .57, color.oak, 4);
+    p.box(0, 45, 0, w * .69, 1.4, d * .14, color.linen, .6);
+    return 46.4;
+  }
   if (round) {
     chair(p, 0, -d * .37, w * .20, d * .20, 0, color.sage);
     chair(p, 0, d * .37, w * .20, d * .20, Math.PI, color.blush);
@@ -390,12 +411,41 @@ function rug(p, w, d, style) {
   return 5;
 }
 
-function counter(p, w, d, type) {
+function sinkCountertop(p, w, d, top) {
+  // The reference kitchen counter has two wells aligned with its long side.
+  // Four stone sections leave a real opening rather than a sink painted on top.
+  const width = w * .58;
+  const depth = d * .28;
+  const z = -d * .04;
+  const start = z - depth / 2;
+  const end = z + depth / 2;
+  const sideWidth = (w - width) / 2;
+  for (const side of [-1, 1]) {
+    p.box(side * (w + width) / 4, top - 5, 0, sideWidth, 5, d, color.linen);
+  }
+  p.box(0, top - 5, (start - d / 2) / 2, width, 5, start + d / 2, color.linen);
+  p.box(0, top - 5, (end + d / 2) / 2, width, 5, d / 2 - end, color.linen);
+
+  const lip = Math.min(2.6, width * .10);
+  p.box(0, top - 4.88, z, width, .72, depth, color.basinSteel);
+  for (const side of [-1, 1]) {
+    p.box(side * width / 2, top - 4.5, z, lip, 5.25, depth + lip, color.steel, .4);
+    p.box(0, top - 4.5, z + side * depth / 2, width, 5.25, lip, color.steel, .4);
+    p.disc(0, top - 4.1, z + side * depth / 4, lip, .6, lip, color.darkGlass);
+  }
+  p.box(0, top - 4.5, z, width, 4.85, lip, color.steel, .4);
+  const tapX = -width / 2 - lip * 1.15;
+  p.disc(tapX, top, z, lip * .8, lip * 2.9, lip * .8, color.steel);
+  p.box(tapX + lip, top + lip * 2.5, z, lip * 2.8, lip * .7, lip, color.steel, .6);
+}
+
+function counter(p, w, d, type, hasSink = false) {
   const height = type === 'doubleVanity' ? 32 : 35;
   const appliance = type === 'kitchenWorktop';
   const double = type === 'doubleVanity';
   p.box(0, 1, 0, w * .91, height - 4, d * .93, double ? color.sage : color.walnut, 2.3);
-  p.box(0, height - 3, 0, w, 5, d, color.linen, 1.8);
+  if (hasSink) sinkCountertop(p, w, d, height + 2);
+  else p.box(0, height - 3, 0, w, 5, d, color.linen, 1.8);
   const long = d > w;
   for (const edge of [-1, 1]) for (let i = -1; i <= 1; i++) {
     const width = long ? 2.2 : w * .29;
@@ -525,7 +575,7 @@ export function makeStorybookFurniture(item) {
   const p = new Miniature(w, d);
   let top;
   if (type === 'sofa' || /(?:sofa|loveseat|chaise)-/.test(type)) {
-    top = sofa(p, w, d, tint || color.sage, type);
+    top = sofa(p, w, d, tint || (type === 'sofa' ? color.linen : color.sage), type);
   } else if (type === 'tv') {
     p.box(0, 2, 0, w * .94, 23, d * .98, color.walnut, 3.5);
     p.box(0, 24, 0, w, 4, d, color.oakLight, 1.5);
@@ -553,7 +603,7 @@ export function makeStorybookFurniture(item) {
   } else if (type === 'rug') {
     top = rug(p, w, d, item.rugStyle);
   } else if (type === 'counter' || type === 'kitchenWorktop' || type === 'doubleVanity') {
-    top = counter(p, w, d, type);
+    top = counter(p, w, d, type, type === 'counter' && item.id === 'i7');
   } else if (type === 'tub' || type === 'toilet' || type === 'bathFixtures') {
     top = bath(p, w, d, type);
   } else if (type === 'plant' || type === 'floorPlant' || type.startsWith('balcony-')) {

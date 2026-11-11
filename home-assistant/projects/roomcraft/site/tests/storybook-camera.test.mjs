@@ -4,13 +4,14 @@ import * as THREE from 'three';
 import {CAMERA_PRESETS, fitStorybookCamera, normalizeCameraView} from '../ha-local/storybook-camera.mjs';
 
 const bounds = {minX: 20, maxX: 1510, minZ: 110, maxZ: 850};
+const topView = {preset: 'top', azimuth: 0, tilt: 0, zoom: 1};
 const makeCamera = () => new THREE.OrthographicCamera(-800, 800, 450, -450, 1, 4400);
 const near = (actual, expected, tolerance = 1e-7) => assert.ok(Math.abs(actual - expected) < tolerance,
   `Expected ${actual} to be close to ${expected}`);
 
 test('the default camera is directly overhead with authored north at the top', () => {
   const camera = makeCamera();
-  assert.deepEqual(fitStorybookCamera(camera, bounds, 1440, 810), CAMERA_PRESETS.top);
+  assert.deepEqual(fitStorybookCamera(camera, bounds, 1440, 810), topView);
   const direction = camera.getWorldDirection(new THREE.Vector3());
   near(direction.x, 0);
   near(direction.y, -1);
@@ -27,9 +28,24 @@ test('camera preferences normalize without modifying caller data or the presets'
   const input = {preset: 'corner', azimuth: -15, tilt: 80, zoom: 9};
   assert.deepEqual(normalizeCameraView(input), {preset: 'corner', azimuth: 345, tilt: 65, zoom: 2.5});
   assert.deepEqual(input, {preset: 'corner', azimuth: -15, tilt: 80, zoom: 9});
-  assert.deepEqual(normalizeCameraView({preset: 'bad', tilt: NaN, zoom: -1}), {...CAMERA_PRESETS.top, zoom: 0.6});
+  assert.deepEqual(normalizeCameraView({preset: 'bad', tilt: NaN, zoom: -1}), {...topView, zoom: 0.6});
   assert.equal(normalizeCameraView('dollhouse').tilt, 30);
-  assert.deepEqual(CAMERA_PRESETS.top, {preset: 'top', azimuth: 0, tilt: 0, zoom: 1});
+  assert.deepEqual(normalizeCameraView('top'), topView);
+});
+
+test('side presets view the cutaway from the corresponding plan edge', () => {
+  const camera = makeCamera();
+  const direction = new THREE.Vector3();
+  for (const [preset, x, z] of [['north', 0, 1], ['east', -1, 0], ['south', 0, -1], ['west', 1, 0]]) {
+    fitStorybookCamera(camera, bounds, 1440, 810, preset);
+    camera.getWorldDirection(direction);
+    const horizontal = Math.hypot(direction.x, direction.z);
+    assert.ok(horizontal > 0 && direction.y < 0, preset);
+    near(direction.x / horizontal, x);
+    near(direction.z / horizontal, z);
+  }
+  const high = normalizeCameraView('high').tilt;
+  assert.ok(high > 0 && high < normalizeCameraView('dollhouse').tilt);
 });
 
 test('every preset fits the full footprint and maps an edited floor point back to the same coordinates', () => {

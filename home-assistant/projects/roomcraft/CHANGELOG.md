@@ -1,5 +1,13 @@
 # Changelog
 
+## Rebuilt reference geometry and wall joins
+
+- Matched the original marked floor plan and approved Roomcraft illustration. Restored both open balcony passages, the rear wall step, study and closet jambs, a continuous bathroom divider, and the east-facing bed. Corrected the sectional and dining chairs in both renderers and restored the recessed double sink in 3D.
+- Studio can snap drawn or dragged ends to corners and wall centerlines. **Join nearby wall ends** closes small gaps as one undoable edit. Storybook merges the wall solids at a common height, exposes the recessed windows from overhead, and brings the enclosed facade down to ground level.
+- Added High angle and four side views to the shared camera menu. Top down remains the default.
+- Published reference revision 7 through Studio on the wall tablet. Authenticated readback matched the reviewed repair for all 6 rooms, 34 walls and 71 items. Verified the refreshed 1536 × 864 plan image, retained linked controls and exact installed assets. Checked the repaired 2D plan, Top down, High angle and From east on the tablet.
+- The owner-private editor deployed as Site v53 from `0535a7f4e25f38300f1ad6aaa3dfebb31d539ba6`. The release passed 114 editor and engine tests, 52 Home Assistant JavaScript tests, 15 Python tests, TypeScript, lint with zero errors, and deterministic bundle and manifest checks. Restore the private pre-release dashboard backup and previous asset build to roll back Home Assistant. The Site has a separate rollback.
+
 ## Camera views in the dashboard and editor
 
 - Top down is the default 3D view. Dashboard and Studio offer Dollhouse and Corner presets, rotation and zoom. Device and camera targets follow the projected scene.

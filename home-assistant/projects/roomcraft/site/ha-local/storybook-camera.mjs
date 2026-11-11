@@ -1,10 +1,32 @@
 import * as THREE from 'three';
 
+const cameraPreset = (label, azimuth, tilt) => Object.freeze({label, azimuth, tilt, zoom: 1});
+
 export const CAMERA_PRESETS = Object.freeze({
-  top: Object.freeze({preset: 'top', azimuth: 0, tilt: 0, zoom: 1}),
-  dollhouse: Object.freeze({preset: 'dollhouse', azimuth: 2, tilt: 30, zoom: 1}),
-  corner: Object.freeze({preset: 'corner', azimuth: 45, tilt: 40, zoom: 1}),
+  top: cameraPreset('Top down', 0, 0),
+  high: cameraPreset('High angle', 0, 15),
+  dollhouse: cameraPreset('Dollhouse', 2, 30),
+  corner: cameraPreset('Corner', 45, 40),
+  north: cameraPreset('From north', 180, 42),
+  east: cameraPreset('From east', 90, 42),
+  south: cameraPreset('From south', 0, 42),
+  west: cameraPreset('From west', 270, 42),
 });
+
+/** Keep the same preset labels and order in the dashboard and Studio. */
+export function populateCameraOptions(select, includePlan = false) {
+  const choices = Object.entries(CAMERA_PRESETS).map(([preset, {label}]) => [preset, label]);
+  if (includePlan) choices.push(['plan', '2D plan']);
+  const options = choices.map(([preset, label]) => {
+    const option = select.ownerDocument.createElement('option');
+    option.value = preset;
+    option.textContent = label;
+    return option;
+  });
+  select.replaceChildren(...options);
+  select.value = 'top';
+  select.disabled = false;
+}
 
 /** A camera preference is presentation data and never rewrites layout coordinates. */
 export function normalizeCameraView(value = 'top') {
