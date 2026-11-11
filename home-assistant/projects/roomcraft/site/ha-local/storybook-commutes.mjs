@@ -1,17 +1,21 @@
 import {stableDashboardJson} from './dashboard-snapshots.mjs';
+import {STORYBOOK_VEHICLES} from './storybook-vehicles.mjs';
 
 const SENSOR = /^sensor\.[a-z0-9_]+$/;
 const EXPIRY_MS = 20 * 60 * 1000;
 const TO_MINUTES = new Map([['s', 1 / 60], ['min', 1], ['h', 60]]);
 const ALL_ROUTES = 'all';
 const DESTINATION_LIMIT = 200;
+const VEHICLE_STYLE_KEY = 'roomcraft.traffic-vehicle-style.v1';
 
 export const COMMUTE_DIALOG_MARKUP = `
   <dialog class="link-dialog commute-dialog" aria-labelledby="commute-title">
     <header><h2 id="commute-title">Commute traffic</h2><button type="button" data-close-link>Close</button></header>
     <label class="commute-route" hidden>Route <select class="commute-select"></select></label>
     <p class="commute-reading" role="status">Add a Home Assistant travel-time sensor to connect a commute.</p>
+    <p class="commute-ambient" hidden>Road preview · One vehicle passes per second while live traffic is unavailable.</p>
     <ul class="commute-breakdown" aria-label="Travel times by route" hidden></ul>
+    <label class="commute-route commute-vehicle-picker">Vehicle style <select class="commute-vehicle-style"></select></label>
     <button type="button" class="commute-details" hidden>Travel-time sensor details</button>
     <a href="https://www.home-assistant.io/integrations/google_travel_time/" target="_blank" rel="noopener noreferrer"
       class="commute-setup">Set up Google Maps Travel Time ↗</a>
@@ -30,6 +34,8 @@ export const COMMUTE_DIALOG_MARKUP = `
   </dialog>`;
 
 export const COMMUTE_DIALOG_STYLE = `
+  .commute-dialog .commute-ambient{font-size:.84em}
+  .commute-vehicle-picker{margin-bottom:10px}
   .commute-breakdown{list-style:none;margin:0 0 12px;padding:0;border-block:1px solid #dfd1bc}
   .commute-breakdown li{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:7px 3px}
   .commute-breakdown li+li{border-top:1px solid #eee4d3}
@@ -169,7 +175,9 @@ export async function saveCommuteRoutes(session, dashboard, expected, routes, st
 
 export function bindStorybookCommutes(card) {
   const dialog = card.shadowRoot.querySelector('.commute-dialog');
-  const select = dialog.querySelector('select');
+  const select = dialog.querySelector('.commute-select');
+  const vehicles = dialog.querySelector('.commute-vehicle-style');
+  const ambient = dialog.querySelector('.commute-ambient');
   const status = dialog.querySelector('.commute-reading');
   const details = dialog.querySelector('.commute-details');
   const setup = dialog.querySelector('.commute-setup');
@@ -189,6 +197,17 @@ export function bindStorybookCommutes(card) {
   let routeRows = [];
   let editorRun;
   let busy = false;
+
+  vehicles.replaceChildren(new Option('Mixed vehicles', ''),
+    ...STORYBOOK_VEHICLES.map(({id, label}) => new Option(label, id)));
+  try { vehicles.value = window.localStorage.getItem(VEHICLE_STYLE_KEY) ?? ''; }
+  catch { /* Keep the mixed fleet if storage is unavailable. */ }
+  if (vehicles.selectedIndex < 0) vehicles.value = '';
+  vehicles.addEventListener('change', () => {
+    try { window.localStorage.setItem(VEHICLE_STYLE_KEY, vehicles.value); }
+    catch { /* The choice still applies to this session. */ }
+    card.refresh();
+  });
 
   const current = () => select.value !== ALL_ROUTES ? routes[Number(select.value)] : undefined;
   const canEdit = () => card.dashboard === 'roomcraft-home' && card.session?.connected === true
@@ -381,6 +400,7 @@ export function bindStorybookCommutes(card) {
   return {
     configure,
     sync,
+    vehicleStyle: () => vehicles.value || undefined,
     update(states, now) {
       sync();
       const readings = routes.map(route => commuteReading(route, states, now));
@@ -392,12 +412,14 @@ export function bindStorybookCommutes(card) {
         mixed.profile ? `${mixed.reporting} of ${mixed.total} live · ${formatPercent.format(mixed.profile.speedFactor)} of clear-road pace` :
           `0 of ${mixed.total} live · Waiting for fresh travel times and clear-road times.`;
       if (status.textContent !== message) status.textContent = message;
+      const active = reading ? {...reading, expiresAt: mixed.expiresAt} : mixed;
+      ambient.hidden = Boolean(active.profile);
       for (const [i, entry] of routeRows.entries()) {
         const text = describe(readings[i]);
         if (entry.reading.textContent !== text) entry.reading.textContent = text;
       }
       details.hidden = !states?.[route?.entity];
-      return reading ? {...reading, expiresAt: mixed.expiresAt} : mixed;
+      return active;
     },
   };
 }

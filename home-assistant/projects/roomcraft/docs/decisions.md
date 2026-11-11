@@ -1,5 +1,9 @@
 # Decision log
 
+## Keep the road active between traffic readings
+
+Use a dedicated preview schedule when the selected commute or route mix has no fresh calibrated reading. Alternate vehicle crossings across both lanes at one per second and label the mode in the commute panel. A fresh reading takes over the road again. The renderer uses a shared miniature catalog and the browser remembers the chosen design. The road preview, vehicle preference, and demo use presentation state outside the authored layout.
+
 ## Stage the showcase through the normal renderer
 
 Sample the camera and simulated state from elapsed demo time and focus on objects present in the published layout. Motion preferences hold the camera still while the chapters advance. The playback controller passes independent render frames through the same scene as the live view. The renderer keeps live track, cover, vacuum, and traffic animation caches separate. On exit, it resumes the latest live data and restores the camera.

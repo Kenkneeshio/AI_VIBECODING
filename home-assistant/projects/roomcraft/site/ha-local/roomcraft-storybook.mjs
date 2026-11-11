@@ -23,6 +23,7 @@ const DETAIL_VISIBILITY_EVENT = 'roomcraft-detail-visibility';
 const DETECTION_ZONE_KEY = 'roomcraft.show-detection-zone.v1';
 const CAMERA_TILES_KEY = 'roomcraft.show-camera-tiles.v1';
 const REDUCE_MOTION_KEY = 'roomcraft.reduce-motion.v1';
+const AMBIENT_TRAFFIC = Object.freeze({severity: 'ambient'});
 
 function readPreference(key, fallback) {
   try {
@@ -976,8 +977,9 @@ class RoomcraftStorybookCard extends HTMLElement {
     const now = Date.now();
     this.frame = storybookFrame(this.model, states, now);
     const commute = this.commutes.update(offline ? undefined : states, now);
-    this.frame.environment.traffic = commute.profile;
-    this.frame.moving ||= Boolean(commute.profile);
+    this.frame.environment.traffic = {...(commute.profile ?? AMBIENT_TRAFFIC),
+      vehicleStyle: this.commutes.vehicleStyle()};
+    this.frame.moving = true;
     this.frame.people = readPersonTracks(this.model.layout.items, states, now);
     const mappedTargetCounts = new Map();
     for (const track of this.frame.people) {

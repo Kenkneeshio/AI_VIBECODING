@@ -2,6 +2,7 @@
 
 | Goal | Reason | Evidence of completion |
 | --- | --- | --- |
+| Keep the street animated while a commute source is unavailable | Household users should see a lively road while missing travel times are clearly labeled | The commute menu labels the preview and offers mixed or individual vehicle designs |
 | Show the dashboard to guests in half a minute | A fast showcase should work when the house is quiet or traffic data is unavailable | The scene stages close-ups and device animations with isolated render inputs, then restores the operator's view |
 | Bring routes and shared locations into Roomcraft Home | The household needs traffic context and an interactive location map without leaving the dashboard | The commute panel combines selected routes and reports coverage. The native map uses explicit location sources from Home Assistant |
 | Make every release deterministic, repeatable, standardized, modular, professional, and customer-led | Engineers and future customer installations need to reproduce a layout or release without rediscovering hidden ordering, timing, assets, or acceptance criteria | `RoomcraftEngine` owns canonical fingerprints, seeded IDs, migrations, command replay, layer plans, and asset/evidence contracts; CI enforces the technical gates and the GitHub template prompts the required customer-outcome-to-rollback record |

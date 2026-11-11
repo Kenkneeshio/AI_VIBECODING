@@ -1,5 +1,10 @@
 # Changelog
 
+## Road preview and miniature vehicles
+
+- Roomcraft shows one passing vehicle per second across both lanes when the selected route or route mix has no usable traffic data. The commute panel labels this as a road preview.
+- **Commute traffic → Vehicle style** lets you keep a mixed fleet or select a single miniature vehicle design. The preference is saved in the current browser.
+
 ## Dashboard showcase, commute routes, and location map
 
 - The 30-second demo uses quick close-ups and simulated lights, fan, presence, vacuum, garage, indoor, weather, and road activity. It returns to the original view and resumes live telemetry on exit.

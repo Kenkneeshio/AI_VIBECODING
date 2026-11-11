@@ -6,6 +6,8 @@ The [Codex and Grok development guide](ai-pair-development.md) covers scoped loc
 
 ## Coordinated release
 
+The road preview runs when `roomcraft-storybook.mjs` has no fresh calibrated commute profile for the active selection. `storybook-traffic.mjs` owns the two-lane schedule and draws from the shared `storybook-vehicles.mjs` catalog. The commute panel keeps the browser's vehicle style choice. Reinstall Git revision `ce62626136cef65ca574bad373e3287f7f1b0787` or restore private Studio version 74 to roll back the road release.
+
 The showcase samples camera moves in `storybook-demo.mjs` and simulated inputs in `storybook-demo-frame.mjs`. `roomcraft-storybook.mjs` owns playback, view restoration, and input isolation. The scene uses separate demo animation state for tracked objects and vehicles. The authored layout and device bindings remain the same for live rendering and the demo.
 
 The commute panel binds one Home Assistant duration sensor and one clear-road reference per route. `storybook-commutes.mjs` validates these bindings, calculates individual and combined readings, and saves administrator edits in the private dashboard. `storybook-location.mjs` builds the native map from approved location entities and signed-in Home Assistant state. Both configurations stay outside the shared layout schema and snapshots. See the [deployment guide](deployment.md) for setup and rollback.

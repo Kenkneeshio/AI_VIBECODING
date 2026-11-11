@@ -18,9 +18,13 @@ Calendar month starts on the first day in Home Assistant’s timezone. Its **Rec
 
 Choose **Menu → Location sharing** to open a map inside Roomcraft Home. Pan or zoom and select a marker for its Home Assistant details. The panel identifies the source of the configured markers. For Google account sharing controls, choose **Google sharing settings**. [Google Maps Location Sharing](https://support.google.com/maps/answer/15437054)
 
+To add people who already share their location with you on Google, connect the account that receives those shares. [Home Assistant setup for existing Google shares](https://www.home-assistant.io/integrations/google_maps/#note-for-existing-location-sharing-users)
+
 Choose **Menu → Calendar & to-dos** for Home Assistant’s own Calendar and To-do lists.
 
 Choose **Menu → Commute traffic** for **All routes** or an individual route’s travel time and delay. The road cars illustrate the measured pace relative to clear-road times. Administrators can change destinations, route sources, and clear-road times from the panel. Use a route’s Google Maps link for directions. [Google Maps Travel Time](https://www.home-assistant.io/integrations/google_travel_time/)
+
+While travel times are unavailable, the road preview shows one vehicle passing per second across both lanes. Use **Vehicle style** to pick a design or keep **Mixed vehicles**. The current browser remembers your choice. **Reduce motion** holds the vehicles still.
 
 ### Restore a previous layout
 

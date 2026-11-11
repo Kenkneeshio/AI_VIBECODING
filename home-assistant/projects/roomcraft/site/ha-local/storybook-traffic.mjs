@@ -1,123 +1,123 @@
 import * as THREE from 'three';
-import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
-import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+import {STORYBOOK_VEHICLES, buildStorybookVehicle} from './storybook-vehicles.mjs';
 
 const PATTERNS = new Map([
   ['clear', {stride: 4, speed: 86}],
   ['slow', {stride: 2, speed: 53}],
   ['heavy', {stride: 1, speed: 24}],
 ]);
-const BODY_COLORS = ['#d18570', '#72a4a8', '#e5b86f', '#f2dfbe', '#9b91b4', '#79977d']
-  .map(color => new THREE.Color(color));
+const AMBIENT = {stride: 3};
+const SLOT_SPACING = 242;
+const DENSITY_CYCLE = 12;
+const TRANSITION_SECONDS = .38;
+const VEHICLES = new Map(STORYBOOK_VEHICLES.map(vehicle => [vehicle.id, vehicle]));
 
 /** Advance two illustrative lanes without tying the art to a route's actual car positions. */
 export function createTrafficMotion({centerX, width, lanes}) {
   const span = width - 60;
   const start = centerX - span / 2;
-  const count = Math.max(1, Math.floor(span / 242));
+  // Use a lattice shared by the density presets so a change can keep the
+  // cars already in both patterns at their existing positions.
+  const count = Math.max(1, DENSITY_CYCLE * Math.round(span / (DENSITY_CYCLE * SLOT_SPACING)));
   const spacing = span / count;
   const slots = lanes.map((z, lane) => Array.from({length: count}, (_, index) => ({
     z, lane, index, x: start,
-    offset: spacing * (index + (lane ? .7 : .25)) + ((index * 11 + lane * 7) % 13) - 6,
+    offset: spacing * (index + .25 + (lane ? .5 : 0)),
   })));
-  const phases = [0, 0];
+  let phase = 0;
   let previousTime;
   let previousPattern;
+  let velocity;
+  let easing = false;
   let visible = [];
   function update(time, profile, reduceMotion, fromDemoClock = false) {
-    const pattern = PATTERNS.get(profile?.severity);
+    const pattern = profile?.severity === 'ambient' ? AMBIENT : PATTERNS.get(profile?.severity);
     const step = Number.isFinite(previousTime) && Number.isFinite(time)
       ? THREE.MathUtils.clamp(time - previousTime, 0, .25) : 0;
     previousTime = time;
     if (pattern !== previousPattern) {
-      visible = pattern ? slots.flatMap((lane, side) => lane.filter(({index}) => index % pattern.stride === side % pattern.stride)) : [];
+      easing = Boolean(previousPattern && pattern && (pattern === AMBIENT || previousPattern === AMBIENT));
+      const stride = Math.min(count, pattern?.stride ?? 1);
+      visible = pattern ? slots.flatMap((lane, side) =>
+        lane.filter(({index}) => index % stride === side % stride)) : [];
       previousPattern = pattern;
     }
-    if (!pattern) return visible;
+    if (!pattern) {
+      velocity = undefined;
+      return visible;
+    }
     const factor = profile.speedFactor;
-    const speed = Number.isFinite(factor) && factor > 0
-      ? PATTERNS.get('clear').speed * THREE.MathUtils.clamp(factor, .22, 1) : pattern.speed;
+    // Scenic slots arrive every two seconds per lane. The two lanes have
+    // opposite headings and offset slots, alternating at the road midpoint.
+    const speed = pattern === AMBIENT
+      ? spacing * Math.min(count, AMBIENT.stride) / 2
+      : Number.isFinite(factor) && factor > 0
+        ? PATTERNS.get('clear').speed * THREE.MathUtils.clamp(factor, .22, 1) : pattern.speed;
     if (fromDemoClock) {
-      const distance = !reduceMotion && Number.isFinite(time) ? Math.max(0, time) * speed : 0;
-      phases[0] = distance % span;
-      phases[1] = (distance * .94) % span;
+      phase = !reduceMotion && Number.isFinite(time) ? (Math.max(0, time) * speed) % span : 0;
     } else if (!reduceMotion) {
-      phases[0] = (phases[0] + step * speed) % span;
-      phases[1] = (phases[1] + step * speed * .94) % span;
+      if (easing && velocity !== undefined) {
+        const remaining = Math.exp(-step / TRANSITION_SECONDS);
+        const difference = velocity - speed;
+        phase += step * speed + difference * TRANSITION_SECONDS * (1 - remaining);
+        velocity = speed + difference * remaining;
+        easing = Math.abs(velocity - speed) > .1;
+      } else {
+        phase += step * speed;
+        velocity = speed;
+      }
+      phase %= span;
     }
     for (const slot of visible) {
-      const offset = slot.offset + (slot.lane ? -phases[1] : phases[0]);
-      slot.x = start + (offset + span) % span;
+      const offset = (slot.offset + phase) % span;
+      slot.x = start + (slot.lane ? span - offset : offset);
     }
     return visible;
   }
   return {capacity: count * lanes.length, update};
 }
 
-function rounded(w, h, d, radius, x, y, z) {
-  return new RoundedBoxGeometry(w, h, d, 1, radius).translate(x, y, z);
-}
-
-function combine(parts) {
-  const unindexed = parts.map(part => part.index ? part.toNonIndexed() : part);
-  const geometry = mergeGeometries(unindexed);
-  for (const part of new Set([...parts, ...unindexed])) part.dispose();
-  return geometry;
-}
-
-function glazing() {
-  const shape = new THREE.Shape();
-  shape.moveTo(-17, 10.9);
-  shape.lineTo(-10.6, 18.5);
-  shape.lineTo(7.6, 18.5);
-  shape.lineTo(16, 10.9);
-  shape.closePath();
-  return new THREE.ExtrudeGeometry(shape, {depth: 17.8, bevelEnabled: true, bevelSegments: 1,
-    bevelSize: 1.3, bevelThickness: .7}).translate(0, 0, -8.9);
-}
-
-function wheels(radius, depth, y, offset) {
-  return combine([-16, 16].flatMap(x => [-offset, offset].map(z =>
-    new THREE.CylinderGeometry(radius, radius, depth, 10).rotateX(Math.PI / 2).translate(x, y, z))));
-}
-
-/** Batch shared miniature car geometry into a few draw calls on the main 3D road. */
+/** Instance each miniature silhouette and reuse one shadow layer across the road. */
 export function createStorybookTraffic(road) {
   const root = new THREE.Group();
   const motion = createTrafficMotion(road);
   let demoMotion;
-  const meshes = [];
-  function layer(geometry, material) {
+  const models = new Map();
+  function meshFor(geometry, material) {
     const mesh = new THREE.InstancedMesh(geometry, material, motion.capacity);
     mesh.count = 0;
     mesh.frustumCulled = false;
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    meshes.push(mesh);
-    root.add(mesh);
     return mesh;
   }
-  const matte = (color, roughness = .76) => new THREE.MeshStandardMaterial({color, roughness});
-  layer(new THREE.CircleGeometry(1, 18).rotateX(-Math.PI / 2).scale(29, 1, 13.8).translate(0, .02, 0),
+  const shadows = meshFor(new THREE.CircleGeometry(1, 18).rotateX(-Math.PI / 2).translate(0, .02, 0),
     new THREE.MeshBasicMaterial({color: '#35323c', opacity: .23, transparent: true, depthWrite: false}));
-  const paint = layer(combine([
-    rounded(52, 8.8, 22, 2.9, 0, 7.2, 0),
-    rounded(21, 2, 17.5, .85, -1.1, 18.9, 0),
-    rounded(4, 2.4, 3.5, .9, 9.2, 11.5, -11.3),
-    rounded(4, 2.4, 3.5, .9, 9.2, 11.5, 11.3),
-  ]), matte('#ffffff', .49));
-  layer(glazing(), matte('#415665', .37));
-  layer(wheels(3.9, 2.5, 3.95, 10.2), matte('#403b43'));
-  layer(wheels(1.85, .48, 3.95, 11.57), matte('#b7a99b'));
-  const lamp = (color, emissive) => new THREE.MeshStandardMaterial({color, emissive, roughness: .58});
-  const headlamps = lamp('#fbecd2', '#ffe4ab');
-  const taillamps = lamp('#b95451', '#ec6d54');
-  for (const [x, material] of [[24.9, headlamps], [-24.9, taillamps]]) {
-    layer(combine([-7.5, 7.5].map(z => rounded(2.5, 2.7, 4.7, 1.1, x, 8.4, z))), material);
-  }
+  root.add(shadows);
   const transform = new THREE.Object3D();
-  let lastSlots;
   let lastNight;
   root.visible = false;
+
+  function setLamps(model, night) {
+    for (const {mesh, role} of model.layers) {
+      if (role === 'headlamp') mesh.material.emissiveIntensity = night ? 1.65 : .26;
+      if (role === 'taillamp') mesh.material.emissiveIntensity = night ? .91 : .28;
+    }
+  }
+
+  function modelFor(vehicle) {
+    if (models.has(vehicle.id)) return models.get(vehicle.id);
+    const group = new THREE.Group();
+    group.name = `vehicle-${vehicle.id}`;
+    const layers = buildStorybookVehicle(vehicle.id).map(({geometry, material, role}) =>
+      ({mesh: meshFor(geometry, material), role}));
+    group.add(...layers.map(({mesh}) => mesh));
+    root.add(group);
+    const model = {group, layers, count: 0};
+    setLamps(model, lastNight);
+    models.set(vehicle.id, model);
+    return model;
+  }
+
   function update(time, profile, {reduceMotion = false, night = false, transientTelemetry = false} = {}) {
     if (transientTelemetry) demoMotion ??= createTrafficMotion(road);
     const clock = transientTelemetry ? demoMotion : motion;
@@ -125,23 +125,42 @@ export function createStorybookTraffic(road) {
     root.visible = slots.length > 0;
     if (!root.visible) return;
     if (night !== lastNight) {
-      headlamps.emissiveIntensity = night ? 1.65 : .26;
-      taillamps.emissiveIntensity = night ? .91 : .28;
       lastNight = night;
+      for (const model of models.values()) setLamps(model, night);
     }
+    for (const model of models.values()) model.count = 0;
+    const selected = VEHICLES.get(profile?.vehicleStyle);
     for (const [index, slot] of slots.entries()) {
+      const vehicle = selected ?? STORYBOOK_VEHICLES[(slot.index + slot.lane * 3) % STORYBOOK_VEHICLES.length];
+      const model = modelFor(vehicle);
       transform.position.set(slot.x, road.surfaceY, slot.z);
       transform.rotation.y = slot.lane ? Math.PI : 0;
+      transform.scale.set(1, 1, 1);
       transform.updateMatrix();
-      for (const mesh of meshes) mesh.setMatrixAt(index, transform.matrix);
-      if (slots !== lastSlots) paint.setColorAt(index, BODY_COLORS[(slot.index + slot.lane * 3) % BODY_COLORS.length]);
+      for (const {mesh} of model.layers) mesh.setMatrixAt(model.count, transform.matrix);
+      model.count++;
+      transform.scale.set(vehicle.length * .55, 1, vehicle.width * .62);
+      transform.updateMatrix();
+      shadows.setMatrixAt(index, transform.matrix);
     }
-    for (const mesh of meshes) {
-      mesh.count = slots.length;
-      mesh.instanceMatrix.needsUpdate = true;
+    shadows.count = slots.length;
+    shadows.instanceMatrix.needsUpdate = true;
+    for (const {group, layers, count} of models.values()) {
+      group.visible = count > 0;
+      for (const {mesh} of layers) {
+        mesh.count = count;
+        if (count) mesh.instanceMatrix.needsUpdate = true;
+      }
     }
-    if (slots !== lastSlots) paint.instanceColor.needsUpdate = true;
-    lastSlots = slots;
   }
-  return {root, update, dispose: () => meshes.forEach(mesh => mesh.dispose())};
+  function dispose() {
+    root.traverse(mesh => {
+      if (!mesh.isInstancedMesh) return;
+      mesh.dispose();
+      mesh.geometry.dispose();
+      mesh.material.dispose();
+    });
+    root.clear();
+  }
+  return {root, update, dispose};
 }

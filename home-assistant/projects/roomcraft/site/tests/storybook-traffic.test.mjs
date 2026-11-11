@@ -3,6 +3,7 @@ import test from 'node:test';
 import * as THREE from 'three';
 import {buildStorybookStreet} from '../ha-local/storybook-street.mjs';
 import {createStorybookTraffic, createTrafficMotion} from '../ha-local/storybook-traffic.mjs';
+import {STORYBOOK_VEHICLES} from '../ha-local/storybook-vehicles.mjs';
 
 const road = buildStorybookStreet({box() {}}, {nearZ: -80, farZ: -224}, -111, 6200, 768);
 const profile = severity => ({severity});
@@ -35,6 +36,49 @@ test('traffic stays still under reduced motion and hides without live severity',
   assert.deepEqual(motion.update(9, null), []);
   assert.deepEqual(motion.update(10, profile('unknown')), []);
   assert.deepEqual(motion.update(11, profile('constructor')), []);
+});
+
+test('scenic traffic crosses the road midpoint once per second with alternating lanes', () => {
+  for (const geometry of [road, {...road, width: 5110}]) {
+    const motion = createTrafficMotion(geometry);
+    const ambient = profile('ambient');
+    let previous = snapshot(motion.update(0, ambient));
+    const slow = createTrafficMotion(geometry).update(0, profile('slow'));
+    assert.ok(previous.length < slow.length);
+    const arrivals = [];
+    const sample = .025;
+    for (let tick = 1; tick <= 1200; tick++) {
+      const current = motion.update(tick * sample, ambient);
+      for (const [index, {x, lane}] of current.entries()) {
+        const old = previous[index].x;
+        const crosses = lane ? old > geometry.centerX && x <= geometry.centerX : old < geometry.centerX && x >= geometry.centerX;
+        if (crosses) arrivals.push({lane, time: (tick - 1 + (geometry.centerX - old) / (x - old)) * sample});
+      }
+      previous = snapshot(current);
+    }
+    assert.equal(arrivals.length, 30);
+    for (const [index, arrival] of arrivals.slice(1).entries()) {
+      assert.notEqual(arrival.lane, arrivals[index].lane);
+      assert.ok(Math.abs(arrival.time - arrivals[index].time - 1) < 1e-6);
+    }
+    assert.deepEqual(snapshot(motion.update(40, ambient, true)), previous);
+  }
+});
+
+test('scenic and measured traffic keep shared positions and ease into the next speed', () => {
+  const motion = createTrafficMotion(road);
+  const ambient = profile('ambient');
+  const heavy = profile('heavy');
+  const first = motion.update(0, ambient)[0].x;
+  const next = motion.update(.1, ambient)[0].x;
+  const beforeSwap = next - first;
+  assert.equal(motion.update(.1, heavy)[0].x, next);
+  const afterSwap = motion.update(.2, heavy)[0].x - next;
+  assert.ok(afterSwap > 2.4 && afterSwap < beforeSwap);
+  for (let tick = 3; tick < 30; tick++) motion.update(tick / 10, heavy);
+  const settled = motion.update(3, heavy)[0].x;
+  const afterSettle = motion.update(3.1, heavy)[0].x - settled;
+  assert.ok(Math.abs(afterSettle - 2.4) < .03);
 });
 
 test('a measured speed factor varies speed smoothly within one density', () => {
@@ -77,6 +121,24 @@ test('instanced cars sit on the rendered road and disappear when a feed is unava
   traffic.update(1, undefined);
   assert.equal(traffic.root.visible, false);
   traffic.dispose();
+});
+
+test('the style filter reuses the road lanes with a single silhouette or the mixed catalog', () => {
+  const traffic = createStorybookTraffic(road);
+  const visibleModels = () => traffic.root.children.filter(child => child.isGroup && child.visible);
+  traffic.update(0, profile('ambient'));
+  assert.equal(visibleModels().length, STORYBOOK_VEHICLES.length);
+  for (const {id} of STORYBOOK_VEHICLES) {
+    traffic.update(0, {...profile('ambient'), vehicleStyle: id});
+    const [model, ...others] = visibleModels();
+    assert.equal(others.length, 0);
+    assert.equal(model.name, `vehicle-${id}`);
+    assert.ok(model.children.every(mesh => mesh.isInstancedMesh && mesh.count === traffic.root.children[0].count));
+  }
+  traffic.update(0, {...profile('ambient'), vehicleStyle: 'invalid'});
+  assert.ok(visibleModels().length > 1);
+  traffic.dispose();
+  assert.equal(traffic.root.children.length, 0);
 });
 
 test('demo cars replay at the same elapsed time and preserve live lane positions', () => {

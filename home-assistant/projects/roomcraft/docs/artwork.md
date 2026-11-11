@@ -1,5 +1,7 @@
 # Artwork and graphics
 
+The road fleet uses small 3D vehicle recipes in `site/ha-local/storybook-vehicles.mjs`. Each design has a stable ID, a readable silhouette, inset glazing, wheels, and separate lamp accents. Use the authored lane width and existing road camera to check scale. Check the mixed fleet at the normal tablet view and the demo close-up. Keep all vehicles in the same miniature perspective, and keep vehicle finishes in the catalog so Home and Studio can share the renderer.
+
 Roomcraft's 1536 × 1024 visual starting point was supplied as a PNG and refined for the sofa, stairs, floors, and windows. The bundled `floorplan.png` is the furnished Reference view. Design builds its own scene from shell, rooms, walls, and item records. The [published-plan image](images/published-plan.png) is a public-safe capture showing movable room fixtures, a bedside lamp, and a drawn camera placeholder. Home Assistant supplies real camera frames as separate authenticated overlays. The editor assets under `site/public/assets/` are shared by HA Studio, the hosted editor, and the PNG export. Earlier flat-window captures are in the [legacy screenshot archive](legacy/README.md).
 
 | File or group | Role |
