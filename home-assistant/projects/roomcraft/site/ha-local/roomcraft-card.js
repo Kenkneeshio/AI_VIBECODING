@@ -600,14 +600,19 @@ class RoomcraftEditorCard extends HTMLElement {
     const message = event.data;
     if (!message || message.channel !== CHANNEL) return;
     if (message.kind === 'navigate') {
-      const path = this.dashboardPath === HOME_DASHBOARD || this._hass?.panels?.[HOME_DASHBOARD]
-        ? '/roomcraft-home/home' : '/second-floor/plan';
-      window.history.pushState(null, '', path);
-      window.dispatchEvent(new CustomEvent('location-changed', { detail: { replace: false } }));
       if (event.source === this._popup) {
         window.focus();
         this._popup.close();
       }
+      if (this.dashboardPath === HOME_DASHBOARD) {
+        // Opening a sibling Lovelace view through history alone can leave the
+        // Studio iframe mounted in Android's Companion WebView.
+        window.location.assign('/roomcraft-home/home');
+        return;
+      }
+      const path = this._hass?.panels?.[HOME_DASHBOARD] ? '/roomcraft-home/home' : '/second-floor/plan';
+      window.history.pushState(null, '', path);
+      window.dispatchEvent(new CustomEvent('location-changed', { detail: { replace: false } }));
       return;
     }
     if (message.kind !== 'request' || !Number.isSafeInteger(message.id) ||

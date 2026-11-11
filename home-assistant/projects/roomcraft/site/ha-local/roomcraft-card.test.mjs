@@ -1440,6 +1440,7 @@ test('embedded editor returns to the dashboard through the signed-in Home Assist
   context.window.history = {
     pushState: (state, title, path) => navigations.push(['pushState', state, title, path]),
   };
+  context.window.location = {assign: path => navigations.push(['assign', path])};
   context.window.addEventListener('location-changed', onLocationChanged);
   const card = new Card();
   const embedded = {};
@@ -1460,12 +1461,16 @@ test('embedded editor returns to the dashboard through the signed-in Home Assist
     await card._onMessage(message);
     card.hass = { connected: true, panels: {} };
     await card._onMessage(message);
+    card._config = {dashboard: 'roomcraft-home'};
+    await card._onMessage(message);
     assert.deepEqual(navigations, [
       ['pushState', null, '', '/roomcraft-home/home'], ['location-changed', false],
       ['pushState', null, '', '/second-floor/plan'], ['location-changed', false],
+      ['assign', '/roomcraft-home/home'],
     ]);
   } finally {
     context.window.removeEventListener('location-changed', onLocationChanged);
     delete context.window.history;
+    delete context.window.location;
   }
 });
