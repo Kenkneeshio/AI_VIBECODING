@@ -83,6 +83,7 @@
         "y": { "type": "number" },
         "w": { "type": "number", "exclusiveMinimum": 0 },
         "h": { "type": "number", "exclusiveMinimum": 0 },
+        "modelHeight": { "type": "number", "minimum": 6, "maximum": 300, "description": "Optional height override for a 3D model in plan pixels. Omit for the model’s natural height." },
         "rotation": { "type": "number" },
         "steps": { "type": "integer", "minimum": 2, "maximum": 40, "description": "Tread count for a stairs item." },
         "entityId": { "type": "string", "pattern": "^(?:|[a-z_]+\\.[a-z0-9_]+)$", "description": "State source and default action target; empty means decorative only." },

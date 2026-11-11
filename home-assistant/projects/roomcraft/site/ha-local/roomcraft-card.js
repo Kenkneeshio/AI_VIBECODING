@@ -522,12 +522,19 @@ class RoomcraftEditorCard extends HTMLElement {
   getCardSize() { return 12; }
 
   _editorUrl() {
-    return `${EDITOR_URL}?v=${encodeURIComponent(this._config.asset_version || 'current')}`;
+    const params = new URLSearchParams({v: this._config.asset_version || 'current'});
+    if (new URLSearchParams(location.search).get('panel') === 'models') params.set('panel','models');
+    return EDITOR_URL + '?' + params;
   }
 
   _navigateIframe() {
     if (!this._iframe) return;
-    if (!this._iframe.hasAttribute('src')) this._iframe.src = this._editorUrl();
+    const url = this._editorUrl();
+    if (this._activeEditorUrl !== url) {
+      this._activeEditorUrl = url;
+      this._frameAttempts = 0;
+      this._iframe.src = url;
+    }
     this._watchIframe();
   }
 

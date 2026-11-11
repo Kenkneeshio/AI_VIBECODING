@@ -7,7 +7,7 @@
     ['climbing','Soft climbing blocks'], ['fireplace','Fireplace & shelves'],
     ['balcony','Balcony plant sets'], ['fans','Ceiling fans'],
     ['cleaning','Robot vacuums'], ['toy-storage','Toy storage'],
-    ['play-furniture','Play furniture']
+    ['play-furniture','Play furniture'], ['pets','Pets']
   ];
   const colors = {
     sage:     ['Sage','#9bb599','#dce8cc','#f5edcf','#5b755e'],
@@ -34,7 +34,7 @@
   const icons = {
     'baby-toys':'◉','baby-activities':'✦','baby-mats':'▦','baby-safety':'▥',
     climbing:'▰',fireplace:'▤',balcony:'❀',fans:'✳',cleaning:'◉',
-    'toy-storage':'▥','play-furniture':'▣',living:'✿',bedroom:'☾',lighting:'✦'
+    'toy-storage':'▥','play-furniture':'▣',pets:'◇',living:'✿',bedroom:'☾',lighting:'✦'
   };
   const aliases = {
     'baby-safety':'safety wall',
@@ -152,6 +152,9 @@
   add('play-furniture','playFurniture','photoBolster','gray-bolster','Long gray floor bolster',126,43,['slate'],{tags:'photo 1977 living room baby soft support pillow'});
   add('play-furniture','playFurniture','lowTable','low-play-table','Low play table',127,79,['oak','white'],{tags:'baby play furniture'});
   add('play-furniture','playFurniture','lowShelf','low-play-shelf','Low play shelf',129,52,['oak','white'],{tags:'baby play furniture'});
+
+  add('pets','habitat','aquarium','fish-aquarium','Fish aquarium',122,66,['oak'],{tags:'fish tank pet habitat swimming bubbles animated freshwater planted glass'});
+  add('pets','habitat','terrarium','lizard-terrarium','Lizard terrarium',116,72,['walnut'],{tags:'lizard tank pet habitat gecko vivarium desert sand glass animated'});
 
   // Original crafted-miniature furniture. Directional depth, believable
   // construction and material recipes keep the collection warm without using

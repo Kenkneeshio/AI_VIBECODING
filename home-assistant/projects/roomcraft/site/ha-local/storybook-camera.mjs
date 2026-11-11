@@ -3,6 +3,7 @@ import * as THREE from 'three';
 const cameraPreset = (label, azimuth, tilt) => Object.freeze({label, azimuth, tilt, zoom: 1});
 
 export const CAMERA_PRESETS = Object.freeze({
+  default: cameraPreset('Default', 0, 0),
   top: cameraPreset('Top down', 0, 0),
   high: cameraPreset('High angle', 0, 15),
   dollhouse: cameraPreset('Dollhouse', 2, 30),
@@ -25,7 +26,7 @@ export function populateCameraOptions(select, includePlan = false) {
     return option;
   });
   select.replaceChildren(...options);
-  select.value = 'top';
+  select.value = 'default';
   select.disabled = false;
 }
 
@@ -52,6 +53,11 @@ export function enterFreeView(value) {
 export function readSavedFreeView(value) {
   if (value?.preset !== 'free' || ![value.azimuth, value.tilt, value.zoom].every(Number.isFinite)) return null;
   return normalizeCameraView(value);
+}
+
+/** Select the saved angle or the overhead fallback without entering Free view. */
+export function resolveDefaultCameraView(saved) {
+  return normalizeCameraView({...readSavedFreeView(saved), preset: 'default'});
 }
 
 /** Browser-only Studio uses local storage. Embedded Studio delegates to its signed-in HA parent. */
@@ -93,11 +99,12 @@ export function fitStorybookCamera(camera, bounds, width, height, view = 'top') 
   camera.lookAt(center);
   camera.updateMatrixWorld(true);
 
+  const upperY = Math.max(92, Number.isFinite(bounds.maxY) ? bounds.maxY : 92);
   const frame = new THREE.Box3();
   const corner = new THREE.Vector3();
   for (const x of [bounds.minX - 37, bounds.maxX + 37]) {
     for (const z of [bounds.minZ - 53, bounds.maxZ + 36]) {
-      for (const y of [-111, 92]) {
+      for (const y of [-111, upperY]) {
         frame.expandByPoint(corner.set(x, y, z).applyMatrix4(camera.matrixWorldInverse));
       }
     }

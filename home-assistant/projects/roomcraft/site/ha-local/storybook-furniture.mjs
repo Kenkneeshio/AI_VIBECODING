@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { makeStorybookHabitat } from './storybook-habitats.mjs';
 
 // These miniatures use the editor's existing footprint units. All geometry is
 // floor-relative, centered on the item, and independent of Home Assistant.
@@ -571,6 +572,7 @@ function foliage(p, w, d, isFloor) {
 export function makeStorybookFurniture(item) {
   const { type, w, h: d } = item || {};
   if (typeof type !== 'string' || !Number.isFinite(w) || !Number.isFinite(d) || w < 1 || d < 1) return null;
+  if (type.startsWith('pets-')) return makeStorybookHabitat(type, w, d);
   const tint = finishes[type.split('-').at(-1)];
   const p = new Miniature(w, d);
   let top;

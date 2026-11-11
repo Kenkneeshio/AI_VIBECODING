@@ -64,65 +64,8 @@
     { id: 'walnut', name: 'Walnut', note: 'Warm timber wall caps', color: '#8d654d' }
   ];
   const wallFinishById = Object.fromEntries(wallFinishes.map(f => [f.id, f]));
-  const templates = [
-    { type: 'sofa', label: 'L sofa', icon: '🛋', w: 165, h: 238, group: 'living' },
-    { type: 'table', label: 'Dining table', icon: '▰', w: 165, h: 108, group: 'living' },
-    { type: 'chair', label: 'Chair', icon: '◒', w: 48, h: 48, group: 'living' },
-    { type: 'armchair', label: 'Armchair', icon: '▣', w: 86, h: 88, group: 'living' },
-    { type: 'coffeeTable', label: 'Coffee table', icon: '⬭', w: 105, h: 66, group: 'living' },
-    { type: 'sideTable', label: 'Side table', icon: '◉', w: 55, h: 55, group: 'living' },
-    { type: 'tv', label: 'TV', icon: '▮', w: 28, h: 130, group: 'living' },
-    { type: 'rug', label: 'Rug', icon: '▧', w: 150, h: 110, group: 'living' },
-    { type: 'bed', label: 'Bed', icon: '▤', w: 210, h: 185, group: 'bedroom' },
-    { type: 'desk', label: 'Desk', icon: '▣', w: 180, h: 78, group: 'bedroom' },
-    { type: 'dresser', label: 'Dresser', icon: '▥', w: 122, h: 58, group: 'bedroom' },
-    { type: 'nightstand', label: 'Nightstand', icon: '▣', w: 56, h: 54, group: 'bedroom' },
-    { type: 'bookcase', label: 'Bookcase', icon: '▤', w: 58, h: 156, group: 'bedroom' },
-    { type: 'bedroomBench', label: 'Bedroom bench', icon: '▰', w: 52, h: 122, group: 'bedroom' },
-    { type: 'storageCabinet', label: 'Storage cabinet', icon: '▥', w: 75, h: 92, group: 'bedroom' },
-    { type: 'counter', label: 'Counter', icon: '▥', w: 62, h: 190, group: 'utility' },
-    { type: 'stool', label: 'Bar stool', icon: '◉', w: 42, h: 42, group: 'utility' },
-    { type: 'kitchenWorktop', label: 'Kitchen appliance worktop', icon: '▦', w: 106, h: 127, group: 'utility' },
-    { type: 'bathFixtures', label: 'Bathroom fixture group', icon: '◫', w: 73, h: 117, group: 'utility' },
-    { type: 'doubleVanity', label: 'Double-sink vanity', icon: '▥', w: 202, h: 44, group: 'utility' },
-    { type: 'wallUnit', label: 'Wall-mounted unit', icon: '▰', w: 139, h: 43, group: 'systems', mount: 'wall' },
-    { type: 'tub', label: 'Bathtub', icon: '▢', w: 65, h: 128, group: 'utility' },
-    { type: 'toilet', label: 'Toilet', icon: '◍', w: 46, h: 60, group: 'utility' },
-    { type: 'lamp', label: 'Bedside lamp', icon: '☼', w: 40, h: 40, group: 'lighting' },
-    { type: 'ceilingLight', label: 'Ceiling light', icon: '☀', w: 58, h: 58, group: 'lighting' },
-    { type: 'pendantLight', label: 'Pendant light', icon: '✺', w: 70, h: 70, group: 'lighting' },
-    { type: 'floorLamp', label: 'Floor lamp', icon: '◉', w: 54, h: 92, group: 'lighting' },
-    { type: 'tableLamp', label: 'Table lamp', icon: '◌', w: 48, h: 52, group: 'lighting' },
-    { type: 'wallSconce', label: 'Wall sconce', icon: '◖', w: 34, h: 48, group: 'lighting' },
-    { type: 'thermostat', label: 'Wall thermostat / AC', icon: '◴', w: 48, h: 54, group: 'systems', mount: 'wall', visualKind: 'climate' },
-    { type: 'presenceSwitch', label: 'Presence dimmer switch', icon: '⠿', w: 30, h: 42, group: 'systems', mount: 'wall', visualKind: 'device' },
-    { type: 'humidifier', label: 'Floor humidifier', icon: '♨', w: 46, h: 58, group: 'systems', visualKind: 'device' },
-    { type: 'airPurifier', label: 'Air purifier', icon: '≋', w: 48, h: 62, group: 'systems', visualKind: 'device' },
-    { type: 'windowFan', label: 'Window fan', icon: '✣', w: 46, h: 46, group: 'systems', visualKind: 'fan' },
-    { type: 'garageDoor', label: 'Garage door control', icon: '▥', w: 116, h: 52, group: 'systems', visualKind: 'door' },
-    { type: 'cameraThumbnail', label: 'Camera thumbnail', icon: '▣', w: 170, h: 110, group: 'security' },
-    { type: 'controlZone', label: 'Invisible button area', icon: '▧', w: 120, h: 72, group: 'security' },
-    { type: 'uiWeatherOrb', label: 'Sun / moon', icon: '☀', w: 64, h: 64, group: 'interface' },
-    { type: 'uiMenu', label: 'Device menu', icon: '☰', w: 48, h: 48, group: 'interface' },
-    { type: 'uiTime', label: 'Clock', icon: '◷', w: 84, h: 42, group: 'interface' },
-    { type: 'uiEdit', label: 'Edit layout button', icon: '✎', w: 48, h: 48, group: 'interface' },
-    { type: 'uiStatusAir', label: 'Indoor air status', icon: '◌', w: 48, h: 48, group: 'interface' },
-    { type: 'uiStatusElectrical', label: 'Electrical status', icon: 'ϟ', w: 48, h: 48, group: 'interface' },
-    { type: 'plant', label: 'Flowers', icon: '✿', w: 44, h: 44, group: 'decor' },
-    { type: 'floorPlant', label: 'Floor plant', icon: '❀', w: 72, h: 72, group: 'decor' },
-    { type: 'artwork', label: 'Wall art', icon: '▧', w: 94, h: 56, group: 'decor' },
-    { type: 'mirror', label: 'Mirror', icon: '◇', w: 72, h: 52, group: 'decor' },
-    { type: 'window', label: 'Window', icon: '▣', w: 100, h: 28, group: 'build' },
-    { type: 'stairs', label: 'Exterior stairs', icon: '▤', w: 88, h: 430, group: 'build' }
-  ];
-  templates.push(...(window.RoomcraftInventory?.templates || []));
-  const paletteGroups = [
-    ...(window.RoomcraftInventory?.groups || []),
-    ['living', 'Living & dining'], ['bedroom', 'Bedroom & storage'],
-    ['utility', 'Kitchen & bath'], ['lighting', 'Lights & lamps'],
-    ['systems', 'Climate, doors & fans'], ['decor', 'Decor'], ['build', 'Build'], ['security', 'Cameras & controls'],
-    ['interface', 'Dashboard interface']
-  ];
+  const Models = window.RoomcraftModels;
+  const {templates, paletteGroups} = Models.catalog();
   const templateByType = Object.fromEntries(templates.map(t => [t.type, t]));
 
   const point = (x, y) => ({ x, y });
@@ -360,6 +303,9 @@
   let snapWallEnds = true;
   let viewMode = 'design';
   let pendingTemplate = null;
+  let pendingEntityId = '';
+  let modelLibrary;
+  let lockObjectDimensions = false;
   let pendingSurface = null;
   let pendingWallFinish = null;
   let pendingSegment = null;
@@ -661,7 +607,7 @@
     document.querySelector('.app-shell').classList.toggle('focus-canvas',next);
     const button=document.getElementById('focusCanvasButton');
     button.setAttribute('aria-pressed',String(next));
-    button.innerHTML=next?'⤡ <span>Exit focus</span>':'⤢ <span>Focus canvas</span>';
+    button.textContent=next?'Exit focus':'Focus canvas';
     button.title=next?'Show the editing panels again':'Expand the artwork for a closer look';
     setStatus(next?'Canvas expanded · click the zoom percentage for actual size':'Editing panels restored');
     requestAnimationFrame(fitView);
@@ -753,7 +699,7 @@
   function hitRoomVertex(p){if(selected?.kind!=='room')return null;const r=project.rooms.find(r=>r.id===selected.id);if(!r)return null;return r.points.findIndex(q=>Math.hypot(q.x-p.x,q.y-p.y)<12/currentView.scale);}
   function hitWallEndpoint(p,w){if(Math.hypot(p.x-w.x1,p.y-w.y1)<14/currentView.scale)return 1;if(Math.hypot(p.x-w.x2,p.y-w.y2)<14/currentView.scale)return 2;return 0;}
   function select(kind,id){selected={kind,id};renderInspector();renderRoomList();renderStructureList();renderHotspotList();draw();window.dispatchEvent?.(new CustomEvent('roomcraft-editor-change'));}
-  function clearPlacement(){pendingTemplate=null;pendingSurface=null;pendingWallFinish=null;pendingSegment=null;document.querySelectorAll('.palette-item,.surface-item,.wall-finish-item').forEach(el=>el.classList.remove('placing','active'));viewport.classList.remove('placing');renderSurfacePalette();renderWallPalette();}
+  function clearPlacement(){pendingTemplate=null;pendingEntityId="";pendingSurface=null;pendingWallFinish=null;pendingSegment=null;document.querySelectorAll('.palette-item,.surface-item,.wall-finish-item').forEach(el=>el.classList.remove('placing','active'));viewport.classList.remove('placing');renderSurfacePalette();renderWallPalette();}
 
   function notifyEditorTool() {
     window.dispatchEvent?.(new CustomEvent('roomcraft-editor-tool'));
@@ -775,6 +721,11 @@
     if (placed.type === 'cameraThumbnail') {
       placed.x = Math.max(0, Math.min(W, placed.x));
       placed.y = Math.max(0, Math.min(H, placed.y));
+    }
+    if (pendingEntityId) {
+      placed.entityId = pendingEntityId;
+      if (placed.type === 'presenceSwitch' && pendingEntityId.startsWith('binary_sensor.')) placed.presenceEntityId = pendingEntityId;
+      clampLinkedItem(placed);
     }
     project.items.push(placed);
     selected = {kind: 'item', id: placed.id};
@@ -882,7 +833,7 @@
       const min=o.type==='cameraThumbnail'?40:24;
       let nextW=Math.max(min,Math.round(interaction.w+interaction.sx*localX));
       let nextH=Math.max(min,Math.round(interaction.h+interaction.sy*localY));
-      if(e.shiftKey){
+      if(e.shiftKey||lockObjectDimensions){
         const scale=Math.max(nextW/interaction.w,nextH/interaction.h);
         nextW=Math.max(min,Math.round(interaction.w*scale));nextH=Math.max(min,Math.round(interaction.h*scale));
       }
@@ -1025,7 +976,7 @@
   function updateRecoveryButton(){const b=document.getElementById('recoverDraftButton');if(b)b.hidden=!readPreviousDraft();const back=document.getElementById('returnPreRecoveryButton');if(back)back.hidden=!readPreRecoveryLayout();}
   function recoverPreviousDraft(){const previous=readPreviousDraft();if(!previous){showToast('No previous browser draft found');return;}if(!readPreRecoveryLayout()){try{localStorage.setItem(BEFORE_RECOVERY_KEY,projectFingerprint(project));}catch(_){showToast('Could not save current layout; export JSON first');return;}}snapshot();project=normalizeProject(clone(previous));selected=null;clearPlacement();afterChange('Recovered previous browser draft',{authoritative:true});showToast('Previous draft restored; pre-recovery layout saved');}
   function returnPreRecoveryLayout(){const before=readPreRecoveryLayout();if(!before){showToast('No pre-recovery layout found');return;}snapshot();project=normalizeProject(clone(before));selected=null;clearPlacement();localStorage.removeItem(BEFORE_RECOVERY_KEY);afterChange('Returned to pre-recovery layout',{authoritative:true});showToast('Pre-recovery layout restored');}
-  function field(label,key,value,type='text'){return `<div class="field"><label for="prop-${key}">${label}</label><input id="prop-${key}" data-prop="${key}" type="${type}" value="${htmlEscape(value)}" ${type==='number'?'step="1"':''}></div>`;}
+  function field(label,key,value,type='text'){return `<div class="field"><label for="prop-${key}">${label}</label><input id="prop-${key}" data-prop="${key}" type="${type}" value="${htmlEscape(value)}" ${type==='number'?(['w','h','modelHeight'].includes(key)?'step="any"':'step="1"'):''}></div>`;}
   function hotspotField(label,key,value,type='text'){return `<div class="field"><label for="hotspot-${key}">${label}</label><input id="hotspot-${key}" data-hotspot-prop="${key}" type="${type}" value="${htmlEscape(value)}" ${type==='number'?'step="0.01" min="0" max="100"':''}></div>`;}
   function variantField(t,type){
     if(!t.artFamily)return '';
@@ -1070,7 +1021,10 @@
       <button type="button" class="danger-button" data-action="delete">Remove ${title.toLowerCase()}</button>`;
   }
   function renderInspector(){const root=document.getElementById('inspectorContent');if(!selected){root.innerHTML=`<div class="empty-inspector"><div class="empty-art">⌂</div><h3>A blank canvas for ideas.</h3><p>Select an object, room, wall, or fence to see its settings.</p><button class="secondary-button" id="openHelpButton" type="button" style="margin-top:19px">How to use the builder</button></div>`;return;}
-    if(selected.kind==='item'){const o=project.items.find(o=>o.id===selected.id);if(!o){selected=null;renderInspector();return;}const t=templateByType[o.type];root.innerHTML=window.RoomcraftObjectControls.renderInspector(o,t,field,variantField,htmlEscape,entityOptions);return;}
+    if(selected.kind==='item'){const o=project.items.find(o=>o.id===selected.id);if(!o){selected=null;renderInspector();return;}const t=templateByType[o.type] || {label:o.type,icon:'◇'};
+      root.innerHTML=window.RoomcraftObjectControls.renderInspector(o,t,field,variantField,htmlEscape,entityOptions,{
+        height:Models.supportsHeight(o), locked:lockObjectDimensions
+      });return;}
     if(selected.kind==='hotspot'){const h=project.hotspots.find(h=>h.id===selected.id);if(!h){selected=null;renderInspector();return;}const x=parseFloat(h.style.left),y=parseFloat(h.style.top);root.innerHTML=`<div class="inspector-block"><p class="inspector-label">HOME ASSISTANT CONTROL</p><div class="selection-title"><span class="selection-icon">${h.entity.startsWith('cover.')?'▥':'✦'}</span><div><h3>${htmlEscape(h.title)}</h3><p>${htmlEscape(h.entity)}</p></div></div></div><div class="inspector-block"><p class="inspector-label">CONTROL & POSITION</p>${hotspotField('Title','title',h.title)}${hotspotField('Entity ID','entity',h.entity)}<div class="field-grid">${hotspotField('Left (%)','left',x,'number')}${hotspotField('Top (%)','top',y,'number')}</div><div class="field"><label for="hotspot-tap">Tap action</label><select id="hotspot-tap" data-hotspot-prop="tap"><option value="toggle" ${h.tap_action?.action==='toggle'?'selected':''}>Toggle</option><option value="more-info" ${h.tap_action?.action==='more-info'?'selected':''}>More info</option></select></div><div class="field"><label for="hotspot-hold">Hold action</label><select id="hotspot-hold" data-hotspot-prop="hold"><option value="none" ${!h.hold_action?'selected':''}>None</option><option value="more-info" ${h.hold_action?.action==='more-info'?'selected':''}>More info</option></select></div><p class="field-hint">Drag the marker on the plan or edit its percentage position here. It is included in Home Assistant YAML and editable JSON.</p></div><button type="button" class="danger-button" data-action="delete">Remove control</button>`;return;}
     const collection=selected.kind==='room'?project.rooms:project.walls;
     const record=collection.find(entry=>entry.id===selected.id);
@@ -1132,6 +1086,42 @@
     afterChange(`Updated ${segmentLabel(segment)} end point`);
   }
 
+  function updateObjectDimensions(item, key, value) {
+    const numeric = String(value).trim() === '' ? NaN : Number(value);
+    if (key === 'modelHeight') {
+      if (!Models.supportsHeight(item)) return;
+      const height = String(value).trim() === '' ? undefined : numeric;
+      if (height !== undefined && !(height >= 6 && height <= 300)) {
+        showToast('Use a model height from 6 to 300 plan pixels, or leave it blank.');
+        renderInspector();
+        return;
+      }
+      if (item.modelHeight === height) return;
+      snapshot();
+      if (height === undefined) delete item.modelHeight;
+      else item.modelHeight = height;
+    } else {
+      const dimensions = Models.resizeFootprint(item, key, numeric, lockObjectDimensions);
+      if (!dimensions) {renderInspector();return;}
+      if (Object.keys(dimensions).every(axis => dimensions[axis] === item[axis])) return;
+      snapshot();
+      Object.assign(item, dimensions);
+    }
+    afterChange('Updated object dimensions');
+  }
+
+  function resetObjectDimensions() {
+    if (selected?.kind !== 'item') return;
+    const current = project.items.find(entry => entry.id === selected.id);
+    const template = current && templateByType[current.type];
+    if (!template || current.w === template.w && current.h === template.h && current.modelHeight === undefined) return;
+    snapshot();
+    current.w = template.w;
+    current.h = template.h;
+    delete current.modelHeight;
+    afterChange('Restored model dimensions');
+  }
+
   function updateProperty(key,value){
     if(!selected)return;
     let target;
@@ -1139,6 +1129,10 @@
     else if(selected.kind==='wall')target=project.walls.find(w=>w.id===selected.id);
     else target=project.rooms.find(r=>r.id===selected.id);
     if(!target)return;
+    if(selected.kind==='item' && ['w','h','modelHeight'].includes(key)){
+      updateObjectDimensions(target,key,value);
+      return;
+    }
     if(selected.kind==='wall'){updateStructureProperty(target,key,value);return;}
     if(selected.kind==='room'&&key==='outdoor'){
       if(!['true','false'].includes(value))return;
@@ -1192,6 +1186,72 @@
     if(selected.kind==='item')clampLinkedItem(target);
     afterChange(`Updated ${key}`);
   }
+  function beginModelPlacement(type, entityId = '') {
+    const template = Object.hasOwn(templateByType,type) && templateByType[type];
+    if (!template || entityId && !Models.canMap(entityId, template)) return false;
+    setViewMode('design');
+    setTool('select');
+    pendingTemplate = type;
+    pendingEntityId = entityId;
+    viewport.classList.add('placing');
+    renderPalette();
+    notifyEditorTool();
+    showToast(template.mount==='wall'||type==='window'?'Click near a wall to mount it':
+      template.form==='gate'?'Click across the stair opening; rotate in the Inspector as needed':
+      'Click the plan to place '+template.label);
+    return true;
+  }
+
+  function applyModelCommand(command) {
+    if (!command || typeof command !== 'object') return false;
+    if (command.kind === 'place') {
+      return beginModelPlacement(command.modelId, command.entityId);
+    }
+    const current = project.items.find(entry => entry.id === command.itemId);
+    if (!current || !['edit','replace'].includes(command.kind)) return false;
+    setViewMode('design');
+    setTool('select');
+    if (command.kind === 'edit') {
+      select('item', current.id);
+      return true;
+    }
+    const previous = templateByType[current.type];
+    const next = Object.hasOwn(templateByType,command.modelId) && templateByType[command.modelId];
+    if (!Models.canReplace(current, previous, next)) return false;
+    snapshot();
+    selected = {kind:'item', id:current.id};
+    if (current.name === previous.label) current.name = next.label;
+    if (!current.visualKind || current.visualKind === previous.visualKind) {
+      if (next.visualKind) current.visualKind = next.visualKind;
+      else delete current.visualKind;
+    }
+    if (next.lightForm) current.lightForm = next.lightForm;
+    else delete current.lightForm;
+    current.type = next.type;
+    if (!Models.supportsHeight(current)) delete current.modelHeight;
+    afterChange('Changed model to '+next.label);
+    return true;
+  }
+
+  function openModelLibrary() {
+    modelLibrary ??= Models.mount(document.body, () => ({items:project.items, entities:entityOptions}), command => {
+      if (applyModelCommand(command)) modelLibrary.close();
+      else showToast('This object or model is no longer available.');
+    });
+    modelLibrary.open();
+  }
+
+  function openModelHandoff() {
+    if (new URLSearchParams(window.location.search).get('panel') !== 'models') return;
+    let command;
+    try {
+      const request = window.sessionStorage.getItem(Models.handoffKey);
+      window.sessionStorage.removeItem(Models.handoffKey);
+      command = request && JSON.parse(request);
+    } catch { /* The library is still available without browser storage. */ }
+    if (!dashboardRevision || !applyModelCommand(command)) openModelLibrary();
+  }
+
   function updateVariant(type,kind='finish'){
     if(selected?.kind!=='item'||!templateByType[type])return;
     const index=project.items.findIndex(i=>i.id===selected.id),o=project.items[index];
@@ -1406,17 +1466,16 @@
       setPanel(panel);
       if(panel==='walls'){setViewMode('design');setTool('structure');}
     }));
+    for (const button of document.querySelectorAll('[data-open-models]')) {
+      button.addEventListener('click', () => {
+        document.getElementById('exportButton').focus();
+        openModelLibrary();
+      });
+    }
     document.getElementById('objectsPanel').addEventListener('click',e=>{
       const button=e.target.closest('[data-template]');
       if(!button)return;
-      setViewMode('design');
-      setTool('select');
-      pendingTemplate=button.dataset.template;
-      viewport.classList.add('placing');
-      renderPalette();
-      notifyEditorTool();
-      const template=templateByType[pendingTemplate];
-      showToast(template.mount==='wall'||template.type==='window'?'Click near a wall to mount it':template.form==='gate'?'Click across the stair opening; rotate in the Inspector as needed':`Click the plan to place ${template.label}`);
+      beginModelPlacement(button.dataset.template);
     });
     document.getElementById('objectSearch').addEventListener('input',()=>{document.getElementById('objectsPanel').scrollTop=0;document.getElementById('inventoryStrip').scrollLeft=0;renderPalette();});
     document.getElementById('objectCategory').addEventListener('change',()=>{document.getElementById('objectsPanel').scrollTop=0;document.getElementById('inventoryStrip').scrollLeft=0;renderPalette();});
@@ -1435,8 +1494,10 @@
     document.getElementById('snapWallEnds').addEventListener('change',e=>{snapWallEnds=e.target.checked;});
     document.getElementById('joinWallsButton').addEventListener('click',joinNearbyWalls);
     document.getElementById('roomList').addEventListener('click',e=>{const b=e.target.closest('[data-room]');if(!b)return;setViewMode('design');setTool('room');select('room',b.dataset.room);});
-    document.getElementById('inspectorContent').addEventListener('change',e=>{const el=e.target.closest('[data-prop]');if(el)updateProperty(el.dataset.prop,el.value);const v=e.target.closest('[data-variant]');if(v)updateVariant(v.value,v.dataset.variantKind||'finish');const h=e.target.closest('[data-hotspot-prop]');if(h)updateHotspotProperty(h.dataset.hotspotProp,h.value);});
-    document.getElementById('inspectorContent').addEventListener('click',e=>{const a=e.target.closest('[data-action]');if(a){if(a.dataset.action==='delete')deleteSelected();if(a.dataset.action==='duplicate')duplicateSelected();if(a.dataset.action==='rotate')rotateSelected();}if(e.target.id==='openHelpButton')document.getElementById('helpDialog').showModal();});
+    document.getElementById('inspectorContent').addEventListener('change',e=>{
+      if (e.target.matches?.('[data-lock-dimensions]')) { lockObjectDimensions = e.target.checked; return; }
+      const el=e.target.closest('[data-prop]');if(el)updateProperty(el.dataset.prop,el.value);const v=e.target.closest('[data-variant]');if(v)updateVariant(v.value,v.dataset.variantKind||'finish');const h=e.target.closest('[data-hotspot-prop]');if(h)updateHotspotProperty(h.dataset.hotspotProp,h.value);});
+    document.getElementById('inspectorContent').addEventListener('click',e=>{const a=e.target.closest('[data-action]');if(a){if(a.dataset.action==='delete')deleteSelected();if(a.dataset.action==='duplicate')duplicateSelected();if(a.dataset.action==='rotate')rotateSelected();if(a.dataset.action==='reset-dimensions')resetObjectDimensions();}if(e.target.id==='openHelpButton')document.getElementById('helpDialog').showModal();});
     document.getElementById('newRoomButton').addEventListener('click',addRoom);
     document.getElementById('designModeButton').addEventListener('click',()=>setViewMode('design'));
     document.getElementById('referenceModeButton').addEventListener('click',()=>setViewMode('reference'));
@@ -1453,11 +1514,25 @@
     const menu=document.getElementById('exportMenu'),menuButton=document.getElementById('exportButton');
     const showMenu=open=>{menu.hidden=!open;menuButton.setAttribute('aria-expanded',String(open));};
     menuButton.addEventListener('click',()=>showMenu(menu.hidden));
-    menu.addEventListener('click',e=>{const b=e.target.closest('[data-export]');if(!b)return;showMenu(false);if(b.dataset.export==='png')exportPng();if(b.dataset.export==='json')exportJson();if(b.dataset.export==='yaml')exportHaYaml();});
+    menu.addEventListener('click',e=>{
+      const button=e.target.closest('button');
+      if(!button||button.hasAttribute('data-keep-menu-open'))return;
+      showMenu(false);
+      if(!button.hasAttribute('data-open-models'))menuButton.focus();
+      if(button.dataset.export==='png')exportPng();
+      if(button.dataset.export==='json')exportJson();
+      if(button.dataset.export==='yaml')exportHaYaml();
+    });
     document.addEventListener('pointerdown',e=>{if(!e.target.closest('.menu-wrap'))showMenu(false);});
     document.getElementById('importButton').addEventListener('click',()=>document.getElementById('importFile').click());document.getElementById('importFile').addEventListener('change',e=>{importProject(e.target.files[0]);e.target.value='';});
     document.getElementById('resetButton').addEventListener('click',async()=>{if(!await askConfirmation('Reset layout','Load the current Home Assistant layout? Your current browser draft can be exported as JSON first, and this change is undoable in this session.','Load current layout'))return;snapshot();project=normalizeProject(clone(dashboardDefaultProject||STARTER));selected=null;clearPlacement();afterChange(dashboardDefaultProject?'Loaded current Home Assistant layout':'Loaded starting furnished plan',{authoritative:true});fitView();});
-    window.addEventListener('keydown',e=>{if(dashboardTransferBusy)return;const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo();return;}if(e.key===' '){e.preventDefault();spaceHeld=true;return;}if(e.key==='Escape'){const canceled=interaction;interaction=null;viewport.classList.remove('dragging');if(canceled?.snapshot&&history.length){project=history.pop();future=[];afterChange('Canceled drag',{resetIdentity:true});}clearPlacement();selected=null;renderInspector();renderStructureList();updateHistoryButtons();draw();return;}if((e.key==='Delete'||e.key==='Backspace')&&selected){e.preventDefault();deleteSelected();return;}const shortcuts={v:'select',h:'pan',r:'room',w:'wall',f:'fence',e:'erase'};const shortcut=shortcuts[e.key.toLowerCase()];if(shortcut){setViewMode('design');setTool(shortcut);}});
+    window.addEventListener('keydown',e=>{
+      if(modelLibrary?.isOpen)return;
+      if(!menu.hidden){
+        if(e.key==='Escape'){e.preventDefault();showMenu(false);menuButton.focus();}
+        return;
+      }
+      if(dashboardTransferBusy)return;const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo();return;}if(e.key===' '){if(tag==='BUTTON')return;e.preventDefault();spaceHeld=true;return;}if(e.key==='Escape'){const canceled=interaction;interaction=null;viewport.classList.remove('dragging');if(canceled?.snapshot&&history.length){project=history.pop();future=[];afterChange('Canceled drag',{resetIdentity:true});}clearPlacement();selected=null;renderInspector();renderStructureList();updateHistoryButtons();draw();return;}if((e.key==='Delete'||e.key==='Backspace')&&selected){e.preventDefault();deleteSelected();return;}const shortcuts={v:'select',h:'pan',r:'room',w:'wall',f:'fence',e:'erase'};const shortcut=shortcuts[e.key.toLowerCase()];if(shortcut){setViewMode('design');setTool(shortcut);}});
     window.addEventListener('keyup',e=>{if(e.key===' ')spaceHeld=false;});
     window.addEventListener('resize',fitView);
   }
@@ -1470,6 +1545,7 @@
     getTool: () => viewMode === 'reference' ? 'reference' : pendingWallFinish ? 'wall' : tool,
     hasPlacement: () => Boolean(pendingTemplate),
     getPlacementType: () => pendingTemplate,
+    applyModelCommand,
     showStatus: setStatus,
     useSelectTool() {
       if (viewMode === 'design' && tool === 'select' && !pendingWallFinish) return;
@@ -1531,5 +1607,8 @@
     exportCommandLog:()=>editorJournal.exportLog(),
     renderPlan:()=>Engine.render.partitionSceneItems(project.items,window.RoomcraftInventory?.byType).plan
   });
-  renderCategoryOptions();bindEvents();renderPalette();renderSurfacePalette();renderWallPalette();renderStructureList();renderRoomList();renderHotspotList();renderInspector();updateRestoreButton();updateRecoveryButton();updateHistoryButtons();setTool('select');fitView();draw();loadDashboardDefault();
+  renderCategoryOptions();bindEvents();renderPalette();renderSurfacePalette();renderWallPalette();renderStructureList();renderRoomList();renderHotspotList();renderInspector();updateRestoreButton();updateRecoveryButton();updateHistoryButtons();setTool('select');fitView();draw();
+  loadDashboardDefault().finally(() => {
+    if (window.location.search) openModelHandoff();
+  });
 })();

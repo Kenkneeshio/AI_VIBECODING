@@ -7,7 +7,7 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <title>Roomcraft — Second Floor Builder</title>
   <meta name="description" content="A detailed illustrated room builder based on the second-floor home plan.">
-  <link rel="stylesheet" href="styles.css?v=df2876a511e85eec">
+  <link rel="stylesheet" href="styles.css?v=98e5098a2b461d23">
 </head>
 <body>
   <div class="app-shell">
@@ -16,21 +16,34 @@
         <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
         <span>ROOMCRAFT</span>
       </div>
-      <button class="back-dashboard-button" id="backDashboardButton" type="button" title="View the Second Floor dashboard" aria-label="Back to Second Floor dashboard"><span aria-hidden="true">←</span> Dashboard</button>
       <div class="project-heading">
         <span class="eyebrow">YOUR SPACE <span class="tiny-dot"></span> LEVEL 02</span>
         <strong>Second-floor home</strong>
       </div>
       <div class="top-actions">
         <span class="save-state" id="saveState"><span class="save-dot"></span> Saved locally</span>
-        <button class="icon-button" id="undoButton" type="button" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
-        <button class="icon-button" id="redoButton" type="button" title="Redo (Ctrl+Y)" aria-label="Redo">↷</button>
         <div class="menu-wrap">
-          <button class="primary-button" id="exportButton" type="button" aria-haspopup="true" aria-controls="exportMenu" aria-expanded="false">Export <span aria-hidden="true">⌄</span></button>
+          <button class="primary-button" id="exportButton" type="button" aria-controls="exportMenu" aria-expanded="false">Main menu <span aria-hidden="true">⌄</span></button>
           <div class="dropdown" id="exportMenu" hidden>
-            <button type="button" data-export="png"><span>▧</span> Dashboard image PNG</button>
-            <button type="button" data-export="json"><span>{ }</span> Editable layout JSON</button>
-            <button type="button" data-export="yaml"><span>⌂</span> Home Assistant YAML</button>
+            <button type="button" data-open-models>Object models</button>
+            <button type="button" id="backDashboardButton">Dashboard</button>
+            <button type="button" id="focusCanvasButton" aria-pressed="false" title="Expand the artwork for a closer look">Focus canvas</button>
+            <button type="button" id="undoButton" data-keep-menu-open title="Undo (Ctrl+Z)">Undo</button>
+            <button type="button" id="redoButton" data-keep-menu-open title="Redo (Ctrl+Y)">Redo</button>
+            <div id="sceneCameraOptions" role="group" aria-label="3D view actions" hidden>
+              <hr>
+              <button type="button" id="sceneRotateLeft" data-keep-menu-open>Rotate view left</button>
+              <button type="button" id="sceneRotateRight" data-keep-menu-open>Rotate view right</button>
+              <button type="button" id="sceneZoomOut" data-keep-menu-open>Zoom 3D view out</button>
+              <button type="button" id="sceneZoomIn" data-keep-menu-open>Zoom 3D view in</button>
+              <button type="button" id="sceneReset">Reset to Top down</button>
+              <button type="button" id="sceneSaveDefault" hidden>Save as default</button>
+              <button type="button" id="sceneClearDefault" hidden>Use Top down as default</button>
+            </div>
+            <hr>
+            <button type="button" data-export="png">Download dashboard image PNG</button>
+            <button type="button" data-export="json">Download editable layout JSON</button>
+            <button type="button" data-export="yaml">Download Home Assistant YAML</button>
           </div>
         </div>
       </div>
@@ -45,7 +58,7 @@
         </div>
 
         <div class="reference-card">
-          <div class="reference-thumb"><img src="assets/floorplan.png?v=df2876a511e85eec" alt="The original furnished second-floor reference"></div>
+          <div class="reference-thumb"><img src="assets/floorplan.png?v=98e5098a2b461d23" alt="The original furnished second-floor reference"></div>
           <div class="reference-copy"><strong>Starting reference</strong><span>Original furnished image</span></div>
           <button type="button" class="text-button" id="showReferenceButton">View</button>
         </div>
@@ -122,7 +135,6 @@
           <div class="toolbar-right">
             <button type="button" class="view-button active" id="designModeButton">Design</button>
             <button type="button" class="view-button" id="referenceModeButton">Reference</button>
-            <button type="button" class="view-button focus-button" id="focusCanvasButton" aria-pressed="false" title="Expand the artwork for a closer look">⤢ <span>Focus canvas</span></button>
             <button type="button" class="inspector-toggle" id="inspectorToggle" aria-controls="propertiesInspector" aria-expanded="false" aria-label="Open inspector" title="Open inspector">☷ <span>Inspector</span></button>
             <span class="toolbar-divider"></span>
             <button type="button" class="zoom-button" id="zoomOutButton" aria-label="Zoom out">−</button>
@@ -137,13 +149,6 @@
           <select id="sceneView" disabled>
             <option value="plan">2D plan</option>
           </select>
-          <button type="button" id="sceneRotateLeft" aria-label="Rotate view left">↶</button>
-          <button type="button" id="sceneRotateRight" aria-label="Rotate view right">↷</button>
-          <button type="button" id="sceneZoomOut" aria-label="Zoom 3D view out">−</button>
-          <button type="button" id="sceneZoomIn" aria-label="Zoom 3D view in">＋</button>
-          <button type="button" id="sceneReset" aria-label="Reset to Top down" title="Reset to Top down">⌂</button>
-          <button type="button" id="sceneSaveDefault" class="scene-camera-default" hidden>Save as default</button>
-          <button type="button" id="sceneClearDefault" class="scene-camera-default" hidden>Use Top down as default</button>
           <span id="sceneDefaultStatus" class="scene-default-status" role="status" aria-live="polite"></span>
         </div>
         <div class="viewport" id="viewport">
@@ -173,7 +178,7 @@
     <form method="dialog"><button class="dialog-close" aria-label="Close" value="cancel">×</button></form>
     <p class="eyebrow">HOW IT WORKS</p><h2>A little room to play.</h2>
     <p>Design begins with the furnished image originally used for your Home Assistant Second Floor dashboard. Unchanged areas keep its source pixels; movable objects use deterministic, material-rich miniature artwork. Reference shows the starting image.</p>
-    <ul><li><strong>Objects:</strong> search the catalog or choose a category, then click the plan to place one. Drag an object to move it, drag a corner to resize it, and use the Inspector for position, rotation, construction style, real-world size class, finish, and device links.</li><li><strong>Furniture variants:</strong> Style changes the object's construction, Size applies that design's authored footprint, and Color / finish changes its material appearance without unexpectedly resizing a custom layout.</li><li><strong>Dashboard interface:</strong> the sun/moon, clock, device menu, edit button, status badges, and all camera frames are ordinary editor items. Find them in Dashboard interface or Cameras & controls, then move, resize, rotate, duplicate, or remove them like furniture.</li><li><strong>Artwork:</strong> choose Focus canvas to expand the plan; click the zoom percentage to inspect seams, joinery, upholstery, wood grain, hardware, and lighting at actual size.</li><li><strong>Lights:</strong> each room has a movable fixture. Enter its Home Assistant light or switch entity in the Inspector so the fixture itself becomes the dashboard control. A 4-pixel red/green dot shows the actual toggle state.</li><li><strong>Camera:</strong> place a Camera thumbnail, assign camera and event-image entities, then drag and resize its frame. Latest event shows a still; Live uses a camera stream only when Home Assistant provides one.</li><li><strong>Floors and rooms:</strong> choose a finish, then click a room; drag room corners in Room mode.</li><li><strong>Walls and fences:</strong> choose Wall or Fence, then drag a line or tap its two ends. Use the Walls panel to select existing segments, drag their end handles, or edit coordinates and finish in the Inspector.</li><li><strong>Layouts:</strong> browser edits save locally. When connected, the current Home Assistant layout loads on opening and is also the editor's reset target; a different browser draft remains recoverable. Export to dashboard to keep your design as the official plan, or use JSON to move it between browsers.</li><li><strong>Home Assistant:</strong> Import from dashboard loads its saved editable layout. Export to dashboard sends this design, image, and controls to your Second Floor dashboard. Use the Dashboard button in the header to return; unpublished edits are saved as a browser draft. PNG and YAML downloads remain available for manual setup.</li></ul>
+    <ul><li><strong>Objects:</strong> search the catalog or choose a category, then click the plan to place one. Drag an object to move it, drag a corner to resize it, and use the Inspector for position, rotation, construction style, real-world size class, finish, and device links.</li><li><strong>Furniture variants:</strong> Style changes the object's construction, Size applies that design's authored footprint, and Color / finish changes its material appearance without unexpectedly resizing a custom layout.</li><li><strong>Dashboard interface:</strong> the sun/moon, clock, device menu, edit button, status badges, and all camera frames are ordinary editor items. Find them in Dashboard interface or Cameras & controls, then move, resize, rotate, duplicate, or remove them like furniture.</li><li><strong>Artwork:</strong> choose Focus canvas to expand the plan; click the zoom percentage to inspect seams, joinery, upholstery, wood grain, hardware, and lighting at actual size.</li><li><strong>Lights:</strong> each room has a movable fixture. Enter its Home Assistant light or switch entity in the Inspector so the fixture itself becomes the dashboard control. A 4-pixel red/green dot shows the actual toggle state.</li><li><strong>Camera:</strong> place a Camera thumbnail, assign camera and event-image entities, then drag and resize its frame. Latest event shows a still; Live uses a camera stream only when Home Assistant provides one.</li><li><strong>Floors and rooms:</strong> choose a finish, then click a room; drag room corners in Room mode.</li><li><strong>Walls and fences:</strong> choose Wall or Fence, then drag a line or tap its two ends. Use the Walls panel to select existing segments, drag their end handles, or edit coordinates and finish in the Inspector.</li><li><strong>Layouts:</strong> browser edits save locally. When connected, the current Home Assistant layout loads on opening and is also the editor's reset target; a different browser draft remains recoverable. Export to dashboard to keep your design as the official plan, or use JSON to move it between browsers.</li><li><strong>Home Assistant:</strong> Import from dashboard loads its saved editable layout. Export to dashboard sends this design, image, and controls to your Second Floor dashboard. Choose Dashboard from Main menu to return; unpublished edits are saved as a browser draft. PNG and YAML downloads remain available for manual setup.</li></ul>
     <button class="primary-button" value="cancel" onclick="this.closest('dialog').close()">Let's build</button>
   </dialog>
   <dialog id="confirmationDialog" class="app-dialog confirmation-dialog" aria-labelledby="confirmationTitle" aria-describedby="confirmationMessage">
@@ -185,21 +190,22 @@
       <button type="button" class="primary-button" id="confirmationAccept">Continue</button>
     </div>
   </dialog>
-  <script src="editor-assets.js?v=df2876a511e85eec" defer></script>
-  <script src="engine/deterministic-core.js?v=df2876a511e85eec" defer></script>
-  <script src="engine/project-runtime.js?v=df2876a511e85eec" defer></script>
-  <script src="engine/render-contract.js?v=df2876a511e85eec" defer></script>
-  <script src="engine/verification-harness.js?v=df2876a511e85eec" defer></script>
-  <script src="engine/wall-joins.js?v=df2876a511e85eec" defer></script>
-  <script src="engine/reference-geometry.js?v=df2876a511e85eec" defer></script>
-  <script src="ha-iframe-bridge.js?v=df2876a511e85eec" defer></script>
-  <script src="inventory.js?v=df2876a511e85eec" defer></script>
-  <script src="catalog-variants.js?v=df2876a511e85eec" defer></script>
-  <script src="raster-renderer.js?v=df2876a511e85eec" defer></script>
-  <script src="object-art.js?v=df2876a511e85eec" defer></script>
-  <script src="object-controls.js?v=df2876a511e85eec" defer></script>
-  <script src="app.js?v=df2876a511e85eec" defer></script>
-  <script src="responsive-inspector.js?v=df2876a511e85eec" defer></script>
-  <script src="storybook-editor.js?v=df2876a511e85eec" defer></script>
+  <script src="editor-assets.js?v=98e5098a2b461d23" defer></script>
+  <script src="engine/deterministic-core.js?v=98e5098a2b461d23" defer></script>
+  <script src="engine/project-runtime.js?v=98e5098a2b461d23" defer></script>
+  <script src="engine/render-contract.js?v=98e5098a2b461d23" defer></script>
+  <script src="engine/verification-harness.js?v=98e5098a2b461d23" defer></script>
+  <script src="engine/wall-joins.js?v=98e5098a2b461d23" defer></script>
+  <script src="engine/reference-geometry.js?v=98e5098a2b461d23" defer></script>
+  <script src="ha-iframe-bridge.js?v=98e5098a2b461d23" defer></script>
+  <script src="inventory.js?v=98e5098a2b461d23" defer></script>
+  <script src="model-library.js?v=98e5098a2b461d23" defer></script>
+  <script src="catalog-variants.js?v=98e5098a2b461d23" defer></script>
+  <script src="raster-renderer.js?v=98e5098a2b461d23" defer></script>
+  <script src="object-art.js?v=98e5098a2b461d23" defer></script>
+  <script src="object-controls.js?v=98e5098a2b461d23" defer></script>
+  <script src="app.js?v=98e5098a2b461d23" defer></script>
+  <script src="responsive-inspector.js?v=98e5098a2b461d23" defer></script>
+  <script src="storybook-editor.js?v=98e5098a2b461d23" defer></script>
 </body>
 </html>

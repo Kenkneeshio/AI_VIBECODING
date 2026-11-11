@@ -1,5 +1,6 @@
+import {bindLiveModelLibrary} from './storybook-library.mjs';
 import {createStorybookScene} from './storybook-scene.mjs';
-import {enterFreeView, normalizeCameraView, populateCameraOptions, readSavedFreeView} from './storybook-camera.mjs';
+import {enterFreeView, normalizeCameraView, populateCameraOptions, readSavedFreeView, resolveDefaultCameraView} from './storybook-camera.mjs';
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
 import {placeStorybookTargets, readStorybookConfig, storybookFrame, storybookPreview} from './storybook-state.mjs';
 
@@ -25,10 +26,17 @@ class RoomcraftStorybookCard extends HTMLElement {
         .view-controls label{color:#6c5e74;font-size:12px}
         .view-controls select{min-height:44px;max-width:140px;border:1px solid #c9b8a0;border-radius:8px;
           background:#fffaf0;color:inherit;padding:0 7px;font:inherit}
-        .bar .view-controls button{min-width:44px;font-size:20px;line-height:1}
-        .bar .view-controls .camera-default{font-size:12px;border:1px solid #c9b8a0;background:#fffaf0}
         .default-status{color:#6c5e74;font-size:12px}
-        .view-controls button:disabled{opacity:.35;cursor:default}
+        .default-status:empty{display:none}
+        .main-menu-wrap{position:relative}
+        .bar .main-menu-button{border:1px solid #c9b8a0;background:#fffaf0;gap:7px}
+        .main-menu{position:absolute;right:0;top:calc(100% + 7px);width:min(244px,85vw);max-height:min(72vh,550px);
+          overflow:auto;padding:6px;border:1px solid #d7c9b3;border-radius:11px;background:#fffaf0;box-shadow:0 8px 24px #30263c30}
+        .main-menu[hidden]{display:none}
+        .main-menu button,.main-menu a{width:100%;justify-content:flex-start;text-align:left;border-radius:7px}
+        .main-menu button:disabled{opacity:.35;cursor:default}
+        .main-menu button:hover,.main-menu a:hover{background:#f2e9d9;text-decoration:none}
+        .main-menu hr{margin:4px 6px;border:0;border-top:1px solid #e8dfce}
         .view-status{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
         a,.bar button{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;
           min-height:44px;padding:0 9px;font:inherit;color:inherit;text-decoration:none}
@@ -63,19 +71,26 @@ class RoomcraftStorybookCard extends HTMLElement {
             <div class="view-controls" role="group" aria-label="Camera view controls">
               <label for="storybook-view">View</label>
               <select id="storybook-view" aria-label="Camera view"></select>
-              <button type="button" data-camera="left" aria-label="Rotate view left" title="Rotate view left">↶</button>
-              <button type="button" data-camera="right" aria-label="Rotate view right" title="Rotate view right">↷</button>
-              <button type="button" data-camera="out" aria-label="Zoom out" title="Zoom out">−</button>
-              <button type="button" data-camera="in" aria-label="Zoom in" title="Zoom in">+</button>
-              <button type="button" data-camera="reset" aria-label="Reset to top down view" title="Reset to top down view">⌂</button>
-              <button type="button" class="camera-default" data-camera="save-default" hidden>Save as default</button>
-              <button type="button" class="camera-default" data-camera="clear-default" hidden>Use Top down as default</button>
               <span class="view-status" role="status" aria-live="polite"></span>
-              <span class="default-status" role="status" aria-live="polite"></span>
             </div>
-            <button type="button" class="weather" hidden></button>
-            <a href="/second-floor/studio">Studio</a>
-            <a href="/second-floor/plan">Floor plan</a>
+            <span class="default-status" role="status" aria-live="polite"></span>
+            <div class="main-menu-wrap">
+              <button type="button" class="main-menu-button" aria-expanded="false" aria-controls="storybook-main-menu">Main menu <span aria-hidden="true">⌄</span></button>
+              <div class="main-menu" id="storybook-main-menu" hidden>
+                <a href="/second-floor/studio?panel=models" data-open-models>Object models</a>
+                <a href="/second-floor/studio">Studio</a>
+                <a href="/second-floor/plan">Floor plan</a>
+                <button type="button" class="weather" hidden></button>
+                <hr>
+                <button type="button" data-camera="left">Rotate view left</button>
+                <button type="button" data-camera="right">Rotate view right</button>
+                <button type="button" data-camera="out">Zoom out</button>
+                <button type="button" data-camera="in">Zoom in</button>
+                <button type="button" data-camera="reset">Reset to Top down</button>
+                <button type="button" data-camera="save-default" hidden>Save as default</button>
+                <button type="button" data-camera="clear-default" hidden>Use Top down as default</button>
+              </div>
+            </div>
           </nav>
         </header>
         <div class="stage">
@@ -88,6 +103,7 @@ class RoomcraftStorybookCard extends HTMLElement {
           </div></div>
         </div>
       </section>`;
+    bindLiveModelLibrary(this);
     this.stage = this.shadowRoot.querySelector('.stage');
     this.canvas = this.shadowRoot.querySelector('canvas');
     this.overlay = this.shadowRoot.querySelector('.overlay');
@@ -100,7 +116,23 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.saveDefaultButton = this.shadowRoot.querySelector('[data-camera=save-default]');
     this.clearDefaultButton = this.shadowRoot.querySelector('[data-camera=clear-default]');
     this.freeViewHint = this.shadowRoot.querySelector('#free-view-hint');
-    this.cameraView = normalizeCameraView('top');
+    this.cameraView = resolveDefaultCameraView(null);
+    this.menuButton = this.shadowRoot.querySelector('.main-menu-button');
+    this.mainMenu = this.shadowRoot.querySelector('.main-menu');
+    this.menuButton.addEventListener('click', () => this.setMainMenu(this.mainMenu.hidden));
+    this.onMenuPointerDown = event => {
+      const path = event.composedPath();
+      if (!path.includes(this.menuButton) && !path.includes(this.mainMenu)) this.setMainMenu(false);
+    };
+    this.shadowRoot.addEventListener('keydown', event => {
+      if (event.key !== 'Escape' || this.mainMenu.hidden) return;
+      event.preventDefault();
+      event.stopPropagation();
+      this.setMainMenu(false, true);
+    });
+    this.mainMenu.addEventListener('click', event => {
+      if (event.target.closest('a, .weather')) this.setMainMenu(false);
+    });
     populateCameraOptions(this.viewSelect);
     this.viewSelect.addEventListener('change', () => {
       const preset = this.viewSelect.value;
@@ -114,9 +146,18 @@ class RoomcraftStorybookCard extends HTMLElement {
           case 'right': this.changeView({...current, azimuth: current.azimuth + 15}); break;
           case 'out': this.changeView({...current, zoom: current.zoom - .15}); break;
           case 'in': this.changeView({...current, zoom: current.zoom + .15}); break;
-          case 'reset': this.changeView('top'); break;
-          case 'save-default': if (current.preset === 'free') this.saveStartupView(current); break;
-          case 'clear-default': this.saveStartupView(null); break;
+          case 'reset':
+            this.changeView('top');
+            this.setMainMenu(false, true);
+            break;
+          case 'save-default':
+            if (current.preset === 'free') this.saveStartupView(current);
+            this.setMainMenu(false, true);
+            break;
+          case 'clear-default':
+            this.saveStartupView(null);
+            this.setMainMenu(false, true);
+            break;
         }
       });
     }
@@ -152,7 +193,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.cameraChanged = false;
       this.defaultStatus.textContent = '';
       this.reset();
-      this.changeView('top', {remember: false});
+      this.changeView('default', {remember: false});
     }
     this.dashboard = dashboard;
     this.load();
@@ -174,6 +215,12 @@ class RoomcraftStorybookCard extends HTMLElement {
     }
     if (value?.connected !== previous?.connected ||
         [...this.model.watch].some(id => value?.states?.[id] !== previous?.states?.[id])) this.refresh();
+  }
+
+  setMainMenu(open, returnFocus = false) {
+    this.mainMenu.hidden = !open;
+    this.menuButton.setAttribute('aria-expanded', String(open));
+    if (returnFocus) this.menuButton.focus();
   }
 
   getCardSize() { return 8; }
@@ -202,6 +249,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       onChange: view => this.changeView(view, {announce: false}),
     });
     this.resizeObserver.observe(this.stage);
+    window.addEventListener('pointerdown', this.onMenuPointerDown);
     window.addEventListener('resize', this.onViewportResize);
     window.visualViewport?.addEventListener('resize', this.onViewportResize);
     document.addEventListener('visibilitychange', this.onVisibility);
@@ -210,10 +258,12 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this.setMainMenu(false);
     this.watchPublishedLayout();
     this.freeViewGestures?.dispose();
     this.freeViewGestures = undefined;
     this.resizeObserver.disconnect();
+    window.removeEventListener('pointerdown', this.onMenuPointerDown);
     window.removeEventListener('resize', this.onViewportResize);
     window.visualViewport?.removeEventListener('resize', this.onViewportResize);
     document.removeEventListener('visibilitychange', this.onVisibility);
@@ -300,7 +350,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       const saved = await store.readStartupView(this.session, this.dashboard);
       if (this.startupViewRequest !== request) return;
       this.savedStartupView = readSavedFreeView(saved);
-      if (!this.cameraChanged) this.changeView(this.savedStartupView ?? 'top', {remember: false});
+      if (!this.cameraChanged) this.changeView('default', {remember: false});
     } catch {
       if (this.startupViewRequest === request) this.defaultStatus.textContent = 'Saved view unavailable';
     } finally {
@@ -322,7 +372,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       const saved = await store.writeStartupView(this.session, this.dashboard, view);
       if (this.startupViewRequest !== request) return;
       this.savedStartupView = readSavedFreeView(saved);
-      if (!view) this.changeView('top');
+      if (!view) this.changeView('default');
       this.defaultStatus.textContent = view ? 'Default view saved' : 'Top down is the default';
     } catch {
       if (this.startupViewRequest === request) this.defaultStatus.textContent = 'Could not save default view';
@@ -336,10 +386,12 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   changeView(view, {announce = true, remember = true} = {}) {
     if (remember) {
-      this.cameraChanged = true;
+      this.cameraChanged = view !== 'default';
       this.defaultStatus.textContent = '';
     }
-    this.cameraView = normalizeCameraView(view);
+    this.cameraView = view === 'default'
+      ? resolveDefaultCameraView(this.savedStartupView)
+      : normalizeCameraView(view);
     this.scene?.setView(this.cameraView);
     if (announce) {
       this.freeViewGestures?.cancel();
@@ -395,7 +447,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     if (this.animationFrame !== undefined || !this.scene || !this.frame || document.hidden) return;
     this.animationFrame = requestAnimationFrame(at => {
       this.animationFrame = undefined;
-      const motion = this.frame.moving && !this.motionPreference.matches;
+      const motion = (this.frame.moving || this.scene.hasAmbientMotion) && !this.motionPreference.matches;
       if (this.anchorDirty || !motion || at - this.lastFrame >= FRAME_INTERVAL - 1 || this.lastFrame === undefined) {
         try {
           this.scene.render(at / 1000, this.frame.states,

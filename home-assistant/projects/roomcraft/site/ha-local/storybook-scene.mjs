@@ -5,6 +5,7 @@ import { garagePadContains, makeStorybookDevice } from './storybook-devices.mjs'
 import { compileFloorStructure, compileWallStructure, isOutdoorRoom } from './storybook-structure.mjs';
 import { createStorybookLighting } from './storybook-lighting.mjs';
 import { fitStorybookCamera, normalizeCameraView } from './storybook-camera.mjs';
+import { applyModelHeight } from './storybook-size.mjs';
 
 const DEG = Math.PI / 180;
 const WALL_WIDTH = 14;
@@ -811,7 +812,8 @@ function tableMount(plan, placement, roots) {
     const localX = dx * Math.cos(support.angle) + dz * Math.sin(support.angle);
     const localZ = -dx * Math.sin(support.angle) + dz * Math.cos(support.angle);
     if (Math.abs(localX) < support.item.w * 0.35 && Math.abs(localZ) < support.item.h * 0.35) {
-      return roots.get(support.item.id)?.anchorY ?? 0;
+      const mounted = roots.get(support.item.id);
+      return mounted ? mounted.root.position.y + (mounted.anchorY ?? 0) * mounted.root.scale.y : 0;
     }
   }
   return 0;
@@ -855,6 +857,8 @@ export function projectExteriorClearance(plan, camera, width, height) {
 export function createStorybookScene(canvas, layout) {
   const plan = compileStorybookPlan(layout);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'low-power' });
+  // Studio reuses its canvas after edits. Clear blending and depth state from the previous renderer.
+  renderer.resetState();
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#d7dfcd');
   const camera = new THREE.OrthographicCamera(-800, 800, 450, -450, 1, 4400);
@@ -888,7 +892,8 @@ export function createStorybookScene(canvas, layout) {
     const object = stair ? makeStorybookStairs(stair) :
       makeStorybookDevice(drawItem, {window: isBlind ? window : undefined, mountY}) ?? makeStorybookFurniture(drawItem);
     if (object) {
-      object.root.position.set(x, baseY, z);
+      const heightOffset = applyModelHeight(item, object.root);
+      object.root.position.set(x, baseY + heightOffset, z);
       object.root.rotation.y = -angle;
       scene.add(object.root);
       roots.set(item.id, object);
@@ -897,10 +902,17 @@ export function createStorybookScene(canvas, layout) {
     }
     anchors.set(item.id, { x, z, baseY, object });
   }
+  const cameraBounds = {...plan.bounds};
   for (const placement of plan.placements) {
     const object = roots.get(placement.item.id);
-    if (object) object.root.position.y += tableMount(plan, placement, roots);
+    if (!object) continue;
+    object.root.position.y += tableMount(plan, placement, roots);
+    if (object.root.scale.y !== 1) {
+      const {max} = new THREE.Box3().setFromObject(object.root);
+      if (Number.isFinite(max.y)) cameraBounds.maxY = Math.max(cameraBounds.maxY ?? 92, max.y);
+    }
   }
+  const ambientObjects = [...roots.values()].filter(object => object.ambientMotion);
   const position = new THREE.Vector3();
   let disposed = false;
   let currentWidth = 0;
@@ -917,12 +929,12 @@ export function createStorybookScene(canvas, layout) {
     const deviceRatio = canvas.ownerDocument.defaultView?.devicePixelRatio || 1;
     renderer.setPixelRatio(Math.min(deviceRatio, 1.5, Math.sqrt(2700000 / (width * height))));
     renderer.setSize(width, height, false);
-    cameraView = fitStorybookCamera(camera, plan.bounds, width, height, cameraView);
+    cameraView = fitStorybookCamera(camera, cameraBounds, width, height, cameraView);
   }
   function setView(value) {
     cameraView = normalizeCameraView(value);
     if (!disposed && currentWidth > 0 && currentHeight > 0) {
-      cameraView = fitStorybookCamera(camera, plan.bounds, currentWidth, currentHeight, cameraView);
+      cameraView = fitStorybookCamera(camera, cameraBounds, currentWidth, currentHeight, cameraView);
     }
     return getView();
   }
@@ -952,12 +964,13 @@ export function createStorybookScene(canvas, layout) {
     }
     return null;
   }
-  function render(timeSeconds = 0, statesById = {}, environment = {}) {
+  function render(timeSeconds = 0, statesById = {}, environment = {}, {animateTelemetry = true} = {}) {
     if (disposed || currentWidth < 1 || currentHeight < 1) return;
     lighting.update(environment, statesById, groundMaterial);
     const reduceMotion = environment.reduceMotion === true;
-    const time = Number.isFinite(timeSeconds) ? timeSeconds : 0;
-    updateWeather(time, environment, reduceMotion);
+    const time = !reduceMotion && Number.isFinite(timeSeconds) ? timeSeconds : 0;
+    const telemetryTime = animateTelemetry ? time : 0;
+    updateWeather(telemetryTime, environment, reduceMotion || !animateTelemetry);
     for (const [id, object] of roots) {
       const state = statesById[id] ?? defaultState;
       const latest = state.position;
@@ -965,8 +978,13 @@ export function createStorybookScene(canvas, layout) {
         object.root.position.x = latest.x;
         object.root.position.z = latest.y;
       }
-      object.animate?.(state, reduceMotion ? 0 : time);
+      object.animate?.(state, object.ambientMotion ? time : telemetryTime);
     }
+    renderer.render(scene, camera);
+  }
+  function renderAmbient(timeSeconds) {
+    if (disposed || currentWidth < 1 || currentHeight < 1 || !ambientObjects.length) return;
+    for (const object of ambientObjects) object.animate(defaultState, timeSeconds);
     renderer.render(scene, camera);
   }
   function anchor(itemId) {
@@ -1003,5 +1021,8 @@ export function createStorybookScene(canvas, layout) {
     renderer.dispose();
   }
   const exteriorClearance = () => projectExteriorClearance(plan, camera, currentWidth, currentHeight);
-  return { resize, render, anchor, setView, getView, projectToPlan, pickGarage, exteriorClearance, dispose };
+  return {
+    resize, render, anchor, setView, getView, projectToPlan, pickGarage, exteriorClearance, dispose,
+    hasAmbientMotion: ambientObjects.length > 0, renderAmbient,
+  };
 }

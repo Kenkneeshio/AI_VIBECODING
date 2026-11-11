@@ -1,10 +1,11 @@
 import {compileStorybookPlan, createStorybookScene} from './storybook-scene.mjs';
-import {CAMERA_PRESETS, enterFreeView, populateCameraOptions, studioCameraPreferences} from './storybook-camera.mjs';
+import {CAMERA_PRESETS, enterFreeView, populateCameraOptions, resolveDefaultCameraView, studioCameraPreferences} from './storybook-camera.mjs';
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
 import {placeStorybookTargets} from './storybook-state.mjs';
 
 const SELECT_RADIUS = 22;
 const MIN_DRAG = 5;
+const AMBIENT_FRAME_INTERVAL = 1000 / 12;
 
 /** Fill a free viewport slot when a dense group exceeds the local anchor grid. */
 export function placeEditorMarkers(targets, width, height) {
@@ -68,11 +69,13 @@ export function mountStorybookEditor(document, host) {
     out: document.getElementById('sceneZoomOut'),
     in: document.getElementById('sceneZoomIn'),
   };
+  const cameraOptions = document.getElementById('sceneCameraOptions');
   const resetButton = document.getElementById('sceneReset');
   const saveDefaultButton = document.getElementById('sceneSaveDefault');
   const clearDefaultButton = document.getElementById('sceneClearDefault');
   const defaultStatus = document.getElementById('sceneDefaultStatus');
   const preferences = studioCameraPreferences(host);
+  const motionPreference = host.matchMedia?.('(prefers-reduced-motion: reduce)');
   const look = document.createElement('label');
   look.className = 'scene-dashboard-look';
   look.hidden = true;
@@ -81,7 +84,7 @@ export function mountStorybookEditor(document, host) {
   lookCheckbox.type = 'checkbox';
   lookCheckbox.checked = true;
   look.append(lookCheckbox, ' Dashboard look');
-  choice.closest('.scene-view-toolbar')?.append(look);
+  cameraOptions?.append(look);
   const outline = document.createElement('div');
   outline.className = 'scene-selection';
   outline.setAttribute('aria-hidden', 'true');
@@ -108,11 +111,14 @@ export function mountStorybookEditor(document, host) {
   let scene;
   let project;
   let fingerprint;
-  let view = {preset: 'top'};
+  let view = resolveDefaultCameraView(null);
   let mode = choice.value;
-  let lastEditableMode = 'top';
+  let lastEditableMode = 'default';
   let drag;
   let resizeFrame;
+  let ambientFrame;
+  let lastAmbientFrame = -Infinity;
+  let ambientSeconds = 0;
   let disposed = false;
   let cameraChanged = false;
   let savedStartupView = null;
@@ -128,7 +134,26 @@ export function mountStorybookEditor(document, host) {
   function setStatus(text) {
     api.showStatus?.(text);
   }
+  function syncAmbientAnimation() {
+    const enabled = !disposed && scene?.hasAmbientMotion && is3D() && !document.hidden && !motionPreference?.matches;
+    if (!enabled) {
+      host.cancelAnimationFrame(ambientFrame);
+      ambientFrame = undefined;
+      return;
+    }
+    if (ambientFrame !== undefined) return;
+    ambientFrame = host.requestAnimationFrame(at => {
+      ambientFrame = undefined;
+      if (at - lastAmbientFrame >= AMBIENT_FRAME_INTERVAL - 1) {
+        lastAmbientFrame = at;
+        ambientSeconds = at / 1000;
+        try { scene.renderAmbient(ambientSeconds); } catch { fail(); }
+      }
+      syncAmbientAnimation();
+    });
+  }
   function draw(dragPreview) {
+    syncAmbientAnimation();
     if (!scene || !is3D()) return;
     const {width, height} = currentSize();
     if (!width || !height) return;
@@ -146,7 +171,8 @@ export function mountStorybookEditor(document, host) {
     for (const [id, state] of Object.entries(dragPreview ?? {})) states[id] = {...states[id], ...state};
     const environment = usingDashboard ? dashboard.environment
       : {night: false, condition: 'sunny', daylightKnown: true};
-    scene.render(0, states, {...environment, reduceMotion: true});
+    scene.render(ambientSeconds, states, {...environment, reduceMotion: motionPreference?.matches === true},
+      {animateTelemetry: false});
     if (isFree()) return;
     const targets = [];
     for (const [id, marker] of markers) {
@@ -190,6 +216,7 @@ export function mountStorybookEditor(document, host) {
     if (before.item) draw({[before.item.id]: {position: {x: before.item.x, y: before.item.y}}});
   }
   function updateButtons() {
+    if (cameraOptions) cameraOptions.hidden = !is3D();
     for (const button of Object.values(buttons)) if (button) button.disabled = !is3D();
     if (saveDefaultButton) {
       saveDefaultButton.hidden = !scene || !isFree();
@@ -214,8 +241,11 @@ export function mountStorybookEditor(document, host) {
       ? 'Free view. Use arrow keys to orbit and plus or minus to zoom.'
       : editorCanvasLabel);
   }
-  function choose(next, {initial = false, savedView = null} = {}) {
-    if (!initial) markCameraChanged();
+  function choose(next, {initial = false} = {}) {
+    if (!initial) {
+      markCameraChanged();
+      if (next === 'default') cameraChanged = false;
+    }
     orbit.cancel();
     restoreDrag();
     const previousView = scene?.getView() ?? view;
@@ -239,11 +269,14 @@ export function mountStorybookEditor(document, host) {
     viewport.classList.toggle('scene-3d', is3D());
     updateButtons();
     if (!is3D()) {
+      syncAmbientAnimation();
       look.hidden = true;
       setStatus('Plan view · edit rooms, walls, floors and objects');
       return;
     }
-    const nextView = savedView ?? (isFree() ? enterFreeView(previousView) : {preset: mode});
+    const nextView = mode === 'default'
+      ? resolveDefaultCameraView(savedStartupView)
+      : isFree() ? enterFreeView(previousView) : {preset: mode};
     view = scene ? scene.setView(nextView) : nextView;
     refresh();
     if (!scene) return;
@@ -257,6 +290,7 @@ export function mountStorybookEditor(document, host) {
     scene = undefined;
     fingerprint = undefined;
     mode = 'plan';
+    syncAmbientAnimation();
     choice.value = mode;
     canvas.hidden = true;
     look.hidden = true;
@@ -424,14 +458,15 @@ export function mountStorybookEditor(document, host) {
   const zoomIn = () => changeCamera(current => ({...current, zoom: current.zoom * 1.2}));
   const resetView = () => choose('top');
   const changeLook = () => draw();
+  const onMotionPreference = () => draw();
+  document.addEventListener('visibilitychange', syncAmbientAnimation);
+  motionPreference?.addEventListener('change', onMotionPreference);
   async function loadStartupView() {
     defaultBusy = true;
     updateButtons();
     try {
       savedStartupView = await preferences.read();
-      if (!disposed && !cameraChanged && savedStartupView) {
-        choose('free', {initial: true, savedView: savedStartupView});
-      }
+      if (!disposed && !cameraChanged) choose('default', {initial: true});
     } catch {
       if (!disposed) setDefaultStatus('Saved view unavailable');
     } finally {
@@ -448,7 +483,7 @@ export function mountStorybookEditor(document, host) {
       await preferences.write(viewToSave);
       if (disposed) return;
       savedStartupView = viewToSave;
-      if (!viewToSave) choose('top');
+      if (!viewToSave) choose('default');
       setDefaultStatus(viewToSave ? 'Default view saved' : 'Top down is the default');
     } catch {
       if (!disposed) setDefaultStatus('Could not save default view');
@@ -490,6 +525,9 @@ export function mountStorybookEditor(document, host) {
     setView: choose,
     dispose() {
       disposed = true;
+      syncAmbientAnimation();
+      document.removeEventListener('visibilitychange', syncAmbientAnimation);
+      motionPreference?.removeEventListener('change', onMotionPreference);
       restoreDrag();
       orbit.dispose();
       mode = 'plan';

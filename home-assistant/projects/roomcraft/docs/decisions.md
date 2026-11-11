@@ -1,5 +1,11 @@
 # Decision log
 
+## Browse models from either surface and author through Studio
+
+Studio and Roomcraft Home use a shared catalog and searchable library for placed objects, available devices, and models. A live action opens Studio with one same-origin session handoff. Device identifiers stay out of the navigation URL. Studio validates the action against the current layout and keeps it in the browser draft until publication. Compatible model swaps retain the item identity, binding and footprint.
+
+Width and depth remain in plan units. An optional 3D height scales the model around its authored support plane. Stair, window and interface geometry use their own established controls. Fish and lizard movement uses deterministic scene time and respects reduced motion. The 2D drawing stays stable for exported images.
+
 ## Author ledge railings and store the camera as a preference
 
 Reference revision 9 adds the missing guards to the known upstairs decks as editable fence segments. It uses their existing finish and leaves the actual stair opening and house entrances clear. The common renderer keeps deck guards level and follows the stair slope along the existing flight rail. The live thumbnail placer gives the projected stair and rails room when it can keep the camera tile in reach.

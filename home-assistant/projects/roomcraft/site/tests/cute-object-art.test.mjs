@@ -141,6 +141,19 @@ test('every crafted recipe has deterministic material-rich geometry at four tran
   }
 });
 
+test('pet habitats have distinct deterministic artwork in the plan and thumbnails', () => {
+  const window = loadRuntime();
+  const models = window.RoomcraftInventory.templates.filter(entry => entry.group === 'pets');
+  assert.equal(models.length, 2);
+  const digests = models.map(model => {
+    const frame = render(window, model, .63, 90);
+    assert.ok(frame.summary.fills >= 18 && frame.summary.strokes >= 5);
+    assert.deepEqual(render(window, model, .63, 90).trace, frame.trace);
+    return geometryDigest(frame.trace);
+  });
+  assert.notEqual(digests[0], digests[1]);
+});
+
 test('bed catalog exposes real sizes, distinct constructions, and monotonic authored footprints', () => {
   const window = loadRuntime();
   const beds = window.RoomcraftInventory.templates.filter(entry => entry.seriesId === 'bed');

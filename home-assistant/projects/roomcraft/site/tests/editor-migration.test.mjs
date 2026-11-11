@@ -72,6 +72,7 @@ function boot(savedProject, dashboardRequest, options = {}) {
   installRoomcraftEngine(window);
   for (const wallSource of wallSources) runInNewContext(wallSource, { window });
   runInNewContext(controlsSource, { window });
+  runInNewContext(readFileSync(new URL('../public/model-library.js', import.meta.url), 'utf8'), {window});
   const localStorage = {
     getItem(key) { return data.get(key) ?? null; },
     setItem(key, value) { data.set(key, value); },
@@ -765,4 +766,28 @@ test('Dashboard return keeps unpublished edits in the browser and allows cancell
   await secondReturn;
   assert.deepEqual(editor.navigation, ['http://ha.test/second-floor/plan']);
   assert.equal(editor.read().items.find(item => item.id === 'chair').x, 540);
+});
+
+test('mapping and swapping a model keep one editable binding and its footprint', () => {
+  const editor = boot({version:2, editableReferenceVersion:9, rooms:[], walls:[], hotspots:[], items:[]});
+  const bridge = editor.window.RoomcraftEditorViewport;
+  assert.equal(bridge.applyModelCommand({kind:'place', modelId:'cameraThumbnail', entityId:'light.example'}), false);
+  assert.equal(bridge.applyModelCommand({kind:'place', modelId:'lamp', entityId:'light.example'}), true);
+  assert.equal(bridge.placeAt(200, 300), true);
+  const [original] = bridge.getProject().items;
+  const dimensionField = (key,value) => editor.dispatch('inspectorContent','change',{
+    target:{closest:selector => selector==='[data-prop]' ? {dataset:{prop:key},value} : null},
+  });
+  dimensionField('w','54');
+  dimensionField('modelHeight','64');
+  assert.equal(bridge.applyModelCommand({kind:'replace',itemId:original.id,modelId:'floorLamp'}), true);
+  const [changed] = bridge.getProject().items;
+  assert.deepEqual([changed.id,changed.type,changed.entityId,changed.x,changed.y,changed.w,changed.h,changed.modelHeight],
+    [original.id,'floorLamp','light.example',200,300,54,40,64]);
+  assert.equal(bridge.applyModelCommand({kind:'replace',itemId:original.id,modelId:'wallSconce'}), false);
+  editor.dispatch('undoButton','click',{});
+  assert.equal(bridge.getProject().items[0].type, 'lamp');
+  bridge.selectItem(original.id);
+  dimensionField('modelHeight','');
+  assert.equal(bridge.getProject().items[0].modelHeight, undefined);
 });

@@ -1,5 +1,13 @@
 # Changelog
 
+## Object models, dimensions, and a simpler dashboard
+
+- **Default** is a view choice. It resolves the saved camera angle or opens overhead. Main menu groups the secondary controls in Studio and Roomcraft Home.
+- **Object models** lists placed objects, the shared model catalog, and available Home Assistant devices. Choose a model and place it in Studio, or change a placed object's model while keeping its position, dimensions and device binding.
+- The Studio Inspector has width, depth, a proportion lock, a reset, and an optional 3D height override. Pets adds an animated Fish Aquarium and Lizard Terrarium with still 2D artwork and reduced-motion support.
+- Verified live search, Studio handoff, aquarium placement, dimensions, Undo and return to Roomcraft Home on the wall tablet. The editor clears shared WebGL state between scene rebuilds so undoing a transparent model retains the original lighting. Isolated Chrome verified device mapping, numeric dimensions and undo, camera selection, and habitat animation in both views. The published layout and controls matched the pre-update backup.
+- Passed 139 editor and engine tests, 54 Home Assistant JavaScript tests, 15 Python tests, TypeScript, lint with zero errors and the production build. The owner-private editor deployed as Site v59 from `340c5bbb021c9cca89f6b4f6f7cf04db67c4b46e`. Reinstall the prior Home Assistant assets to roll back the runtime. Roll back the Site separately.
+
 ## Matching exterior railings and saved Free view
 
 - Reference revision 9 adds six editable graphite railing segments to the open balcony, porch, and landing edges. The stairs and entrances stay open.

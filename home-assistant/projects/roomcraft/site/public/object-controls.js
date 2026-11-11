@@ -269,19 +269,25 @@
       + '<datalist id="' + listId + '">' + values + '</datalist></div>';
   }
 
-  function renderInspector(item, template, field, variantField, escape, entityOptions = []) {
+  function renderInspector(item, template, field, variantField, escape, entityOptions = [], dimensions = {}) {
     const camera = item.type === 'cameraThumbnail';
     const zone = item.type === 'controlZone';
     const appearance = '<div class="inspector-block"><p class="inspector-label">APPEARANCE & POSITION</p>'
       + field('Name', 'name', item.name) + variantField(template, item.type)
-      + '<div class="field-grid">' + field('X position', 'x', item.x, 'number') + field('Y position', 'y', item.y, 'number')
-      + field('Width', 'w', item.w, 'number') + field('Depth', 'h', item.h, 'number') + '</div>'
+      + '<div class="field-grid">' + field('X position', 'x', item.x, 'number') + field('Y position', 'y', item.y, 'number') + '</div>'
       + field('Rotation (degrees)', 'rotation', item.rotation, 'number')
       + '<p class="field-hint">' + (zone
         ? 'This outline appears only while editing. Drag it over the artwork, then resize its corners to set the tappable area.'
-        : 'Drag this object to move it; drag a corner handle to resize. Hold Shift while resizing to keep proportions.') + '</p>'
+        : 'Drag this object to move it; drag a corner handle to resize. Hold Shift or enable Keep width/depth ratio to keep proportions.') + '</p>'
       + '<div class="inspector-actions"><button type="button" class="secondary-button" data-action="rotate">↻ Rotate 90°</button>'
       + '<button type="button" class="secondary-button" data-action="duplicate">▣ Duplicate</button></div></div>';
+    const sizing = '<div class="inspector-block"><p class="inspector-label">DIMENSIONS · PLAN PX</p>'
+      + '<div class="field-grid">' + field('Width', 'w', item.w, 'number') + field('Depth', 'h', item.h, 'number') + '</div>'
+      + (dimensions.height ? field('Height in 3D (blank = model)', 'modelHeight', item.modelHeight ?? '', 'number') : '')
+      + '<div class="inspector-actions"><label><input type="checkbox" data-lock-dimensions'
+      + (dimensions.locked ? ' checked' : '') + '> Keep width/depth ratio</label>'
+      + (template.w ? '<button type="button" class="secondary-button" data-action="reset-dimensions">Reset dimensions</button>' : '')
+      + '</div></div>';
     let link;
     if (camera) {
       link = '<div class="inspector-block"><p class="inspector-label">CAMERA PREVIEW</p>'
@@ -337,7 +343,7 @@
     return '<div class="inspector-block"><p class="inspector-label">SELECTED OBJECT</p>'
       + '<div class="selection-title"><span class="selection-icon">' + template.icon + '</span><div><h3>' + escape(item.name)
       + '</h3><p>' + escape(template.label) + '</p></div></div></div>'
-      + appearance + link + '<button type="button" class="danger-button" data-action="delete">Remove object</button>';
+      + appearance + sizing + link + '<button type="button" class="danger-button" data-action="delete">Remove object</button>';
   }
 
   window.RoomcraftObjectControls = {

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
-import {CAMERA_PRESETS, enterFreeView, fitStorybookCamera, normalizeCameraView, readSavedFreeView, studioCameraPreferences} from '../ha-local/storybook-camera.mjs';
+import {CAMERA_PRESETS, enterFreeView, fitStorybookCamera, normalizeCameraView, populateCameraOptions, readSavedFreeView, resolveDefaultCameraView, studioCameraPreferences} from '../ha-local/storybook-camera.mjs';
 import {bindFreeViewGestures} from '../ha-local/storybook-orbit.mjs';
 
 const bounds = {minX: 20, maxX: 1510, minZ: 110, maxZ: 850};
@@ -32,6 +32,32 @@ test('camera preferences normalize without modifying caller data or the presets'
   assert.deepEqual(normalizeCameraView({preset: 'bad', tilt: NaN, zoom: -1}), {...topView, zoom: 0.6});
   assert.equal(normalizeCameraView('dollhouse').tilt, 30);
   assert.deepEqual(normalizeCameraView('top'), topView);
+});
+
+test('the shared Default option displays the saved angle without entering Free view', () => {
+  const select = {
+    ownerDocument: {createElement: () => ({})},
+    replaceChildren(...children) { this.options = children; },
+  };
+  for (const includePlan of [false, true]) {
+    populateCameraOptions(select, includePlan);
+    assert.equal(select.value, 'default');
+    assert.deepEqual(select.options[0], {value: 'default', textContent: 'Default'});
+    assert.ok(select.options.some(option => option.value === 'top'));
+    assert.ok(select.options.some(option => option.value === 'free'));
+    assert.equal(select.options.some(option => option.value === 'plan'), includePlan);
+  }
+
+  const saved = {preset: 'free', azimuth: 193.25, tilt: 0, zoom: 1.625};
+  assert.deepEqual(resolveDefaultCameraView(saved), {...saved, preset: 'default'});
+  assert.deepEqual(resolveDefaultCameraView(null), {...topView, preset: 'default'});
+  assert.deepEqual(resolveDefaultCameraView({preset: 'free'}), {...topView, preset: 'default'});
+  const camera = makeCamera();
+  const fromDefault = fitStorybookCamera(camera, bounds, 1440, 810, resolveDefaultCameraView(saved));
+  assert.equal(fromDefault.preset, 'default');
+  near(fromDefault.azimuth, saved.azimuth);
+  near(fromDefault.tilt, saved.tilt);
+  near(fromDefault.zoom, saved.zoom);
 });
 
 test('browser Studio saves the exact Free view pose across reload and clears it to Top down', async () => {
@@ -101,6 +127,17 @@ test('every preset fits the full footprint and maps an edited floor point back t
       near(hit.x, expected.x);
       near(hit.z, expected.z);
     }
+  }
+});
+
+test('an authored tall model extends the camera framing', () => {
+  const camera = makeCamera();
+  const view = 'corner';
+  const tall = {...bounds, maxY: 455};
+  fitStorybookCamera(camera, tall, 1440, 810, view);
+  for (const x of [tall.minX, tall.maxX]) for (const z of [tall.minZ, tall.maxZ]) {
+    const point = new THREE.Vector3(x, tall.maxY, z).project(camera);
+    assert.ok(Math.abs(point.x) <= 1 && Math.abs(point.y) <= 1);
   }
 });
 

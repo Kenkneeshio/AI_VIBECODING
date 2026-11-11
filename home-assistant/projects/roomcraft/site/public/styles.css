@@ -18,7 +18,13 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .save-state{font-size:12px;color:#727d72;white-space:nowrap;margin-right:11px}.save-dot{width:7px;height:7px;display:inline-block;background:#6ba686;border-radius:50%;margin-right:5px}
 .icon-button{width:35px;height:35px;border:1px solid #eae8e2;background:#fff;border-radius:10px;color:#454d46;font-size:21px;line-height:1}.icon-button:hover:not(:disabled){background:#f7f3ec;border-color:#d9d6cc}.icon-button:disabled{opacity:.35;cursor:default}
 .primary-button{border:0;background:var(--ink);color:#fff;border-radius:11px;font-size:12px;font-weight:800;min-height:38px;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 6px 12px rgba(28,35,30,.12)}.primary-button:hover{background:#415247}
-.menu-wrap{position:relative}.dropdown{position:absolute;right:0;top:45px;background:#fffefa;border:1px solid var(--line);box-shadow:0 14px 40px rgba(23,32,24,.17);border-radius:14px;padding:7px;width:230px;z-index:60}.dropdown[hidden]{display:none}.dropdown button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;padding:11px 9px;text-align:left;border-radius:9px;color:#343d35;font-size:12px;font-weight:650}.dropdown button:hover{background:#f5f2ea}.dropdown span{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;background:#edf2eb;border-radius:7px;color:#4d7a5e;font-weight:800}
+.menu-wrap{position:relative}
+.dropdown{position:absolute;right:0;top:calc(100% + 7px);background:#fffefa;border:1px solid var(--line);box-shadow:0 14px 40px rgba(23,32,24,.17);border-radius:14px;padding:7px;width:min(250px,85vw);max-height:min(76vh,680px);overflow:auto;z-index:60}
+.dropdown[hidden],.dropdown button[hidden]{display:none}
+.dropdown button{display:flex;align-items:center;width:100%;min-height:44px;border:0;background:transparent;padding:9px 10px;text-align:left;border-radius:9px;color:#343d35;font-size:13px;font-weight:650}
+.dropdown button:hover:not(:disabled){background:#f5f2ea}
+.dropdown button:disabled{opacity:.4;cursor:default}
+.dropdown hr{margin:4px 7px;border:0;border-top:1px solid var(--line)}
 .workbench{display:grid;grid-template-columns:258px minmax(0,1fr) 276px;flex:1;min-height:0}
 .panel{background:#fffefa;min-height:0;display:flex;flex-direction:column}.left-panel{border-right:1px solid var(--line)}.right-panel{border-left:1px solid var(--line)}
 .panel-header{padding:25px 20px 14px}.panel-header h1{font-size:26px;letter-spacing:-.055em;line-height:1.1;margin:9px 0}.panel-header h1 span{color:var(--accent)}.panel-intro{font-size:12px;line-height:1.55;color:#7e857c;margin:0;max-width:205px}
@@ -62,8 +68,6 @@ body.dashboard-transfer-busy .workbench{cursor:progress}body.dashboard-transfer-
 @media(prefers-reduced-motion:reduce){.right-panel{transition:none}}
 
 /* Give the illustrated plan the full browser height when inspecting detail. */
-.focus-button{white-space:nowrap;border:1px solid #e6e9df;background:#f8faf5;color:#456750;margin-left:5px}
-.focus-button:hover,.focus-button[aria-pressed="true"]{background:#e5efe4;border-color:#bed3bf;color:#31583d}
 .zoom-value{border:0;background:transparent;cursor:pointer;border-radius:5px;padding:5px 1px}
 .zoom-value:hover{background:#e9f0e7;color:#31583d}
 .app-shell.focus-canvas .topbar,.app-shell.focus-canvas .left-panel,.app-shell.focus-canvas .right-panel,.app-shell.focus-canvas .inspector-scrim,.app-shell.focus-canvas .statusbar{display:none!important}
@@ -71,7 +75,6 @@ body.dashboard-transfer-busy .workbench{cursor:progress}body.dashboard-transfer-
 .app-shell.focus-canvas .center-panel{height:100%;width:100%}
 .app-shell.focus-canvas .canvas-toolbar{height:49px}
 .app-shell.focus-canvas .inspector-toggle{display:none}
-@media(max-width:1170px){.focus-button span{display:none}.focus-button{min-width:32px;padding:7px 8px}}
 
 /* A large catalog stays searchable while its previews render only as needed. */
 .inventory-controls{position:sticky;top:-16px;z-index:4;padding:4px 0 10px;background:#fffefa;box-shadow:0 7px 9px -10px #26362b55}
@@ -107,10 +110,6 @@ body.dashboard-transfer-busy .workbench{cursor:progress}body.dashboard-transfer-
 .scene-view-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:5px;flex:none;padding:5px 12px;background:#fffefa;border-bottom:1px solid var(--line);color:#596359}
 .scene-view-toolbar label{font-size:11px;font-weight:700;margin-right:3px}
 .scene-view-toolbar select{border:1px solid #d8ded1;border-radius:7px;min-height:36px;padding:4px 8px;background:#fff;color:#465342;font:inherit;font-size:12px}
-.scene-view-toolbar button{border:1px solid #d8ded1;border-radius:7px;min-width:36px;min-height:36px;background:#fff;color:#465342;font-size:17px}
-.scene-view-toolbar button:disabled{opacity:.35}
-.scene-view-toolbar .scene-camera-default{padding:0 8px;font:inherit;font-size:12px;font-weight:600}
-.scene-view-toolbar .scene-camera-default[hidden]{display:none}
 .scene-default-status{font-size:11px}
 .wall-snap-option{display:flex;align-items:center;gap:8px;min-height:40px;font-size:13px;font-weight:600;color:#465342}
 .wall-snap-option input{width:17px;height:17px;accent-color:#3a7160}
@@ -119,7 +118,7 @@ body.dashboard-transfer-busy .workbench{cursor:progress}body.dashboard-transfer-
 .structure-select.active{background:#e3eee2;border-color:#b1c6af;color:#34533d}
 .viewport[data-tool="fence"]{cursor:crosshair}
 .viewport[data-tool="structure"]{cursor:grab}
-.scene-dashboard-look{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:0 6px;white-space:nowrap;font-size:12px}
+.scene-dashboard-look{display:flex;align-items:center;gap:7px;min-height:44px;padding:0 10px;font-size:13px;font-weight:650;color:#343d35}
 .scene-dashboard-look input{accent-color:#3a7160}
 .scene-dashboard-look[hidden]{display:none}
 @media(pointer:coarse){.scene-dashboard-look,.structure-tools select,.structure-tools button,.wall-snap-option{min-height:44px}}
@@ -137,4 +136,4 @@ body.dashboard-transfer-busy .workbench{cursor:progress}body.dashboard-transfer-
 .center-panel:has(.viewport.scene-3d) .toolbar-right .zoom-value,
 .center-panel:has(.viewport.scene-3d) .toolbar-right .zoom-fit,
 .center-panel:has(.viewport.scene-3d) .toolbar-right .toolbar-divider{display:none}
-@media(pointer:coarse){.scene-view-toolbar button,.scene-view-toolbar select{min-width:44px;min-height:44px}}
+@media(pointer:coarse){.scene-view-toolbar select,#exportButton{min-width:44px;min-height:44px}}
