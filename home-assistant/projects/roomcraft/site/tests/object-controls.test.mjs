@@ -102,6 +102,25 @@ test('radar calibration binds a presence switch to a sensor and rejects unusable
   assert.match(inspector, /data-prop="presenceTrackTransform"/);
 });
 
+test('configured detection zone bounds validate in sensor centimetres and remain optional', () => {
+  const c = controls();
+  const presence = {type: 'presenceSwitch', presenceTrackZone: [-200, 200, 0, 600]};
+  assert.equal(c.validBinding(presence), true);
+  assert.equal(c.validBinding({...presence, type: 'lamp'}), false);
+  assert.equal(c.validBinding({...presence, presenceTrackZone: [-200, 200, 50, 50]}), false);
+  assert.deepEqual(Array.from(c.propertyUpdate('presenceTrackZone', '-200, 200, 0, 600').value),
+    presence.presenceTrackZone);
+  assert.equal(c.propertyUpdate('presenceTrackZone', '').valid, true);
+  assert.equal(c.propertyUpdate('presenceTrackZone', '').value, undefined);
+  for (const invalid of ['200, -200, 0, 600', '-200, 200, 0, 601', '-200, 200, , 600', '-200, 200, 0, Infinity']) {
+    assert.equal(c.propertyUpdate('presenceTrackZone', invalid).valid, false);
+  }
+  const inspector = c.renderInspector(presence, {icon: '◉', label: 'Presence dimmer'},
+    () => '', () => '', String);
+  assert.match(inspector, /Configured zone bounds \(cm\)/);
+  assert.match(inspector, /data-prop="presenceTrackZone"[^>]*value="-200, 200, 0, 600"/);
+});
+
 test('a fan can show its switch state while tap and hold run separate scenes', () => {
   const c = controls();
   const fan = {

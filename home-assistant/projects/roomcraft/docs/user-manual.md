@@ -4,6 +4,8 @@ Roomcraft Studio edits the layout used by Roomcraft Home. Use the 3D view to arr
 
 ## Use the live dashboard
 
+Use **Menu → On the map → Detection zone** to show the configured radar bounds. Select the presence dimmer in 3D Studio to preview the same boundary and update its saved display values. The boundary is a configuration view. Actual detection depends on the switch's physical field of view and the room.
+
 Open **Roomcraft Home** in the Home Assistant sidebar for the live view. **Menu → Manage → Layout Studio** opens the editor. Use **On the map** for Object details and Presence tracking, and **View controls** for rotation, zoom and default view settings. **Manage** also opens popups for Object models, Devices and sensors, Indoor air, Electrical and System health when configured. The labels from **Object details** show each linked control's name and current state. The toggle is saved in the current browser.
 
 The weather beside the menu shows the sun or moon, with clouds and precipitation for the current condition. Tap the weather to open Home Assistant's weather details. Reduced motion uses still weather artwork.

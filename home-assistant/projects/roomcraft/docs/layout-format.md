@@ -1,5 +1,7 @@
 # Editable layout format
 
+A `presenceSwitch` can store `presenceTrackZone` as four centimetre values ordered `[xMin, xMax, yMin, yMax]`. The editor accepts limits from −600 to 600 and requires the minimum to be less than the maximum on each axis. Home and Studio transform this rectangle with `presenceTrackTransform` and clip it to the plan. This field documents the switch's configured XY bounds for display. Changing it in Studio does not write settings to the switch.
+
 The [JSON Schema](../layout.schema.json) describes Roomcraft layout version 2 shared by the HA-hosted Studio and optional cloud editor. The [synthetic example](../examples/layout-v2.json) shows the main fields without revealing any installed device inventory. It illustrates the contract; the real furnished starter includes many more rooms, walls, and objects.
 
 | Field | Meaning |

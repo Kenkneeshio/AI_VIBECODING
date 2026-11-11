@@ -3,30 +3,20 @@ import * as THREE from 'three';
 const MAX_TRACKS = 24;
 const MOVE_SECONDS = 0.32;
 const MAX_INTERPOLATION_DISTANCE = 125;
-const CHARACTER_SCALE = 1.17;
 const STYLES = [
-  {sweater: '#d77465', trim: '#ffe3bb', skin: '#d9a57e', hair: '#63453b'},
-  {sweater: '#67a396', trim: '#d6efe4', skin: '#efbc92', hair: '#7c5544'},
-  {sweater: '#8d80b4', trim: '#f0daf1', skin: '#a96e52', hair: '#4d3940'},
-  {sweater: '#d4a345', trim: '#fff0bc', skin: '#e6ab82', hair: '#856247'},
-  {sweater: '#6198c1', trim: '#def4ef', skin: '#c99065', hair: '#493744'},
-  {sweater: '#bd779b', trim: '#f7dce0', skin: '#f2c5a3', hair: '#9d664e'},
+  {role: 'papa', scale: [1.26, 1.25, 1.22], sweater: '#537eaa', trim: '#ffcc81', skin: '#db9f76', hair: '#4b3533'},
+  {role: 'mama', scale: [1.09, 1.18, 1.12], sweater: '#c86587', trim: '#ffdeaf', skin: '#e8af83', hair: '#5a3841'},
+  {role: 'baby', scale: [.92, .83, .92], sweater: '#8b78cf', trim: '#ffe492', skin: '#f1b98e', hair: '#674138'},
 ];
-
-function colorIndex(id) {
-  let hash = 2166136261;
-  for (let i = 0; i < id.length; i++) hash = Math.imul(hash ^ id.charCodeAt(i), 16777619);
-  return (hash >>> 0) % STYLES.length;
-}
 
 function paintedMaterial(color, emissiveIntensity = 0.12) {
   return new THREE.MeshStandardMaterial({color, roughness: 0.78, emissive: color, emissiveIntensity});
 }
 
-function animateFace(character, time, reducedMotion) {
-  const idle = time + character.palette * 1.43;
+function animateFace(character, idle, reducedMotion) {
   const blinking = !reducedMotion && idle % 4.8 < 0.13;
   character.head.rotation.x = -0.62 + (reducedMotion ? 0 : Math.sin(idle * 1.5) * 0.047);
+  character.head.rotation.z = reducedMotion ? 0 : Math.sin(idle * 3.4) * 0.047;
   for (const eye of character.eyes) eye.scale.y = blinking ? 0.15 : 0.87;
 }
 
@@ -43,7 +33,7 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
   // exports have no runtime characters or dependencies on the tracker feed.
   let art;
   const tracks = new Map();
-  const unused = [];
+  const unused = STYLES.map(() => []);
   let preference = false;
   let reduced = false;
   let lastTime = 0;
@@ -54,8 +44,9 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
       sphere: new THREE.SphereGeometry(1, 12, 8),
       disc: new THREE.CircleGeometry(1, 24).rotateX(-Math.PI / 2),
       groundRing: new THREE.RingGeometry(13.8, 17.5, 32).rotateX(-Math.PI / 2),
-      palette: STYLES.map(style => Object.fromEntries(
-        Object.entries(style).map(([part, color]) => [part, paintedMaterial(color)]),
+      glasses: new THREE.TorusGeometry(1, .14, 6, 16),
+      palette: STYLES.map(({sweater, trim, skin, hair}) => Object.fromEntries(
+        Object.entries({sweater, trim, skin, hair}).map(([part, color]) => [part, paintedMaterial(color)]),
       )),
       ink: paintedMaterial('#423c50', 0.09),
       cheek: paintedMaterial('#d78383'),
@@ -66,21 +57,21 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
     };
   }
 
-  function makeCharacter() {
+  function makeCharacter(styleIndex) {
     art ??= makeArt();
+    const {role, scale} = STYLES[styleIndex];
+    const {sweater, trim, skin, hair} = art.palette[styleIndex];
+    const baby = role === 'baby';
     const root = new THREE.Group();
+    root.name = `radar-avatar-${role}`;
     const body = new THREE.Group();
     const head = new THREE.Group();
-    const clothes = [];
-    const skin = [];
-    const hair = [];
-    const trim = [];
     const eyes = [];
     const arms = [];
     const legs = [];
     group.add(root);
     root.add(body);
-    body.scale.setScalar(CHARACTER_SCALE);
+    body.scale.set(...scale);
 
     const ellipse = (parent, material, x, y, z, width, height, depth) => {
       const mesh = new THREE.Mesh(art.sphere, material);
@@ -89,7 +80,6 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
       parent.add(mesh);
       return mesh;
     };
-    const tinted = (parts, parent, ...shape) => parts.push(ellipse(parent, art.white, ...shape));
     const shadow = new THREE.Mesh(art.disc, art.shadow);
     shadow.position.y = 0.13;
     shadow.scale.set(19, 1, 19);
@@ -98,52 +88,69 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
     groundMark.position.y = 0.26;
     root.add(groundMark);
 
-    tinted(clothes, body, 0, 15, 0, 7.1, 8.3, 5.4);
-    tinted(trim, body, 0, 20.7, 2.4, 5.8, 2.2, 4);
-    tinted(trim, body, 0.8, 14.4, 5.2, 2.4, 2, 0.65);
+    ellipse(body, sweater, 0, 15, 0, baby ? 8.2 : 7.1, 8.3, 5.4);
+    if (baby) {
+      ellipse(body, trim, 0, 17.5, 4.8, 4.9, 4.1, 1.15);
+      ellipse(body, art.white, 0, 17.4, 5.9, 1.5, 1.5, .35);
+    } else {
+      ellipse(body, trim, 0, 20.7, 2.4, 5.8, 2.2, 4);
+      ellipse(body, trim, role === 'papa' ? -2.4 : 0, 15.7, 5.2, 1.5, 3.7, .65);
+    }
 
     for (const side of [-1, 1]) {
       const leg = new THREE.Group();
       leg.position.set(side * 3.4, 10.3, 0.1);
       body.add(leg);
-      ellipse(leg, art.ink, 0, -3.2, 0, 2.65, 4.6, 2.6);
-      ellipse(leg, art.shoes, 0, -8.15, 1.25, 3.1, 2.1, 4);
+      ellipse(leg, baby ? sweater : art.ink, 0, -3.2, 0, 2.65, 4.6, 2.6);
+      ellipse(leg, baby ? trim : art.shoes, 0, -8.15, 1.25, 3.1, 2.1, 4);
       ellipse(leg, art.white, 0, -8.8, 3.25, 2.75, 1.1, 2);
       legs.push(leg);
 
       const arm = new THREE.Group();
       arm.position.set(side * 6.25, 19.1, 0);
       body.add(arm);
-      tinted(clothes, arm, side * 0.9, -3.7, 0.15, 2.75, 5.3, 2.7);
-      tinted(skin, arm, side * 1.3, -7.8, 0.5, 2.3, 2.6, 2.2);
+      ellipse(arm, sweater, side * .9, -3.7, .15, 2.75, 5.3, 2.7);
+      ellipse(arm, skin, side * 1.3, -7.8, .5, 2.3, 2.6, 2.2);
       arms.push(arm);
     }
 
     // The tilted face reads both in the overhead plan and in the dollhouse.
-    head.position.set(0, 27.2, 0);
+    head.position.set(0, baby ? 26 : 27.2, 0);
+    if (baby) head.scale.set(1.16, 1.17, 1.12);
     body.add(head);
-    tinted(hair, head, 0, 1.3, -1.65, 9.2, 9.65, 8.6);
-    tinted(skin, head, 0, 0, 1.9, 8.65, 8.45, 7.5);
-    tinted(hair, head, -3, 7, 4.25, 5.75, 3.65, 4.35);
-    tinted(hair, head, 3.1, 8.5, 0.5, 4.7, 2.6, 5.15);
+    ellipse(head, hair, 0, 1.3, -1.65, 9.2, 9.65, 8.6);
+    ellipse(head, skin, 0, 0, 1.9, 8.65, 8.45, 7.5);
+    const fringe = ellipse(head, hair, -2.1, 7.3, 4.25, 6.4, 3.4, 4.35);
+    fringe.rotation.z = role === 'papa' ? -.27 : .22;
+    if (role === 'mama') {
+      ellipse(head, hair, -6.7, -1.9, -3.8, 3.6, 8.1, 5.2);
+      ellipse(head, hair, 6.2, -1.7, -3.9, 3.3, 7.6, 5.4);
+      ellipse(head, hair, 2.8, 10.4, -2.5, 5.1, 5.1, 5.1);
+      ellipse(head, trim, 4.4, 8.7, 2.2, 2.8, 1.1, 1.1);
+    }
+    if (baby) {
+      ellipse(head, hair, -7.3, 6.7, -2, 3.35, 3.7, 3.5);
+      ellipse(head, hair, 7.3, 6.7, -2, 3.35, 3.7, 3.5);
+      const bowLeft = ellipse(head, trim, .9, 10, 4.2, 2.5, 1.45, 1.25);
+      const bowRight = ellipse(head, trim, 4.1, 10, 4.2, 2.5, 1.45, 1.25);
+      bowLeft.rotation.z = -.4;
+      bowRight.rotation.z = .4;
+      ellipse(head, art.white, 2.5, 9.8, 5.1, 1.15, 1.2, 1);
+    }
     for (const side of [-1, 1]) {
-      tinted(skin, head, side * 8.2, -0.15, 1.1, 1.85, 2.4, 1.75);
+      ellipse(head, skin, side * 8.2, -.15, 1.1, 1.85, 2.4, 1.75);
       eyes.push(ellipse(head, art.ink, side * 3, 1.2, 8.95, 0.85, 0.87, 0.52));
       ellipse(head, art.cheek, side * 5.05, -1.25, 7.95, 1.18, 0.62, 0.52);
+      if (role === 'papa') {
+        const lens = new THREE.Mesh(art.glasses, art.ink);
+        lens.position.set(side * 3.1, 1.25, 9.15);
+        lens.scale.set(2.5, 2.15, 1.55);
+        head.add(lens);
+      }
     }
+    if (role === 'papa') ellipse(head, art.ink, 0, 1.6, 9.35, 1.1, .28, .35);
     ellipse(head, art.ink, 0, -1.95, 9.15, 1.38, 0.45, 0.38);
-    const character = {root, body, head, arms, legs, eyes};
-    return {
-      character,
-      setStyle(index) {
-        const colors = art.palette[index];
-        character.palette = index;
-        for (const mesh of clothes) mesh.material = colors.sweater;
-        for (const mesh of skin) mesh.material = colors.skin;
-        for (const mesh of hair) mesh.material = colors.hair;
-        for (const mesh of trim) mesh.material = colors.trim;
-      },
-    };
+    return {root, body, head, arms, legs, eyes, styleIndex, baby};
   }
 
   function progress(track, time) {
@@ -155,7 +162,7 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
     reduced = reduceMotion || preference;
     hasVisibleTracks = false;
     for (const track of tracks.values()) {
-      const {character} = track.model;
+      const {character} = track;
       const amount = reduced ? 1 : progress(track, lastTime);
       const x = THREE.MathUtils.lerp(track.fromX, track.x, amount);
       const z = THREE.MathUtils.lerp(track.fromZ, track.z, amount);
@@ -166,14 +173,18 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
       character.root.position.set(x, floor, z);
       character.root.rotation.y = track.heading;
       const walking = track.walking && amount < 1 && !reduced;
-      const stride = walking ? Math.sin(amount * Math.PI * 2) * 0.38 : 0;
-      character.body.position.y = walking ? Math.sin(amount * Math.PI) * 0.85 : 0;
+      const idle = Math.floor(Math.max(0, lastTime - track.born) * 16) / 16 + .7 + character.styleIndex * .62;
+      const step = Math.floor(amount * 12) / 12 * Math.PI * 4;
+      const stride = walking ? Math.sin(step) * .56 : 0;
+      const bounce = walking ? Math.abs(Math.sin(step)) * 1.9 : (1 + Math.sin(idle * 4.7)) * .47;
+      character.body.position.y = reduced ? 0 : bounce * (character.baby ? 1.5 : 1);
+      character.body.rotation.z = reduced ? 0 : walking ? stride * .15 : Math.sin(idle * 2.8) * .045;
       for (let i = 0; i < 2; i++) {
-        const swing = stride * (i === 0 ? -1 : 1);
-        character.arms[i].rotation.x = -swing;
-        character.legs[i].rotation.x = swing;
+        const side = i === 0 ? -1 : 1;
+        character.arms[i].rotation.x = walking ? -stride * side : reduced ? 0 : Math.sin(idle * 3.1 + i) * .09;
+        character.legs[i].rotation.x = stride * side;
       }
-      animateFace(character, lastTime, reduced);
+      animateFace(character, idle, reduced);
     }
   }
 
@@ -190,17 +201,24 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
     }
     for (const [id, track] of tracks) {
       if (next.has(id)) continue;
-      track.model.character.root.visible = false;
-      unused.push(track.model);
+      track.character.root.visible = false;
+      unused[track.character.styleIndex].push(track.character);
       tracks.delete(id);
+    }
+    // These are visual roles only. Use each look before repeating it and keep
+    // each active track's look when the sensor changes its report order.
+    const styleCounts = STYLES.map(() => 0);
+    for (const {character} of tracks.values()) styleCounts[character.styleIndex]++;
+    for (const id of [...next.keys()].filter(id => !tracks.has(id)).sort()) {
+      const styleIndex = styleCounts.indexOf(Math.min(...styleCounts));
+      styleCounts[styleIndex]++;
+      const character = unused[styleIndex].pop() ?? makeCharacter(styleIndex);
+      const {x, y: z} = next.get(id);
+      tracks.set(id, {character, fromX:x, fromZ:z, x, z, heading:0, born:time, start:time, duration:0});
     }
     for (const [id, {x, y: z}] of next) {
       const old = tracks.get(id);
-      if (!old) {
-        const model = unused.pop() ?? makeCharacter();
-        model.setStyle(colorIndex(id));
-        tracks.set(id, {model, fromX:x, fromZ:z, x, z, heading:0, start:time, duration:0});
-      } else if (old.x !== x || old.z !== z) {
+      if (old.x !== x || old.z !== z) {
         const amount = reduceMotion ? 1 : progress(old, time);
         const fromX = THREE.MathUtils.lerp(old.fromX, old.x, amount);
         const fromZ = THREE.MathUtils.lerp(old.fromZ, old.z, amount);
@@ -221,8 +239,9 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
     art.sphere.dispose();
     art.disc.dispose();
     art.groundRing.dispose();
+    art.glasses.dispose();
     group.clear();
-    unused.length = 0;
+    for (const pool of unused) pool.length = 0;
     tracks.clear();
     art = undefined;
   }

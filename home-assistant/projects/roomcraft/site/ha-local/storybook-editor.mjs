@@ -2,7 +2,7 @@ import {compileStorybookPlan, createStorybookScene} from './storybook-scene.mjs'
 import {CAMERA_PRESETS, enterFreeView, populateCameraOptions, resolveDefaultCameraView, studioCameraPreferences} from './storybook-camera.mjs';
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
 import {placeStorybookTargets} from './storybook-state.mjs';
-import {readPersonTracks} from './storybook-tracking.mjs';
+import {readDetectionZones, readPersonTracks} from './storybook-tracking.mjs';
 
 const SELECT_RADIUS = 22;
 const MIN_DRAG = 5;
@@ -136,6 +136,7 @@ export function mountStorybookEditor(document, host) {
   let trackingRequest = false;
   let trackSnapshots = {};
   let displayedPeople = {key: '', scene: null, reduceMotion: false};
+  let displayedCoverage = {id: null, scene: null};
 
   const is3D = () => mode !== 'plan';
   const isFree = () => mode === 'free';
@@ -243,6 +244,13 @@ export function mountStorybookEditor(document, host) {
     const {width, height} = currentSize();
     if (!width || !height) return;
     scene.resize(width, height);
+    const selected = api.getSelection();
+    const selectedId = selected?.kind === 'item' ? selected.id : null;
+    if (displayedCoverage.scene !== scene || displayedCoverage.id !== selectedId) {
+      const item = project.items.find(entry => entry.id === selectedId);
+      scene.setDetectionZones(item ? readDetectionZones([item]) : []);
+      displayedCoverage = {id: selectedId, scene};
+    }
     const dashboard = api.getPreview?.();
     look.hidden = !dashboard?.environment;
     const usingDashboard = !look.hidden && lookCheckbox.checked;
@@ -285,7 +293,6 @@ export function mountStorybookEditor(document, host) {
     }
     for (const [id, marker] of markers) marker.hidden = !shown.has(id);
     leaders.replaceChildren(...lines);
-    const selected = api.getSelection();
     const anchor = selected?.kind === 'item' ? scene.anchor(selected.id) : null;
     outline.style.display = anchor ? 'block' : 'none';
     if (anchor) {

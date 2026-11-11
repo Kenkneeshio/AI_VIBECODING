@@ -7,7 +7,7 @@
   const iconPattern = /^mdi:[a-z0-9-]+$/i;
   const bindingKeys = new Set(['tapAction', 'holdAction', 'tapEntityId', 'holdEntityId', 'presenceEntityId',
     'controlLabel', 'controlIcon', 'visualKind', 'vacuumMapEntityId', 'vacuumPositionTransform',
-    'presenceTrackEntityId', 'presenceTrackTransform']);
+    'presenceTrackEntityId', 'presenceTrackTransform', 'presenceTrackZone']);
   const radarEntityPattern = /^sensor\.[a-z0-9_]+$/;
   const entityPattern = /^[a-z_]+\.[a-z0-9_]+$/i;
   const sceneWidth = 1536;
@@ -45,6 +45,12 @@
       && Math.abs(transform[0] * transform[4] - transform[1] * transform[3]) > 1e-5;
   }
 
+  function validPresenceZone(bounds) {
+    return Array.isArray(bounds) && bounds.length === 4
+      && [...bounds].every(value => Number.isFinite(value) && Math.abs(value) <= 600)
+      && bounds[0] < bounds[1] && bounds[2] < bounds[3];
+  }
+
   function presenceCalibration(item, pixelsPerMetre, headingOffset, flipLeftRight) {
     if (item?.type !== 'presenceSwitch' || ![item.x, item.y, item.rotation].every(Number.isFinite)
       || !Number.isFinite(pixelsPerMetre) || pixelsPerMetre < 1 || pixelsPerMetre > 1000
@@ -72,6 +78,8 @@
         && radarEntityPattern.test(item.presenceTrackEntityId))
       && (!('presenceTrackTransform' in item) || item.type === 'presenceSwitch'
         && validPresenceTransform(item.presenceTrackTransform))
+      && (!('presenceTrackZone' in item) || item.type === 'presenceSwitch'
+        && validPresenceZone(item.presenceTrackZone))
       && (!('controlLabel' in item) || (typeof item.controlLabel === 'string' && item.controlLabel.length <= 80))
       && (!('controlIcon' in item) || (typeof item.controlIcon === 'string' && (!item.controlIcon || iconPattern.test(item.controlIcon))))
       && (!('visualKind' in item) || visualKinds.has(item.visualKind))
@@ -103,11 +111,12 @@
       return !value || radarEntityPattern.test(value)
         ? { valid: true, value: value || undefined } : { valid: false };
     }
-    if (key === 'presenceTrackTransform') {
+    if (key === 'presenceTrackTransform' || key === 'presenceTrackZone') {
       if (!value) return { valid: true, value: undefined };
       const parts = value.split(',').map(part => part.trim());
       const numbers = parts.map(Number);
-      return parts.every(Boolean) && validPresenceTransform(numbers)
+      const valid = key === 'presenceTrackZone' ? validPresenceZone(numbers) : validPresenceTransform(numbers);
+      return parts.every(Boolean) && valid
         ? { valid: true, value: numbers } : { valid: false };
     }
     if (key === 'vacuumMapEntityId') {
@@ -328,7 +337,12 @@
       + '<p class="field-hint">Start with the switch position and its room-facing direction. Adjust the scale and rotation while someone stands at a known point on the plan.</p>'
       + '<div class="field"><label for="prop-presenceTrackTransform">Position transform (advanced)</label>'
       + '<input id="prop-presenceTrackTransform" data-prop="presenceTrackTransform" type="text" value="'
-      + escape((transform || []).join(', ')) + '" placeholder="a, b, c, d, e, f" autocomplete="off"></div></div>';
+      + escape((transform || []).join(', ')) + '" placeholder="a, b, c, d, e, f" autocomplete="off"></div>'
+      + '<div class="field"><label for="prop-presenceTrackZone">Configured zone bounds (cm)</label>'
+      + '<input id="prop-presenceTrackZone" data-prop="presenceTrackZone" type="text" value="'
+      + escape((item.presenceTrackZone || []).join(', ')) + '" placeholder="x min, x max, y min, y max"'
+      + ' aria-describedby="presence-zone-hint" autocomplete="off"></div>'
+      + '<p class="field-hint" id="presence-zone-hint">These bounds control the map overlay. Enter the values configured on the switch.</p></div>';
   }
 
   function renderInspector(item, template, field, variantField, escape, entityOptions = [], dimensions = {}) {

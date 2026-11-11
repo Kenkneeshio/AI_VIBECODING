@@ -1,12 +1,37 @@
+import polygonClipping from 'polygon-clipping';
+
 const SCHEMA = 'roomcraft-presence-v1';
 const TRACK_MAX_AGE = 4500;
 const SENSOR_ID = /^sensor\.[a-z0-9_]+$/;
 const MAX_TRACKS = 4;
+const PLAN_BOUNDARY = [[[0,0], [1536,0], [1536,1024], [0,1024], [0,0]]];
 
 export function validTrackTransform(value) {
   return Array.isArray(value) && value.length === 6 &&
     value.every(n => Number.isFinite(n) && Math.abs(n) <= 10000) &&
     Math.abs(value[0] * value[4] - value[1] * value[3]) > 1e-5;
+}
+
+/** Project the configured XY bounds onto the same floor map used by live targets. */
+export function readDetectionZones(items) {
+  const zones = [];
+  for (const item of items) {
+    const bounds = item.presenceTrackZone;
+    const transform = item.presenceTrackTransform;
+    if (item.type !== 'presenceSwitch' || !validTrackTransform(transform) ||
+        !Array.isArray(bounds) || bounds.length !== 4 ||
+        !bounds.every(value => Number.isFinite(value) && Math.abs(value) <= 600)) continue;
+    const [xMin, xMax, yMin, yMax] = bounds;
+    if (xMin >= xMax || yMin >= yMax) continue;
+    const [a,b,c,d,e,f] = transform;
+    const corners = [[xMin,yMin], [xMax,yMin], [xMax,yMax], [xMin,yMax], [xMin,yMin]]
+      .map(([x,y]) => [a*x + b*y + c, d*x + e*y + f]);
+    const clipped = polygonClipping.intersection([corners], PLAN_BOUNDARY)[0]?.[0];
+    if (!clipped || clipped.length < 4) continue;
+    zones.push({id: item.id, points: clipped.slice(0, -1).map(([x,y]) => ({x,y}))});
+    if (zones.length === 12) break;
+  }
+  return zones;
 }
 
 export function trackingSnapshots(snapshot = {}, ids = []) {

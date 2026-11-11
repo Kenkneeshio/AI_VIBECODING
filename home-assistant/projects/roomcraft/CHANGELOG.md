@@ -1,5 +1,11 @@
 # Changelog
 
+## Radar zone and family character styles
+
+- **Menu → On the map → Detection zone** shows the radar's configured XY bounds on the live map. The setting is remembered on each browser. Select a configured presence switch in 3D Studio to preview and edit those bounds.
+- The first three anonymous tracks use Papa, Mama and baby girl styles with stepped idle and walking poses. The position and ground ring still follow the radar's coordinates. Reduced motion holds a still pose.
+- The display uses the existing radar calibration and the switch's configured zone. Physical coverage varies with angle, movement, interference and obstacles.
+
 ## One live view and one editor
 
 - Roomcraft Home contains **Home** and **Studio**. The former Floor Plan supplies the saved control projection and export image. Its separate dashboard page is retired. **Main Dashboard** stays separate.

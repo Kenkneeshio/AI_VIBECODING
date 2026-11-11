@@ -903,6 +903,11 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
   // The tracker is a foreground overlay. Use the same camera so the character
   // stays anchored to the measured floor position behind walls and furniture.
   const trackingOverlay = new THREE.Scene();
+  const coverageOverlay = new THREE.Scene();
+  const coverageFill = new THREE.MeshBasicMaterial({
+    color: '#57e7de', side: THREE.DoubleSide, transparent: true, opacity: 0.17, depthWrite: false,
+  });
+  const coverageEdge = new THREE.LineBasicMaterial({color: '#b0fff3', transparent: true, opacity: 0.9, depthWrite: false});
   const trackingFill = new THREE.HemisphereLight('#fff5e1', '#c9bfd7', 1.8);
   const trackingKey = new THREE.DirectionalLight('#fff1d8', 1.65);
   trackingKey.position.set(-4, 9, 6);
@@ -993,12 +998,14 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
   }
   function draw() {
     renderer.render(scene, camera);
-    if (!people.hasVisibleTracks) return;
+    const showCoverage = coverageOverlay.children.length > 0;
+    if (!people.hasVisibleTracks && !showCoverage) return;
     // Clear the house depth, while keeping the avatars' own depth and shading.
     renderer.autoClear = false;
     try {
       renderer.clearDepth();
-      renderer.render(trackingOverlay, camera);
+      if (showCoverage) renderer.render(coverageOverlay, camera);
+      if (people.hasVisibleTracks) renderer.render(trackingOverlay, camera);
     } finally {
       renderer.autoClear = true;
     }
@@ -1025,6 +1032,19 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
   function setPeople(tracks, timeSeconds, options) {
     if (!disposed) people.setTracks(tracks, timeSeconds, options);
   }
+  function setDetectionZones(zones) {
+    for (const mesh of coverageOverlay.children) mesh.geometry.dispose();
+    coverageOverlay.clear();
+    for (const {points} of zones) {
+      const vertices = points.map(({x,y}) => new THREE.Vector3(x, 0.35, y));
+      const fill = new THREE.BufferGeometry().setFromPoints(vertices);
+      const triangles = [];
+      for (let i = 1; i < points.length - 1; i++) triangles.push(0, i, i + 1);
+      fill.setIndex(triangles);
+      coverageOverlay.add(new THREE.Mesh(fill, coverageFill),
+        new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(vertices), coverageEdge));
+    }
+  }
   function renderAmbient(timeSeconds) {
     if (disposed || currentWidth < 1 || currentHeight < 1 || (!ambientObjects.length && !people.hasMotion)) return;
     for (const object of ambientObjects) object.animate(defaultState, timeSeconds);
@@ -1048,6 +1068,9 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
     if (disposed) return;
     disposed = true;
     people.dispose();
+    setDetectionZones([]);
+    coverageFill.dispose();
+    coverageEdge.dispose();
     const geometries = new Set();
     const materials = new Set();
     const textures = new Set();
@@ -1068,7 +1091,7 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
   const exteriorClearance = () => projectExteriorClearance(plan, camera, currentWidth, currentHeight);
   return {
     resize, render, anchor, setView, getView, projectToPlan, pickGarage, exteriorClearance, dispose,
-    hasAmbientMotion: ambientObjects.length > 0, renderAmbient, setPeople,
+    hasAmbientMotion: ambientObjects.length > 0, renderAmbient, setPeople, setDetectionZones,
     canPlacePerson: (x, y) => Number.isFinite(floorForPerson(x, y)),
     get hasPeopleMotion() { return people.hasMotion; },
   };

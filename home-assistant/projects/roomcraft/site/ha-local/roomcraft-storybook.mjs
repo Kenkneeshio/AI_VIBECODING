@@ -1,4 +1,4 @@
-import {readPersonTracks, trackingSnapshots, trackingStatus} from './storybook-tracking.mjs';
+import {readDetectionZones, readPersonTracks, trackingSnapshots, trackingStatus} from './storybook-tracking.mjs';
 import {bindLiveModelLibrary} from './storybook-library.mjs';
 import {createStorybookScene} from './storybook-scene.mjs';
 import {enterFreeView, normalizeCameraView, populateCameraOptions, readSavedFreeView, resolveDefaultCameraView} from './storybook-camera.mjs';
@@ -13,6 +13,7 @@ const CAMERA_TAG = 'roomcraft-camera-thumbnail';
 const EDITOR_TAG = 'roomcraft-editor-card';
 const FRAME_INTERVAL = 1000 / 24;
 const DETAIL_VISIBILITY_EVENT = 'roomcraft-detail-visibility';
+const DETECTION_ZONE_KEY = 'roomcraft.show-detection-zone.v1';
 
 class RoomcraftStorybookCard extends HTMLElement {
   constructor() {
@@ -57,8 +58,9 @@ class RoomcraftStorybookCard extends HTMLElement {
         .menu-group+.menu-group{border-top:1px solid #e8dfce}
         .menu-heading{margin:4px 8px 1px;color:#706550;font-size:11px;font-weight:700;letter-spacing:.045em}
         .camera-steps{display:grid;grid-template-columns:1fr 1fr;gap:2px}
+        .utility-menu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px}
         .bar .main-menu .camera-steps button{justify-content:center}
-        .bar .main-menu .toggle-object-details{justify-content:space-between}
+        .bar .main-menu .map-toggle{justify-content:space-between}
         .menu-toggle{display:flex;align-items:center;justify-content:space-around;gap:3px;min-width:36px;
           height:23px;padding:0 4px;border-radius:20px;background:#e9e0d0;color:#514b40;font-size:10px;font-weight:700}
         .menu-toggle::before{content:"";display:block;width:9px;height:9px;border-radius:50%;background:#8e8270}
@@ -141,8 +143,9 @@ class RoomcraftStorybookCard extends HTMLElement {
               <div class="main-menu" id="storybook-main-menu" hidden>
                 <section class="menu-group" aria-label="On the map">
                   <p class="menu-heading" aria-hidden="true">On the map</p>
-                  <button type="button" class="toggle-object-details" aria-pressed="false">Object details <span class="menu-toggle" aria-hidden="true"></span></button>
+                  <button type="button" class="map-toggle toggle-object-details" aria-pressed="false">Object details <span class="menu-toggle" aria-hidden="true"></span></button>
                   <button type="button" class="open-tracking" hidden>Presence tracking</button>
+                  <button type="button" class="map-toggle toggle-detection-zone" aria-pressed="false" hidden>Detection zone <span class="menu-toggle" aria-hidden="true"></span></button>
                 </section>
                 <section class="menu-group" aria-label="View controls">
                   <p class="menu-heading" aria-hidden="true">View controls</p>
@@ -159,11 +162,13 @@ class RoomcraftStorybookCard extends HTMLElement {
                 <section class="menu-group" aria-label="Manage">
                   <p class="menu-heading" aria-hidden="true">Manage</p>
                   <a href="/roomcraft-home/studio" data-studio-link>Layout Studio</a>
-                  <button type="button" data-open-models aria-haspopup="dialog">Object models</button>
-                  <button type="button" data-open-devices aria-haspopup="dialog" hidden>Devices and sensors</button>
-                  <button type="button" data-utility="air" aria-haspopup="dialog" hidden>Indoor air</button>
-                  <button type="button" data-utility="electrical" aria-haspopup="dialog" hidden>Electrical</button>
-                  <button type="button" data-utility="health" aria-haspopup="dialog" hidden>System health</button>
+                  <div class="utility-menu-grid">
+                    <button type="button" data-open-models aria-haspopup="dialog">Object models</button>
+                    <button type="button" data-open-devices aria-haspopup="dialog" hidden>Devices and sensors</button>
+                    <button type="button" data-utility="air" aria-haspopup="dialog" hidden>Indoor air</button>
+                    <button type="button" data-utility="electrical" aria-haspopup="dialog" hidden>Electrical</button>
+                    <button type="button" data-utility="health" aria-haspopup="dialog" hidden>System health</button>
+                  </div>
                 </section>
               </div>
             </div>
@@ -215,6 +220,17 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.cameraView = resolveDefaultCameraView(null);
     this.menuButton = this.shadowRoot.querySelector('.main-menu-button');
     this.mainMenu = this.shadowRoot.querySelector('.main-menu');
+    this.detectionZoneButton = this.shadowRoot.querySelector('.toggle-detection-zone');
+    this.detectionZoneVisible = false;
+    try { this.detectionZoneVisible = window.localStorage.getItem(DETECTION_ZONE_KEY) === 'true'; }
+    catch { /* Private or restricted browsing can block storage. */ }
+    this.detectionZoneButton.addEventListener('click', () => {
+      if (!this.detectionZones?.length) return;
+      this.detectionZoneVisible = !this.detectionZoneVisible;
+      try { window.localStorage.setItem(DETECTION_ZONE_KEY, String(this.detectionZoneVisible)); }
+      catch { /* The current page can still show the overlay. */ }
+      this.syncDetectionZones();
+    });
     this.utilityDialog = this.shadowRoot.querySelector('.utility-dialog');
     this.utilityButtons = [...this.shadowRoot.querySelectorAll('[data-utility]')];
     this.devicesButton = this.shadowRoot.querySelector('[data-open-devices]');
@@ -447,6 +463,8 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.prepareUtilities(config);
       this.scene = createStorybookScene(this.canvas, this.model.layout, {showSkyArt: false});
       this.scene.setView(this.cameraView);
+      this.detectionZones = readDetectionZones(this.model.layout.items);
+      this.syncDetectionZones();
       this.syncFreeViewMode();
       this.controls = this.model.controls.map(config => {
         const camera = config.type === `custom:${CAMERA_TAG}`;
@@ -469,6 +487,16 @@ class RoomcraftStorybookCard extends HTMLElement {
       clearTimeout(waitTimer);
       if (this.loading === request) this.loading = undefined;
     }
+  }
+
+  syncDetectionZones() {
+    const zones = this.detectionZones || [];
+    const visible = zones.length > 0 && this.detectionZoneVisible;
+    this.detectionZoneButton.hidden = zones.length === 0;
+    this.detectionZoneButton.setAttribute('aria-pressed', String(visible));
+    this.scene?.setDetectionZones(visible ? zones : []);
+    this.anchorDirty = true;
+    this.schedule();
   }
 
   prepareUtilities(config) {
@@ -798,6 +826,9 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.loading = undefined;
     this.model = undefined;
     this.frame = undefined;
+    this.detectionZones = undefined;
+    this.detectionZoneButton.hidden = true;
+    this.detectionZoneButton.setAttribute('aria-pressed', 'false');
     if (this.utilityDialog.open) this.utilityDialog.close();
     this.utilityRows = null;
     this.utilityPanels = null;

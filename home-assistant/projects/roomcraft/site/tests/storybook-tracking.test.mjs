@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {readPersonTracks, trackingSnapshots, validTrackTransform} from '../ha-local/storybook-tracking.mjs';
+import {readDetectionZones, readPersonTracks, trackingSnapshots, validTrackTransform} from '../ha-local/storybook-tracking.mjs';
 
 const source = {type:'presenceSwitch', presenceTrackEntityId:'sensor.radar_a',
   presenceTrackTransform:[0,-1.1,600,1.1,0,400]};
@@ -8,6 +8,14 @@ const snapshot = (id = 1, x = 20, y = 100, at = 8000) => ({state:'1', attributes
   tracking_schema:'roomcraft-presence-v1', observed_at:at, tracks:[{id,x,y,z:5,speed:0}],
   zones:[true,false], internal:'ignored',
 }});
+
+test('detection zone uses the radar calibration and clips to the editable map', () => {
+  const zone = {id:'radar', ...source, presenceTrackZone:[-600,600,0,600]};
+  assert.deepEqual(readDetectionZones([zone]), [{
+    id:'radar', points:[{x:0,y:0},{x:600,y:0},{x:600,y:1024},{x:0,y:1024}],
+  }]);
+  assert.deepEqual(readDetectionZones([{...zone,presenceTrackZone:[10,-10,0,600]}, source]), []);
+});
 
 test('map coordinates from multiple radars and keep source-scoped track identities', () => {
   const states = {'sensor.radar_a':snapshot(), 'sensor.radar_b':snapshot()};

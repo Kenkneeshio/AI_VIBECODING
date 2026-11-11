@@ -1,5 +1,9 @@
 # Decision log
 
+## Radar zone and character presentation
+
+Use the same calibrated plan transform for the sensor's configured XY bounds and its target positions. The coverage toggle is a local display preference, and Studio can preview the saved bounds when a switch is selected. Occupancy and target freshness still come from Home Assistant. Assign the preferred character styles to active tracks without identifying people, and animate the pose without adding motion to the radar coordinates.
+
 ## Consolidate Home and Studio in one dashboard
 
 Keep the wall tablet on Home for everyday use and open Studio for editing. Put device discovery, status summaries, system health, object models and presence in popups. Main Dashboard remains an independent Home Assistant dashboard.
