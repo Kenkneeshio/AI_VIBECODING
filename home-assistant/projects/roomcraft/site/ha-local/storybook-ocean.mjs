@@ -101,36 +101,37 @@ const fragmentShader = `
       vec2 rippleOffset = vec2(rippleA * 4.5, rippleB * 3.8) * roughness;
       vec2 mirror = coastPoint + rippleOffset + vec2(toCamera.x, -toCamera.z) * 18.0;
       float drift = sin(waterTime * 0.064) * 26.0;
-      float nearCloud = cloud(mirror, vec2(-167.0 + drift, 47.0), 1.1);
-      float farCloud = cloud(mirror, vec2(148.0 + drift * 0.74, 72.0), 0.91);
+      float nearCloud = cloud(mirror, vec2(-186.0 + drift, 49.0), 1.32);
+      float farCloud = cloud(mirror, vec2(182.0 + drift * 0.74, 69.0), 1.18);
       float bank = softEllipse(mirror, vec2(drift, 72.0), vec2(372.0, 62.0), 0.86);
       float clouds = max(max(nearCloud, farCloud * 0.9) * cloudCover, bank * max(0.0, cloudCover - 0.5));
       color = mix(color, cloudTint, clouds * (0.66 + slant * 0.12));
 
       if (bodyVisibility > 0.0) {
         vec2 bodyDistance = mirror - bodyPosition;
-        if (abs(bodyDistance.x) < 80.0 && abs(bodyDistance.y) < 58.0) {
-          vec2 disc = bodyDistance / vec2(20.5, 10.0 + slant * 4.0);
+        if (abs(bodyDistance.x) < 126.0 && abs(bodyDistance.y) < 73.0) {
+          vec2 disc = bodyDistance / vec2(33.0, 14.0 + slant * 5.0);
           float discRadius = dot(disc, disc);
           float hemisphere = sqrt(max(0.0, 1.0 - discRadius));
           float terminator = disc.x * moonLight.x + hemisphere * moonLight.y;
           float dayCore = 1.0 - smoothstep(0.25, 1.12, discRadius);
           float moonCore = (1.0 - smoothstep(0.57, 1.08, discRadius)) * smoothstep(-0.13, 0.18, terminator);
-          float core = mix(dayCore * (0.62 + 0.20 * rippleA), moonCore * 0.94, moon);
-          float glow = softEllipse(bodyDistance, vec2(0.0), vec2(49.0, 26.0), 0.96);
+          float core = mix(dayCore * (0.79 + 0.15 * rippleA), moonCore, moon);
+          float glow = softEllipse(bodyDistance, vec2(0.0), vec2(78.0, 36.0), 0.96);
 
           // Shallow, staggered crests scatter the reflection along a tapered path toward shore.
           float towardShore = -bodyDistance.y;
-          float pathWidth = mix(15.0, 33.0 + slant * 9.0, smoothstep(2.0, 39.0, towardShore));
-          float pathX = bodyDistance.x - towardShore * toCamera.x * 0.32 + rippleB * 4.7;
+          float pathWidth = mix(24.0, 55.0 + slant * 12.0, smoothstep(0.0, 38.0, towardShore));
+          float pathX = bodyDistance.x - towardShore * toCamera.x * 0.32 + rippleB * 6.4;
           float path = (1.0 - smoothstep(0.05, 1.0, abs(pathX) / pathWidth))
-            * smoothstep(-14.0, 1.0, towardShore) * (1.0 - smoothstep(19.0, 48.0, towardShore))
+            * smoothstep(-14.0, 2.0, towardShore) * (1.0 - smoothstep(26.0, 61.0, towardShore))
             * smoothstep(3.0, 13.0, offshore);
-          float facet = sin(towardShore * 0.61 + pathX * 0.065 + rippleB * 1.1 - waterTime * 1.8);
-          float streak = path * smoothstep(0.41, 0.98, facet) * smoothstep(-0.72, 0.47, rippleA + swell * 0.29);
-          float amount = (core * 0.76 + glow * 0.18 + streak * 0.55) * bodyVisibility;
-          color = mix(color, bodyTint, min(amount, 0.89));
-          color = mix(color, mix(bodyTint, vec3(1.0), 0.68), streak * 0.25 * bodyVisibility);
+          float facet = sin(towardShore * 0.51 + pathX * 0.048 + rippleB * 0.86 - waterTime * 1.48);
+          float streak = path * smoothstep(0.29, 0.97, facet) * smoothstep(-0.7, 0.54, rippleA + swell * 0.29);
+          float glints = path * smoothstep(0.79, 0.99, rippleB) * smoothstep(0.25, 0.95, facet);
+          float amount = (core * 0.82 + glow * 0.25 + streak * 0.63) * bodyVisibility;
+          color = mix(color, bodyTint, min(amount, 0.93));
+          color = mix(color, mix(bodyTint, vec3(1.0), 0.70), (streak * 0.18 + glints * 0.35) * bodyVisibility);
         }
       }
     }
@@ -197,10 +198,10 @@ export function createStorybookOcean({y, farZ, shoreline, focusX}) {
     uniforms.moon.value = moonVisible ? 1 : 0;
     if (moonVisible) {
       uniforms.moonLight.value.set(Math.sin(phaseAngle), Math.cos(phaseAngle));
-      uniforms.bodyPosition.value.set(46, 46);
+      uniforms.bodyPosition.value.set(46, 42);
     } else {
       const sunSide = sunRising === true ? -107 : sunRising === false ? 118 : -31;
-      uniforms.bodyPosition.value.set(sunSide * (1 - elevation), 41 + elevation * 21);
+      uniforms.bodyPosition.value.set(sunSide * (1 - elevation), 38 + elevation * 20);
     }
   }
 

@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
+import {fileURLToPath} from 'node:url';
+import {buildSync} from 'esbuild';
 
-const code = fs.readFileSync(new URL('./roomcraft-card.js', import.meta.url), 'utf8');
+const {outputFiles: [{text: code}]} = buildSync({
+  entryPoints: [fileURLToPath(new URL('./roomcraft-card.js', import.meta.url))],
+  bundle: true, format: 'iife', write: false,
+});
 let Card;
 let Camera;
 let ObjectControl;
@@ -121,7 +125,7 @@ test('consolidated Studio imports and publishes the projection in Roomcraft Home
   const legacy = dashboard();
   let saved = {
     roomcraft_layout: {version: 2, rooms: [], walls: [], hotspots: [], items: []},
-    roomcraft_plan: legacy.views[0].cards[0],
+    roomcraft_plan: {...legacy.views[0].cards[0], image: '/api/image/serve/' + 'a'.repeat(32) + '/original'},
     roomcraft_health: {cards: [{type: 'entities', entities: ['sensor.example_health']}]},
     views: [{path: 'home'}, {path: 'studio'}],
   };
@@ -139,10 +143,15 @@ test('consolidated Studio imports and publishes the projection in Roomcraft Home
   };
   const imported = await card._readDashboard();
   assert.equal(imported.source, 'http://ha.example.test/roomcraft-home/home');
-  await card._writeDashboard({project: imported.project, revision: imported.revision, pngDataUrl: pngDataUrl()});
+  const previous = structuredClone(saved);
+  await card._writeDashboard({project: {...imported.project, items: [{id: 'example-lamp', type: 'lamp'}]},
+    revision: imported.revision, pngDataUrl: pngDataUrl()});
   assert.deepEqual(saved.views, [{path: 'home'}, {path: 'studio'}]);
   assert.equal(saved.roomcraft_health.cards[0].entities[0], 'sensor.example_health');
   assert.equal(saved.roomcraft_plan.image, '/api/image/serve/' + 'b'.repeat(32) + '/original');
+  assert.equal(saved.roomcraft_snapshots.length, 1);
+  assert.deepEqual(saved.roomcraft_snapshots[0].layout, previous.roomcraft_layout);
+  assert.deepEqual(saved.roomcraft_snapshots[0].plan, previous.roomcraft_plan);
 });
 
 test('LAN bridge rejects invalid camera thumbnail before image upload', async () => {

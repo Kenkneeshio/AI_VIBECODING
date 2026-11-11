@@ -6,6 +6,8 @@ Tablet ADB Keeper is an experimental, opt-in Android helper for a dedicated Home
 
 Version 0.1.0 was installed on the Apolosign calendar tablet on 2026-11-08. Android accepted the one-time `WRITE_SECURE_SETTINGS` grant, restore-on-boot was enabled, and a manual attempt wrote and read back `adb_wifi_enabled=1`. The declared locked-boot receiver is registered and the application recorded a successful `LOCKED_BOOT_COMPLETED` restoration result during installation acceptance. A supervised physical reboot is still required before claiming full boot persistence on this firmware.
 
+Version 0.1.1 limits the private receiver to Android's expected boot and package-replacement actions. Apply the supervised acceptance plan when installing it.
+
 Android does not publish a supported third-party API for enabling Wireless debugging. This project writes the vendor-sensitive global setting named `adb_wifi_enabled`; the firmware may ignore it, reset it, or require additional privileged access.
 
 The helper does **not** pair a computer, open a fixed port, transmit credentials, contact Home Assistant, or run a network server. Pairing remains an explicit Android/ADB operation.
@@ -74,11 +76,10 @@ Device checks:
 ```text
 adb shell dumpsys package io.roomcraft.tabletadbkeeper
 adb shell settings get global adb_wifi_enabled
-adb shell am broadcast -a android.intent.action.BOOT_COMPLETED -p io.roomcraft.tabletadbkeeper
 adb logcat -s TabletAdbKeeper
 ```
 
-The broadcast command is a functional test only; a real reboot remains the acceptance test.
+Use **Attempt now** for a functional check of the setting write. Verify Android's boot broadcast with a supervised reboot.
 
 ## Rollback
 

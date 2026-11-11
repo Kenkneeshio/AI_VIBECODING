@@ -8,6 +8,12 @@ Open **Roomcraft Home** in the Home Assistant sidebar for the live view. **Power
 
 Use **On the map** for Object details and Presence tracking, and **View controls** for view presets, rotation, zoom and default view settings. **Manage** opens Layout Studio and popups for Object models, Devices and sensors, Indoor air and System health when configured. The labels from **Object details** show each linked control's name and current state. The toggle is saved in the current browser.
 
+### Restore a previous layout
+
+Sign in as a Home Assistant administrator and choose **Menu → Manage → Layout snapshots**. Select a saved date and choose **Restore layout**. Roomcraft reloads Home with the restored design and keeps the design you just replaced so you can switch back. Studio reads the same restored design the next time you open it or select **Import from dashboard**.
+
+Roomcraft keeps up to three distinct previous layouts from successful Studio publishes and restores. Each snapshot includes the layout, object bindings, and the published plan image reference. If a snapshot's image is unavailable, choose another snapshot. If Roomcraft reports a new dashboard change, review the refreshed list before restoring. Layout history covers the design. Use the [deployment recovery guide](deployment.md) for software or resource rollback.
+
 Open **Menu → More options** to show or hide **Camera tiles** or turn on **Reduce motion**. These settings are saved in the current browser.
 
 Choose **Menu → 30-second demo** to show someone around the live dashboard. Follow the captions as the tour changes the view and introduces the home, its interactive objects and the outdoor animation. The demo shows current device states and leaves device and camera controls untouched. Select **Stop** or press **Escape** to finish early. Roomcraft returns to your previous view when the demo ends. With **Reduce motion** enabled in Roomcraft or on your device, the captions advance with the view held still.

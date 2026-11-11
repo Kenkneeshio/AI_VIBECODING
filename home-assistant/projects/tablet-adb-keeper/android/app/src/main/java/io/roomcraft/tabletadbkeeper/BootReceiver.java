@@ -7,7 +7,9 @@ import android.content.Intent;
 public final class BootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
-        String action = intent == null ? "unknown" : intent.getAction();
-        AdbRestoreManager.restoreIfEnabled(context, action == null ? "unknown" : action);
+        String action = intent == null ? null : intent.getAction();
+        if (RestorePolicy.isRestoreBroadcast(action)) {
+            AdbRestoreManager.restoreIfEnabled(context, action);
+        }
     }
 }

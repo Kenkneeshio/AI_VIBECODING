@@ -21,6 +21,14 @@ The [latest release record](../CHANGELOG.md) includes browser exports, live imag
 
 The retained picture projection keeps the authored bottom-right interface positions for manual and legacy exports. Keep the shared projection aligned in `object-controls.js`, `lib/dashboard-elements.ts`, and `ha-local/roomcraft-card.js`. Preserve owner-edited positions.
 
+## Layout history and audit
+
+`dashboard-snapshots.mjs` owns design validation, deduplication, retention, and restoration. The LAN editor bridge and hosted `app/api/dashboard/route.ts` call the same helper at their final dashboard write. History lives in the root `roomcraft_snapshots` field alongside `roomcraft_layout` and `roomcraft_plan`. Snapshot entries retain a UTC timestamp and one editable layout and picture-card pair. Their image reference is restricted to the original of an immutable Home Assistant upload.
+
+`storybook-snapshots.mjs` owns the administrator-only Home dialog. It verifies the selected image, re-reads Home Assistant immediately before saving, and reads the saved result back. The existing Lovelace save API has no atomic compare-and-swap, so closely spaced concurrent writes still have a short window between the recheck and save. Keep one active publisher while doing a planned recovery.
+
+Retest history ordering, deduplication, missing image, detected conflicts, both publish transports, and Home and Studio after a restore. The [November 11 system audit](system-audit-2026-11-11.md) lists the adjacent fixes, regression coverage, deferred maintenance, and previous known-good source and Site versions.
+
 ## Guided dashboard demo
 
 `storybook-demo.mjs` samples a fixed 30-second timeline from elapsed time, the initial view and the reduced-motion setting. It owns the caption and view sequence. `roomcraft-storybook.mjs` owns the menu action, frame scheduling, stop controls and restoration of the previous view. The Home Assistant Home view owns the tour. The saved layout, camera preferences and Studio editor remain outside this runtime path.

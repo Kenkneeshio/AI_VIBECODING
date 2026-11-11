@@ -17,7 +17,7 @@ Wireless debugging exposes a privileged Android administration service to the lo
 - No embedded IP address, port, token, password, or ADB key.
 - Restore behavior is disabled by default.
 - `WRITE_SECURE_SETTINGS` must be explicitly granted from an authorized ADB session.
-- Only protected system boot/package broadcasts reach the receiver.
+- The private receiver accepts only Android's locked-boot, boot-completed, and own-package-replacement actions. [Android receiver manifest reference](https://developer.android.com/guide/topics/manifest/receiver-element)
 - No shell execution, file server, HTTP server, remote command receiver, analytics, or cloud dependency.
 - Permission denial and OEM rejection produce a local failure instead of retry storms or bypasses.
 

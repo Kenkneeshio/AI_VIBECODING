@@ -3,6 +3,7 @@ const CAMERA = 'custom:roomcraft-camera-thumbnail';
 const MOTION_WEATHER = new Set(['pouring', 'rainy', 'lightning-rainy', 'snowy',
   'snowy-rainy', 'hail', 'windy', 'windy-variant', 'fog']);
 const ACTIVE_HVAC = new Set(['cooling', 'heating', 'drying', 'fan', 'preheating', 'defrosting']);
+const VACUUM_POSITION_MAX_AGE_MS = 20 * 60 * 1000;
 
 /** Select data from the same dashboard projection that powers the plan. */
 export function readStorybookConfig(config) {
@@ -35,17 +36,23 @@ export function readStorybookConfig(config) {
   return { layout, items, controls, weather, watch };
 }
 
-function vacuumPosition(element, snapshot, state, now) {
+function vacuumPosition(element, snapshot, state, active, now) {
   const map = snapshot[element.roomcraft_vacuum_map_entity];
   const p = map?.attributes?.vacuum_position;
   const transform = element.roomcraft_vacuum_position_transform;
-  const age = now - Date.parse(map?.last_updated ?? '');
-  if (!p || p.x == null || p.y == null || !Array.isArray(transform) || transform.length !== 6 ||
-      !Number.isFinite(age) || (['cleaning', 'returning'].includes(state) && age > 20 * 60 * 1000)) return;
+  const validCoordinate = value => Number.isFinite(value) ||
+    (typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value)));
+  const expiresAt = Date.parse(map?.last_updated ?? '') + VACUUM_POSITION_MAX_AGE_MS;
+  if (['unavailable', 'unknown'].includes(state) || ['unavailable', 'unknown'].includes(map?.state) ||
+      !p || !validCoordinate(p.x) || !validCoordinate(p.y) ||
+      !Array.isArray(transform) || transform.length !== 6 || !transform.every(Number.isFinite) ||
+      !Number.isFinite(expiresAt) || (active && now >= expiresAt)) return;
   const [a, b, c, d, e, f] = transform;
   const x = a * Number(p.x) + b * Number(p.y) + c;
   const y = d * Number(p.x) + e * Number(p.y) + f;
-  if (Number.isFinite(x) && Number.isFinite(y) && x >= 0 && x <= 1536 && y >= 80 && y <= 944) return {x, y};
+  if (Number.isFinite(x) && Number.isFinite(y) && x >= 0 && x <= 1536 && y >= 80 && y <= 944) {
+    return {position: {x, y}, expiresAt: active ? expiresAt : undefined};
+  }
 }
 
 /** A render input only. The snapshot and clock never enter the saved project. */
@@ -68,6 +75,7 @@ export function storybookFrame(model, snapshot = {}, now = 0) {
     if (typeof rising === 'boolean') environment.sunRising = rising;
   }
   let moving = MOTION_WEATHER.has(environment.condition);
+  let nextRefreshAt;
   for (const element of model.controls) {
     if (element.type !== CONTROL) continue;
     const entity = snapshot[element.entity];
@@ -79,12 +87,14 @@ export function storybookFrame(model, snapshot = {}, now = 0) {
     const active = domain === 'climate' ? state !== 'off' && state !== 'unknown' &&
       state !== 'unavailable' && ACTIVE_HVAC.has(attributes.hvac_action) :
       domain === 'vacuum' ? ['cleaning', 'returning'].includes(state) : state === 'on';
-    const position = kind === 'vacuum' ? vacuumPosition(element, snapshot, state, now) : undefined;
+    const telemetry = kind === 'vacuum' ? vacuumPosition(element, snapshot, state, active, now) : undefined;
+    const position = telemetry?.position;
+    if (telemetry?.expiresAt !== undefined) nextRefreshAt = Math.min(nextRefreshAt ?? Infinity, telemetry.expiresAt);
     states[element.roomcraft_item_id] = {state, attributes, presence, active, position};
     moving ||= presence === 'on' || ['opening', 'closing'].includes(state) ||
-      active && ['fan', 'climate', 'vacuum', 'device'].includes(kind);
+      active && (['fan', 'climate', 'device'].includes(kind) || kind === 'vacuum' && Boolean(position));
   }
-  return {states, environment, moving};
+  return {states, environment, moving, nextRefreshAt};
 }
 
 /** Render-only dashboard appearance for Studio. Send only attributes used by the miniature. */

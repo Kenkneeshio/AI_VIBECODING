@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {placeStorybookDetails, placeStorybookTargets, readStorybookConfig, storybookFrame, storybookPreview} from '../ha-local/storybook-state.mjs';
 import {storybookWeather} from '../ha-local/storybook-weather.mjs';
+import {makeStorybookDevice} from '../ha-local/storybook-devices.mjs';
 
 const items = [
   {id: 'motor', type: 'fan', entityId: 'switch.example_motor'},
@@ -102,8 +103,38 @@ test('storybook vacuum coordinates require real, fresh, in-bounds data', () => {
     'vacuum.example': {state: 'cleaning'},
     'camera.example_map': {last_updated: '2025-01-01T12:00:00Z', attributes: {vacuum_position: {x: 10, y: 20}}},
   };
-  assert.deepEqual(storybookFrame(model, snapshot, Date.parse('2025-01-01T12:01:00Z')).states.robot.position, {x: 22, y: 100});
-  assert.equal(storybookFrame(model, snapshot, Date.parse('2025-01-01T12:25:00Z')).states.robot.position, undefined);
+  const expiration = Date.parse('2025-01-01T12:20:00Z');
+  const frame = storybookFrame(model, snapshot, expiration - 1);
+  assert.deepEqual(frame.states.robot.position, {x: 22, y: 100});
+  assert.equal(frame.nextRefreshAt, expiration);
+  assert.equal(frame.moving, true);
+  const stale = storybookFrame(model, snapshot, expiration);
+  assert.equal(stale.states.robot.position, undefined);
+  assert.equal(stale.states.robot.active, true);
+  assert.equal(stale.nextRefreshAt, undefined);
+  assert.equal(stale.moving, false);
+  snapshot['vacuum.example'].state = 'docked';
+  assert.deepEqual(storybookFrame(model, snapshot, expiration + 1).states.robot.position, {x: 22, y: 100});
+  snapshot['camera.example_map'].attributes.vacuum_position.x = '';
+  assert.equal(storybookFrame(model, snapshot, expiration + 1).states.robot.position, undefined);
+});
+
+test('the 3D vacuum LED holds steady when map telemetry is missing, stale, or off the floor', () => {
+  const robot = makeStorybookDevice({type:'robotVacuum', visualKind:'vacuum', w:50, h:50});
+  const status = () => {
+    let emission = 0;
+    robot.root.traverse(node => { emission = Math.max(emission, node.material?.emissiveIntensity ?? 0); });
+    return emission;
+  };
+  const cleaning = {state:'cleaning'};
+  robot.animate(cleaning, 0, false);
+  const steady = status();
+  robot.animate(cleaning, 1, false);
+  assert.equal(status(), steady);
+  robot.animate(cleaning, 0, true);
+  const bright = status();
+  robot.animate(cleaning, Math.PI / 6, true);
+  assert.ok(status() < bright && bright > steady);
 });
 
 test('Studio receives matching lighting and only attributes used by the miniature', () => {

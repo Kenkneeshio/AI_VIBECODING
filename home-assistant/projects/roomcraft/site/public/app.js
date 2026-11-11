@@ -317,6 +317,7 @@
   let currentPointer = point(0,0);
   let focusCanvas = false;
   let dashboardRevision = null;
+  let dashboardNeedsImport = false;
   let dashboardTransferBusy = false;
   const DASHBOARD_HOME = '/roomcraft-home/home';
   const DASHBOARD_PATHS = new Set([DASHBOARD_HOME, '/second-floor/plan']);
@@ -1452,6 +1453,7 @@
       dashboardRevision=data.revision;
       // A slow dashboard read must never replace an in-progress local edit.
       if(projectChangeSerial!==initialSerial||interaction||pendingTemplate||pendingSegment||document.activeElement?.closest?.('#inspectorContent')){
+        dashboardNeedsImport=true;
         setDashboardStatus('Browser edits kept. Import from dashboard when ready.');return;
       }
       const current=normalizeProject(clone(next));
@@ -1460,6 +1462,7 @@
         try{
           localStorage.setItem(REPLACED_DRAFT_KEY,localStorage.getItem(STORAGE_KEY)||projectFingerprint(project));
         }catch(_){
+          dashboardNeedsImport=true;
           setDashboardStatus('Current dashboard found, but browser draft backup failed. Export your layout JSON before importing.',true);
           return;
         }
@@ -1487,6 +1490,7 @@
         setDashboardStatus('Dashboard import canceled');return;
       }
       snapshot();project=normalizeProject(clone(next));dashboardDefaultProject=clone(project);dashboardPreview=preview;dashboardRevision=data.revision;selected=null;clearPlacement();setViewMode('design');afterChange('Imported from Home Assistant dashboard',{authoritative:true});dashboardPublishedProject=projectFingerprint(project);fitView();
+      dashboardNeedsImport=false;
       const message=hasEditable?'Editable layout imported from dashboard':'Dashboard controls imported. Its image has no editable Roomcraft data, so the starting furnishings were used.';
       setDashboardStatus(message);showToast(message);
     }catch(error){const message=`Import failed: ${error.message||'Home Assistant is unavailable'}`;setDashboardStatus(message,true);showToast(message);}
@@ -1494,26 +1498,38 @@
   }
   async function exportToDashboard(){
     if(dashboardTransferBusy)return;
+    const importMessage='Import the current dashboard before exporting this browser draft.';
+    if(dashboardNeedsImport){
+      setDashboardStatus(importMessage,true);showToast(importMessage);return;
+    }
     setDashboardBusy(true);setDashboardStatus('Checking the Home Assistant dashboard…');
     try{
       if(!dashboardRevision){const current=await dashboardRequest('GET');if(!current.revision)throw new Error('Dashboard revision is missing');dashboardRevision=current.revision;}
-      const next=clone(project);next.hotspots=dashboardControls(next);
       if(!await askConfirmation('Export to Home Assistant','Replace the Second Floor plan image and interactive objects with this layout? The editable project is saved with the dashboard for future imports.','Export layout')){
         setDashboardStatus('Dashboard export canceled');return;
       }
-      const before=projectFingerprint(project);
+      const captured=clone(project);
+      const before=projectFingerprint(captured);
+      const next={...captured,hotspots:dashboardControls(captured)};
       setDashboardStatus('Rendering the detailed dashboard image…');
       const pngDataUrl=(await renderDetailedPng()).toDataURL('image/png');
       if(projectFingerprint(project)!==before)throw new Error('Layout changed while the image was rendering; try again');
       setDashboardStatus('Uploading image and saving dashboard…');
       const saved=await dashboardRequest('POST',{project:next,pngDataUrl,revision:dashboardRevision});
-      if(!saved.imageUrl)throw new Error('Dashboard save did not return an image URL');
+      if(!saved.imageUrl||!saved.revision)throw new Error('Dashboard save did not return a verified revision and image URL');
       rememberDashboardSource(saved.source);
-      dashboardRevision=saved.revision||null;
-      dashboardDefaultProject=clone(project);
-      dashboardPublishedProject=projectFingerprint(project);
-      setDashboardStatus('Layout, image, and controls exported to Home Assistant');showToast('Home Assistant dashboard updated');
-    }catch(error){if(error.status===409)dashboardRevision=null;const message=error.status===409?'Dashboard changed since your last import. Import it before exporting again.':`Export failed: ${error.message||'Home Assistant is unavailable'}`;setDashboardStatus(message,true);showToast(message);}
+      dashboardRevision=saved.revision;
+      dashboardDefaultProject=captured;
+      dashboardPublishedProject=before;
+      const message=projectFingerprint(project)===before
+        ? 'Layout, image, and controls exported to Home Assistant'
+        : 'Layout exported. Newer browser edits are still unpublished.';
+      setDashboardStatus(message);showToast(message);
+    }catch(error){
+      if(error.status===409)dashboardNeedsImport=true;
+      const message=error.status===409?`Dashboard changed since your last import. ${importMessage}`:`Export failed: ${error.message||'Home Assistant is unavailable'}`;
+      setDashboardStatus(message,true);showToast(message);
+    }
     finally{setDashboardBusy(false);}
   }
 

@@ -26,7 +26,7 @@ const legacyPath = 'second-floor';
 const origin = 'https://studio.example.test';
 const testEmail = 'owner@example.test';
 
-function harness(records, {onUpload, readError} = {}) {
+function harness(records, {onUpload, readError, dropOn} = {}) {
   const dashboards = structuredClone(records);
   const calls = [];
   class Socket {
@@ -44,6 +44,10 @@ function harness(records, {onUpload, readError} = {}) {
       }
       const {id, type, url_path: path} = command;
       calls.push([type, path]);
+      if (type === dropOn) {
+        queueMicrotask(() => this.listeners.get('close')?.());
+        return;
+      }
       if (type === 'get_states') this.emit({id, success: true, result: []});
       if (type === 'lovelace/config/save') {
         dashboards[path] = command.config;
@@ -131,4 +135,34 @@ test('hosted editor rejects a dashboard migration that lands during image upload
   const response = await route.POST(request({revision: imported.revision, project, pngDataUrl: testPng()}));
   assert.equal(response.status, 409);
   assert.equal(calls.some(([type]) => type === 'lovelace/config/save'), false);
+});
+
+test('hosted publish snapshots the previous layout and exact projection in the same save', async () => {
+  const previous = {...home, roomcraft_plan: {...plan, image: `/api/image/serve/${'b'.repeat(32)}/original`}};
+  const {route, dashboards} = harness({[canonicalPath]: previous});
+  const imported = await (await route.GET(request())).json();
+  const response = await route.POST(request({revision: imported.revision,
+    project: {...project, items: [{id: 'example-lamp', type: 'lamp'}]}, pngDataUrl: testPng()}));
+  assert.equal(response.status, 200);
+  const saved = dashboards[canonicalPath];
+  assert.equal(saved.roomcraft_snapshots.length, 1);
+  assert.deepEqual(saved.roomcraft_snapshots[0].layout, previous.roomcraft_layout);
+  assert.deepEqual(saved.roomcraft_snapshots[0].plan, previous.roomcraft_plan);
+  assert.ok(Number.isFinite(Date.parse(saved.roomcraft_snapshots[0].savedAt)));
+});
+
+test('hosted transfer caps the actual request bytes without a Content-Length header', async () => {
+  const {route, calls} = harness({[canonicalPath]: home});
+  const incoming = request({padding: 'ä'.repeat(8 * 1024 * 1024)});
+  assert.equal(incoming.headers.has('Content-Length'), false);
+  const response = await route.POST(incoming);
+  assert.equal(response.status, 413);
+  assert.deepEqual(calls, []);
+});
+
+test('hosted bridge fails immediately when Home Assistant disconnects during a command', async () => {
+  const {route} = harness({[canonicalPath]: home}, {dropOn: 'lovelace/config'});
+  const response = await route.GET(request());
+  assert.equal(response.status, 502);
+  assert.equal((await response.json()).error, 'ha_unavailable');
 });

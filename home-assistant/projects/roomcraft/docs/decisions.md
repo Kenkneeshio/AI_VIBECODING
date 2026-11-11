@@ -1,5 +1,13 @@
 # Decision log
 
+## Keep bounded dashboard layout history
+
+Give a household administrator an in-dashboard recovery path after an unwanted publish. Keep the three most recent distinct displaced designs in Home Assistant so either Studio transport and the wall tablet use one history. Compare layouts and projections by content while ignoring the image ID, which changes when an equivalent projection is uploaded again.
+
+Pair the editable layout with its projected picture card and an immutable Home Assistant image reference. Save the history and the active design together. Restore through the signed-in administrator's existing connection, verify the image and current config before saving, and verify the resulting config by readback. Keep the displaced active design as the newest recovery choice.
+
+Use a separate rollback path for runtime code, resource URLs, or installed software. The [system audit](system-audit-2026-11-11.md) records the maintenance scope and test evidence.
+
 ## Guide a visitor through the live dashboard
 
 Give a household operator a 30-second tour they can start from Home's menu. Timed captions and gentle changes in view introduce the live objects and the animated scene. Every caption should make sense even when a device is idle or a presence sensor has no fresh targets.

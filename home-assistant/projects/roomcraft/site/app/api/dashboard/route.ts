@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { keepPreviousDashboardDesign, stableDashboardJson as stableStringify } from "../../../ha-local/dashboard-snapshots.mjs";
 import { storybookPreview } from "../../../ha-local/storybook-state.mjs";
 import { SCENE_HEIGHT, SCENE_WIDTH, editableDashboardHotspots, roomcraftPlanCard, validCameraThumbnail, validObjectControl, withUpdatedPlanCard } from "../../../lib/dashboard-elements";
 
@@ -90,12 +91,31 @@ function authorizeWrite(request: Request, ownerEmail: string): void {
   }
 }
 
-function stableStringify(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
-  if (isObject(value)) {
-    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
+async function readDashboardRequest(request: Request): Promise<unknown> {
+  const tooLarge = () => new BridgeError(413, "too_large", "The layout transfer is too large.");
+  if (Number(request.headers.get("Content-Length")) > MAX_JSON_BYTES) throw tooLarge();
+  const reader = request.body?.getReader();
+  if (!reader) throw new BridgeError(400, "invalid_json", "The layout transfer is malformed.");
+  const decoder = new TextDecoder("utf-8", {fatal: true});
+  const chunks: string[] = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const {value, done} = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > MAX_JSON_BYTES) throw tooLarge();
+      chunks.push(decoder.decode(value, {stream: true}));
+    }
+    chunks.push(decoder.decode());
+    return JSON.parse(chunks.join(""));
+  } catch (error) {
+    void reader.cancel().catch(() => {});
+    if (error instanceof BridgeError) throw error;
+    throw new BridgeError(400, "invalid_json", "The layout transfer is malformed.");
+  } finally {
+    reader.releaseLock();
   }
-  return JSON.stringify(value);
 }
 
 async function revisionOf(value: unknown): Promise<string> {
@@ -114,7 +134,7 @@ function absoluteImageUrl(haOrigin: string, image: unknown): string | null {
   if (typeof image !== "string" || !image) return null;
   try {
     const url = new URL(image, haOrigin);
-    return url.origin === haOrigin ? url.href : null;
+    return url.origin === haOrigin && !url.username && !url.password ? url.href : null;
   } catch {
     return null;
   }
@@ -186,6 +206,7 @@ class HomeAssistantSocket {
     timeout: ReturnType<typeof setTimeout>;
   }>();
   private ready: Promise<void>;
+  private closedError?: BridgeError;
 
   constructor(haOrigin: string, token: string) {
     this.socket = new WebSocket(`${haOrigin.replace(/^https:/, "wss:")}/api/websocket`);
@@ -193,7 +214,9 @@ class HomeAssistantSocket {
       const timeout = setTimeout(() => reject(new BridgeError(502, "ha_timeout", "Home Assistant did not respond.")), REQUEST_TIMEOUT_MS);
       const fail = () => {
         clearTimeout(timeout);
-        reject(new BridgeError(502, "ha_unavailable", "Home Assistant is unavailable."));
+        const error = new BridgeError(502, "ha_unavailable", "Home Assistant is unavailable.");
+        this.rejectPending(error);
+        reject(error);
       };
       this.socket.addEventListener("error", fail, { once: true });
       this.socket.addEventListener("close", fail, { once: true });
@@ -230,6 +253,7 @@ class HomeAssistantSocket {
 
   async call(type: string, payload: JsonObject = {}): Promise<unknown> {
     await this.ready;
+    if (this.closedError) throw this.closedError;
     const id = ++this.sequence;
     return new Promise<unknown>((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -237,16 +261,25 @@ class HomeAssistantSocket {
         reject(new BridgeError(502, "ha_timeout", "Home Assistant did not respond."));
       }, REQUEST_TIMEOUT_MS);
       this.pending.set(id, { resolve, reject, timeout });
-      this.socket.send(JSON.stringify({ id, type, ...payload }));
+      try {
+        this.socket.send(JSON.stringify({ id, type, ...payload }));
+      } catch {
+        this.rejectPending(new BridgeError(502, "ha_unavailable", "Home Assistant is unavailable."));
+      }
     });
   }
 
-  close(): void {
+  private rejectPending(error: BridgeError): void {
+    this.closedError ??= error;
     for (const task of this.pending.values()) {
       clearTimeout(task.timeout);
-      task.reject(new BridgeError(502, "ha_unavailable", "Home Assistant connection closed."));
+      task.reject(this.closedError);
     }
     this.pending.clear();
+  }
+
+  close(): void {
+    this.rejectPending(new BridgeError(502, "ha_unavailable", "Home Assistant connection closed."));
     this.socket.close();
   }
 }
@@ -365,16 +398,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const config = settings();
     authorizeWrite(request, config.ownerEmail);
-    const length = Number(request.headers.get("Content-Length") || 0);
-    if (length > MAX_JSON_BYTES) {
-      throw new BridgeError(413, "too_large", "The layout transfer is too large.");
-    }
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      throw new BridgeError(400, "invalid_json", "The layout transfer is malformed.");
-    }
+    const body = await readDashboardRequest(request);
     if (!isObject(body) || typeof body.revision !== "string" || !/^[a-f0-9]{64}$/.test(body.revision)) {
       throw new BridgeError(400, "invalid_revision", "Refresh the dashboard version before exporting.");
     }
@@ -393,9 +417,10 @@ export async function POST(request: Request): Promise<Response> {
     }
     const { config: next, card } = withUpdatedPlanCard(latest.config, image, project.hotspots as JsonObject[], project.items);
     next.roomcraft_layout = project;
-    await socket.call("lovelace/config/save", { url_path: latest.dashboardPath, config: next });
+    const publication = keepPreviousDashboardDesign(latest.config, next, new Date().toISOString());
+    await socket.call("lovelace/config/save", { url_path: latest.dashboardPath, config: publication });
     const verified = await getConfig(socket);
-    if (verified.dashboardPath !== latest.dashboardPath || stableStringify(verified.config) !== stableStringify(next)) {
+    if (verified.dashboardPath !== latest.dashboardPath || stableStringify(verified.config) !== stableStringify(publication)) {
       throw new BridgeError(502, "verification_failed", "Dashboard save could not be verified. Reload before trying again.");
     }
     return json({

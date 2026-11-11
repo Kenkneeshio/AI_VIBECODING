@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Restricted the private boot receiver to Android's expected restore events.
 - Added the initial Android application skeleton.
 - Added an opt-in boot receiver and privileged global-setting write.
 - Added a local status screen with enable, disable, attempt-now, and Developer options actions.

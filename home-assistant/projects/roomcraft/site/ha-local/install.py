@@ -48,14 +48,11 @@ def copy_assets(host: str, user: str, key: Path, public: Path, modules: tuple[Pa
         run("scp", "-r", *ssh_options, str(path), f"{target}:{REMOTE_STATIC}/")
     for module in modules:
         run("scp", *ssh_options, str(module), f"{target}:{REMOTE_STATIC}/{module.name}")
-    for name in ("editor.html", "ha-iframe-bridge.js"):
-        with urlopen(f"http://{host}:8123/local/roomcraft/{name}", timeout=15) as response:
-            if response.status != 200 or not response.read(128):
-                raise RuntimeError(f"Home Assistant did not serve {name}")
-    for module in modules:
-        with urlopen(f"http://{host}:8123/local/roomcraft/{module.name}", timeout=15) as response:
-            if response.status != 200 or response.read() != module.read_bytes():
-                raise RuntimeError(f"Home Assistant served unexpected bytes for {module.name}")
+    entrypoints = ("editor.html", "ha-iframe-bridge.js", "app.js", "storybook-editor.js")
+    for asset in (*(public / name for name in entrypoints), *modules):
+        with urlopen(f"http://{host}:8123/local/roomcraft/{asset.name}", timeout=15) as response:
+            if response.status != 200 or response.read() != asset.read_bytes():
+                raise RuntimeError(f"Home Assistant served unexpected bytes for {asset.name}")
 
 
 def update_dashboard(config: dict, version: str, storybook: bool = False) -> dict:
@@ -173,11 +170,12 @@ def main() -> int:
 
     project = Path(__file__).resolve().parents[1]
     public = project / "public"
-    modules = tuple(Path(__file__).resolve().with_name(name) for name in RESOURCE_NAMES)
+    modules = (project / "dist" / "ha-local" / RESOURCE_NAMES[0],
+               project / "ha-local" / RESOURCE_NAMES[1])
     if args.storybook:
         modules += (project / "dist" / "ha-local" / STORYBOOK_RESOURCE,)
     if not (public / "editor.html").is_file() or any(not module.is_file() for module in modules):
-        raise RuntimeError("Roomcraft editor assets are missing")
+        raise RuntimeError("Roomcraft assets are missing. Run npm run build before installing.")
     version = source_digest(public, modules)
     if args.assets_only:
         copy_assets(args.host, args.ssh_user, args.ssh_key, public, modules)
@@ -219,9 +217,6 @@ def main() -> int:
             raise RuntimeError("Private dashboard backup could not be verified")
 
         copy_assets(args.host, args.ssh_user, args.ssh_key, public, modules)
-        resources = api.call("lovelace/resources")
-        resource_urls = register_resources(api, resources, version, tuple(module.name for module in modules))
-
         latest = api.call("lovelace/config", url_path=dashboard_path)
         if latest != current:
             raise RuntimeError("Dashboard changed during install; review the backup before retrying")
@@ -232,6 +227,8 @@ def main() -> int:
         verified = api.call("lovelace/config", url_path=dashboard_path)
         if verified != next_config:
             raise RuntimeError("Dashboard save could not be verified")
+        resources = api.call("lovelace/resources")
+        resource_urls = register_resources(api, resources, version, tuple(module.name for module in modules))
         verified_resources = api.call("lovelace/resources")
         for resource_url in resource_urls:
             if not any(item.get("url") == resource_url and item.get("type") == "module"

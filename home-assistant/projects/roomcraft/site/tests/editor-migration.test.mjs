@@ -37,6 +37,7 @@ function boot(savedProject, dashboardRequest, options = {}) {
       addEventListener(name, fn) { listeners.set(`${id}:${name}`, fn); },
       removeEventListener(name, fn) { if (listeners.get(`${id}:${name}`) === fn) listeners.delete(`${id}:${name}`); },
       getContext() { return drawing; },
+      toDataURL() { return 'data:image/png;base64,c3ludGhldGlj'; },
       getBoundingClientRect() { return { left: 0, top: 0, width: crop.width + 28, height: crop.height + 28 }; },
       querySelectorAll() { return []; },
       setPointerCapture() {}, setAttribute() {},
@@ -759,6 +760,72 @@ test('startup keeps a browser draft if Home Assistant is unreachable', async () 
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(editor.read().items.find(i => i.id === 'chair').x, 500);
   assert.match(editor.elements.get('dashboardTransferStatus').textContent, /browser layout kept: Offline/);
+});
+
+test('a stale dashboard draft cannot retry export until the latest version is imported', async () => {
+  const project = {version:2, editableReferenceVersion:9, rooms:[], walls:[], hotspots:[],
+    items:[{id:'chair', type:'chair', name:'Chair', x:500, y:500, w:48, h:48, rotation:0}]};
+  const calls = [];
+  let revision = 'original';
+  const editor = boot(project, async (method, payload) => {
+    calls.push([method, payload?.revision]);
+    if (method === 'GET') return {project, revision, hotspots:[]};
+    if (payload.revision !== revision) throw Object.assign(new Error('Stale revision'), {status:409});
+    return {revision:'published', imageUrl:'/api/image/serve/fixture/original'};
+  });
+  await new Promise(resolve => setImmediate(resolve));
+  revision = 'newer';
+  const first = editor.dispatch('exportDashboardButton', 'click', {});
+  editor.dispatch('confirmationAccept', 'click', {});
+  await first;
+  assert.match(editor.elements.get('dashboardTransferStatus').textContent, /Dashboard changed/);
+  await editor.dispatch('exportDashboardButton', 'click', {});
+  assert.match(editor.elements.get('dashboardTransferStatus').textContent, /Import the current dashboard/);
+  assert.deepEqual(calls, [['GET', undefined], ['POST', 'original']]);
+
+  const canceled = editor.dispatch('importDashboardButton', 'click', {});
+  await new Promise(resolve => setImmediate(resolve));
+  editor.dispatch('confirmationCancel', 'click', {});
+  await canceled;
+  await editor.dispatch('exportDashboardButton', 'click', {});
+  assert.equal(calls.length, 3);
+
+  const imported = editor.dispatch('importDashboardButton', 'click', {});
+  await new Promise(resolve => setImmediate(resolve));
+  editor.dispatch('confirmationAccept', 'click', {});
+  await imported;
+  const publish = editor.dispatch('exportDashboardButton', 'click', {});
+  editor.dispatch('confirmationAccept', 'click', {});
+  await publish;
+  assert.deepEqual(calls.slice(-2), [['GET', undefined], ['POST', 'newer']]);
+  assert.match(editor.elements.get('dashboardTransferStatus').textContent, /exported to Home Assistant/);
+});
+
+test('export records the submitted layout while keeping edits made during upload unpublished', async () => {
+  const project = {version:2, editableReferenceVersion:9, rooms:[], walls:[], hotspots:[],
+    items:[{id:'chair', type:'chair', name:'Chair', x:500, y:500, w:48, h:48, rotation:0}]};
+  let finishUpload;
+  let submitted;
+  const editor = boot(project, (method, payload) => {
+    if (method === 'GET') return {project, revision:'original', hotspots:[], source:'http://ha.test/roomcraft-home/home'};
+    submitted = payload;
+    return new Promise(resolve => { finishUpload = resolve; });
+  });
+  await new Promise(resolve => setImmediate(resolve));
+  const publish = editor.dispatch('exportDashboardButton', 'click', {});
+  editor.dispatch('confirmationAccept', 'click', {});
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(submitted.project.items[0].x, 500);
+  editor.window.RoomcraftEditorViewport.moveItem('chair', 540, 500);
+  finishUpload({revision:'published', imageUrl:'/api/image/serve/fixture/original'});
+  await publish;
+  assert.match(editor.elements.get('dashboardTransferStatus').textContent, /Newer browser edits are still unpublished/);
+  assert.equal(editor.read().items[0].x, 540);
+  const leave = editor.dispatch('backDashboardButton', 'click', {});
+  assert.equal(editor.elements.get('confirmationDialog').open, true);
+  editor.dispatch('confirmationCancel', 'click', {});
+  await leave;
+  assert.deepEqual(editor.navigation, []);
 });
 
 test('Dashboard header returns to Roomcraft Home in both editor contexts', async () => {

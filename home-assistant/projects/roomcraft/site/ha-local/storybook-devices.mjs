@@ -486,9 +486,9 @@ function robot(w, h) {
   const stripe = softBox(root, radius * 0.68, 1.2, 2.5, status, 0, 13.2, radius * 0.36);
   return {
     root, anchorY: 12, floorRadius: radius * 1.03,
-    animate(state, seconds = 0) {
+    animate(state, seconds = 0, tracking = false) {
       const running = ['cleaning', 'returning'].includes(stateValue(state));
-      stripe.material.emissiveIntensity = running ? 0.6 + 0.5 * Math.cos(seconds * 6) : 0;
+      stripe.material.emissiveIntensity = running ? (tracking ? 0.6 + 0.5 * Math.cos(seconds * 6) : 0.3) : 0;
     },
   };
 }

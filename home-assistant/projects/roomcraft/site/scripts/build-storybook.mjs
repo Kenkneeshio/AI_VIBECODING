@@ -40,10 +40,17 @@ if (process.argv.includes('--write-editor')) {
   }
 }
 if (!process.argv.includes('--check-editor') && !process.argv.includes('--write-editor')) {
-  await build({
+  await Promise.all([build({
     ...common,
     entryPoints: ['ha-local/roomcraft-storybook.mjs'],
     outfile: 'dist/ha-local/roomcraft-storybook.js',
     format: 'esm',
-  });
+  }), build({
+    absWorkingDir: site,
+    bundle: true,
+    target: common.target,
+    entryPoints: ['ha-local/roomcraft-card.js'],
+    outfile: 'dist/ha-local/roomcraft-card.js',
+    format: 'esm',
+  })]);
 }

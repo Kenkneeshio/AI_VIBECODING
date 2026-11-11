@@ -1010,16 +1010,15 @@ export function createStorybookScene(canvas, layout) {
     for (const [id, object] of roots) {
       const state = statesById[id] ?? defaultState;
       const latest = state.position;
-      if (latest && Number.isFinite(latest.x) && Number.isFinite(latest.y) &&
-          (!object.floorRadius || floors.clearance(latest.x, latest.y) >= object.floorRadius)) {
-        object.telemetryPosition = latest;
-      }
+      const validPosition = latest && Number.isFinite(latest.x) && Number.isFinite(latest.y) &&
+        (!object.floorRadius || floors.clearance(latest.x, latest.y) >= object.floorRadius);
+      if (validPosition) object.telemetryPosition = latest;
       const location = draftPositions?.[id]?.position ?? (showTelemetryPosition ? object.telemetryPosition : null);
       const authored = anchors.get(id);
       object.root.position.x = location?.x ?? authored.x;
       object.root.position.z = location?.y ?? authored.z;
       if (object.floorRadius) object.root.visible = Boolean(location || !showTelemetryPosition || object.dockFits);
-      object.animate?.(state, object.ambientMotion ? time : telemetryTime);
+      object.animate?.(state, object.ambientMotion ? time : telemetryTime, Boolean(validPosition && showTelemetryPosition));
     }
     people.render(timeSeconds, reduceMotion);
     draw();

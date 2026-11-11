@@ -1,3 +1,5 @@
+import {keepPreviousDashboardDesign, stableDashboardJson as stableStringify} from './dashboard-snapshots.mjs';
+
 /**
  * Roomcraft's Home Assistant transport. The editor artwork and interaction
  * live in /local/roomcraft/editor.html; this card supplies the authenticated
@@ -74,14 +76,6 @@ class BridgeError extends Error {
     super(message);
     this.status = status;
   }
-}
-
-function stableStringify(value) {
-  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
-  if (isObject(value)) {
-    return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(',')}}`;
-  }
-  return JSON.stringify(value);
 }
 
 function findPlanCard(config) {
@@ -727,9 +721,10 @@ class RoomcraftEditorCard extends HTMLElement {
       }
       const { next } = updatePlanCard(latest, image, project.hotspots, project.items);
       next.roomcraft_layout = project;
-      await this._hass.callWS({ type: 'lovelace/config/save', url_path: this.dashboardPath, config: next });
+      const publication = keepPreviousDashboardDesign(latest, next, new Date().toISOString());
+      await this._hass.callWS({ type: 'lovelace/config/save', url_path: this.dashboardPath, config: publication });
       const verified = await this._getConfig();
-      if (stableStringify(verified) !== stableStringify(next)) {
+      if (stableStringify(verified) !== stableStringify(publication)) {
         throw new Error('Dashboard save could not be verified. Reload before trying again.');
       }
       this._revisions.clear();

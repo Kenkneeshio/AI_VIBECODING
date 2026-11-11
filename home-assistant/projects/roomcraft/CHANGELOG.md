@@ -1,5 +1,12 @@
 # Changelog
 
+## Layout snapshots and system audit
+
+- Administrators can choose **Menu → Manage → Layout snapshots** to restore one of up to three previous layouts. The current layout stays in history for an easy undo. Both Studio publish paths capture previous layouts.
+- The sun, moon, and clouds have larger ocean reflections so the weather is easier to see at tablet scale.
+- Studio preserves recovery drafts and in-flight edits, the hosted bridge bounds request bodies and handles disconnects promptly, and the live vacuum discards stale map coordinates. The installer verifies the served editor entrypoint and saved configuration before completing resource registration.
+- The [system audit](docs/system-audit-2026-11-11.md) records findings, acceptance checks, and follow-up maintenance across Roomcraft and the supporting projects.
+
 ## A 30-second dashboard demo
 
 - Choose **Menu → 30-second demo** in Roomcraft Home for a guided tour of the 3D home, live objects and outdoor animation.

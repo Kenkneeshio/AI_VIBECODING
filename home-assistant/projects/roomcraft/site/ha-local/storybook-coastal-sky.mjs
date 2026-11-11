@@ -32,7 +32,7 @@ export const COASTAL_SKY_STYLE = `
     background:linear-gradient(180deg,var(--coastal-top),var(--coastal-mid) 62%,var(--coastal-low));
     --coastal-top:#7c99ab; --coastal-mid:#abc0c8; --coastal-low:#d2dad7;
     --coastal-seam:#426b80; --coastal-cloud-top:#f9f6ea; --coastal-cloud-bottom:#c5d1d6;
-    --coastal-orb-size:clamp(20px,3.2dvh,32px);
+    --coastal-orb-size:clamp(27px,4.1dvh,42px);
   }
   .coastal-sky[data-sky=day] {
     --coastal-top:#5b9bc2; --coastal-mid:#a0c8dc; --coastal-low:#d1e1e6;
@@ -80,7 +80,8 @@ export const COASTAL_SKY_STYLE = `
     width:var(--coastal-orb-size); aspect-ratio:1; translate:-50% -50%;
   }
   .coastal-sky[data-sky=day] .coastal-sun {
-    display:block; left:var(--coastal-sun-x,52%); top:var(--coastal-sun-y,43%);
+    display:block; left:var(--coastal-sun-x,52%);
+    top:clamp(calc(var(--coastal-orb-size) / 2 + 3px),var(--coastal-sun-y,43%),calc(100% - var(--coastal-orb-size) / 2 - 3px));
     background:radial-gradient(circle at 38% 31%,#fff8d4,#fadd96 88%);
     box-shadow:0 0 9px 3px #fff0bb91,0 0 23px 7px #ffdd9266;
   }
@@ -117,9 +118,9 @@ export const COASTAL_SKY_STYLE = `
   }
   .coastal-cloud-high {--cloud-x:24%;--cloud-y:2%;--cloud-width:36%;--cloud-height:42%;
     --cloud-alpha:.42;--cloud-time:85s;--cloud-delay:-20s;scale:1 .7}
-  .coastal-cloud-left {--cloud-x:-3%;--cloud-y:30%;--cloud-width:45%;--cloud-height:54%;
+  .coastal-cloud-left {--cloud-x:-4%;--cloud-y:24%;--cloud-width:47%;--cloud-height:64%;
     --cloud-alpha:.86;--cloud-delay:-11s}
-  .coastal-cloud-right {--cloud-x:66%;--cloud-y:23%;--cloud-width:37%;--cloud-height:55%;
+  .coastal-cloud-right {--cloud-x:64%;--cloud-y:19%;--cloud-width:41%;--cloud-height:63%;
     --cloud-alpha:.86;--cloud-time:64s;--cloud-delay:-34s;animation-direction:alternate-reverse}
   .coastal-cloud-bank {--cloud-x:31%;--cloud-y:28%;--cloud-width:49%;--cloud-height:64%;
     --cloud-alpha:0;--cloud-time:80s;--cloud-delay:-10s}
@@ -131,6 +132,6 @@ export const COASTAL_SKY_STYLE = `
   .world[data-reduced-motion]:not([data-reduced-motion=false]) .coastal-cloud {animation:none}
   @media (prefers-reduced-motion:reduce) {.coastal-cloud{animation:none}}
   @media (max-height:600px) and (orientation:landscape) {
-    .coastal-sky {height:clamp(38px,8.5dvh,48px);--coastal-orb-size:19px}
+    .coastal-sky {height:clamp(38px,8.5dvh,48px);--coastal-orb-size:25px}
   }
 `;

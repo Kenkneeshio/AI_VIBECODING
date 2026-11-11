@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import importlib.util
+from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
+from unittest.mock import patch
 
 
 spec = importlib.util.spec_from_file_location("roomcraft_install", Path(__file__).with_name("install.py"))
@@ -92,6 +94,23 @@ class InstallResourceTests(unittest.TestCase):
             before = install.source_digest(public, modules)
             modules[1].write_text("v2", encoding="utf-8")
             self.assertNotEqual(before, install.source_digest(public, modules))
+
+    def test_copy_assets_detects_an_editor_entrypoint_with_stale_bytes(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in ("editor.html", "ha-iframe-bridge.js", "app.js", "storybook-editor.js"):
+                (root / name).write_bytes(name.encode())
+
+            class Reply(BytesIO):
+                status = 200
+
+            def served(url, timeout):
+                name = url.rsplit("/", 1)[-1]
+                return Reply(b"old script" if name == "storybook-editor.js" else (root / name).read_bytes())
+
+            with patch.object(install, "run"), patch.object(install, "urlopen", side_effect=served):
+                with self.assertRaisesRegex(RuntimeError, "unexpected bytes for storybook-editor.js"):
+                    install.copy_assets("ha.example.test", "root", root / "test-key", root, ())
 
 
 if __name__ == "__main__":

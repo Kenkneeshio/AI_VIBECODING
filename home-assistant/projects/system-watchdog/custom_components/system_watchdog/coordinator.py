@@ -23,7 +23,7 @@ class WatchdogCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         interval = int(config.get("scan_interval", DEFAULT_SCAN_INTERVAL))
         self.store = Store(hass, STORE_VERSION, STORE_KEY)
         self.heartbeat: dict[str, Any] | None = None
-        self._previous_overall: str | None = None
+        self._previous_message: str | None = None
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=timedelta(seconds=interval))
 
     async def async_initialize(self) -> None:
@@ -62,17 +62,18 @@ class WatchdogCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             stale_after=self.stale_after,
         )
         overall = report["overall"]
-        if overall != self._previous_overall:
+        summary = "\n".join(f"- {item}" for item in report["issues"][:12])
+        message = f"System watchdog is **{overall}** with {report['issue_count']} issue(s).\n\n{summary}"
+        if message != self._previous_message:
             if overall == "healthy":
                 persistent_notification.async_dismiss(self.hass, f"{DOMAIN}_health")
             else:
-                summary = "\n".join(f"- {item}" for item in report["issues"][:12])
                 persistent_notification.async_create(
                     self.hass,
-                    f"System watchdog is **{overall}** with {report['issue_count']} issue(s).\n\n{summary}",
+                    message,
                     title="System Watchdog",
                     notification_id=f"{DOMAIN}_health",
                 )
-            self._previous_overall = overall
+            self._previous_message = message
         return report
 

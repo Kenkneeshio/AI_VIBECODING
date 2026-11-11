@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Refresh the existing health notification when its displayed issues change at the same severity. Repeated identical reports remain deduplicated.
+
 ## 0.2.0 — 2026-11-08
 
 - Added a responsive `custom:system-watchdog-card` resource that renders the eight verified health categories as a touch-first animated topology. Healthy, warning, critical, and unavailable states have distinct high-contrast treatments; reduced-motion mode disables animation.

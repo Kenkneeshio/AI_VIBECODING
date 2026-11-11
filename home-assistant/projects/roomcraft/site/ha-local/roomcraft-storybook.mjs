@@ -2,6 +2,7 @@ import {readDetectionZones, readPersonTracks, trackingSnapshots, trackingStatus}
 import {bindLiveModelLibrary} from './storybook-library.mjs';
 import {createStorybookScene} from './storybook-scene.mjs';
 import {DEMO_DURATION_MS, sampleStorybookDemo} from './storybook-demo.mjs';
+import {bindSnapshotDialog, SNAPSHOT_DIALOG_MARKUP} from './storybook-snapshots.mjs';
 import {enterFreeView, normalizeCameraView, populateCameraOptions, readSavedFreeView, resolveDefaultCameraView} from './storybook-camera.mjs';
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
 import {placeStorybookDetails, placeStorybookTargets, readStorybookConfig, storybookFrame, storybookPreview} from './storybook-state.mjs';
@@ -85,14 +86,19 @@ class RoomcraftStorybookCard extends HTMLElement {
         [aria-pressed=true] .menu-toggle{flex-direction:row-reverse;background:#d8e6d2;color:#2b5034}
         [aria-pressed=true] .menu-toggle::before{background:#397247}
         [aria-pressed=true] .menu-toggle::after{content:"On"}
-        .tracking-dialog,.utility-dialog{box-sizing:border-box;width:min(420px,calc(100% - 24px));max-height:75dvh;overflow:auto;
+        .tracking-dialog,.utility-dialog,.snapshot-dialog{box-sizing:border-box;width:min(420px,calc(100% - 24px));max-height:75dvh;overflow:auto;
           border:1px solid #c9b8a0;border-radius:14px;background:#fffaf0;color:#3c3247;padding:16px}
         .utility-dialog{width:min(520px,calc(100% - 24px))}
-        .tracking-dialog::backdrop,.utility-dialog::backdrop{background:#182a2a9c}
-        :is(.tracking-dialog,.utility-dialog) header{display:flex;align-items:center;justify-content:space-between;gap:12px}
-        :is(.tracking-dialog,.utility-dialog) h2{font-size:17px;margin:0}
-        :is(.tracking-dialog,.utility-dialog) button{font:inherit;min-height:44px;padding:6px 12px;border:1px solid #c9b8a0;
+        :is(.tracking-dialog,.utility-dialog,.snapshot-dialog)::backdrop{background:#182a2a9c}
+        :is(.tracking-dialog,.utility-dialog,.snapshot-dialog) header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+        :is(.tracking-dialog,.utility-dialog,.snapshot-dialog) h2{font-size:17px;margin:0}
+        :is(.tracking-dialog,.utility-dialog,.snapshot-dialog) button{font:inherit;min-height:44px;padding:6px 12px;border:1px solid #c9b8a0;
           border-radius:7px;background:#fffaf0;color:inherit}
+        .snapshot-dialog form{display:grid;gap:7px}
+        .snapshot-dialog form[hidden],.snapshot-status:empty{display:none}
+        .snapshot-dialog select{min-height:44px;max-width:100%;padding:0 9px;border:1px solid #c9b8a0;border-radius:7px;
+          background:#fffdf6;color:inherit;font:inherit}
+        .snapshot-dialog .snapshot-restore{justify-self:end;background:#4b3c55;color:#fffaf0}
         .utility-rows{display:grid;gap:6px;margin-top:10px}
         .utility-rows .utility-row{display:block;width:100%;padding:9px 10px;text-align:left;border-color:#ebdecb;
           background:#fffcf6;overflow-wrap:anywhere}
@@ -237,6 +243,7 @@ class RoomcraftStorybookCard extends HTMLElement {
                 <section class="menu-group" aria-label="Manage">
                   <p class="menu-heading" aria-hidden="true">Manage</p>
                   <a href="/roomcraft-home/studio" data-studio-link>Layout Studio</a>
+                  <button type="button" class="open-snapshots" aria-haspopup="dialog" hidden>Layout snapshots</button>
                   <div class="utility-menu-grid">
                     <button type="button" data-open-models aria-haspopup="dialog">Object models</button>
                     <button type="button" data-open-devices aria-haspopup="dialog" hidden>Devices and sensors</button>
@@ -267,8 +274,10 @@ class RoomcraftStorybookCard extends HTMLElement {
       <dialog class="utility-dialog" aria-labelledby="utility-title">
         <header><h2 id="utility-title"></h2><button type="button" class="close-utility">Close</button></header>
         <div class="utility-rows"></div>
-      </dialog>`;
+      </dialog>
+      ${SNAPSHOT_DIALOG_MARKUP}`;
     bindLiveModelLibrary(this);
+    this.snapshots = bindSnapshotDialog(this);
     this.world = this.shadowRoot.querySelector('.world');
     this.coastalSky = this.shadowRoot.querySelector('.coastal-sky');
     this.stage = this.shadowRoot.querySelector('.stage');
@@ -441,6 +450,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.changeView('default', {remember: false});
     }
     this.dashboard = dashboard;
+    this.snapshots.sync();
     for (const link of this.shadowRoot.querySelectorAll('[data-studio-link]')) link.href = this.studioPath;
     this.load();
   }
@@ -450,6 +460,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   set hass(value) {
     const previous = this.session;
     this.session = value;
+    this.snapshots.sync();
     if (this.devicesDrawer) this.devicesDrawer.hass = value?.connected === false ? undefined : value;
     this.refreshUtility(previous);
     this.updateDefaultViewButtons();
@@ -594,6 +605,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this.snapshots.disconnect();
     this.setMainMenu(false);
     this.watchPublishedLayout();
     this.freeViewGestures?.dispose();
@@ -897,10 +909,10 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.frame.mappedTargetCounts = mappedTargetCounts;
     this.trackingButton.hidden = !this.model.layout.items.some(item => item.type === 'presenceSwitch' && item.presenceTrackEntityId);
     if (this.trackingDialog.open) this.paintTracking();
-    clearTimeout(this.trackExpiryTimer);
-    if (this.frame.people.length) {
-      const expires = Math.min(...this.frame.people.map(track => track.expiresAt));
-      this.trackExpiryTimer = setTimeout(() => this.refresh(), Math.max(1, expires - now));
+    clearTimeout(this.frameExpiryTimer);
+    const expires = Math.min(this.frame.nextRefreshAt ?? Infinity, ...this.frame.people.map(track => track.expiresAt));
+    if (Number.isFinite(expires)) {
+      this.frameExpiryTimer = setTimeout(() => this.refresh(), Math.max(1, expires - now));
     }
     const weather = storybookWeather(this.frame.environment, offline);
     updateCoastalSky(this.coastalSky, this.frame.environment, offline);
@@ -1017,7 +1029,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.stopDemo(false);
     this.freeViewGestures?.cancel();
     cancelAnimationFrame(this.animationFrame);
-    clearTimeout(this.trackExpiryTimer);
+    clearTimeout(this.frameExpiryTimer);
     this.animationFrame = undefined;
     this.loading = undefined;
     this.model = undefined;
