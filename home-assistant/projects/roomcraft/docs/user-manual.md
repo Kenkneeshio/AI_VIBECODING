@@ -4,7 +4,7 @@ Roomcraft Studio edits the layout used by Roomcraft Home. Use the 3D view to arr
 
 ## Use the live dashboard
 
-Open **Roomcraft Home** in the Home Assistant sidebar for the live view. **Power** opens the electrical readings, **Weather** opens native Home Assistant weather details, and **Menu** holds the remaining controls. All three are along the bottom.
+Open **Roomcraft Home** in the Home Assistant sidebar for the live view. **Power** shows the current reading, the last hour of recorded power, and the configured energy totals for today and this month. Tap a reading for its Home Assistant details. **Weather** opens native weather details, and **Menu** holds the remaining controls. All three are along the bottom.
 
 Use **On the map** for Object details and Presence tracking, and **View controls** for view presets, rotation, zoom and default view settings. **Manage** opens Layout Studio and popups for Object models, Devices and sensors, Indoor air and System health when configured. The labels from **Object details** show each linked control's name and current state. The toggle is saved in the current browser.
 

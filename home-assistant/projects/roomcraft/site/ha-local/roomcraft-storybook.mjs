@@ -9,6 +9,7 @@ import {placeStorybookDetails, placeStorybookTargets, readStorybookConfig, story
 import {storybookWeather, storybookWeatherMarkup, storybookWeatherStyles, updateStorybookWeather} from './storybook-weather.mjs';
 import {COASTAL_SKY_STYLE, COASTAL_SKY_MARKUP, updateCoastalSky} from './storybook-coastal-sky.mjs';
 import {readStorybookUtilities, utilityReading} from './storybook-utilities.mjs';
+import {bindStorybookPower, POWER_PANEL_MARKUP, POWER_PANEL_STYLE} from './storybook-power-panel.mjs';
 
 const TAG = 'roomcraft-storybook-card';
 const CONTROL_TAG = 'roomcraft-object-control';
@@ -176,6 +177,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         @media(max-width:540px){.bar nav{gap:5px}.bar a,.bar button{padding-inline:7px}}
         ${storybookWeatherStyles}
         ${COASTAL_SKY_STYLE}
+        ${POWER_PANEL_STYLE}
       </style>
       <section class="world" aria-label="Roomcraft Storybook">
         ${COASTAL_SKY_MARKUP}
@@ -275,9 +277,11 @@ class RoomcraftStorybookCard extends HTMLElement {
         <header><h2 id="utility-title"></h2><button type="button" class="close-utility">Close</button></header>
         <div class="utility-rows"></div>
       </dialog>
-      ${SNAPSHOT_DIALOG_MARKUP}`;
+      ${SNAPSHOT_DIALOG_MARKUP}
+      ${POWER_PANEL_MARKUP}`;
     bindLiveModelLibrary(this);
     this.snapshots = bindSnapshotDialog(this);
+    this.power = bindStorybookPower(this);
     this.world = this.shadowRoot.querySelector('.world');
     this.coastalSky = this.shadowRoot.querySelector('.coastal-sky');
     this.stage = this.shadowRoot.querySelector('.stage');
@@ -463,6 +467,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.snapshots.sync();
     if (this.devicesDrawer) this.devicesDrawer.hass = value?.connected === false ? undefined : value;
     this.refreshUtility(previous);
+    this.power.refresh(previous);
     this.updateDefaultViewButtons();
     this.watchPublishedLayout();
     if (previous?.connected === false && value?.connected === true) {
@@ -542,6 +547,7 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   syncMotionPreference() {
     this.world.toggleAttribute('data-reduced-motion', this.motionReduced);
+    this.power.reducedMotion(this.motionReduced);
     this.reduceMotionButton.setAttribute('aria-pressed', String(this.motionReduced));
     this.reduceMotionButton.disabled = this.motionPreference.matches;
     this.reduceMotionButton.title = this.motionPreference.matches ? 'Your device requests reduced motion' : '';
@@ -715,6 +721,10 @@ class RoomcraftStorybookCard extends HTMLElement {
     const panel = this.utilityPanels?.[kind];
     if (!panel || this.utilityDialog.open) return;
     this.setMainMenu(false, !this.mainMenu.hidden);
+    if (kind === 'electrical') {
+      this.power.open(panel.entities);
+      return;
+    }
     this.utilityDialog.querySelector('h2').textContent = panel.title;
     this.utilityRows = panel.entities.map(entry => {
       const button = document.createElement('button');
@@ -1039,6 +1049,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.detectionZoneButton.setAttribute('aria-pressed', 'false');
     this.detectionZoneLegend.hidden = true;
     if (this.utilityDialog.open) this.utilityDialog.close();
+    this.power.close();
     this.utilityRows = null;
     this.utilityPanels = null;
     this.devicesDrawer?.remove();

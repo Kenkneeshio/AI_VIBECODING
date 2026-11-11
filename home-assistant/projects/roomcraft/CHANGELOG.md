@@ -1,5 +1,11 @@
 # Changelog
 
+## Power at a glance
+
+- The illustrated **Power** panel shows the current meter reading, the last hour of recorded power, and the configured energy totals for today and this month. Tap a reading to open its native Home Assistant details.
+- The meter artwork distinguishes draw, zero, negative readings, and missing data. Reduced motion keeps the glow still.
+- The [Codex and Grok development guide](docs/ai-pair-development.md) records the local Home Assistant access and review workflow.
+
 ## Coordinated audit release, `roomcraft-2026.11.11.1`
 
 - Group Roomcraft Home, private Studio, System Watchdog 0.2.1, and Tablet Keeper 0.1.1 under one source version and release record.

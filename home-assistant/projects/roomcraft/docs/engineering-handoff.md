@@ -2,6 +2,8 @@
 
 **Read this first when taking over Roomcraft work.** The linked guides hold the detailed contracts and history.
 
+The [Codex and Grok development guide](ai-pair-development.md) covers scoped local access, task ownership, and review handoffs.
+
 ## Coordinated release
 
 The [November 11 release audit](system-audit-release-2026-11-11.md) ties Roomcraft, private Studio, Watchdog 0.2.1, and Tablet Keeper 0.1.1 to `roomcraft-2026.11.11.1`. Verify the deployed surfaces against the audit record. Use the Watchdog component-only installer and the tablet access runbook for those runtimes. Keep their private backup and live-check evidence in the management directory.
@@ -41,7 +43,9 @@ For acceptance, verify that the same sample inputs return the same chapter and v
 
 ## Bottom controls and outdoor scenery
 
-`roomcraft-storybook.mjs` places Power, Weather and Menu in the bottom action row. Power reuses the electrical readings dialog and Weather opens native details for the configured Home Assistant weather entity. The menu groups camera presets and tools with map and management actions. More options stores Camera tiles and Reduce motion preferences in the browser.
+`roomcraft-storybook.mjs` places Power, Weather and Menu in the bottom action row. `storybook-power.mjs` classifies configured readings and normalizes Recorder samples. `storybook-power-panel.mjs` owns the illustrated Power dialog, responsive canvas, and read-only history requests while open. The readings link to native Home Assistant details. Weather opens native details for the configured weather entity. The menu groups camera presets and tools with map and management actions. More options stores Camera tiles and Reduce motion preferences in the browser.
+
+Verify live, zero, negative, and unavailable meter states, genuine Recorder gaps, and native detail navigation. Check that the canvas and energy totals fit portrait and landscape and that the glow follows Roomcraft and OS reduced-motion preferences. To roll back the Power panel, reinstall the previous Home assets from `roomcraft-2026.11.11.1` and verify the dashboard readback. [Home Assistant Recorder history API](https://github.com/home-assistant/core/blob/dev/homeassistant/components/history/websocket_api.py)
 
 `storybook-street.mjs` supplies the street, sidewalks and beach scenery in Home and 3D Studio. Paths run from the far sidewalk through raised dunes to umbrellas, deck chairs and the curved shoreline. `storybook-camera.mjs` fits the shore and near water with the house. Farther water appears as the view opens up. Keep the beach in the shared 3D renderer and use the authored layout for editing, 2D export and device targets.
 

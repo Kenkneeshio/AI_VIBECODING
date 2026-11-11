@@ -1,5 +1,11 @@
 # Decision log
 
+## Use the Power panel to explain current electrical usage
+
+Give the household operator a readable meter, one hour of recorded history, and energy totals for the configured periods. Use the house illustration as a status cue and keep the numeric readings and graph visible on both tablet and phone. A tap on a reading opens its Home Assistant details.
+
+Use the existing electrical entries and their reported units. Query only the selected meter through the signed-in Home Assistant history API while the panel is open. Preserve gaps and signed readings, and keep live telemetry outside the authored layout and Git. The artwork uses CSS and the chart draws from the normalized samples, so the release needs no raster assets.
+
 ## Track the system audit as one release
 
 Use one Git tag and one release audit to coordinate Roomcraft Home, private Studio, Watchdog, and the wall-tablet helper. Each runtime keeps its existing deployment and rollback mechanism. Record acceptance evidence for each surface so the household operator can see what was installed and what still needs verification.
