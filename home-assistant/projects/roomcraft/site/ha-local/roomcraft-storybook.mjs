@@ -5,6 +5,7 @@ import {enterFreeView, normalizeCameraView, populateCameraOptions, readSavedFree
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
 import {placeStorybookDetails, placeStorybookTargets, readStorybookConfig, storybookFrame, storybookPreview} from './storybook-state.mjs';
 import {storybookWeather, storybookWeatherMarkup, storybookWeatherStyles, updateStorybookWeather} from './storybook-weather.mjs';
+import {COASTAL_SKY_STYLE, COASTAL_SKY_MARKUP, updateCoastalSky} from './storybook-coastal-sky.mjs';
 import {readStorybookUtilities, utilityReading} from './storybook-utilities.mjs';
 
 const TAG = 'roomcraft-storybook-card';
@@ -36,7 +37,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>
         :host{display:block;color:#3a3046;font:500 14px/1.4 system-ui,sans-serif}
-        .world{display:grid;grid-template-rows:minmax(0,1fr) auto;min-height:218px;
+        .world{display:grid;grid-template-rows:auto minmax(0,1fr) auto;min-height:218px;
           height:calc(100dvh - 72px);background:#e7eadb;border-radius:16px;overflow:hidden}
         .bar{position:relative;z-index:5;display:flex;justify-content:flex-end;align-items:center;
           gap:7px;padding:5px clamp(7px,1.4vw,23px) max(5px,env(safe-area-inset-bottom));
@@ -154,8 +155,10 @@ class RoomcraftStorybookCard extends HTMLElement {
         .tethers{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
         @media(max-width:540px){.bar nav{gap:5px}.bar a,.bar button{padding-inline:7px}}
         ${storybookWeatherStyles}
+        ${COASTAL_SKY_STYLE}
       </style>
       <section class="world" aria-label="Roomcraft Storybook">
+        ${COASTAL_SKY_MARKUP}
         <div class="stage">
           <canvas role="img" aria-label="Three-dimensional cutaway of the second floor"></canvas>
           <span id="free-view-hint" class="free-view-hint" hidden>Drag or use arrow keys to orbit. Pinch, scroll, or use +/− to zoom.</span>
@@ -243,6 +246,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       </dialog>`;
     bindLiveModelLibrary(this);
     this.world = this.shadowRoot.querySelector('.world');
+    this.coastalSky = this.shadowRoot.querySelector('.coastal-sky');
     this.stage = this.shadowRoot.querySelector('.stage');
     this.canvas = this.shadowRoot.querySelector('canvas');
     this.overlay = this.shadowRoot.querySelector('.overlay');
@@ -433,6 +437,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   get motionReduced() { return this.reduceMotion || this.motionPreference.matches; }
 
   syncMotionPreference() {
+    this.world.toggleAttribute('data-reduced-motion', this.motionReduced);
     this.reduceMotionButton.setAttribute('aria-pressed', String(this.motionReduced));
     this.reduceMotionButton.disabled = this.motionPreference.matches;
     this.reduceMotionButton.title = this.motionPreference.matches ? 'Your device requests reduced motion' : '';
@@ -804,6 +809,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.trackExpiryTimer = setTimeout(() => this.refresh(), Math.max(1, expires - now));
     }
     const weather = storybookWeather(this.frame.environment, offline);
+    updateCoastalSky(this.coastalSky, this.frame.environment, offline);
     updateStorybookWeather(this.dock, this.weather, weather, !offline && Boolean(this.model.weather.weather_entity));
     for (const {config, element, camera} of this.controls) {
       if (camera && !this.cameraTilesVisible) continue;

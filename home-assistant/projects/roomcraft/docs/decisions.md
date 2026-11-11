@@ -1,5 +1,11 @@
 # Decision log
 
+## Show the coastal sky above the 3D scene
+
+Give Home a narrow sky strip at the top with a distinct lower edge. Draw the clouds and the sun or moon there so the weather is easy to read while the user rotates or zooms the beach scene. Draw the reflected body and its light trail on the ocean surface so they follow the moving water and the scene camera.
+
+Use Home Assistant weather, daylight and moon phase for both layers. Respect reduced motion in the operating system and Roomcraft.
+
 ## Extend the scene across the street to a beach
 
 Build a beach with sloping dunes, umbrellas and a curved shoreline across the street. Project the sand, surf and ocean through the same camera as the house so the beach reads as part of the site from overhead and angled views. Keep the illustrated scenery in the shared 3D renderer and use the authored layout for room editing, 2D export and device targets.

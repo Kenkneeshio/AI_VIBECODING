@@ -27,9 +27,11 @@ The retained picture projection keeps the authored bottom-right interface positi
 
 `storybook-street.mjs` supplies the street, sidewalks and beach scenery in Home and 3D Studio. Paths run from the far sidewalk through raised dunes to umbrellas, deck chairs and the curved shoreline. `storybook-camera.mjs` fits the shore and near water with the house. Farther water appears as the view opens up. Keep the beach in the shared 3D renderer and use the authored layout for editing, 2D export and device targets.
 
-`storybook-ocean.mjs` draws the animated surf and weather-driven reflections in the ocean beyond the beach. The ocean uses daylight, moon phase and cloud cover. The operating system's reduced-motion setting and the dashboard preference hold the animation still. The bottom Weather button carries the accessible condition and temperature reading.
+`storybook-coastal-sky.mjs` renders Home's narrow sky strip with drifting clouds and stars on clear nights. Sun position follows available solar elevation and rising direction, and the moon follows the reported phase. The lower border marks the transition to the 3D scene. The sky illustration is hidden from assistive technology, and the bottom Weather button carries the accessible condition and temperature reading.
 
-Check surf and ocean reflections in daylight and at night. Check reduced motion, the bottom controls and beach framing at tablet and phone widths. Reinstall the previous Home Assistant assets from `1eabef374c2f7112110932d20285503d04d0ea24` to restore the HOA scenery. Roll back the owner-private Site to v68 separately if its shared 3D scene also needs rollback. [Deployment and rollback](deployment.md)
+`storybook-ocean.mjs` draws the surf, the reflected sun or moon and the trail of light on the water. The ocean uses daylight, moon phase and cloud cover. The operating system's reduced-motion setting and the dashboard preference hold the sky and ocean animation still.
+
+Check the sky strip edge and ocean reflections by day and at night. Check reduced motion, the bottom controls and beach framing at tablet and phone widths. Reinstall the previous Home Assistant assets from `1b9381c5cf8f98644c37208a563a10abccffbe4e` to roll back the sky and reflection update. Roll back the owner-private Site to v69 separately if its shared 3D scene also needs rollback. [Deployment and rollback](deployment.md)
 
 ## Presence tracking and calibration
 

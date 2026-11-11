@@ -1,6 +1,11 @@
 # Changelog
 
-## A beach and ocean across the street
+## A coastal sky strip and brighter ocean reflections
+
+- A narrow sky strip at the top of Home shows clouds and the sun or moon. A clear line along its lower edge separates the sky from the 3D scene.
+- The ocean now shows a softer reflection of the sun or moon with a brighter trail across the moving water. Sky and water follow Home Assistant weather and daylight and respect reduced motion.
+
+## A beach and ocean across the street (v69)
 
 - Home and 3D Studio show raised dunes, beach umbrellas and a curved shoreline across the street. The scene follows the camera as you rotate or zoom.
 - Animated surf and ocean reflections follow Home Assistant weather and daylight. Reduced motion holds the water animation still.

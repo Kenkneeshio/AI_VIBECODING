@@ -170,7 +170,9 @@ The design canvas shows stylized placeholders, not private camera frames. The da
 
 ### Read the outdoor weather
 
-The bottom **Weather** button shows the current condition and temperature when available. Tap it for native Home Assistant details. The ocean shows moving surf and reflects the sun, moon and clouds according to Home Assistant weather and daylight. Reduced motion holds the water animation still.
+The sky strip at the top of Home shows clouds and the sun or moon, with a line below it marking the start of the 3D scene. On the ocean, the reflected sun or moon casts a trail of light across the moving water. Both follow Home Assistant weather and daylight. **Reduce motion** holds the sky and water animation still.
+
+The bottom **Weather** button shows the current condition and temperature when available. Tap it for native Home Assistant details.
 
 Confirm a device's physical location in Home Assistant before placing a control. A friendly name does not prove the room. The editor stores control placement; Home Assistant performs actual device actions. A device that is unavailable or missing should be corrected in Home Assistant before use.
 
