@@ -5,11 +5,12 @@ import {createStorybookDemo, DEMO_DURATION_MS, STORYBOOK_DEMO_VOICE_CUES} from '
 import {createStorybookDemoScenario} from './storybook-demo-frame.mjs';
 import {createStorybookNarrator} from './storybook-demo-narration.mjs';
 import {bindSnapshotDialog, SNAPSHOT_DIALOG_MARKUP} from './storybook-snapshots.mjs';
-import {enterFreeView, normalizeCameraView, populateCameraOptions, readSavedFreeView, resolveDefaultCameraView} from './storybook-camera.mjs';
+import {enterFreeView, normalizeCameraView, populateCameraOptions, readSavedFreeView, resolveDefaultCameraView, storybookCameraTileSize} from './storybook-camera.mjs';
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
 import {placeStorybookDetails, placeStorybookTargets, readStorybookConfig, storybookFrame, storybookPreview} from './storybook-state.mjs';
 import {storybookWeather, storybookWeatherMarkup, storybookWeatherStyles, updateStorybookWeather} from './storybook-weather.mjs';
 import {COASTAL_SKY_STYLE, COASTAL_SKY_MARKUP, updateCoastalSky} from './storybook-coastal-sky.mjs';
+import {sceneDockAlignment, sceneFeatureEnabled, sceneWind} from './storybook-scene-settings.mjs';
 import {readStorybookUtilities, utilityReading} from './storybook-utilities.mjs';
 import {bindStorybookPower, POWER_PANEL_MARKUP, POWER_PANEL_STYLE} from './storybook-power-panel.mjs';
 import {bindStorybookCommutes, COMMUTE_DIALOG_MARKUP, COMMUTE_DIALOG_STYLE} from './storybook-commutes.mjs';
@@ -75,6 +76,12 @@ class RoomcraftStorybookCard extends HTMLElement {
           box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:7px;border:1px solid #cfbfa2;border-radius:15px;
           color-scheme:light;background:#fffaf0;color:#393831;box-shadow:0 9px 30px #18213250}
         .main-menu[hidden]{display:none}
+        .world[data-dock=left] .bar{justify-content:flex-start}
+        .world[data-dock=center] .bar{justify-content:center}
+        .world:is([data-dock=left],[data-dock=center]) .main-menu-wrap{position:static}
+        .world:is([data-dock=left],[data-dock=center]) .main-menu{right:auto;bottom:calc(100% + 4px)}
+        .world[data-dock=left] .main-menu{left:clamp(7px,1.4vw,23px)}
+        .world[data-dock=center] .main-menu{left:50%;transform:translateX(-50%)}
         .bar .main-menu :is(button,a){width:100%;justify-content:flex-start;text-align:left;border-radius:7px}
         .main-menu button:disabled{opacity:.35;cursor:default}
         .main-menu button:hover:not(:disabled),.main-menu a:hover{background:#f2e9d9;text-decoration:none}
@@ -277,6 +284,7 @@ class RoomcraftStorybookCard extends HTMLElement {
                 <section class="menu-group" aria-label="Manage">
                   <p class="menu-heading" aria-hidden="true">Manage</p>
                   <a href="/roomcraft-home/studio" data-studio-link>Layout Studio</a>
+                  <a href="/roomcraft-home/studio#scene-settings" data-scene-settings-link>Scene settings</a>
                   <button type="button" class="open-snapshots" aria-haspopup="dialog" hidden>Layout snapshots</button>
                   <div class="utility-menu-grid">
                     <button type="button" data-open-models aria-haspopup="dialog">Object models</button>
@@ -503,7 +511,16 @@ class RoomcraftStorybookCard extends HTMLElement {
     });
     this.canvas.addEventListener('webglcontextlost', event => {
       event.preventDefault();
+      if (!this.isConnected) return;
+      this.graphicsInterrupted = true;
       this.fail('The 3D view lost its graphics connection.');
+    });
+    this.canvas.addEventListener('webglcontextrestored', () => {
+      if (!this.graphicsInterrupted) return;
+      this.graphicsInterrupted = false;
+      if (!this.isConnected) return;
+      this.reset();
+      this.load();
     });
   }
 
@@ -522,6 +539,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.dashboard = dashboard;
     this.snapshots.sync();
     for (const link of this.shadowRoot.querySelectorAll('[data-studio-link]')) link.href = this.studioPath;
+    this.shadowRoot.querySelector('[data-scene-settings-link]').href = this.studioPath + '#scene-settings';
     this.load();
   }
 
@@ -665,8 +683,8 @@ class RoomcraftStorybookCard extends HTMLElement {
     return trackingSnapshots(states, ids);
   }
 
-  static preview(config, states) {
-    return storybookPreview(config, states);
+  static preview(config, states, now) {
+    return storybookPreview(config, states, now);
   }
 
   watchPublishedLayout() {
@@ -756,6 +774,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       if (!this.isConnected || this.loading !== request) return;
       this.loadStartupView();
       this.model = readStorybookConfig(config);
+      this.world.dataset.dock = sceneDockAlignment(this.model.layout.sceneSettings);
       for (const id of this.commutes.configure(config?.roomcraft_commutes)) this.model.watch.add(id);
       this.locationPanel.configure(config?.roomcraft_location);
       this.locationPanel.update(this.session);
@@ -1013,7 +1032,11 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   paintSky(environment, offline) {
-    updateCoastalSky(this.coastalSky, {...environment, reduceMotion: this.motionReduced}, offline);
+    const settings = this.demoRun ? undefined : this.model?.layout.sceneSettings;
+    this.coastalSky.hidden = !sceneFeatureEnabled(settings, 'sky');
+    if (!this.coastalSky.hidden) {
+      updateCoastalSky(this.coastalSky, {...sceneWind(environment, settings), reduceMotion: this.motionReduced}, offline);
+    }
   }
 
   paintWeather(environment, offline, demo = false) {
@@ -1111,8 +1134,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         continue;
       }
       const item = this.model.items.get(config.roomcraft_item_id);
-      const w = camera ? Math.max(70, Math.min(124, width * .074)) : 44;
-      const h = camera ? Math.max(51, w * .62) : 44;
+      const {w, h} = camera ? storybookCameraTileSize(item, width) : {w: 44, h: 44};
       const priority = config.roomcraft_visual_kind === 'light' || config.roomcraft_device_form === 'presence_switch'
         ? 0 : camera ? 2 : 1;
       targets.push({...control, x: anchor.x * width, y: anchor.y * height, w, h, priority,

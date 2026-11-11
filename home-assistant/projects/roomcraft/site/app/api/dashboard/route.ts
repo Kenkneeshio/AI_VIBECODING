@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { keepPreviousDashboardDesign, stableDashboardJson as stableStringify } from "../../../ha-local/dashboard-snapshots.mjs";
 import { storybookPreview } from "../../../ha-local/storybook-state.mjs";
+import { validSceneSettings } from "../../../ha-local/storybook-scene-settings.mjs";
 import { SCENE_HEIGHT, SCENE_WIDTH, editableDashboardHotspots, roomcraftPlanCard, validCameraThumbnail, validObjectControl, withUpdatedPlanCard } from "../../../lib/dashboard-elements";
 
 const ROOMCRAFT_DASHBOARD = "roomcraft-home";
@@ -152,6 +153,9 @@ function validateProject(value: unknown): LayoutProject {
   }
   if (value.hotspots.length > 100 || value.items.length > 2000 || value.walls.length > 2000) {
     throw new BridgeError(400, "invalid_project", "The layout exceeds supported limits.");
+  }
+  if (!validSceneSettings(value.sceneSettings)) {
+    throw new BridgeError(400, "invalid_project", "The layout has invalid scene settings.");
   }
   for (const hotspot of value.hotspots) {
     if (!isObject(hotspot) || typeof hotspot.entity !== "string" ||
@@ -382,7 +386,7 @@ export async function GET(request: Request): Promise<Response> {
       imageUrl: absoluteImageUrl(config.haOrigin, card.image),
       hotspots: editableDashboardHotspots(card.elements, card.roomcraft_scene),
       entityOptions,
-      storybookPreview: storybookPreview(dashboard, Object.fromEntries(records.map(item => [item.entity_id, item]))),
+      storybookPreview: storybookPreview(dashboard, Object.fromEntries(records.map(item => [item.entity_id, item])), Date.now()),
       source: dashboardSource(config.haOrigin, dashboardPath),
       revision: await revisionOf(dashboard),
     });

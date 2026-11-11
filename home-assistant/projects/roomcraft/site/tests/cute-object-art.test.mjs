@@ -98,7 +98,7 @@ test('crafted miniature catalog is stable, data driven, and uses realistic mater
   const catalog = window.RoomcraftInventory.templates;
   const crafted = catalog.filter(entry => entry.collectionId === 'crafted-miniature-v1');
 
-  assert.equal(crafted.length, 88);
+  assert.equal(crafted.length, 98);
   assert.equal(new Set(catalog.map(entry => entry.type)).size, catalog.length, 'all inventory type IDs must be unique');
   for (const entry of crafted) {
     assert.ok(['cuteFurniture', 'cuteLight'].includes(entry.artFamily), entry.type);
@@ -117,6 +117,25 @@ test('crafted miniature catalog is stable, data driven, and uses realistic mater
     'living-cloud-sofa-blush', 'living-petal-dining-set-oak', 'bedroom-moon-bed-lavender',
     'bedroom-sprout-desk-sage', 'lighting-bud-table-lamp-mint'
   ]) assert.ok(catalog.some(entry => entry.type === legacyType), `legacy stable type ${legacyType}`);
+});
+
+test('2D dining tables and chairs render as individual models with legacy composites preserved', () => {
+  const window = loadRuntime();
+  const models = window.RoomcraftInventory.byType;
+  const translations = descriptor => render(window, descriptor).trace
+    .filter(operation => operation[0] === 'call' && operation[1] === 'translate').length;
+  const classic = {type:'diningTable', label:'Dining table', w:136, h:62};
+  const chair = {type:'diningChair', label:'Dining chair', w:34, h:26};
+  assert.equal(translations(classic), 1);
+  assert.equal(translations(chair), 2);
+  for (const {type, legacy, seriesId} of Object.values(models)) {
+    if (seriesId === 'dining-table') assert.equal(translations(models[type]), 1, type);
+    if (seriesId === 'dining-chair') assert.equal(translations(models[type]), 2, type);
+    if (type.includes('dining-set-')) {
+      assert.equal(legacy, true, type);
+      assert.ok(translations(models[type]) >= 5, type);
+    }
+  }
 });
 
 test('every crafted recipe has deterministic material-rich geometry at four transforms', () => {

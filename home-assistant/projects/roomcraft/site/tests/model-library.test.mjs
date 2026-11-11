@@ -53,6 +53,42 @@ test('floor furniture checks rotated occupied shapes and lets earlier overlaps s
   assert.equal(Models.blockingPlacement({...blocked, y:225, x:145}, [sofa], blocked), sofa);
 });
 
+test('legacy dining split retains transforms, custom dimensions, finishes and independent chairs', () => {
+  const dining = {id:'family',type:'living-rectangular-dining-set-white',name:'Custom table',
+    x:500,y:650,w:220,h:140,rotation:90,modelHeight:76,zIndex:3,entityId:'switch.example'};
+  const seat = {id:'my-chair',type:'chair',name:'Keep me',x:551.8,y:579.6,w:44,h:48,rotation:90};
+  const collision = {id:'family-chair-2',type:'rug',name:'Keep this ID',x:500,y:650,w:240,h:180,rotation:0};
+  const source = {version:2,rooms:[],walls:[],items:[dining,seat,collision]};
+  const migrated = Models.splitDiningFurniture(source);
+  const table = migrated.items.find(item => item.id === dining.id);
+  assert.equal(table.type,'living-rectangular-dining-table-white');
+  assert.deepEqual([table.x,table.y,table.rotation,table.w,table.h], [500,650,90,173.8,78.4]);
+  assert.equal(table.name,dining.name);
+  assert.equal(table.entityId,dining.entityId);
+  assert.ok(Math.abs(table.modelHeight - 76*42.3/59) < 1e-6);
+  const generated = migrated.items.filter(item => item.type.startsWith('living-dining-chair-'));
+  assert.equal(generated.length,5);
+  assert.ok(generated.some(item => item.id === 'family-chair-2-2'));
+  assert.ok(generated.every(item => item.modelHeight === 76 && item.zIndex === 3));
+  assert.ok(migrated.items.includes(seat) && migrated.items.includes(collision));
+  assert.equal(Models.splitDiningFurniture(migrated), migrated);
+  assert.equal(source.items[0], dining);
+});
+
+test('only an aligned dining chair can tuck at the edge below a tabletop', () => {
+  const table = {id:'table',type:'diningTable',x:500,y:650,w:136,h:62,rotation:0};
+  const chair = {id:'chair',type:'diningChair',x:572,y:650,w:28,h:34,rotation:90};
+  const plant = {id:'plant',type:'plant',x:500,y:650,w:30,h:32,rotation:0};
+  assert.equal(Models.blockingPlacement(chair,[table]),undefined);
+  assert.equal(Models.blockingPlacement(table,[chair]),undefined);
+  assert.equal(Models.blockingPlacement({...chair,x:560},[table]),table);
+  assert.equal(Models.blockingPlacement({...chair,rotation:270},[table]),table);
+  assert.equal(Models.blockingPlacement({...chair,modelHeight:75},[table]),table);
+  assert.equal(Models.blockingPlacement({...chair,type:'armchair'},[table]),table);
+  assert.equal(Models.blockingPlacement({...chair,id:'second-chair'},[chair]),chair);
+  assert.deepEqual(Models.orderMountedObjects([table,plant,chair]),[chair,table,plant]);
+});
+
 test('authored height scales vertically around the model support plane', () => {
   const root = new Group();
   const mesh = new Mesh(new BoxGeometry(40,20,30), new MeshBasicMaterial());

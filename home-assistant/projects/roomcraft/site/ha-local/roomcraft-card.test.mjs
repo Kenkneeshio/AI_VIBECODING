@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {buildSync} from 'esbuild';
+import {storybookPreview} from './storybook-state.mjs';
 
 const {outputFiles: [{text: code}]} = buildSync({
   entryPoints: [fileURLToPath(new URL('./roomcraft-card.js', import.meta.url))],
@@ -1405,6 +1407,107 @@ test('popup editor receives only its own same-origin dashboard response', async 
   assert.equal(replies[0].origin, 'http://ha.example.test');
   assert.equal(replies[0].message.ok, true);
   assert.equal(replies[0].message.data.project.version, 2);
+});
+
+test('Studio appearance polling uses the published snapshot and current state without another HA call or a revision', async () => {
+  const replies = [];
+  const iframe = {postMessage: response => replies.push(response)};
+  const card = new Card();
+  const saved = dashboard();
+  saved.roomcraft_layout.items = [{id:'fixture-lamp', type:'lamp', entityId:'light.example'}];
+  saved.roomcraft_unrelated = {credential:'fixture-private-value'};
+  saved.views[0].cards[0].elements.push({
+    type:'custom:roomcraft-object-control', roomcraft_item_id:'fixture-lamp', entity:'light.example',
+  });
+  const states = {
+    'light.example': {state:'off', attributes:{brightness:110, internal_credential:'fixture-private-value'}},
+    'device_tracker.example': {state:'home', attributes:{latitude:10, longitude:20}},
+  };
+  let calls = 0;
+  card._iframe = {contentWindow: iframe};
+  card.hass = {connected:true, user:{id:'fixture-owner'}, states, callWS:async () => {
+    calls++;
+    return structuredClone(saved);
+  }};
+  const send = (method, payload, origin = context.location.origin, source = iframe) =>
+    card._onMessage({origin, source, data:{channel:'roomcraft-ha', kind:'request', id:1, method, payload}});
+  const previous = registered.get('roomcraft-storybook-card');
+  registered.set('roomcraft-storybook-card', {preview(config, snapshot, now) {
+    assert.ok(now > 0);
+    return storybookPreview(config, snapshot, now);
+  }});
+  try {
+    await send('LOOK_GET');
+    assert.equal(replies.at(-1).data, null);
+    assert.equal(calls, 0);
+    await send('GET');
+    assert.equal(replies.at(-1).data.storybookPreview.states['fixture-lamp'].state, 'off');
+    assert.equal(calls, 1);
+    const revisions = [...card._revisions];
+    states['light.example'] = {state:'on', attributes:{brightness:190, picture:'fixture-private-image'}};
+    await send('LOOK_GET');
+    const live = replies.at(-1).data;
+    assert.equal(live.states['fixture-lamp'].state, 'on');
+    assert.equal(live.states['fixture-lamp'].attributes.brightness, 190);
+    assert.doesNotMatch(JSON.stringify(live), /device_tracker|credential|fixture-private|revision|roomcraft_layout/);
+    assert.deepEqual([...card._revisions], revisions);
+    await send('LOOK_GET', {entities:['device_tracker.example']});
+    assert.equal(replies.at(-1).ok, false);
+    const count = replies.length;
+    await send('LOOK_GET', undefined, 'https://outside.example');
+    await send('LOOK_GET', undefined, context.location.origin, {});
+    assert.equal(replies.length, count);
+    assert.equal(calls, 1);
+  } finally {
+    if (previous) registered.set('roomcraft-storybook-card', previous);
+    else registered.delete('roomcraft-storybook-card');
+  }
+});
+
+test('LAN scene settings publish only the documented boolean keys', async () => {
+  let saved = dashboard();
+  let uploads = 0;
+  const card = new Card();
+  card.hass = {
+    connected:true, user:{is_admin:true},
+    callWS:async request => {
+      if (request.type === 'lovelace/config/save') saved = structuredClone(request.config);
+      return structuredClone(saved);
+    },
+    fetchWithAuth:async () => {
+      uploads++;
+      return {ok:true, json:async () => ({id:'a'.repeat(32)})};
+    },
+  };
+  const initial = await card._readDashboard();
+  const write = sceneSettings => card._writeDashboard({revision:initial.revision,
+    project:{...initial.project, sceneSettings}, pngDataUrl:pngDataUrl()});
+  await assert.rejects(write({wind:'false'}), /invalid scene settings/);
+  await assert.rejects(write({unsupported:false}), /invalid scene settings/);
+  assert.equal(uploads, 0);
+  await write({wind:false, traffic:true});
+  assert.deepEqual(saved.roomcraft_layout.sceneSettings, {wind:false, traffic:true});
+});
+
+test('iframe permits an appearance read and only accepts the expected Home Assistant host reply', async () => {
+  const origin = context.location.origin;
+  const posts = [];
+  let receive;
+  const parent = {postMessage: (payload, destination) => posts.push({payload, destination})};
+  const window = {addEventListener: (_event, handler) => { receive = handler; }};
+  const bridgeCode = readFileSync(new URL('../public/ha-iframe-bridge.js', import.meta.url), 'utf8');
+  vm.runInNewContext(bridgeCode, {window, parent, location:{origin, pathname:'/local/roomcraft/editor.html'},
+    setTimeout, clearTimeout});
+  const task = window.RoomcraftDashboardBridge.request('LOOK_GET');
+  assert.equal(posts.length, 1);
+  assert.equal(posts[0].destination, origin);
+  assert.equal(posts[0].payload.method, 'LOOK_GET');
+  assert.equal(posts[0].payload.payload, undefined);
+  const reply = {channel:'roomcraft-ha', kind:'response', id:posts[0].payload.id, ok:true, data:{states:{}}};
+  receive({origin, source:{}, data:{...reply, data:'spoofed'}});
+  receive({origin:'https://outside.example', source:parent, data:{...reply, data:'spoofed'}});
+  receive({origin, source:parent, data:reply});
+  assert.deepEqual(await task, reply.data);
 });
 
 test('Studio and live view share the signed-in camera preference without touching layout storage', async () => {

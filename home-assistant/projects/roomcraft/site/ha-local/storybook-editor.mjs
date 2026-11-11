@@ -1,8 +1,9 @@
 import {compileStorybookPlan, createStorybookScene} from './storybook-scene.mjs';
-import {CAMERA_PRESETS, enterFreeView, populateCameraOptions, resolveDefaultCameraView, studioCameraPreferences} from './storybook-camera.mjs';
+import {CAMERA_PRESETS, enterFreeView, populateCameraOptions, resolveDefaultCameraView, storybookCameraTileSize, studioCameraPreferences} from './storybook-camera.mjs';
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
 import {placeStorybookTargets} from './storybook-state.mjs';
 import {readDetectionZones, readPersonTracks} from './storybook-tracking.mjs';
+import {mountStorybookStudioLook} from './storybook-studio-look.mjs';
 
 const SELECT_RADIUS = 22;
 const MIN_DRAG = 5;
@@ -81,15 +82,9 @@ export function mountStorybookEditor(document, host) {
   const motionPreference = host.matchMedia?.('(prefers-reduced-motion: reduce)');
   const trackingBridge = host.location?.pathname?.startsWith('/local/roomcraft/')
     ? host.RoomcraftDashboardBridge : null;
-  const look = document.createElement('label');
-  look.className = 'scene-dashboard-look';
-  look.hidden = true;
-  look.title = 'Lighting and device appearance from the last dashboard import';
-  const lookCheckbox = document.createElement('input');
-  lookCheckbox.type = 'checkbox';
-  lookCheckbox.checked = true;
-  look.append(lookCheckbox, ' Dashboard look');
-  cameraOptions?.append(look);
+  const look = mountStorybookStudioLook(document, host, {api, viewport, bridge: trackingBridge, onChange: () => {
+    draw(drag?.item && drag.position ? {[drag.item.id]: {position: drag.position}} : undefined);
+  }});
   const outline = document.createElement('div');
   outline.className = 'scene-selection';
   outline.setAttribute('aria-hidden', 'true');
@@ -124,6 +119,7 @@ export function mountStorybookEditor(document, host) {
   let ambientFrame;
   let lastAmbientFrame = -Infinity;
   let ambientSeconds = 0;
+  let renderInputs;
   let disposed = false;
   let cameraChanged = false;
   let savedStartupView = null;
@@ -140,6 +136,7 @@ export function mountStorybookEditor(document, host) {
 
   const is3D = () => mode !== 'plan';
   const isFree = () => mode === 'free';
+  const reducedMotion = () => motionPreference?.matches === true || !look.motionEnabled();
   const currentSize = () => canvas.getBoundingClientRect();
   const pointerPoint = event => {
     const box = currentSize();
@@ -150,7 +147,7 @@ export function mountStorybookEditor(document, host) {
   }
   function syncAmbientAnimation() {
     const enabled = !disposed && (scene?.hasAmbientMotion || scene?.hasPeopleMotion)
-      && is3D() && !document.hidden && !motionPreference?.matches;
+      && is3D() && !document.hidden && !reducedMotion();
     if (!enabled) {
       host.cancelAnimationFrame(ambientFrame);
       ambientFrame = undefined;
@@ -162,14 +159,14 @@ export function mountStorybookEditor(document, host) {
       if (at - lastAmbientFrame >= AMBIENT_FRAME_INTERVAL - 1) {
         lastAmbientFrame = at;
         ambientSeconds = at / 1000;
-        try { scene.renderAmbient(ambientSeconds); } catch { fail(); }
+        try { if (renderInputs) scene.render(ambientSeconds, ...renderInputs); } catch { fail(); }
       }
       syncAmbientAnimation();
     });
   }
   function updatePeople(redraw = true) {
     const activeScene = is3D() ? scene : null;
-    const reduceMotion = motionPreference?.matches === true;
+    const reduceMotion = reducedMotion();
     const tracks = canTrack() ? readPersonTracks(trackingItems, trackSnapshots) : [];
     const key = JSON.stringify(tracks);
     if (key === displayedPeople.key && activeScene === displayedPeople.scene
@@ -251,27 +248,25 @@ export function mountStorybookEditor(document, host) {
       scene.setDetectionZones(item ? readDetectionZones([item]) : []);
       displayedCoverage = {id: selectedId, scene};
     }
-    const dashboard = api.getPreview?.();
-    look.hidden = !dashboard?.environment;
-    const usingDashboard = !look.hidden && lookCheckbox.checked;
+    const reduceMotion = reducedMotion();
+    const appearance = look.sync(true, project.sceneSettings, reduceMotion);
     const states = Object.create(null);
-    if (usingDashboard) {
-      for (const item of project.items) {
-        const state = dashboard.states?.[item.id];
-        if (state && state.entityId === item.entityId) states[item.id] = state;
-      }
+    for (const item of project.items) {
+      const state = appearance.states[item.id];
+      if (state && state.entityId === item.entityId) states[item.id] = state;
     }
-    const environment = usingDashboard ? dashboard.environment
-      : {night: false, condition: 'sunny', daylightKnown: true};
-    scene.render(ambientSeconds, states, {...environment, reduceMotion: motionPreference?.matches === true},
-      {animateTelemetry: false, showTelemetryPosition: usingDashboard, draftPositions: dragPreview});
+    renderInputs = [states, {...appearance.environment, reduceMotion},
+      {showTelemetryPosition: false, draftPositions: dragPreview}];
+    scene.render(ambientSeconds, ...renderInputs);
     if (isFree()) return;
     const targets = [];
     for (const [id, marker] of markers) {
       const anchor = scene.anchor(id);
       marker.hidden = !anchor;
       if (anchor) {
-        targets.push({id, marker, x: anchor.x * width, y: anchor.y * height, w: 96, h: 44});
+        const item = project.items.find(entry => entry.id === id);
+        const size = item?.type === 'cameraThumbnail' ? storybookCameraTileSize(item, width) : {w: 96, h: 44};
+        targets.push({id, marker, x: anchor.x * width, y: anchor.y * height, ...size});
       }
     }
     const placements = placeEditorMarkers(targets, width, height);
@@ -362,7 +357,7 @@ export function mountStorybookEditor(document, host) {
     if (!is3D()) {
       refresh();
       syncAmbientAnimation();
-      look.hidden = true;
+      look.sync(false, api.getProject().sceneSettings);
       setStatus('Plan view · edit rooms, walls, floors and objects');
       return;
     }
@@ -385,7 +380,7 @@ export function mountStorybookEditor(document, host) {
     syncAmbientAnimation();
     choice.value = mode;
     canvas.hidden = true;
-    look.hidden = true;
+    look.sync(false, api.getProject().sceneSettings);
     updateCanvasInteraction();
     markerLayer.style.display = 'none';
     leaders.style.display = 'none';
@@ -400,7 +395,11 @@ export function mountStorybookEditor(document, host) {
     if (disposed) return;
     const nextProject = api.getProject();
     configureTracking(nextProject.items);
-    if (!is3D()) { updatePeople(); return; }
+    if (!is3D()) {
+      look.sync(false, nextProject.sceneSettings);
+      updatePeople();
+      return;
+    }
     const nextFingerprint = JSON.stringify(nextProject);
     try {
       if (!scene || nextFingerprint !== fingerprint) {
@@ -422,7 +421,7 @@ export function mountStorybookEditor(document, host) {
           marker.setAttribute('aria-label', `Select ${marker.textContent}`);
           Object.assign(marker.style, {
             position: 'absolute', transform: 'translate(-50%,-50%)', pointerEvents: 'auto',
-            minWidth: '44px', minHeight: '44px', maxWidth: '96px', padding: '3px 7px', boxSizing: 'border-box',
+            minWidth: '44px', minHeight: '44px', padding: '3px 7px', boxSizing: 'border-box',
             border: '1px dashed #6f816b', borderRadius: '8px', background: '#fff8e5e8',
             color: '#3a5243', font: '600 11px/1.2 system-ui,sans-serif', touchAction: 'none',
           });
@@ -562,7 +561,6 @@ export function mountStorybookEditor(document, host) {
   const zoomOut = () => changeCamera(current => ({...current, zoom: current.zoom / 1.2}));
   const zoomIn = () => changeCamera(current => ({...current, zoom: current.zoom * 1.2}));
   const resetView = () => choose('top');
-  const changeLook = () => draw();
   const onMotionPreference = () => { updatePeople(false); draw(); };
   const onVisibility = () => { syncTracking(); updatePeople(); syncAmbientAnimation(); };
   document.addEventListener('visibilitychange', onVisibility);
@@ -609,7 +607,6 @@ export function mountStorybookEditor(document, host) {
   resetButton?.addEventListener('click', resetView);
   saveDefaultButton?.addEventListener('click', saveStartupView);
   clearDefaultButton?.addEventListener('click', clearStartupView);
-  lookCheckbox.addEventListener('change', changeLook);
   choice.addEventListener('change', onChoice);
   canvas.addEventListener('pointerdown', onPointerDown);
   canvas.addEventListener('pointermove', onPointerMove);
@@ -624,6 +621,11 @@ export function mountStorybookEditor(document, host) {
   const observer = new host.ResizeObserver(onResize);
   observer.observe(viewport);
   choose(mode, {initial: true});
+  try {
+    if (host.location.hash === '#scene-settings' || trackingBridge && host.parent.location.hash === '#scene-settings') {
+      look.open();
+    }
+  } catch { /* Studio can be embedded by a different origin. */ }
   loadStartupView();
 
   return {
@@ -646,8 +648,7 @@ export function mountStorybookEditor(document, host) {
       outline.remove();
       markerLayer.remove();
       leaders.remove();
-      look.remove();
-      lookCheckbox.removeEventListener('change', changeLook);
+      look.dispose();
       if (miniHelp) miniHelp.textContent = planHelp;
       buttons.left?.removeEventListener('click', rotateLeft);
       buttons.right?.removeEventListener('click', rotateRight);

@@ -21,6 +21,11 @@ const MOON_PHASES = new Set([
   'waning_gibbous', 'last_quarter', 'waning_crescent',
 ]);
 
+export const storybookWeatherChoices = Object.freeze([...CONDITIONS].map(([id, [label]]) => Object.freeze({
+  id, label: id === 'lightning-rainy' ? 'Thunderstorms with rain' : label,
+})));
+export const storybookMoonChoices = Object.freeze([...MOON_PHASES]);
+
 const DIRECTIONS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
   'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
 

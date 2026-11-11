@@ -118,10 +118,18 @@ body.dashboard-transfer-busy .workbench{cursor:progress}body.dashboard-transfer-
 .structure-select.active{background:#e3eee2;border-color:#b1c6af;color:#34533d}
 .viewport[data-tool="fence"]{cursor:crosshair}
 .viewport[data-tool="structure"]{cursor:grab}
-.scene-dashboard-look{display:flex;align-items:center;gap:7px;min-height:44px;padding:0 10px;font-size:13px;font-weight:650;color:#343d35}
-.scene-dashboard-look input{accent-color:#3a7160}
-.scene-dashboard-look[hidden]{display:none}
-@media(pointer:coarse){.scene-dashboard-look,.structure-tools select,.structure-tools button,.wall-snap-option{min-height:44px}}
+.center-panel>.coastal-sky{flex:none}
+.scene-settings-dialog{width:min(460px,calc(100% - 26px));max-width:none;max-height:calc(100dvh - 26px);box-sizing:border-box}
+.scene-settings-dialog fieldset{min-width:0;padding:8px 12px;border:1px solid #d8dfd0;border-radius:11px;margin:0}
+.scene-settings-dialog legend{font-size:13px;font-weight:700;color:#384d40;padding:0 6px}
+.scene-settings-dialog .scene-feature{display:flex;align-items:center;gap:10px;min-height:39px;color:#35443a;font-size:13px}
+.scene-settings-dialog input[type="checkbox"]{width:17px;height:17px;accent-color:#3a7160}
+.scene-settings-dialog select,.scene-settings-dialog input[type="number"]{min-height:37px;min-width:0;width:100%;padding:4px 8px;box-sizing:border-box;border:1px solid #d3dccf;border-radius:7px;background:#fff;color:#35443a;font:inherit}
+#scenePreviewWeather{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+#scenePreviewWeather[hidden]{display:none}
+#scenePreviewWeather label{display:grid;gap:3px;font-size:12px;color:#435447}
+@media(max-width:420px){.scene-settings-dialog{padding:16px 18px}#scenePreviewWeather{grid-template-columns:1fr}}
+@media(pointer:coarse){.scene-settings-dialog .scene-feature,.structure-tools select,.structure-tools button,.wall-snap-option{min-height:44px}}
 @media(max-width:620px){
   .canvas-toolbar,.app-shell.focus-canvas .canvas-toolbar{height:auto;min-height:48px;flex-wrap:wrap;gap:0;padding-block:2px}
   .canvas-toolbar .tool{min-width:42px;height:42px}

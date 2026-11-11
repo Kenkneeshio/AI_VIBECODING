@@ -11,6 +11,7 @@ Roomcraft is the editable source for the illustrated **Second Floor** Home Assis
 | Need | Read |
 | --- | --- |
 | Take over engineering work and see the verified release state | [Engineering handoff](docs/engineering-handoff.md) |
+| Review dining proportions, Studio parity, and system maintenance | [Dining and system audit](docs/system-audit-dining-studio-2026-11-11.md) |
 | Change engine modules, migrations, layers, art, or release evidence | [Deterministic engine contract](docs/engine-contract.md) |
 | Prepare any release from customer outcome through rollback | [Release standard](docs/release-standard.md) |
 | Learn the editor and dashboard transfer | [Illustrated user manual](docs/user-manual.md) |

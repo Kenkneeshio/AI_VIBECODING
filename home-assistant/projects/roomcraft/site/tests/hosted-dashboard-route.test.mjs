@@ -109,6 +109,21 @@ test('hosted editor reads and saves the canonical dashboard without recreating t
   assert.equal(calls.some(([, path]) => path === legacyPath), false);
 });
 
+test('hosted publication validates scene settings and preserves approved booleans', async () => {
+  const {route, dashboards, calls} = harness({[canonicalPath]:home});
+  const imported = await (await route.GET(request())).json();
+  assert.deepEqual(imported.storybookPreview.environment.traffic, {severity:'ambient'});
+  const send = sceneSettings => route.POST(request({revision:imported.revision,
+    project:{...project, sceneSettings}, pngDataUrl:testPng()}));
+  for (const invalid of [{boats:'false'}, {unrecognized:false}, null]) {
+    assert.equal((await send(invalid)).status, 400);
+  }
+  assert.equal(calls.filter(([type]) => type === 'lovelace/config/save').length, 0);
+  const settings = {boats:false, precipitation:true, sidewalk:false};
+  assert.equal((await send(settings)).status, 200);
+  assert.deepEqual(dashboards[canonicalPath].roomcraft_layout.sceneSettings, settings);
+});
+
 test('hosted editor falls back only for an unmigrated or missing Roomcraft Home', async () => {
   for (const current of [undefined, shell]) {
     const {route} = harness({[canonicalPath]: current, [legacyPath]: legacy});

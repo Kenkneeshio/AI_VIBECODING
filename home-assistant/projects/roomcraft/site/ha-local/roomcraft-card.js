@@ -1,4 +1,5 @@
 import {keepPreviousDashboardDesign, stableDashboardJson as stableStringify} from './dashboard-snapshots.mjs';
+import {validSceneSettings} from './storybook-scene-settings.mjs';
 
 /**
  * Roomcraft's Home Assistant transport. The editor artwork and interaction
@@ -388,6 +389,7 @@ function validateProject(project) {
       project.items.length > 2000 || project.hotspots.length > 100) {
     throw new Error('The layout exceeds supported limits.');
   }
+  if (!validSceneSettings(project.sceneSettings)) throw new Error('The layout has invalid scene settings.');
   for (const hotspot of project.hotspots) {
     if (!isObject(hotspot) || hotspot.type !== 'state-icon' ||
         !/^[a-z_]+\.[a-z0-9_]+$/i.test(hotspot.entity || '') ||
@@ -477,6 +479,7 @@ class RoomcraftEditorCard extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this._revisionSerial = 0;
     this._revisions = new Map();
+    this._lookGeneration = 0;
     this._writeBusy = false;
     this._frameAttempts = 0;
     this._frameTimer = null;
@@ -484,7 +487,9 @@ class RoomcraftEditorCard extends HTMLElement {
   }
 
   setConfig(config) {
+    const previous = this.dashboardPath;
     this._config = config || {};
+    if (previous !== this.dashboardPath) this._clearLook();
     if (this._iframe) return;
     const style = document.createElement('style');
     style.textContent = ':host{display:block;min-width:0}ha-card{display:block;overflow:hidden;background:#f4f6f1;border-radius:14px}.launch{display:flex;justify-content:flex-end;gap:8px;padding:6px 12px;background:#f4f6f1}button,.launch a{font:inherit;color:#365a46;background:white;border:1px solid #cbd9cc;border-radius:8px;padding:8px 12px;cursor:pointer}.launch :is(button,a){font-size:12px;padding:6px 10px}.launch a{margin-right:auto;text-decoration:none}iframe{display:block;width:100%;height:calc(100dvh - 174px);min-height:650px;border:0}iframe[hidden],.fallback[hidden]{display:none}.fallback{min-height:320px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:24px;color:#253a2b}.fallback h2{font-size:20px;margin:0}.fallback p{max-width:460px;line-height:1.5;margin:0}@media(max-width:700px){iframe{height:calc(100dvh - 150px);min-height:530px}}';
@@ -543,8 +548,16 @@ class RoomcraftEditorCard extends HTMLElement {
     return this._config?.dashboard === HOME_DASHBOARD ? HOME_DASHBOARD : DASHBOARD;
   }
 
-  set hass(value) { this._hass = value; }
+  set hass(value) {
+    if (!value || this._hass?.user?.id !== value.user?.id) this._clearLook();
+    this._hass = value;
+  }
   getCardSize() { return 12; }
+
+  _clearLook() {
+    this._lookConfig = undefined;
+    this._lookGeneration++;
+  }
 
   _editorUrl() {
     const params = new URLSearchParams({v: this._config.asset_version || 'current'});
@@ -591,6 +604,7 @@ class RoomcraftEditorCard extends HTMLElement {
   disconnectedCallback() {
     window.removeEventListener('message', this._onMessage);
     clearTimeout(this._frameTimer);
+    this._clearLook();
   }
 
   async _onMessage(event) {
@@ -615,7 +629,7 @@ class RoomcraftEditorCard extends HTMLElement {
       return;
     }
     if (message.kind !== 'request' || !Number.isSafeInteger(message.id) ||
-        message.id < 1 || !['GET', 'POST', 'CAMERA_GET', 'CAMERA_SET', 'TRACK_GET'].includes(message.method)) return;
+        message.id < 1 || !['GET', 'POST', 'CAMERA_GET', 'CAMERA_SET', 'TRACK_GET', 'LOOK_GET'].includes(message.method)) return;
     let response;
     try {
       if (!this._hass?.connected) throw new Error('Home Assistant is disconnected.');
@@ -623,6 +637,10 @@ class RoomcraftEditorCard extends HTMLElement {
       switch (message.method) {
         case 'GET': data = await this._readDashboard(); break;
         case 'POST': data = await this._writeDashboard(message.payload); break;
+        case 'LOOK_GET':
+          if (message.payload !== undefined) throw new Error('The appearance request takes no input.');
+          data = this._readLook(this._lookConfig);
+          break;
         case 'CAMERA_GET': data = await RoomcraftEditorCard.readStartupView(this._hass, this.dashboardPath); break;
         case 'CAMERA_SET': data = await RoomcraftEditorCard.writeStartupView(this._hass, this.dashboardPath, message.payload); break;
         case 'TRACK_GET': {
@@ -672,7 +690,7 @@ class RoomcraftEditorCard extends HTMLElement {
       imageUrl,
       hotspots: editableHotspots(card.elements, card.roomcraft_scene),
       entityOptions,
-      storybookPreview: customElements.get('roomcraft-storybook-card')?.preview?.(config, this._hass?.states),
+      storybookPreview: this._readLook(config),
       source: this.dashboardPath === HOME_DASHBOARD
         ? `${location.origin}/${HOME_DASHBOARD}/home` : `${location.origin}/${DASHBOARD}/${PLAN_VIEW}`,
       revision,
@@ -680,8 +698,15 @@ class RoomcraftEditorCard extends HTMLElement {
   }
 
   async _readDashboard() {
+    const generation = this._lookGeneration;
     const config = await this._getConfig();
+    if (generation === this._lookGeneration) this._lookConfig = config;
     return this._result(config, this._recordRevision(config));
+  }
+
+  _readLook(config) {
+    if (!config) return null;
+    return customElements.get('roomcraft-storybook-card')?.preview?.(config, this._hass?.states, Date.now()) ?? null;
   }
 
   async _uploadPng(bytes) {
@@ -707,6 +732,7 @@ class RoomcraftEditorCard extends HTMLElement {
     if (JSON.stringify(payload).length > MAX_JSON_BYTES) throw new Error('The layout transfer is too large.');
     const project = validateProject(payload.project);
     const bytes = decodePng(payload.pngDataUrl);
+    const generation = this._lookGeneration;
     this._writeBusy = true;
     try {
       const expected = this._revisions.get(payload.revision);
@@ -726,6 +752,10 @@ class RoomcraftEditorCard extends HTMLElement {
       const verified = await this._getConfig();
       if (stableStringify(verified) !== stableStringify(publication)) {
         throw new Error('Dashboard save could not be verified. Reload before trying again.');
+      }
+      if (generation === this._lookGeneration) {
+        this._lookConfig = verified;
+        this._lookGeneration++;
       }
       this._revisions.clear();
       return this._result(verified, this._recordRevision(verified));

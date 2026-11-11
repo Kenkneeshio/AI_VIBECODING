@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {sceneFeatureEnabled, sceneWind} from './storybook-scene-settings.mjs';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import polygonClipping from 'polygon-clipping';
 import { makeStorybookFurniture } from './storybook-furniture.mjs';
@@ -891,6 +892,7 @@ function trackedFloor(plan, floors) {
 
 export function createStorybookScene(canvas, layout) {
   const plan = compileStorybookPlan(layout);
+  const sceneSettings = layout.sceneSettings;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'low-power' });
   // Studio reuses its canvas after edits. Clear blending and depth state from the previous renderer.
   renderer.resetState();
@@ -926,7 +928,9 @@ export function createStorybookScene(canvas, layout) {
   buildWalls(batch, plan);
   buildFences(batch, plan.fences);
   batch.finish();
+  const firstTreeMesh = scene.children.length;
   treeBatch.finish();
+  const treeMeshes = scene.children.slice(firstTreeMesh);
   const structureMeshes = scene.children.filter(node => node.isMesh);
   const lighting = createStorybookLighting(renderer, scene, plan.bounds);
   lighting.markStructure();
@@ -935,7 +939,6 @@ export function createStorybookScene(canvas, layout) {
   const boats = createStorybookBoats(water);
   const beachPlay = createStorybookBeachPlay(water, street);
   scene.add(ocean.mesh, sidewalk.root, boats.root, beachPlay.root);
-  let oceanEnvironment = {};
   const updatePrecipitation = buildPrecipitation(scene, plan, street.sceneryMinZ);
   const footprint = plan.floorStructure.footprint;
   const floors = createFloorSupport(footprint);
@@ -993,7 +996,6 @@ export function createStorybookScene(canvas, layout) {
       if (Number.isFinite(max.y)) cameraBounds.maxY = Math.max(cameraBounds.maxY ?? 92, max.y);
     }
   }
-  const ambientObjects = [...roots.values()].filter(object => object.ambientMotion);
   const position = new THREE.Vector3();
   let disposed = false;
   let currentWidth = 0;
@@ -1080,26 +1082,37 @@ export function createStorybookScene(canvas, layout) {
   function updateWaterfront(timeSeconds, environment, transientTelemetry = false) {
     const options = {reduceMotion: environment.reduceMotion === true, night: environment.night === true,
       condition: environment.condition, transientTelemetry};
-    sidewalk.update(timeSeconds, options);
-    boats.update(timeSeconds, options);
-    beachPlay.update(timeSeconds, options);
-    treeWind.update(timeSeconds, environment);
-    ocean.update(timeSeconds, environment);
+    sidewalk.root.visible = transientTelemetry || sceneFeatureEnabled(sceneSettings, 'sidewalk');
+    boats.root.visible = transientTelemetry || sceneFeatureEnabled(sceneSettings, 'boats');
+    beachPlay.root.visible = transientTelemetry || sceneFeatureEnabled(sceneSettings, 'beachPlay');
+    if (sidewalk.root.visible) sidewalk.update(timeSeconds, options);
+    if (boats.root.visible) boats.update(timeSeconds, options);
+    if (beachPlay.root.visible) beachPlay.update(timeSeconds, options);
+    const showTrees = transientTelemetry || sceneFeatureEnabled(sceneSettings, 'trees');
+    for (const mesh of treeMeshes) mesh.visible = showTrees;
+    if (showTrees) treeWind.update(timeSeconds, environment);
+    ocean.update(timeSeconds, transientTelemetry || sceneFeatureEnabled(sceneSettings, 'reflections')
+      ? environment : {...environment, reflections: false});
   }
   function render(timeSeconds = 0, statesById = {}, environment = {},
     {animateTelemetry = true, showTelemetryPosition = true, draftPositions, transientTelemetry = false} = {}) {
     if (disposed || currentWidth < 1 || currentHeight < 1) return;
+    if (!transientTelemetry) environment = sceneWind(environment, sceneSettings);
     const reduceMotion = environment.reduceMotion === true;
     const time = !reduceMotion && Number.isFinite(timeSeconds) ? timeSeconds : 0;
     const telemetryTime = animateTelemetry ? time : 0;
-    if (!traffic && environment.traffic) {
+    const showTraffic = transientTelemetry || sceneFeatureEnabled(sceneSettings, 'traffic');
+    if (showTraffic && !traffic && environment.traffic) {
       traffic = createStorybookTraffic(road);
       scene.add(traffic.root);
     }
-    traffic?.update(timeSeconds, environment.traffic, {reduceMotion, night: environment.night === true,
-      transientTelemetry});
-    updatePrecipitation(telemetryTime, environment);
-    oceanEnvironment = environment;
+    if (traffic) {
+      traffic.root.visible = showTraffic;
+      if (showTraffic) traffic.update(timeSeconds, environment.traffic, {reduceMotion,
+        night: environment.night === true, transientTelemetry});
+    }
+    updatePrecipitation(telemetryTime, transientTelemetry || sceneFeatureEnabled(sceneSettings, 'precipitation')
+      ? environment : {});
     updateWaterfront(timeSeconds, environment, transientTelemetry);
     const placementChanged = lastDraftPositions !== draftPositions;
     if (placementChanged) {
@@ -1142,13 +1155,6 @@ export function createStorybookScene(canvas, layout) {
       }
       demoPeople?.setTracks(tracks, timeSeconds, options);
     } else livePeople.setTracks(tracks, timeSeconds, options);
-  }
-  function renderAmbient(timeSeconds) {
-    if (disposed || currentWidth < 1 || currentHeight < 1) return;
-    updateWaterfront(timeSeconds, oceanEnvironment);
-    for (const object of ambientObjects) object.animate(defaultState, timeSeconds);
-    livePeople.render(timeSeconds);
-    draw();
   }
   function anchor(itemId) {
     const entry = anchors.get(itemId);
@@ -1194,7 +1200,7 @@ export function createStorybookScene(canvas, layout) {
   const exteriorClearance = () => projectExteriorClearance(plan, camera, currentWidth, currentHeight);
   return {
     resize, render, anchor, setView, getView, getDemoFocus, projectToPlan, pickGarage, exteriorClearance, dispose,
-    hasAmbientMotion: true, renderAmbient, setPeople, setDetectionZones: coverage.setZones,
+    hasAmbientMotion: true, setPeople, setDetectionZones: coverage.setZones,
     canPlacePerson: (x, y) => Number.isFinite(floorForPerson(x, y)) && walkable.clearance(x, y) > 0,
     get hasPeopleMotion() { return people?.hasMotion ?? false; },
   };

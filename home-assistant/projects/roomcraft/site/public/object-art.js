@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const assetUrl = window.RoomcraftAssetUrl || (path => path);
-  const supported=new Set(['sofa','table','chair','bed','desk','armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','lamp','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce','thermostat','presenceSwitch','humidifier','airPurifier','windowFan','garageDoor','floorPlant','artwork','mirror','window']);
+  const supported=new Set(['sofa','table','chair','diningTable','diningChair','bed','desk','armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','lamp','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce','thermostat','presenceSwitch','humidifier','airPurifier','windowFan','garageDoor','floorPlant','artwork','mirror','window']);
   // These cells face the same near-top-down camera as the supplied plan.
   // Front-facing atlas pieces use the perspective-aware canvas art below.
   const atlas=new Image();
@@ -432,6 +432,29 @@
     }
     return true;
   }
+  function drawSeparateDining(c,o,t,p){
+    const {w,h}=o;
+    if(t.form==='diningChair'){
+      const palette=o.type==='diningChair'?{...p,base:'#58637b',accent:'#737e95',dark:'#4e4051'}:p;
+      chairTop(c,0,0,w,h,0,palette);
+      return true;
+    }
+    if(t.form==='roundDiningTable'){
+      oval(c,3,7,w*.5,h*.5,'rgba(47,39,31,.18)');
+      oval(c,0,4,w*.492,h*.49,p.dark);
+      oval(c,0,1.4,w*.5,h*.5,p.base);
+      oval(c,0,0,w*.5,h*.5,topGradient(c,-w/2,-h/2,w,h,p),p.dark,1.4);
+      c.save();c.beginPath();c.ellipse(0,0,w*.48,h*.48,0,0,Math.PI*2);c.clip();
+      clippedTexture(c,-w/2,-h/2,w,h,0,'wood');c.restore();
+      return true;
+    }
+    const classic=t.form==='diningTable';
+    const corner=Math.min(t.form==='petalDiningTable'?14:8,w*.16,h*.22);
+    woodPanel(c,-w/2,-h/2,w,h,corner,p,6);
+    const runnerW=w*(classic ? .69/.79 : .55/.79),runnerH=h*(classic ? .14/.57 : .15/.56);
+    rr(c,-runnerW/2,-runnerH/2,runnerW,runnerH,Math.min(2,runnerH*.2),p.detail,p.accent,.7);
+    return true;
+  }
   function drawDesk(c,o,t,p){
     const w=o.w,h=o.h,x=-w/2,y=-h/2,f=t.form;
     if(f==='cornerDesk'){
@@ -503,6 +526,7 @@
     if(['moonBed','cribBed','toddlerBed','platformBed','upholsteredBed','storageBed','canopyBed','daybed','bunkBed'].includes(t.form))return drawBed(c,o,t,p);
     if(['cloudSofa','tailoredSofa','tailoredLoveseat','chaiseSofa'].includes(t.form))return drawSofa(c,o,t,p);
     if(['petalDining','roundDining','rectDining'].includes(t.form))return drawDining(c,o,t,p);
+    if(['diningTable','petalDiningTable','roundDiningTable','rectDiningTable','diningChair'].includes(t.form))return drawSeparateDining(c,o,t,p);
     if(['sproutDesk','cornerDesk','secretaryDesk'].includes(t.form))return drawDesk(c,o,t,p);
     return drawCaseFurniture(c,o,t,p);
   }
@@ -1176,7 +1200,7 @@
     // recoloring and detailed PNG export without baked floor pixels.
     if(o.type==='floorPlant'&&drawAtlas(c,o))return true;
     const craftedForms={
-      sofa:'cloudSofa',table:'petalDining',chair:'deskChair',bed:'moonBed',desk:'cornerDesk',
+      sofa:'cloudSofa',table:'petalDining',chair:'deskChair',diningTable:'diningTable',diningChair:'diningChair',bed:'moonBed',desk:'cornerDesk',
       armchair:'acornChair',coffeeTable:'lilyCoffee',sideTable:'bubbleSide',dresser:'honeyDresser',
       nightstand:'starNightstand',bookcase:'storyBookcase',stool:'craftedStool',lamp:'budLamp',
       tableLamp:'budLamp',floorLamp:'cloudFloorLamp',ceilingLight:'bloomCeiling',

@@ -1,5 +1,7 @@
 # Roomcraft engineering handoff
 
+The dining conversion is reference revision 10 in the Studio migration registry and uses `RoomcraftModels.splitDiningFurniture`. The 2D and 3D model tests cover physical tabletop and seat footprints, finish variants, and independent editing. The `scene-settings.js` engine module validates optional authored display options. `storybook-studio-look.mjs` drives the preview dialog and polls `LOOK_GET` through the same-origin authenticated Studio bridge. The private Site uses the appearance snapshot from its dashboard import.
+
 **Read this first when taking over Roomcraft work.** The linked guides hold the detailed contracts and history.
 
 The [Codex and Grok development guide](ai-pair-development.md) covers scoped local access, task ownership, and review handoffs.

@@ -46,6 +46,14 @@ Open **Menu → Manage → Object models** in Roomcraft Home or **Main menu → 
 
 Select a placed object and open **Dimensions** in the Inspector. Enter width and depth in plan pixels. **Keep width/depth ratio** applies to numeric edits and corner drags. Enter **Height in 3D** where available, or leave it blank for the model's natural height. **Reset dimensions** restores the catalog footprint and natural height.
 
+Use **Center X**, **Center Y**, and **Rotation** for precise placement. The dining table and chairs are separate objects. Select a chair to move, resize, rotate, or delete it independently. Choose a dining table or dining chair from **Object models → Add objects** to add more.
+
+### Match Home or preview an appearance
+
+Open **Main menu → Scene settings** in Studio or **Menu → Manage → Scene settings** in Home. The visual layer switches and the bottom dock position are saved with the layout. Select **Export to dashboard** to apply them to Home.
+
+**Match dashboard** shows the same weather, lighting, and device appearance in Home Assistant Studio. The private web editor uses the last available dashboard import. Choose **Preview weather** to test any condition, day, dusk or night, a moon phase, and wind speed or direction. **Animate preview** affects the current Studio tab. Camera frames in Studio are edit handles. Home uses the camera settings and displays the authenticated feed or latest event.
+
 Search **Fish Aquarium** or **Lizard Terrarium** to place the animated tanks. They animate in 3D and use a still illustration in the 2D plan, and the 3D animation respects the device's reduced-motion setting.
 
 ## Track presence on the 3D plan

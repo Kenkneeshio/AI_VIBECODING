@@ -236,6 +236,40 @@ function chair(p, x, z, w, d, direction, tint, low = false) {
   p.box(xBack, seat + 9, zBack, sideSeat ? d * .20 : w * .84, 22, sideSeat ? d * .82 : d * .22, tint, 4);
 }
 
+function diningChair(p, w, d, tint) {
+  const back = -d * .39;
+  feet(p, 0, 0, w, d, 20, color.walnut);
+  p.box(0, 20, 0, w * .90, 6, d * .92, color.walnut, 2);
+  p.box(0, 24, 0, w * .83, 6, d * .83, tint, 2.5);
+  for (const side of [-1, 1]) {
+    p.box(w * .34 * side, 23, back, w * .075, 18, d * .12, color.walnut, 1.1);
+  }
+  p.box(0, 37, back, w * .84, 22, d * .22, tint, 4);
+  return 59;
+}
+
+// Independent tables use the physical top as their footprint. Composite
+// imports still use the historic full dining-set dimensions.
+function diningTop(p, w, d, tint, form) {
+  if (form === 'round') {
+    p.disc(0, 0, 0, w * (.13 / .58), 5, d * (.13 / .58), color.walnut);
+    p.disc(0, 4, 0, w * (.045 / .58), 31, d * (.045 / .58), color.walnut, 1.5);
+    p.disc(0, 33, 0, w / 2, 8, d / 2, tint, .96);
+    return 41;
+  }
+  if (form === 'classic') {
+    feet(p, 0, 0, w * (.69 / .79), d * (.49 / .57), 35);
+    p.box(0, 32, 0, w * (.72 / .79), 6, d * (.50 / .57), color.walnut, 3);
+    p.box(0, 37, 0, w, 8, d, tint, 4);
+    p.box(0, 45, 0, w * (.69 / .79), 1.4, d * (.14 / .57), color.linen, .6);
+    return 46.4;
+  }
+  feet(p, 0, 0, w * (.69 / .79), d * (.47 / .56), 34);
+  p.box(0, 33, 0, w, 8, d, tint, 3);
+  p.box(0, 41.1, 0, w * (.55 / .79), 1.2, d * (.15 / .56), color.linen, .5);
+  return 42.3;
+}
+
 function table(p, w, d, tint, type) {
   const round = type.includes('round-dining');
   const rectangular = type.includes('rectangular-dining');
@@ -245,20 +279,14 @@ function table(p, w, d, tint, type) {
     chair(p, 0, d * .39, w * .20, d * .23, Math.PI, color.denim);
     chair(p, -w * .415, 0, w * .17, d * .27, Math.PI / 2, color.denim);
     chair(p, w * .415, 0, w * .17, d * .27, -Math.PI / 2, color.denim);
-    feet(p, 0, 0, w * .69, d * .49, 35);
-    p.box(0, 32, 0, w * .72, 6, d * .50, color.walnut, 3);
-    p.box(0, 37, 0, w * .79, 8, d * .57, color.oak, 4);
-    p.box(0, 45, 0, w * .69, 1.4, d * .14, color.linen, .6);
-    return 46.4;
+    return diningTop(p, w * .79, d * .57, color.oak, 'classic');
   }
   if (round) {
     chair(p, 0, -d * .37, w * .20, d * .20, 0, color.sage);
     chair(p, 0, d * .37, w * .20, d * .20, Math.PI, color.blush);
     chair(p, -w * .38, 0, w * .20, d * .20, Math.PI / 2, color.lilac);
     chair(p, w * .38, 0, w * .20, d * .20, -Math.PI / 2, color.honey);
-    p.disc(0, 0, 0, w * .13, 5, d * .13, color.walnut);
-    p.disc(0, 4, 0, w * .045, 31, d * .045, color.walnut, 1.5);
-    p.disc(0, 33, 0, w * .29, 8, d * .29, tint, .96);
+    diningTop(p, w * .58, d * .58, tint, 'round');
   } else {
     const positions = four ? [-.28, .28] : [-.32, 0, .32];
     const swatches = [color.sage, color.blush, color.lilac, color.honey];
@@ -268,9 +296,7 @@ function table(p, w, d, tint, type) {
           side < 0 ? 0 : Math.PI, swatches[(i + (side < 0 ? 0 : 2)) % swatches.length]);
       }
     }
-    feet(p, 0, 0, w * .69, d * .47, 34);
-    p.box(0, 33, 0, w * .79, 8, d * .56, tint, 3);
-    p.box(0, 41.1, 0, w * .55, 1.2, d * .15, color.linen, .5);
+    diningTop(p, w * .79, d * .56, tint, 'styled');
   }
   return 42;
 }
@@ -589,6 +615,11 @@ export function makeStorybookFurniture(item) {
     top = 85;
   } else if (type === 'table' || type.includes('dining-set')) {
     top = table(p, w, d, tint || color.oakLight, type);
+  } else if (type === 'diningTable' || /^living-(?:petal|round|rectangular)-dining-table-/.test(type)) {
+    const form = type === 'diningTable' ? 'classic' : type.includes('round-dining') ? 'round' : 'styled';
+    top = diningTop(p, w, d, tint || (form === 'classic' ? color.oak : color.oakLight), form);
+  } else if (type === 'diningChair' || type.startsWith('living-dining-chair-')) {
+    top = diningChair(p, w, d, tint || color.denim);
   } else if (type === 'desk' || type.includes('-desk-')) {
     top = desk(p, w, d, tint || color.oakLight, type === 'desk' || type.includes('corner-desk'));
   } else if (type === 'chair' || type === 'stool' || type.includes('desk-chair')) {

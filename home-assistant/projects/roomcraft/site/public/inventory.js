@@ -60,6 +60,7 @@
         ...(options.sizeLabel?{sizeLabel:options.sizeLabel}:{}),
         ...(options.material?{material:options.material}:{}),
         ...(options.seriesId?{finishId:color,finishLabel:swatch[0]}:{}),
+        ...(options.legacy?{legacy:true}:{}),
         ...(options.atlas&&index===0?{atlas:options.atlas}:{}),
         ...(options.mount?{mount:options.mount}:{}),
         ...(options.visualKind?{visualKind:options.visualKind}:{}),
@@ -167,9 +168,13 @@
   add('living','cuteFurniture','tailoredSofa','tailored-sofa','Tailored three-seat sofa',170,88,['sage','cream','charcoal'],{...variant('sofa','tailored','Tailored sofa','three-seat','3 seat','upholstery'),tags:`${craftedTags} sofa couch three seat stitched upholstery`});
   add('living','cuteFurniture','tailoredLoveseat','tailored-loveseat','Tailored loveseat',126,86,['blush','sage'],{...variant('sofa','tailored','Tailored sofa','loveseat','Loveseat','upholstery'),tags:`${craftedTags} sofa couch loveseat two seat stitched upholstery`});
   add('living','cuteFurniture','chaiseSofa','upholstered-chaise','Upholstered chaise',88,148,['cream','lavender'],{...variant('sofa','chaise','Chaise lounge','chaise','Chaise','upholstery'),tags:`${craftedTags} sofa chaise lounge stitched upholstery`});
-  add('living','cuteFurniture','petalDining','petal-dining-set','Oval four-seat dining set',168,112,['oak','cream'],{...variant('dining','oval','Oval dining','four-seat','4 seat','wood'),tags:`${craftedTags} dining table four chairs upholstered beveled wood`});
-  add('living','cuteFurniture','roundDining','round-dining-set','Round four-seat dining set',142,142,['oak','walnut'],{...variant('dining','round','Round dining','four-seat','4 seat','wood'),tags:`${craftedTags} dining table four chairs round pedestal wood`});
-  add('living','cuteFurniture','rectDining','rectangular-dining-set','Rectangular six-seat dining set',205,122,['oak','white'],{...variant('dining','rectangular','Rectangular dining','six-seat','6 seat','wood'),tags:`${craftedTags} dining table six chairs rectangular wood`});
+  add('living','cuteFurniture','petalDining','petal-dining-set','Oval four-seat dining set',168,112,['oak','cream'],{...variant('dining','oval','Oval dining','four-seat','4 seat','wood'),legacy:true,tags:`${craftedTags} dining table four chairs upholstered beveled wood`});
+  add('living','cuteFurniture','roundDining','round-dining-set','Round four-seat dining set',142,142,['oak','walnut'],{...variant('dining','round','Round dining','four-seat','4 seat','wood'),legacy:true,tags:`${craftedTags} dining table four chairs round pedestal wood`});
+  add('living','cuteFurniture','rectDining','rectangular-dining-set','Rectangular six-seat dining set',205,122,['oak','white'],{...variant('dining','rectangular','Rectangular dining','six-seat','6 seat','wood'),legacy:true,tags:`${craftedTags} dining table six chairs rectangular wood`});
+  add('living','cuteFurniture','petalDiningTable','petal-dining-table','Petal dining table',132.72,62.72,['oak','cream'],{...variant('dining-table','oval','Rounded dining table','four-seat','4 seats fit','wood'),tags:`${craftedTags} dining table beveled wood tabletop`});
+  add('living','cuteFurniture','roundDiningTable','round-dining-table','Round pedestal dining table',82.36,82.36,['oak','walnut'],{...variant('dining-table','round','Round pedestal','four-seat','4 seats fit','wood'),tags:`${craftedTags} dining table round pedestal wood tabletop`});
+  add('living','cuteFurniture','rectDiningTable','rectangular-dining-table','Rectangular dining table',161.95,68.32,['oak','white'],{...variant('dining-table','rectangular','Rectangular dining table','six-seat','6 seats fit','wood'),tags:`${craftedTags} dining table rectangular wood tabletop`});
+  add('living','cuteFurniture','diningChair','dining-chair','Upholstered dining chair',34,26,['sage','blush','lavender','butter'],{...variant('dining-chair','upholstered','Upholstered chair','standard','Standard','upholstery'),tags:`${craftedTags} dining chair seat upholstered wood`});
   add('living','cuteFurniture','acornChair','acorn-armchair','Piped reading armchair',88,88,['teddy','sage','blush'],{...variant('armchair','piped','Piped armchair','standard','Standard','upholstery'),tags:`${craftedTags} armchair reading seat upholstered piping`});
   add('living','cuteFurniture','lilyCoffee','lily-coffee-table','Beveled oval coffee table',110,70,['oak','white'],{...variant('coffee-table','oval','Oval top','standard','Standard','wood'),tags:`${craftedTags} coffee table beveled wood joinery`});
   add('living','cuteFurniture','bubbleSide','bubble-side-table','Stone-top side table',58,58,['mint','butter'],{...variant('side-table','stone','Stone top','standard','Standard','stone'),tags:`${craftedTags} round side table stone pedestal`});

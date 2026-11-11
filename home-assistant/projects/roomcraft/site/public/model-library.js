@@ -3,7 +3,9 @@
   'use strict';
   const base = [
     { type: 'sofa', label: 'L sofa', icon: '🛋', w: 165, h: 238, group: 'living' },
-    { type: 'table', label: 'Dining table', icon: '▰', w: 165, h: 108, group: 'living' },
+    { type: 'table', label: 'Legacy dining set', icon: '▰', w: 165, h: 108, group: 'living', legacy: true },
+    { type: 'diningTable', label: 'Dining table', icon: '▰', w: 136, h: 62, group: 'living' },
+    { type: 'diningChair', label: 'Dining chair', icon: '◒', w: 34, h: 26, group: 'living' },
     { type: 'chair', label: 'Chair', icon: '◒', w: 48, h: 48, group: 'living' },
     { type: 'armchair', label: 'Armchair', icon: '▣', w: 86, h: 88, group: 'living' },
     { type: 'coffeeTable', label: 'Coffee table', icon: '⬭', w: 105, h: 66, group: 'living' },
@@ -66,6 +68,85 @@
   const domain = id => key(id).split('.')[0];
   const isEntityId = id => typeof id === 'string' && /^[a-z_]+\.[a-z0-9_]+$/.test(id);
   const shape = model => model.type === 'window' ? 'wall' : model.mount || 'floor';
+  const isDiningTable = item => item?.type === 'diningTable' ||
+    /^living-(?:petal|round|rectangular)-dining-table-/.test(item?.type);
+  const isDiningChair = item => item?.type === 'diningChair' || /^living-dining-chair-/.test(item?.type);
+  const isIndependentSeat = item => isDiningChair(item) || ['chair', 'armchair', 'stool'].includes(item?.type) ||
+    /-(?:desk-chair|acorn-armchair|floor-chair)-/.test(item?.type);
+  const roundedPlanNumber = value => Number(value.toFixed(6));
+  const normalizedAngle = angle => (angle % 360 + 360) % 360;
+
+  function diningRecipe(item) {
+    const classic = item.type === 'table';
+    const variant = /^living-(petal|round|rectangular)-dining-set-/.exec(item.type);
+    if (!classic && !variant) return;
+    const style = variant?.[1];
+    const tableType = classic ? 'diningTable' : item.type.replace('-dining-set-', '-dining-table-');
+    const chairType = finish => classic ? 'diningChair' : `living-dining-chair-${finish}`;
+    const {w, h} = item;
+    if (classic || style === 'round') {
+      const [along, across, width, depth, sideDepth] = classic
+        ? [.39, .415, .20, .23, .27] : [.37, .38, .20, .20, .20];
+      return {
+        tableType, w: (classic ? .79 : .58) * w, h: (classic ? .57 : .58) * h,
+        tableHeight: classic ? 46.4 : 41,
+        chairs: [
+          [0, -h * along, w * width, h * depth, 0, chairType('sage')],
+          [w * across, 0, h * sideDepth, w * (classic ? .17 : width), 90, chairType('butter')],
+          [0, h * along, w * width, h * depth, 180, chairType('blush')],
+          [-w * across, 0, h * sideDepth, w * (classic ? .17 : width), 270, chairType('lavender')],
+        ],
+      };
+    }
+    const six = style === 'rectangular';
+    const seats = six ? [-.32, 0, .32] : [-.28, .28];
+    const finishes = [['sage', 'blush', 'lavender'], ['lavender', 'butter', 'sage']];
+    return {
+      tableType, w: .79 * w, h: .56 * h, tableHeight: 42.3,
+      chairs: [-1, 1].flatMap((side, row) => seats.map((fraction, column) =>
+        [w * fraction, h * .37 * side, w * (six ? .15 : .19), h * .23, row * 180, chairType(finishes[row][column])])),
+    };
+  }
+
+  /** Convert legacy composites into authored items without changing the table's identity. */
+  function splitDiningFurniture(project) {
+    if (!Array.isArray(project?.items)) return project;
+    const usedIds = new Set(project.items.map(item => item.id));
+    const existingSeats = project.items.filter(isIndependentSeat);
+    let changed = false;
+    const items = project.items.flatMap(item => {
+      const recipe = diningRecipe(item);
+      if (!recipe || ![item.x, item.y, item.w, item.h, item.rotation].every(Number.isFinite) || item.w <= 0 || item.h <= 0) {
+        return [item];
+      }
+      changed = true;
+      const rotation = item.rotation * Math.PI / 180;
+      const cosine = Math.cos(rotation);
+      const sine = Math.sin(rotation);
+      const modelHeight = Number.isFinite(item.modelHeight) ? item.modelHeight : undefined;
+      const table = {...item, type: recipe.tableType, w: roundedPlanNumber(recipe.w), h: roundedPlanNumber(recipe.h),
+        ...(modelHeight === undefined ? {} : {modelHeight: Math.max(6, roundedPlanNumber(modelHeight * recipe.tableHeight / 59))})};
+      const chairs = recipe.chairs.flatMap(([dx, dy, w, h, angle, type], index) => {
+        const x = roundedPlanNumber(item.x + dx * cosine - dy * sine);
+        const y = roundedPlanNumber(item.y + dx * sine + dy * cosine);
+        const tolerance = Math.max(8, Math.min(w, h) * .52);
+        if (existingSeats.some(seat => Math.hypot(seat.x - x, seat.y - y) <= tolerance)) return [];
+        const base = `${item.id}-chair-${index + 1}`;
+        let id = base;
+        let suffix = 2;
+        while (usedIds.has(id)) id = `${base}-${suffix++}`;
+        usedIds.add(id);
+        const chair = {id, type, name: `Dining chair ${index + 1}`, x, y,
+          w: roundedPlanNumber(w), h: roundedPlanNumber(h), rotation: normalizedAngle(item.rotation + angle), entityId: '',
+          ...(modelHeight === undefined ? {} : {modelHeight}),
+          ...(Number.isFinite(item.zIndex) ? {zIndex: item.zIndex} : {})};
+        existingSeats.push(chair);
+        return [chair];
+      });
+      return [...chairs, table];
+    });
+    return changed ? {...project, items} : project;
+  }
 
   function catalog() {
     return {
@@ -76,6 +157,7 @@
 
   function canReplace(item, previous, model) {
     if (!item || !previous || !model || item.type === model.type) return false;
+    if (model.legacy) return false;
     if (lockedTypes.has(item.type) || isInterface(item.type) || lockedTypes.has(model.type) || isInterface(model.type)) return false;
     if (shape(previous) !== shape(model)) return false;
     if (item.entityId && !canMap(item.entityId, model)) return false;
@@ -83,7 +165,7 @@
   }
 
   function canMap(id, model) {
-    if (!isEntityId(id) || typeof model?.type !== 'string' || isInterface(model.type) || model.type === 'stairs' || model.type === 'window') return false;
+    if (!isEntityId(id) || typeof model?.type !== 'string' || model.legacy || isInterface(model.type) || model.type === 'stairs' || model.type === 'window') return false;
     if (model.type === 'cameraThumbnail') return domain(id) === 'camera';
     if (model.type === 'garageDoor') return domain(id) === 'cover';
     return domain(id) !== 'camera';
@@ -141,7 +223,7 @@
 
   function placementRole(item) {
     const type = item?.type ?? '';
-    if (SUPPORT_TYPES.has(type) || SURFACE_VARIANT.test(type)) return 'surface';
+    if (isDiningTable(item) || SUPPORT_TYPES.has(type) || SURFACE_VARIANT.test(type)) return 'surface';
     if (TABLETOP_TYPES.has(type) || item?.lightForm === 'bud_lamp' || type.startsWith('lighting-bud-table-lamp-')) return 'tabletop';
     return 'floor';
   }
@@ -153,6 +235,7 @@
 
   function footprintShape(item, surfaceOnly = false) {
     const {type, w, h} = item;
+    if (isDiningTable(item)) return [[0, 0, w, h]];
     if (type === 'desk' || type.startsWith('bedroom-corner-desk-')) {
       return [[0, -.33 * h, w, .34 * h], [-.41 * w, .17 * h, .18 * w, .66 * h],
         [.41 * w, .17 * h, .18 * w, .66 * h]];
@@ -200,7 +283,7 @@
   }
 
   function solidBoxes(item) {
-    if (placementRole(item) !== 'floor' || FLOOR_SOLIDS.has(item.type) || SOLID_VARIANT.test(item.type)) {
+    if (isDiningChair(item) || placementRole(item) !== 'floor' || FLOOR_SOLIDS.has(item.type) || SOLID_VARIANT.test(item.type)) {
       return orientedBoxes(item, false);
     }
     return [];
@@ -213,6 +296,32 @@
       span(first, axis) + span(second, axis) - Math.abs(project(first.x - second.x, first.y - second.y, axis))));
   }
 
+  function diningChairTucks(chair, table) {
+    const [seat] = orientedBoxes(chair, false);
+    const [top] = orientedBoxes(table, true);
+    if (!seat || !top || overlapDepth(seat, top) <= 0) return false;
+    const delta = [seat.x - top.x, seat.y - top.y];
+    const x = project(...delta, top.u) / top.width;
+    const y = project(...delta, top.v) / top.height;
+    const round = table.type.startsWith('living-round-dining-');
+    let facing;
+    if (round) {
+      if (Math.hypot(x, y) < 1) return false;
+      facing = -project(...delta, seat.v) / Math.hypot(...delta);
+    } else {
+      const outsideX = Math.abs(x) >= 1;
+      const outsideY = Math.abs(y) >= 1;
+      if (outsideX === outsideY) return false;
+      facing = -Math.sign(outsideX ? x : y) * project(...seat.v, outsideX ? top.u : top.v);
+    }
+    if (facing < .80) return false;
+    const classic = table.type === 'diningTable';
+    const tabletopHeight = classic ? 46.4 : round ? 41 : 42.3;
+    const underside = (table.modelHeight ?? tabletopHeight) * (classic ? 32 : 33) / tabletopHeight;
+    const seatHeight = (chair.modelHeight ?? 59) * 30 / 59;
+    return seatHeight < underside;
+  }
+
   function penetration(item, neighbor, boxes, neighborBoxes) {
     let deepest = 0;
     for (const box of boxes) for (const other of neighborBoxes) deepest = Math.max(deepest, overlapDepth(box, other));
@@ -221,6 +330,8 @@
     const neighborRole = placementRole(neighbor);
     if (itemRole === 'tabletop' && neighborRole === 'surface' && onSurface(item, neighbor)
         || itemRole === 'surface' && neighborRole === 'tabletop' && onSurface(neighbor, item)) return 0;
+    if (isDiningChair(item) && isDiningTable(neighbor) && diningChairTucks(item, neighbor)
+        || isDiningTable(item) && isDiningChair(neighbor) && diningChairTucks(neighbor, item)) return 0;
     return deepest;
   }
 
@@ -245,17 +356,23 @@
 
   function orderMountedObjects(items) {
     const surfaces = items.filter(item => placementRole(item) === 'surface');
+    const tables = surfaces.filter(isDiningTable);
     const mounted = new Set();
     const children = new Map();
+    const tucked = new Map();
     for (const item of items) {
-      if (placementRole(item) !== 'tabletop') continue;
-      const support = surfaces.find(candidate => onSurface(item, candidate));
+      const chair = isDiningChair(item);
+      if (!chair && placementRole(item) !== 'tabletop') continue;
+      const support = chair ? tables.find(candidate => diningChairTucks(item, candidate))
+        : surfaces.find(candidate => onSurface(item, candidate));
       if (!support) continue;
       mounted.add(item.id);
-      if (!children.has(support.id)) children.set(support.id, []);
-      children.get(support.id).push(item);
+      const order = chair ? tucked : children;
+      if (!order.has(support.id)) order.set(support.id, []);
+      order.get(support.id).push(item);
     }
-    return mounted.size ? items.flatMap(item => mounted.has(item.id) ? [] : [item, ...(children.get(item.id) ?? [])]) : items;
+    return mounted.size ? items.flatMap(item => mounted.has(item.id) ? [] :
+      [...(tucked.get(item.id) ?? []), item, ...(children.get(item.id) ?? [])]) : items;
   }
 
   function mount(container, read, apply) {
@@ -370,7 +487,7 @@
             : action('Choose model', () => choose({entity}))]]);
         }
       } else {
-        let models = templates;
+        let models = templates.filter(template => !template.legacy);
         if (target?.item) models = templates.filter(model => canReplace(target.item, byType.get(target.item.type), model));
         if (target?.entity) {
           const choices = suggestions(target.entity, templates);
@@ -417,5 +534,5 @@
   }
 
   root.RoomcraftModels = Object.freeze({catalog, canMap, canReplace, suggestions, supportsHeight, resizeFootprint,
-    placementRole, blockingPlacement, orderMountedObjects, mount, handoffKey});
+    splitDiningFurniture, placementRole, blockingPlacement, orderMountedObjects, mount, handoffKey});
 })(typeof window === 'undefined' ? globalThis : window);

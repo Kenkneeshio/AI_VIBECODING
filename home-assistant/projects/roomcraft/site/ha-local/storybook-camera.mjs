@@ -60,6 +60,16 @@ export function resolveDefaultCameraView(saved) {
   return normalizeCameraView({...readSavedFreeView(saved), preset: 'default'});
 }
 
+/** Preserve the authored frame proportions within the view's touch and space limits. */
+export function storybookCameraTileSize(item, viewWidth) {
+  const scale = Math.max(.40, viewWidth / 1536 * .68);
+  const clamp = THREE.MathUtils.clamp;
+  return {
+    w: Math.round(clamp((item?.w || 170) * scale, 58, 216)),
+    h: Math.round(clamp((item?.h || 110) * scale, 44, 152)),
+  };
+}
+
 /** Browser-only Studio uses local storage. Embedded Studio delegates to its signed-in HA parent. */
 export function studioCameraPreferences(host) {
   const bridge = host.RoomcraftDashboardBridge;

@@ -1,5 +1,12 @@
 # Changelog
 
+## Editable dining furniture and matching Studio previews
+
+- The dining table and its chairs are independent pieces in 2D and 3D. Legacy sets convert to a tabletop and four or six chairs while preserving the table’s center, rotation, finish and identity.
+- Use exact center coordinates and rotation in the Inspector. Camera frame dimensions now affect the size of camera tiles in Home.
+- **Scene settings** controls sky, rain and snow, wind, ocean reflections, trees, road traffic, walkers and cyclists, boats, beach play, and the Home dock position. Studio can match the connected dashboard or preview its own weather, time of day, moon phase and wind.
+- Roomcraft Home recovers automatically when the browser restores a lost WebGL context.
+
 ## Beach play and slower traffic
 
 - Beachgoers play with a ball and build a sandcastle. Taller palms, evergreens and broadleaf trees give the shore and yard distinct silhouettes.

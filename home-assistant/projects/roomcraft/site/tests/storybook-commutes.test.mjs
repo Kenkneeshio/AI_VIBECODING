@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {combineCommuteReadings, commuteReading, commuteSpeed, googleDirectionsUrl, readStorybookCommutes,
-  saveCommuteRoutes, validateCommuteEdits} from '../ha-local/storybook-commutes.mjs';
+  readStorybookVehicleStyle, saveCommuteRoutes, validateCommuteEdits} from '../ha-local/storybook-commutes.mjs';
+import {STORYBOOK_VEHICLES} from '../ha-local/storybook-vehicles.mjs';
+
+test('Home and Studio can read the same saved vehicle style and ignore retired choices', () => {
+  const host = choice => ({localStorage: {getItem: () => choice}});
+  const {id} = STORYBOOK_VEHICLES[0];
+  assert.equal(readStorybookVehicleStyle(host(id)), id);
+  assert.equal(readStorybookVehicleStyle(host('retired')), '');
+  assert.equal(readStorybookVehicleStyle({}), '');
+});
 
 test('Grok speed fixtures preserve free-flow, delay, capped speed and invalid input', () => {
   for (const [baseline, live, speed] of [[60, 60, 1], [60, 120, .5], [60, 30, 1], [null, null, null],

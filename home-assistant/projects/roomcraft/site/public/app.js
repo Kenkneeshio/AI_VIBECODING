@@ -3,6 +3,7 @@
 
   const Engine = window.RoomcraftEngine;
   if (!Engine) throw new Error('RoomcraftEngine must load before app.js');
+  const SceneSettings = window.RoomcraftSceneSettings;
   const clone = Engine.clone;
   const projectFingerprint = value => Engine.canonicalStringify(value);
   let idAllocator = null;
@@ -66,6 +67,7 @@
   const wallFinishById = Object.fromEntries(wallFinishes.map(f => [f.id, f]));
   const Models = window.RoomcraftModels;
   const {templates, paletteGroups} = Models.catalog();
+  const paletteTemplates = templates.filter(template => !template.legacy);
   const templateByType = Object.fromEntries(templates.map(t => [t.type, t]));
 
   const point = (x, y) => ({ x, y });
@@ -123,7 +125,7 @@
     ],
     hotspots: DEFAULT_HOTSPOTS
   };
-  Object.assign(STARTER, window.RoomcraftReferenceGeometry.repair(STARTER));
+  Object.assign(STARTER, Models.splitDiningFurniture(window.RoomcraftReferenceGeometry.repair(STARTER)));
   // These fixtures are drawn by the editor. They do not exist in the supplied
   // PNG, so they stay separate from STARTER's image-backed furniture.
   const DEFAULT_ROOM_FIXTURES = [
@@ -246,7 +248,8 @@
     }},
     {id:'reference-v7-source-geometry',from:6,to:7,apply:window.RoomcraftReferenceGeometry.repair},
     {id:'reference-v8-editable-structure',from:7,to:8,apply:window.RoomcraftReferenceGeometry.unlockStructure},
-    {id:'reference-v9-ledge-railings',from:8,to:9,apply:window.RoomcraftReferenceGeometry.closeReferenceRailings}
+    {id:'reference-v9-ledge-railings',from:8,to:9,apply:window.RoomcraftReferenceGeometry.closeReferenceRailings},
+    {id:'reference-v10-independent-dining-furniture',from:9,to:10,apply:Models.splitDiningFurniture}
   ];
 
   let hasLocalDraft = false;
@@ -261,6 +264,7 @@
   }
   function validProject(p) {
     return p && Array.isArray(p.rooms) && Array.isArray(p.walls) && Array.isArray(p.items)
+      && SceneSettings.valid(p.sceneSettings)
       && p.rooms.every(r => typeof r.id === 'string' && !!surfaceById[r.surface] &&
         (r.outdoor === undefined || typeof r.outdoor === 'boolean') &&
         Array.isArray(r.points) && r.points.length >= 3 && r.points.every(q => Number.isFinite(q.x) && Number.isFinite(q.y)))
@@ -286,7 +290,7 @@
   }
   function normalizeProject(p){
     let next=Engine.normalizeScene(p);
-    next=clone(Engine.migrations.run(next,REFERENCE_MIGRATIONS,9,{versionKey:'editableReferenceVersion'}).project);
+    next=clone(Engine.migrations.run(next,REFERENCE_MIGRATIONS,10,{versionKey:'editableReferenceVersion'}).project);
     if(!Array.isArray(next.hotspots))next.hotspots=clone(DEFAULT_HOTSPOTS);
     for(const o of next.items)clampLinkedItem(o);
     next.version=2;
@@ -829,11 +833,13 @@
     setStatus(`Selected ${segmentLabel(segment)} · drag the segment or a handle`);
     return true;
   }
-  function movedItem(current, x, y) {
+  function movedItem(current, x, y, snapToPixel = true) {
     const wallMounted = current.type === 'window' || templateByType[current.type]?.mount === 'wall';
     const mount = wallMounted ? nearestWallPlacement({x, y}) : null;
     if (wallMounted && !mount) return;
-    const next = {...current, x: Math.round(mount?.x ?? x), y: Math.round(mount?.y ?? y),
+    const nextX = mount?.x ?? x;
+    const nextY = mount?.y ?? y;
+    const next = {...current, x: snapToPixel ? Math.round(nextX) : nextX, y: snapToPixel ? Math.round(nextY) : nextY,
       rotation: mount?.rotation ?? current.rotation};
     if (next.type === 'cameraThumbnail') {
       next.x = Math.max(0, Math.min(W, next.x));
@@ -969,15 +975,15 @@
   function htmlEscape(s){return String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
   function renderCategoryOptions(){
     const select=document.getElementById('objectCategory');
-    select.innerHTML=`<option value="all">All categories · ${templates.length}</option>`+
-      paletteGroups.map(([group,title])=>`<option value="${htmlEscape(group)}">${htmlEscape(title)} · ${templates.filter(t=>t.group===group).length}</option>`).join('');
+    select.innerHTML=`<option value="all">All categories · ${paletteTemplates.length}</option>`+
+      paletteGroups.map(([group,title])=>`<option value="${htmlEscape(group)}">${htmlEscape(title)} · ${paletteTemplates.filter(t=>t.group===group).length}</option>`).join('');
     select.value='baby-toys';
   }
   let paletteObserver=null;
   function renderPalette(){
     const query=(document.getElementById('objectSearch')?.value||'').trim().toLowerCase();
     const category=document.getElementById('objectCategory')?.value||'baby-toys';
-    const visible=templates.filter(t=>{
+    const visible=paletteTemplates.filter(t=>{
       const title=paletteGroups.find(([id])=>id===t.group)?.[1]||'';
       return query?`${t.label} ${title} ${t.tags||''} ${t.form||''}`.toLowerCase().includes(query):category==='all'||t.group===category;
     });
@@ -988,11 +994,11 @@
     const scrollTop=scroller.scrollTop,scrollLeft=strip.scrollLeft;
     if(paletteObserver){paletteObserver.disconnect();paletteObserver=null;}
     root.innerHTML=paletteGroups.map(([group,title])=>{
-      const entries=templates.filter(t=>t.group===group&&visibleTypes.has(t.type));
+      const entries=paletteTemplates.filter(t=>t.group===group&&visibleTypes.has(t.type));
       if(!entries.length)return '';
       return `<div class="catalog-group"><div class="palette-group-label">${htmlEscape(title)} <small>${entries.length}</small></div><div class="palette-grid">${entries.map(t=>`<button type="button" class="palette-item ${pendingTemplate===t.type?'placing':''}" data-template="${t.type}" title="Place ${htmlEscape(t.label)}"><span class="palette-icon"><canvas class="palette-preview" data-preview="${t.type}" width="200" height="108" aria-hidden="true"></canvas></span><span>${htmlEscape(t.label)}</span></button>`).join('')}</div></div>`;
     }).join('')||'<p class="help-copy">No objects match that search.</p>';
-    document.getElementById('inventoryCount').textContent=`Showing ${visible.length} of ${templates.length} objects${query?' · searching all categories':''}`;
+    document.getElementById('inventoryCount').textContent=`Showing ${visible.length} of ${paletteTemplates.length} objects${query?' · searching all categories':''}`;
     scroller.scrollTop=scrollTop;strip.scrollLeft=scrollLeft;
     const canvases=[...root.querySelectorAll('.palette-preview')];
     if('IntersectionObserver' in window){
@@ -1049,7 +1055,7 @@
   function updateRecoveryButton(){const b=document.getElementById('recoverDraftButton');if(b)b.hidden=!readPreviousDraft();const back=document.getElementById('returnPreRecoveryButton');if(back)back.hidden=!readPreRecoveryLayout();}
   function recoverPreviousDraft(){const previous=readPreviousDraft();if(!previous){showToast('No previous browser draft found');return;}if(!readPreRecoveryLayout()){try{localStorage.setItem(BEFORE_RECOVERY_KEY,projectFingerprint(project));}catch(_){showToast('Could not save current layout; export JSON first');return;}}snapshot();project=normalizeProject(clone(previous));selected=null;clearPlacement();afterChange('Recovered previous browser draft',{authoritative:true});showToast('Previous draft restored; pre-recovery layout saved');}
   function returnPreRecoveryLayout(){const before=readPreRecoveryLayout();if(!before){showToast('No pre-recovery layout found');return;}snapshot();project=normalizeProject(clone(before));selected=null;clearPlacement();localStorage.removeItem(BEFORE_RECOVERY_KEY);afterChange('Returned to pre-recovery layout',{authoritative:true});showToast('Pre-recovery layout restored');}
-  function field(label,key,value,type='text'){return `<div class="field"><label for="prop-${key}">${label}</label><input id="prop-${key}" data-prop="${key}" type="${type}" value="${htmlEscape(value)}" ${type==='number'?(['w','h','modelHeight'].includes(key)?'step="any"':'step="1"'):''}></div>`;}
+  function field(label,key,value,type='text'){return `<div class="field"><label for="prop-${key}">${label}</label><input id="prop-${key}" data-prop="${key}" type="${type}" value="${htmlEscape(value)}" ${type==='number'?(['w','h','modelHeight','x','y','rotation'].includes(key)?'step="any"':'step="1"'):''}></div>`;}
   function hotspotField(label,key,value,type='text'){return `<div class="field"><label for="hotspot-${key}">${label}</label><input id="hotspot-${key}" data-hotspot-prop="${key}" type="${type}" value="${htmlEscape(value)}" ${type==='number'?'step="0.01" min="0" max="100"':''}></div>`;}
   function variantField(t,type){
     if(!t.artFamily)return '';
@@ -1170,6 +1176,7 @@
         return;
       }
       if (item.modelHeight === height) return;
+      if (!checkPlacement({...item, modelHeight: height}, item)) {renderInspector();return;}
       snapshot();
       if (height === undefined) delete item.modelHeight;
       else item.modelHeight = height;
@@ -1189,12 +1196,33 @@
     const current = project.items.find(entry => entry.id === selected.id);
     const template = current && templateByType[current.type];
     if (!template || current.w === template.w && current.h === template.h && current.modelHeight === undefined) return;
-    if (!checkPlacement({...current, w:template.w, h:template.h}, current)) return;
+    if (!checkPlacement({...current, w:template.w, h:template.h, modelHeight:undefined}, current)) return;
     snapshot();
     current.w = template.w;
     current.h = template.h;
     delete current.modelHeight;
     afterChange('Restored model dimensions');
+  }
+
+  function updateObjectPose(item, key, value) {
+    const parsed = window.RoomcraftObjectControls.poseUpdate(key, value);
+    if (!parsed) {
+      showToast('Enter a finite center coordinate or rotation.');
+      renderInspector();
+      return;
+    }
+    const candidate = key === 'rotation' ? {...item, rotation: parsed.value}
+      : movedItem(item, key === 'x' ? parsed.value : item.x, key === 'y' ? parsed.value : item.y, false);
+    if (!candidate) {
+      showToast('Place this object near a wall to keep it attached.');
+      renderInspector();
+      return;
+    }
+    if (!checkPlacement(candidate, item)) {renderInspector();return;}
+    if (['x','y','rotation'].every(axis => item[axis] === candidate[axis])) {renderInspector();return;}
+    snapshot();
+    Object.assign(item, candidate);
+    afterChange(key === 'rotation' ? 'Rotated object' : 'Updated object center');
   }
 
   function updateProperty(key,value){
@@ -1206,6 +1234,10 @@
     if(!target)return;
     if(selected.kind==='item' && ['w','h','modelHeight'].includes(key)){
       updateObjectDimensions(target,key,value);
+      return;
+    }
+    if(selected.kind==='item' && ['x','y','rotation'].includes(key)){
+      updateObjectPose(target,key,value);
       return;
     }
     if(selected.kind==='wall'){updateStructureProperty(target,key,value);return;}
@@ -1272,9 +1304,6 @@
       if(bound&&key==='y')v=Math.max(0,Math.min(H,v));
     }
     if(target[key]===v)return;
-    if(selected.kind==='item'&&['x','y','rotation'].includes(key)&&!checkPlacement({...target,[key]:v},target)){
-      renderInspector();return;
-    }
     snapshot();target[key]=v;
     if(selected.kind==='item')clampLinkedItem(target);
     afterChange(`Updated ${key}`);
@@ -1294,7 +1323,7 @@
 
   function beginModelPlacement(type, entityId = '') {
     const template = Object.hasOwn(templateByType,type) && templateByType[type];
-    if (!template || entityId && !Models.canMap(entityId, template)) return false;
+    if (!template || template.legacy || entityId && !Models.canMap(entityId, template)) return false;
     setViewMode('design');
     setTool('select');
     pendingTemplate = type;
@@ -1406,9 +1435,7 @@
     if(selected?.kind!=='item')return;
     const current=project.items.find(item=>item.id===selected.id);
     if(!current)return;
-    const rotation=(current.rotation+90)%360;
-    if(!checkPlacement({...current,rotation},current))return;
-    snapshot();current.rotation=rotation;afterChange('Rotated object');
+    updateObjectPose(current,'rotation',current.rotation+90);
   }
   function addRoom(){snapshot();const r=room(uid('r'),'New room','terrazzo',[[570,420],[790,420],[790,580],[570,580]],[580,440]);project.rooms.push(r);setTool('room');select('room',r.id);setPanel('rooms');afterChange('Added editable room');showToast('Drag the corner handles to reshape your room');}
   function missingReferenceItems(){const present=new Set(project.items.map(i=>i.id));return COMPLETE_REFERENCE_ITEMS.filter(i=>!present.has(i.id));}
@@ -1690,6 +1717,15 @@
   window.RoomcraftEditorViewport = Object.freeze({
     getProject: () => clone(project),
     getPreview: () => dashboardPreview,
+    setSceneSetting(key, value) {
+      const next = SceneSettings.withFeature(project.sceneSettings, key, value);
+      if (next === project.sceneSettings) return false;
+      snapshot();
+      if (next) project.sceneSettings = next;
+      else delete project.sceneSettings;
+      afterChange('Updated scene settings');
+      return true;
+    },
     setPersonPreview(people) {
       if (!people.length && !personPreview.length) return;
       personPreview = people;

@@ -1,5 +1,11 @@
 # Decision log
 
+## Make the dining set editable and share appearance between Home and Studio
+
+Convert composite dining furniture in reference revision 10. Derive chair positions and separate footprints from the legacy rendered geometry and retain the table ID and authored transform. Allow chairs to tuck under their matching tables within the shared placement rules. The reference illustration informs relative proportions. Physical distances require a measured plan or known dimensions.
+
+Use one 3D renderer and sky treatment for Home and Studio. The authenticated editor refreshes a small read-only appearance preview from the published dashboard and current Home Assistant state. The editor settings and transport boundaries keep simulated weather and live telemetry out of the authored layout. Persist only visual layer choices and the bottom dock alignment as optional layout fields.
+
 ## Show changing coastal weather in the narrated tour
 
 Give household visitors 45 seconds to see what the live dashboard reads and how it looks across weather and time of day. Sample the tour's conditions, wind, moon phases, narration and camera from one elapsed clock. Keep example state in the renderer and stop speech when the tour stops. Captions carry the same explanation if audio is muted or unavailable.

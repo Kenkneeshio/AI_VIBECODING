@@ -150,12 +150,29 @@ test('Studio receives matching lighting and only attributes used by the miniatur
     'camera.example_map': {last_updated: '2025-01-01T12:00:00Z', attributes: {vacuum_position: {x: 10, y: 20}}},
   };
   const preview = storybookPreview(config, snapshot);
-  assert.deepEqual(preview.environment, storybookFrame(model, snapshot).environment);
+  assert.deepEqual(preview.environment, {...storybookFrame(model, snapshot).environment, traffic: {severity:'ambient'}});
   assert.deepEqual(preview.states.hub, {entityId: 'switch.example_lamp', state: 'on',
     active: true, presence: 'unavailable', attributes: {brightness: 185, rgb_color: [210, 160, 90]}});
   assert.equal(preview.states.camera, undefined);
   assert.equal(preview.states.robot.position, undefined);
   assert.equal(storybookPreview({}, snapshot), null);
+});
+
+test('Studio traffic averages fresh calibrated routes and omits route metadata', () => {
+  const time = Date.parse('2026-06-10T10:00:00Z');
+  const routeConfig = {...config, roomcraft_commutes: {version: 1, routes: [
+    {name:'Route one', entity:'sensor.route_one', destination:'Fixture private place', baselineMinutes:20},
+    {name:'Route two', entity:'sensor.route_two', baselineMinutes:24},
+  ]}};
+  const snapshot = {
+    'sensor.route_one': {state:'40', last_updated:new Date(time).toISOString(), attributes:{unit_of_measurement:'min'}},
+    'sensor.route_two': {state:'30', last_updated:new Date(time).toISOString(), attributes:{unit_of_measurement:'min'}},
+  };
+  const preview = storybookPreview(routeConfig, snapshot, time);
+  assert.deepEqual(preview.environment.traffic, {severity:'slow', speedFactor:.65});
+  const serialized = JSON.stringify(preview);
+  assert.doesNotMatch(serialized, /route_one|route_two|Fixture private place|baselineMinutes/);
+  assert.deepEqual(storybookPreview(routeConfig, snapshot, time + 21 * 60000).environment.traffic, {severity:'ambient'});
 });
 
 test('co-located fan and light stay individually tappable inside a tablet viewport', () => {

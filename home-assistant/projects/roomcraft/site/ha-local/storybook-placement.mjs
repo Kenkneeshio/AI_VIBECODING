@@ -50,8 +50,8 @@ function solidFoot(root) {
 function surfaceBand(item, object) {
   const {type} = item;
   if (type === 'desk' || type.includes('-desk-')) return [43.65, 44.4];
-  if (type === 'table') return [44.65, 46.45];
-  if (type.includes('dining-set')) return [40.65, 42.35];
+  if (type === 'table' || type === 'diningTable') return [44.65, 46.45];
+  if (type.includes('dining-set') || type.includes('dining-table-')) return [40.65, 42.35];
   if (/coffeeTable|sideTable|coffee-table|side-table|low-play-table/.test(type)) return [32.65, 33.35];
   return [object.anchorY - .35, object.anchorY + .35];
 }

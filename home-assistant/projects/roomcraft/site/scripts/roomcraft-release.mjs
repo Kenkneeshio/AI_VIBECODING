@@ -20,7 +20,8 @@ const REQUIRED_ENGINE_GLOBALS = Object.freeze([
   'RoomcraftRenderContract',
   'RoomcraftEngine',
   'RoomcraftWallJoins',
-  'RoomcraftReferenceGeometry'
+  'RoomcraftReferenceGeometry',
+  'RoomcraftSceneSettings'
 ]);
 export const REQUIRED_ENGINE_SOURCES = Object.freeze([
   'engine/deterministic-core.js',
@@ -28,7 +29,8 @@ export const REQUIRED_ENGINE_SOURCES = Object.freeze([
   'engine/render-contract.js',
   'engine/verification-harness.js',
   'engine/wall-joins.js',
-  'engine/reference-geometry.js'
+  'engine/reference-geometry.js',
+  'engine/scene-settings.js'
 ]);
 const ALLOWED_RUNTIME_EXTENSIONS = new Set([
   '.css', '.html', '.js', '.json', '.md', '.mjs', '.mp3', '.mts', '.png', '.ps1', '.py', '.sh', '.svg', '.ts', '.tsx'
@@ -96,6 +98,8 @@ function runtimeCandidates(siteRoot = SITE_ROOT, projectRoot = PROJECT_ROOT) {
     join(siteRoot, 'ha-local', 'storybook-demo-frame.mjs'),
     join(siteRoot, 'ha-local', 'storybook-snapshots.mjs'),
     join(siteRoot, 'ha-local', 'storybook-state.mjs'),
+    join(siteRoot, 'ha-local', 'storybook-scene-settings.mjs'),
+    join(siteRoot, 'ha-local', 'storybook-studio-look.mjs'),
     join(siteRoot, 'ha-local', 'storybook-weather.mjs'),
     join(siteRoot, 'ha-local', 'storybook-coastal-sky.mjs'),
     join(siteRoot, 'ha-local', 'storybook-ocean.mjs'),

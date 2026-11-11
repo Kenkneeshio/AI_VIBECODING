@@ -7,6 +7,23 @@
   "properties": {
     "version": { "const": 2 },
     "editableReferenceVersion": { "type": "integer", "minimum": 0 },
+    "sceneSettings": {
+      "type": "object",
+      "description": "Optional visual layers shared by Home and Studio. Omitted values are enabled.",
+      "properties": {
+        "sky": { "type": "boolean" },
+        "precipitation": { "type": "boolean" },
+        "wind": { "type": "boolean" },
+        "reflections": { "type": "boolean" },
+        "trees": { "type": "boolean" },
+        "traffic": { "type": "boolean" },
+        "sidewalk": { "type": "boolean" },
+        "boats": { "type": "boolean" },
+        "beachPlay": { "type": "boolean" },
+        "dockAlignment": { "enum": ["left", "center", "right"] }
+      },
+      "additionalProperties": false
+    },
     "rooms": {
       "type": "array",
       "items": { "$ref": "#/$defs/room" },

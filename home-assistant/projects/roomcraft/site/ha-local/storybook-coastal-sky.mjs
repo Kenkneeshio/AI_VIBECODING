@@ -117,6 +117,7 @@ export const COASTAL_SKY_STYLE = `
   .coastal-sky[data-sky=day] {
     --coastal-top:#5b9bc2; --coastal-mid:#a0c8dc; --coastal-low:#d1e1e6;
   }
+  .coastal-sky[hidden] {display:none}
   .coastal-sky[data-sky=night] {
     --coastal-top:#142843; --coastal-mid:#293e5b; --coastal-low:#526980;
     --coastal-seam:#839aab; --coastal-cloud-top:#a2b2cb; --coastal-cloud-bottom:#4a5f7e;

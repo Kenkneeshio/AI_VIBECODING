@@ -357,12 +357,20 @@
       + '<p class="field-hint" id="presence-zone-hint">Enter the switch’s configured bounds to preview its detection zone. The nominal radar outline estimates coverage, which can vary with the installation.</p></div>';
   }
 
+  function poseUpdate(key, value) {
+    if (!['x', 'y', 'rotation'].includes(key) ||
+        (typeof value !== 'string' && typeof value !== 'number') || String(value).trim() === '') return null;
+    const number = Number(value);
+    if (!Number.isFinite(number)) return null;
+    return {value: key === 'rotation' ? (number % 360 + 360) % 360 : number};
+  }
+
   function renderInspector(item, template, field, variantField, escape, entityOptions = [], dimensions = {}) {
     const camera = item.type === 'cameraThumbnail';
     const zone = item.type === 'controlZone';
     const appearance = '<div class="inspector-block"><p class="inspector-label">APPEARANCE & POSITION</p>'
       + field('Name', 'name', item.name) + variantField(template, item.type)
-      + '<div class="field-grid">' + field('X position', 'x', item.x, 'number') + field('Y position', 'y', item.y, 'number') + '</div>'
+      + '<div class="field-grid">' + field('Center X', 'x', item.x, 'number') + field('Center Y', 'y', item.y, 'number') + '</div>'
       + field('Rotation (degrees)', 'rotation', item.rotation, 'number')
       + '<p class="field-hint">' + (zone
         ? 'This outline appears only while editing. Drag it over the artwork, then resize its corners to set the tappable area.'
@@ -438,6 +446,6 @@
   window.RoomcraftObjectControls = {
     isBindingKey: key => bindingKeys.has(key),
     validBinding, propertyUpdate, presenceCalibration, effectiveTapAction, effectiveHoldAction,
-    normalizeEntityOptions, manualDashboardElements, manualYaml, renderInspector, visualKind
+    normalizeEntityOptions, manualDashboardElements, manualYaml, poseUpdate, renderInspector, visualKind
   };
 })();

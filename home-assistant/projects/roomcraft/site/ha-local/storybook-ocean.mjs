@@ -181,7 +181,7 @@ export function createStorybookOcean({y, farZ, shoreline, focusX}) {
 
   function update(timeSeconds, environment = {}) {
     const {night, daylightKnown, condition, moonPhase, sunElevation, sunRising,
-      sunAzimuth, moonAzimuth, moonElevation, skyProgress, windSpeed, windBearing, reduceMotion} = environment;
+      sunAzimuth, moonAzimuth, moonElevation, skyProgress, windSpeed, windBearing, reduceMotion, reflections = true} = environment;
     const overcast = OVERCAST.has(condition);
     const altitude = Number.isFinite(sunElevation) ? sunElevation : night ? -19 : 42;
     const sunlight = smoothstep(altitude, -8, 17);
@@ -206,8 +206,8 @@ export function createStorybookOcean({y, farZ, shoreline, focusX}) {
     uniforms.reflectedWind.value = Math.sin(time * .09) * direction * breeze * 24;
     const choppy = raining || condition === 'windy' || condition === 'windy-variant';
     uniforms.roughness.value = 1 + Math.max(choppy ? .65 : 0, breeze * .65);
-    uniforms.cloudCover.value = overcast ? 0.94 : condition === 'partlycloudy' ? 0.64 : night ? 0.32 : 0.24;
-    uniforms.bodyVisibility.value = overcast ? 0 : moonVisible ? 0.93 : sunVisible ? 0.97 : 0;
+    uniforms.cloudCover.value = !reflections ? 0 : overcast ? 0.94 : condition === 'partlycloudy' ? 0.64 : night ? 0.32 : 0.24;
+    uniforms.bodyVisibility.value = !reflections || overcast ? 0 : moonVisible ? 0.93 : sunVisible ? 0.97 : 0;
     uniforms.moon.value = moonVisible ? 1 : 0;
     const progress = Number.isFinite(skyProgress) ? clamp(skyProgress, 0, 1) : undefined;
     const arc = progress === undefined ? undefined : THREE.MathUtils.lerp(-145, 145, progress);

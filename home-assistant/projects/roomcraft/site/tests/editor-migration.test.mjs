@@ -7,7 +7,7 @@ import { compileStorybookPlan } from '../ha-local/storybook-scene.mjs';
 
 const source = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
 const controlsSource = readFileSync(new URL('../public/object-controls.js', import.meta.url), 'utf8');
-const wallSources = ['wall-joins.js', 'reference-geometry.js'].map(name =>
+const wallSources = ['wall-joins.js', 'reference-geometry.js', 'scene-settings.js'].map(name =>
   readFileSync(new URL(`../public/engine/${name}`, import.meta.url), 'utf8'));
 const storageKey = 'roomcraft.second-floor.v2';
 const crop = { x: 0, y: 80, width: 1536, height: 864 };
@@ -230,10 +230,66 @@ function upperDeckLayout() {
 const migrateInStudio = layout => JSON.parse(JSON.stringify(
   boot(layout).window.RoomcraftEditorViewport.getProject()));
 
+test('Studio migrates the dining group and lets a chair move, resize, delete, and reload independently', () => {
+  const table = {id:'dining', type:'table', name:'Original dining table', x:460,y:650,w:172,h:108,rotation:0};
+  const source = {version:2,editableReferenceVersion:9,rooms:[],walls:[],items:[table],hotspots:[]};
+  const editor = boot(source);
+  const bridge = editor.window.RoomcraftEditorViewport;
+  const initial = JSON.parse(JSON.stringify(bridge.getProject()));
+  assert.equal(initial.editableReferenceVersion, 10);
+  const migratedTable = initial.items.find(item => item.id === table.id);
+  assert.equal(migratedTable.type, 'diningTable');
+  assert.equal(initial.items.filter(item => item.type === 'diningChair').length, 4);
+  assert.deepEqual(migrateInStudio(initial), initial);
+  const chair = initial.items.find(item => item.type === 'diningChair');
+  assert.ok(bridge.moveItem(chair.id, 355, 574));
+  bridge.selectItem(chair.id);
+  editor.dispatch('inspectorContent','change',{target:{closest:selector => selector === '[data-prop]'
+    ? {dataset:{prop:'w'},value:'39.75'} : null}});
+  assert.equal(editor.read().items.find(item => item.id === chair.id).w, 39.75);
+  assert.deepEqual(editor.read().items.find(item => item.id === table.id), migratedTable);
+  editor.dispatch('inspectorContent','click',{target:{closest:selector => selector === '[data-action]'
+    ? {dataset:{action:'delete'}} : null}});
+  assert.equal(editor.read().items.some(item => item.id === chair.id), false);
+  const reopened = boot(editor.read());
+  assert.equal(reopened.read().items.filter(item => item.type === 'diningChair').length, 3);
+  assert.equal(reopened.window.RoomcraftEditorViewport.applyModelCommand({kind:'place',modelId:'table'}), false);
+  assert.equal(reopened.window.RoomcraftEditorViewport.applyModelCommand({kind:'place',modelId:'diningChair'}), true);
+  assert.equal(reopened.window.RoomcraftEditorViewport.placeAt(620, 625), true);
+  assert.equal(reopened.read().items.filter(item => item.type === 'diningChair').length, 4);
+});
+
+test('numeric object pose fields reject blank and blocked edits and journal exact coordinates', () => {
+  const chair = {id:'seat',type:'diningChair',name:'Chair',x:260,y:350,w:34,h:26,rotation:0};
+  const table = {id:'top',type:'diningTable',name:'Table',x:500,y:350,w:136,h:62,rotation:0};
+  const editor = boot({version:2,editableReferenceVersion:10,rooms:[],walls:[],items:[chair,table],hotspots:[]});
+  const bridge = editor.window.RoomcraftEditorViewport;
+  bridge.selectItem(chair.id);
+  const inspector = editor.elements.get('inspectorContent').innerHTML;
+  assert.match(inspector, /Center X/);
+  assert.match(inspector, /Center Y/);
+  assert.match(inspector, /Rotation \(degrees\)/);
+  const update = (prop, value) => editor.dispatch('inspectorContent','change',{target:{
+    closest:selector => selector === '[data-prop]' ? {dataset:{prop},value} : null}});
+  const pose = () => editor.read().items.find(item => item.id === chair.id);
+  update('x','');
+  update('y','Infinity');
+  update('x','500');
+  assert.equal(editor.window.RoomcraftEditorEngine.inspect().commandCount, 0);
+  assert.deepEqual(pose(), chair);
+  update('x','266.25');
+  update('y','351.5');
+  update('rotation','450.125');
+  assert.equal(editor.window.RoomcraftEditorEngine.inspect().commandCount, 3);
+  assert.deepEqual([pose().x,pose().y,pose().rotation], [266.25,351.5,90.125]);
+  editor.dispatch('undoButton', 'click', {});
+  assert.deepEqual([pose().x,pose().y,pose().rotation], [266.25,351.5,0]);
+});
+
 test('revision 9 adds editable matching rails at the upper ledges while keeping both entrances and the stair head open', () => {
   const before = upperDeckLayout();
   const migrated = migrateInStudio(before);
-  assert.equal(migrated.editableReferenceVersion, 9);
+  assert.equal(migrated.editableReferenceVersion, 10);
   assert.deepEqual(migrated.rooms, before.rooms);
   assert.deepEqual(migrated.items, before.items);
   assert.deepEqual(migrated.walls.slice(0,before.walls.length), before.walls);
@@ -278,7 +334,7 @@ test('reference geometry repair reorients only the original bed and keeps its bi
   const from = items => boot({version:2, editableReferenceVersion:6, rooms:[], walls:[], items, hotspots:[]})
     .window.RoomcraftEditorViewport.getProject();
   const repaired = from([bed]);
-  assert.equal(repaired.editableReferenceVersion, 9);
+  assert.equal(repaired.editableReferenceVersion, 10);
   assert.equal(repaired.items[0].rotation, 90);
   assert.equal(repaired.items[0].entityId, 'switch.example');
   const custom = from([{...bed, x:1300, rotation:15}]);
@@ -430,7 +486,7 @@ test('migrates a saved plan into movable lamp and room fixtures without duplicat
   editor.pointer('pointermove', 1393, 516);
   editor.pointer('pointerup', 1393, 516);
   const migrated = editor.read();
-  assert.equal(migrated.editableReferenceVersion, 9);
+  assert.equal(migrated.editableReferenceVersion, 10);
   assert.equal(migrated.items.filter(i => i.id === 'i14').length, 1);
   assert.equal(migrated.items.filter(i => i.id.startsWith('fixture-')).length, 7);
   assert.equal(migrated.items.find(i => i.id === 'office-desk-lamp')?.type, 'lamp');
@@ -463,7 +519,7 @@ test('remove all objects stays empty after reload and restore rebuilds the compl
   editor.dispatch('confirmationAccept', 'click', {});
   await removing;
   const empty = editor.read();
-  assert.equal(empty.editableReferenceVersion, 9);
+  assert.equal(empty.editableReferenceVersion, 10);
   assert.equal(empty.items.length, 0);
 
   const reopened = boot(empty);
@@ -486,7 +542,7 @@ test('v6 owns the final shell object and separates fan, fan light, and detached 
   ] };
   const editor=boot(v5);
   const migrated = editor.window.RoomcraftEditorViewport.getProject();
-  assert.equal(migrated.editableReferenceVersion, 9);
+  assert.equal(migrated.editableReferenceVersion, 10);
   assert.equal(migrated.items.filter(i => i.id === 'living-wall-unit').length, 1);
   assert.equal(migrated.items.find(i=>i.id==='fan').type,'fans-five-blade-fan-white');
   assert.deepEqual(

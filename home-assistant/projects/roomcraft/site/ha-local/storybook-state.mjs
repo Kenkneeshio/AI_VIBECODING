@@ -1,3 +1,5 @@
+import {combineCommuteReadings, commuteReading, readStorybookCommutes} from './storybook-commutes.mjs';
+
 const CONTROL = 'custom:roomcraft-object-control';
 const CAMERA = 'custom:roomcraft-camera-thumbnail';
 const MOTION_WEATHER = new Set(['pouring', 'rainy', 'lightning', 'lightning-rainy', 'snowy',
@@ -123,14 +125,14 @@ export function storybookFrame(model, snapshot = {}, now = 0) {
 }
 
 /** Render-only dashboard appearance for Studio. Send only attributes used by the miniature. */
-export function storybookPreview(config, snapshot) {
+export function storybookPreview(config, snapshot, now = 0) {
   let model;
   try {
     model = readStorybookConfig(config);
   } catch {
     return null;
   }
-  const frame = storybookFrame(model, snapshot);
+  const frame = storybookFrame(model, snapshot, now);
   const states = Object.create(null);
   for (const [id, state] of Object.entries(frame.states)) {
     const attributes = {};
@@ -143,7 +145,10 @@ export function storybookPreview(config, snapshot) {
     states[id] = {entityId: model.items.get(id).entityId, state: state.state,
       active: state.active, presence: state.presence, attributes};
   }
-  return {states, environment: frame.environment};
+  const routes = readStorybookCommutes(config.roomcraft_commutes);
+  const traffic = combineCommuteReadings(routes.map(route => commuteReading(route, snapshot, now))).profile
+    ?? {severity: 'ambient'};
+  return {states, environment: {...frame.environment, traffic}};
 }
 
 /**

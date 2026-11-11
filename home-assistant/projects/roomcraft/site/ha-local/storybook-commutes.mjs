@@ -8,6 +8,13 @@ const ALL_ROUTES = 'all';
 const DESTINATION_LIMIT = 200;
 const VEHICLE_STYLE_KEY = 'roomcraft.traffic-vehicle-style.v1';
 
+export function readStorybookVehicleStyle(host) {
+  try {
+    const value = host.localStorage.getItem(VEHICLE_STYLE_KEY);
+    return STORYBOOK_VEHICLES.some(({id}) => id === value) ? value : '';
+  } catch { return ''; }
+}
+
 export const COMMUTE_DIALOG_MARKUP = `
   <dialog class="link-dialog commute-dialog" aria-labelledby="commute-title">
     <header><h2 id="commute-title">Commute traffic</h2><button type="button" data-close-link>Close</button></header>
@@ -200,9 +207,7 @@ export function bindStorybookCommutes(card) {
 
   vehicles.replaceChildren(new Option('Mixed vehicles', ''),
     ...STORYBOOK_VEHICLES.map(({id, label}) => new Option(label, id)));
-  try { vehicles.value = window.localStorage.getItem(VEHICLE_STYLE_KEY) ?? ''; }
-  catch { /* Keep the mixed fleet if storage is unavailable. */ }
-  if (vehicles.selectedIndex < 0) vehicles.value = '';
+  vehicles.value = readStorybookVehicleStyle(window);
   vehicles.addEventListener('change', () => {
     try { window.localStorage.setItem(VEHICLE_STYLE_KEY, vehicles.value); }
     catch { /* The choice still applies to this session. */ }
