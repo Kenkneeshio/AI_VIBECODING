@@ -3,7 +3,7 @@ import test from 'node:test';
 import * as THREE from 'three';
 import {CAMERA_PRESETS, enterFreeView, fitStorybookCamera, normalizeCameraView, populateCameraOptions, readSavedFreeView, resolveDefaultCameraView, studioCameraPreferences} from '../ha-local/storybook-camera.mjs';
 import {bindFreeViewGestures} from '../ha-local/storybook-orbit.mjs';
-import {storybookStreetBounds} from '../ha-local/storybook-street.mjs';
+import {buildStorybookNeighborhood, storybookStreetBounds} from '../ha-local/storybook-street.mjs';
 
 const bounds = {minX: 20, maxX: 1510, minZ: 110, maxZ: 850};
 const topView = {preset: 'top', azimuth: 0, tilt: 0, zoom: 1};
@@ -142,21 +142,29 @@ test('an authored tall model extends the camera framing', () => {
   }
 });
 
-test('portrait and tablet framing include the street and park without cropping the house', () => {
+test('portrait and tablet framing include the HOA pool and mountain without cropping the house', () => {
   const scene = {bounds, houseBounds: {...bounds, minZ: 240}, editableStructure: true};
   const street = storybookStreetBounds(scene);
   assert.ok(street.parkMinZ < street.farZ && street.farZ < street.nearZ && street.nearZ < bounds.minZ);
   assert.equal(storybookStreetBounds({...scene, editableStructure: false}).nearZ, 76);
-  const frame = {...bounds, sceneryMinZ: street.parkMinZ};
-  for (const preset of ['top', 'dollhouse', 'corner']) {
+  const batch = {box() {}, ball() {}, add(geometry) { geometry.dispose(); }};
+  const {pool, mountainPeak} = buildStorybookNeighborhood(batch, street, -111, scene.houseBounds);
+  assert.ok(mountainPeak.z < pool.z - pool.depth / 2 && pool.z + pool.depth / 2 < street.farZ);
+  const frame = {...bounds, sceneryMinZ: street.parkMinZ, sceneryPeak: mountainPeak};
+  const steep = {preset: 'free', azimuth: 355, tilt: 64, zoom: 1};
+  for (const view of ['top', 'dollhouse', 'corner', steep]) {
     for (const [width, height] of [[1920, 900], [390, 680]]) {
       const camera = makeCamera();
-      fitStorybookCamera(camera, frame, width, height, preset);
+      fitStorybookCamera(camera, frame, width, height, view);
       for (const x of [bounds.minX, bounds.maxX]) {
         for (const [y, z] of [[-106, street.parkMinZ], [-106, street.farZ], [0, bounds.minZ], [56, bounds.maxZ]]) {
           const projected = new THREE.Vector3(x, y, z).project(camera);
-          assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1, `${preset} ${width}×${height}`);
+          assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1, `${view} ${width}×${height}`);
         }
+      }
+      for (const landmark of [mountainPeak, pool]) {
+        const projected = new THREE.Vector3(landmark.x, landmark.y, landmark.z).project(camera);
+        assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1);
       }
     }
   }

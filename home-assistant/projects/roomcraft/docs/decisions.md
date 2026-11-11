@@ -1,5 +1,11 @@
 # Decision log
 
+## Put the neighborhood and weather art in the 3D scene
+
+Place the small mountain, HOA pool and playground across the street in the shared 3D renderer. The camera projects the neighborhood with the house so the landmarks stay in place as the user rotates or zooms. Store the scenery in the renderer and keep the editable project and 2D export focused on the house and its controls.
+
+Draw the sun, moon and clouds in the pool's reflective surface. Use Home Assistant's daylight and weather state to choose the reflection and respect reduced motion in the operating system and Roomcraft.
+
 ## Add depth beyond the house and street
 
 Give the far side of the street its own low neighborhood buildings and a small landscaped park. Draw them as scenery in the shared 3D renderer, using the street as the placement reference. Keep this scenery outside the editable project, exported 2D image and device controls.

@@ -21,15 +21,15 @@ The [latest release record](../CHANGELOG.md) includes browser exports, live imag
 
 The retained picture projection keeps the authored bottom-right interface positions for manual and legacy exports. Keep the shared projection aligned in `object-controls.js`, `lib/dashboard-elements.ts`, and `ha-local/roomcraft-card.js`. Preserve owner-edited positions.
 
-## Home sky, bottom controls and street
+## Bottom controls and outdoor scenery
 
 `roomcraft-storybook.mjs` places Power, Weather and Menu in the bottom action row. Power reuses the electrical readings dialog and Weather opens native details for the configured Home Assistant weather entity. The menu groups camera presets and tools with map and management actions. More options stores Camera tiles and Reduce motion preferences in the browser.
 
-`storybook-sky-bar.mjs` renders the illustrative header from normalized weather presentation state. It uses mountain ridges, cloud layers and atmospheric shading to give the sun and moon depth. Optional `sunElevation` and `sunRising` guide sun placement and outdoor lighting near dawn and dusk. Without those attributes, the existing day or night state supplies the palette. A muted sky appears when weather is unavailable. The header respects the operating system's reduced-motion setting and the dashboard preference. The Weather button carries the accessible condition and temperature reading.
+`storybook-street.mjs` supplies the street, sidewalks and ground-level neighborhood scenery in Home and 3D Studio. The pool deck and playground sit in front of the small mountain. `storybook-camera.mjs` fits the mountain's summit and the ground at the far edge of the scenery. Keep the neighborhood scenery in the shared 3D renderer and use the authored layout for editing, 2D export and device targets.
 
-`storybook-street.mjs` supplies the street and two sidewalks for the shared 3D scene. Beyond the far sidewalk, a winding park path, trees and low buildings extend the ground-level scenery north. The camera fits the park. Smaller groves continue beyond it when the viewport has room. Treat these elements as outdoor scenery for Home and 3D Studio. Keep them outside the editable project, device target placement and 2D export.
+`storybook-pool-water.mjs` clips the weather-driven reflections and ripples to the pool surface. It uses daylight and moon phase, and cloud cover can obscure the sun or moon. The operating system's reduced-motion setting, the dashboard preference and the paused Studio weather preview hold the animation still. The bottom Weather button carries the accessible condition and temperature reading.
 
-Check the cloud layers and mountain horizon in daylight and at night. Check reduced motion, the bottom controls and the far-side scenery at tablet and phone widths. Reinstall the previous Home Assistant assets from `17218066907685ab4ff7255b0084f4b642cd2079` to roll back the scenery and sky update. Roll back the owner-private Site to v66 separately if its shared 3D scene also needs rollback. [Deployment and rollback](deployment.md)
+Check the pool reflection in daylight and at night. Check reduced motion, the bottom controls and the far-side scenery at tablet and phone widths. Reinstall the previous Home Assistant assets from `0de15c578e7e41024612d850038c3a244a3a72a4` to roll back the neighborhood and pool reflections. Roll back the owner-private Site to v67 separately if its shared 3D scene also needs rollback. [Deployment and rollback](deployment.md)
 
 ## Presence tracking and calibration
 

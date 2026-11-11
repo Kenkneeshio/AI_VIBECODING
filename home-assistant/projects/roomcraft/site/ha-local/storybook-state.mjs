@@ -54,9 +54,10 @@ export function storybookFrame(model, snapshot = {}, now = 0) {
   const weather = snapshot[model.weather.weather_entity];
   const sun = snapshot[model.weather.sun_entity || 'sun.sun'];
   const {elevation, rising} = sun?.attributes ?? {};
+  const daylightKnown = sun?.state === 'above_horizon' || sun?.state === 'below_horizon';
   const environment = {
-    night: sun?.state === 'below_horizon',
-    daylightKnown: sun?.state === 'above_horizon' || sun?.state === 'below_horizon',
+    night: daylightKnown ? sun.state === 'below_horizon' : weather?.state === 'clear-night',
+    daylightKnown,
     condition: weather?.state ?? 'unavailable',
     moonPhase: snapshot[model.weather.moon_entity]?.state ?? '',
     temperature: weather?.attributes?.temperature,

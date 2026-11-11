@@ -4,7 +4,7 @@ Roomcraft Studio edits the layout used by Roomcraft Home. Use the 3D view to arr
 
 ## Use the live dashboard
 
-Open **Roomcraft Home** in the Home Assistant sidebar for the live view. Cloud layers drift above the mountain horizon. The sky shows the sun by day and stars by night, with the moon when its phase is available. Home Assistant weather and daylight set the colors and cloud cover. When solar elevation and direction are available, the illustrated sun moves across the sky and the outdoor lighting softens near dawn and dusk. **Power** opens the electrical readings, **Weather** opens native Home Assistant weather details, and **Menu** holds the remaining controls. All three are along the bottom.
+Open **Roomcraft Home** in the Home Assistant sidebar for the live view. **Power** opens the electrical readings, **Weather** opens native Home Assistant weather details, and **Menu** holds the remaining controls. All three are along the bottom.
 
 Use **On the map** for Object details and Presence tracking, and **View controls** for view presets, rotation, zoom and default view settings. **Manage** opens Layout Studio and popups for Object models, Devices and sensors, Indoor air and System health when configured. The labels from **Object details** show each linked control's name and current state. The toggle is saved in the current browser.
 
@@ -54,7 +54,7 @@ The older 2D plan view is shown above. The left palette chooses objects, floor f
 
 The canvas is a top-down plan with lightly raised walls and furniture. The balcony and stair are outdoors at left. The stair begins at the lower-left landing and descends toward the top-left. The house, balcony, and lower-left stair landing are on the second floor. The detached garage sits on the first-floor ground plane. Choose **From west** to see the height difference clearly. Doorways between upstairs rooms remain on one floor level. Bedroom, study, baths, and living spaces have different finishes. The editor uses this image as a reference and separate illustrated assets to redraw edited geometry; an edited scene can differ from individual pixels in the reference PNG.
 
-In the 3D views, a street and two sidewalks extend across the north side of the site. The far sidewalk leads to a small park and low neighborhood buildings. The scenery appears above the house in **Top down**, follows the scene's lighting and sits outside the editable plan.
+In the 3D views, look across the street for the HOA pool, playground and small mountain. They appear above the house in **Top down** and move with the rest of the scene when you rotate or zoom.
 
 ### Full-width plan export
 
@@ -170,7 +170,7 @@ The design canvas shows stylized placeholders, not private camera frames. The da
 
 ### Read the outdoor weather
 
-The bottom **Weather** button shows the current condition and temperature when available. Tap it for native Home Assistant details. The sky and outdoor scene reflect Home Assistant's conditions. Reduced motion holds the decorative sky still.
+The bottom **Weather** button shows the current condition and temperature when available. Tap it for native Home Assistant details. The pool reflects the sun, moon and clouds according to Home Assistant weather and daylight. Reduced motion holds the reflections still.
 
 Confirm a device's physical location in Home Assistant before placing a control. A friendly name does not prove the room. The editor stores control placement; Home Assistant performs actual device actions. A device that is unavailable or missing should be corrected in Home Assistant before use.
 

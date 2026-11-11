@@ -48,6 +48,10 @@ test('validated live sun altitude reaches the sky and Studio weather preview', (
   assert.equal(fallback.daylightKnown, true);
   assert.equal(fallback.sunElevation, undefined);
   assert.equal(fallback.sunRising, undefined);
+
+  const clearNight = storybookFrame(model, {'weather.example': {state: 'clear-night'}}).environment;
+  assert.equal(clearNight.night, true);
+  assert.equal(clearNight.daylightKnown, false);
 });
 
 test('storybook selects only layout-owned plan controls and keeps camera event mode', () => {

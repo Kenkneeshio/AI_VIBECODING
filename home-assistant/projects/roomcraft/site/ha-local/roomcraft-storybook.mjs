@@ -5,7 +5,6 @@ import {enterFreeView, normalizeCameraView, populateCameraOptions, readSavedFree
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
 import {placeStorybookDetails, placeStorybookTargets, readStorybookConfig, storybookFrame, storybookPreview} from './storybook-state.mjs';
 import {storybookWeather, storybookWeatherMarkup, storybookWeatherStyles, updateStorybookWeather} from './storybook-weather.mjs';
-import {storybookSkyBarMarkup, storybookSkyBarStyles, updateStorybookSkyBar} from './storybook-sky-bar.mjs';
 import {readStorybookUtilities, utilityReading} from './storybook-utilities.mjs';
 
 const TAG = 'roomcraft-storybook-card';
@@ -37,7 +36,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>
         :host{display:block;color:#3a3046;font:500 14px/1.4 system-ui,sans-serif}
-        .world{display:grid;grid-template-rows:auto minmax(0,1fr) auto;min-height:218px;
+        .world{display:grid;grid-template-rows:minmax(0,1fr) auto;min-height:218px;
           height:calc(100dvh - 72px);background:#e7eadb;border-radius:16px;overflow:hidden}
         .bar{position:relative;z-index:5;display:flex;justify-content:flex-end;align-items:center;
           gap:7px;padding:5px clamp(7px,1.4vw,23px) max(5px,env(safe-area-inset-bottom));
@@ -154,12 +153,9 @@ class RoomcraftStorybookCard extends HTMLElement {
           min-height:44px;padding:0 12px;border:0;font:inherit;cursor:pointer}
         .tethers{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
         @media(max-width:540px){.bar nav{gap:5px}.bar a,.bar button{padding-inline:7px}}
-        @media(max-height:540px){.world{--storybook-sky-height:48px}}
         ${storybookWeatherStyles}
-        ${storybookSkyBarStyles}
       </style>
       <section class="world" aria-label="Roomcraft Storybook">
-        ${storybookSkyBarMarkup}
         <div class="stage">
           <canvas role="img" aria-label="Three-dimensional cutaway of the second floor"></canvas>
           <span id="free-view-hint" class="free-view-hint" hidden>Drag or use arrow keys to orbit. Pinch, scroll, or use +/− to zoom.</span>
@@ -251,7 +247,6 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.canvas = this.shadowRoot.querySelector('canvas');
     this.overlay = this.shadowRoot.querySelector('.overlay');
     this.tethers = this.shadowRoot.querySelector('.tethers');
-    this.skyBar = this.shadowRoot.querySelector('.storybook-sky-bar');
     this.dock = this.shadowRoot.querySelector('.bar');
     this.weather = this.shadowRoot.querySelector('.weather');
     this.status = this.shadowRoot.querySelector('.status');
@@ -438,7 +433,6 @@ class RoomcraftStorybookCard extends HTMLElement {
   get motionReduced() { return this.reduceMotion || this.motionPreference.matches; }
 
   syncMotionPreference() {
-    this.world.toggleAttribute('data-reduced-motion', this.motionReduced);
     this.reduceMotionButton.setAttribute('aria-pressed', String(this.motionReduced));
     this.reduceMotionButton.disabled = this.motionPreference.matches;
     this.reduceMotionButton.title = this.motionPreference.matches ? 'Your device requests reduced motion' : '';
@@ -542,7 +536,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.loadStartupView();
       this.model = readStorybookConfig(config);
       this.prepareUtilities(config);
-      this.scene = createStorybookScene(this.canvas, this.model.layout, {showSkyArt: false});
+      this.scene = createStorybookScene(this.canvas, this.model.layout);
       this.scene.setView(this.cameraView);
       this.detectionZones = readDetectionZones(this.model.layout.items);
       this.syncDetectionZones();
@@ -810,7 +804,6 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.trackExpiryTimer = setTimeout(() => this.refresh(), Math.max(1, expires - now));
     }
     const weather = storybookWeather(this.frame.environment, offline);
-    updateStorybookSkyBar(this.skyBar, weather);
     updateStorybookWeather(this.dock, this.weather, weather, !offline && Boolean(this.model.weather.weather_entity));
     for (const {config, element, camera} of this.controls) {
       if (camera && !this.cameraTilesVisible) continue;

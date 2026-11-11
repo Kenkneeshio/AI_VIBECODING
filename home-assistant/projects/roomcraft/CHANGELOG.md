@@ -1,5 +1,10 @@
 # Changelog
 
+## A mountain, HOA pool and playground across the street
+
+- A small mountain, the HOA pool and a playground now sit across the street in Home and 3D Studio. The scenery follows the camera.
+- The sun, moon and clouds appear as animated reflections in the pool. They respond to Home Assistant weather and daylight, with still reflections when reduced motion is enabled.
+
 ## A park beyond the street and a layered sky
 
 - Home and 3D Studio extend the scenery beyond the far sidewalk with a small park and low neighborhood buildings.

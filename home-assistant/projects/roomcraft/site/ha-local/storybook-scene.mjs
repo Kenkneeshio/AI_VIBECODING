@@ -10,6 +10,7 @@ import { applyModelHeight } from './storybook-size.mjs';
 import { createStorybookPeople } from './storybook-people.mjs';
 import { createFloorSupport } from './storybook-floor-support.mjs';
 import { createStorybookCoverage } from './storybook-coverage.mjs';
+import { createStorybookPoolWater } from './storybook-pool-water.mjs';
 import { buildStorybookNeighborhood, buildStorybookStreet, storybookStreetBounds } from './storybook-street.mjs';
 
 const DEG = Math.PI / 180;
@@ -38,14 +39,9 @@ const WALL_LOOKS = {
   sage: ['#dce0bf', '#8fa18c', '#667d74'],
   walnut: ['#d0a991', '#a47d6f', '#755a56'],
 };
-const CLOUDY = new Set(['cloudy', 'partlycloudy', 'fog', 'hail', 'lightning', 'lightning-rainy', 'pouring',
-  'rainy', 'snowy', 'snowy-rainy', 'windy-variant']);
 const WET = new Set(['hail', 'lightning-rainy', 'pouring', 'rainy', 'snowy-rainy']);
 const SNOW = new Set(['snowy', 'snowy-rainy', 'hail']);
 const MOUNT_HEIGHT = { presenceSwitch: 39, wallSconce: 40, wallUnit: 48, thermostat: 42 };
-const VISIBLE_MOON_PHASES = new Set(['waxing_crescent', 'first_quarter', 'waxing_gibbous', 'full_moon',
-  'waning_gibbous', 'last_quarter', 'waning_crescent']);
-
 function seededRandom(seed) {
   let value = seed >>> 0;
   return () => {
@@ -714,40 +710,9 @@ function buildYard(batch, plan) {
   }
 }
 
-function buildWeather(scene, plan, showSkyArt, sceneryMinZ = plan.bounds.minZ) {
-  const { minX, maxX, minZ } = plan.houseBounds;
+function buildPrecipitation(scene, plan, sceneryMinZ) {
   const rand = seededRandom(2912);
   const bounds = plan.bounds;
-  const cloud = new THREE.Group();
-  const cloudMaterial = new THREE.MeshLambertMaterial({ color: '#f8ebdf', transparent: true, opacity: 0.9 });
-  const cloudGeometry = new THREE.SphereGeometry(1, 12, 8);
-  const spanX = maxX - minX;
-  for (const [index, offset] of [0.19, 0.53, 0.82].entries()) {
-    const x = minX + spanX * offset;
-    const z = minZ - 55 - index % 2 * 34;
-    for (let lobe = 0; lobe < 3; lobe++) {
-      const puff = new THREE.Mesh(cloudGeometry, cloudMaterial);
-      puff.scale.set(32 + rand() * 21, 15 + rand() * 10, 25 + rand() * 10);
-      puff.position.set(x + lobe * 31, 27 + 5 * (lobe === 1), z);
-      cloud.add(puff);
-    }
-  }
-  scene.add(cloud);
-  const orb = new THREE.Group();
-  orb.position.set(minX + spanX * 0.77, 21, minZ - 70);
-  const sun = new THREE.Mesh(new THREE.SphereGeometry(17, 16, 10),
-    new THREE.MeshBasicMaterial({ color: '#ffe2a1' }));
-  orb.add(sun);
-  const moon = new THREE.Group();
-  // Shaded profiles derive from the reported HA moon phase.
-  const moonFull = new THREE.Mesh(sun.geometry, new THREE.MeshBasicMaterial({ color: '#f9e5c6' }));
-  moon.add(moonFull);
-  const moonShadow = new THREE.Mesh(sun.geometry, new THREE.MeshBasicMaterial({ color: '#7d7c97' }));
-  moonShadow.position.set(4, 4, 1);
-  moonShadow.scale.setScalar(0.96);
-  moon.add(moonShadow);
-  orb.add(moon);
-  scene.add(orb);
   const rainLocations = [];
   const recess = plan.reference?.recess;
   const isExterior = (x, z) => !(recess && x >= recess.x1 && x <= recess.x2 && z >= recess.z1 && z <= recess.z2) &&
@@ -774,27 +739,17 @@ function buildWeather(scene, plan, showSkyArt, sceneryMinZ = plan.bounds.minZ) {
     new THREE.PointsMaterial({ color: '#fff6eb', size: 3.2, transparent: true, opacity: 0.8 }));
   rain.frustumCulled = snow.frustumCulled = false;
   scene.add(rain, snow);
-  return (time, environment, reduceMotion) => {
-    const { night = false, condition = '', moonPhase = '', daylightKnown = true } = environment;
-    const motionTime = reduceMotion ? 0 : time;
-    cloud.visible = showSkyArt && CLOUDY.has(condition);
-    cloud.position.x = Math.sin(motionTime * 0.16) * (condition.includes('windy') ? 48 : 23);
-    sun.visible = showSkyArt && daylightKnown && !night;
-    moon.visible = showSkyArt && daylightKnown && night && VISIBLE_MOON_PHASES.has(moonPhase);
-    moonShadow.visible = moonPhase !== 'full_moon';
-    const waxing = moonPhase.startsWith('waxing') || moonPhase === 'first_quarter';
-    const quarter = moonPhase.endsWith('quarter');
-    moonShadow.position.x = (waxing ? -1 : 1) * (quarter ? 8 : moonPhase.endsWith('gibbous') ? 14 : 5);
+  return (time, condition) => {
     rain.visible = WET.has(condition);
     rain.material.opacity = condition === 'pouring' || condition === 'lightning-rainy' ? .50 : .34;
     snow.visible = SNOW.has(condition);
     if (rain.visible || snow.visible) {
       for (const [index, drop] of rainLocations.entries()) {
-        const y = 65 - (drop.phase + motionTime * drop.speed) % 170;
-        const flakeY = 65 - (drop.phase + motionTime * 20) % 170;
+        const y = 65 - (drop.phase + time * drop.speed) % 170;
+        const flakeY = 65 - (drop.phase + time * 20) % 170;
         const i = index * 6;
         rainPositions.set([drop.x, y, drop.z, drop.x - drop.length * .18, y + drop.length, drop.z + 2], i);
-        snowPositions.set([drop.x + Math.sin(motionTime + index) * 6, flakeY, drop.z], index * 3);
+        snowPositions.set([drop.x + Math.sin(time + index) * 6, flakeY, drop.z], index * 3);
       }
       rainGeometry.attributes.position.needsUpdate = rain.visible;
       snowGeometry.attributes.position.needsUpdate = snow.visible;
@@ -894,7 +849,7 @@ function trackedFloor(plan, floors) {
   };
 }
 
-export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
+export function createStorybookScene(canvas, layout) {
   const plan = compileStorybookPlan(layout);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'low-power' });
   // Studio reuses its canvas after edits. Clear blending and depth state from the previous renderer.
@@ -913,7 +868,7 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
   const batch = makeStaticBatch(scene);
   const street = storybookStreetBounds(plan);
   buildStorybookStreet(batch, street, GROUND_Y, ground.geometry.parameters.width, ground.position.x);
-  buildStorybookNeighborhood(batch, street, GROUND_Y, plan.houseBounds);
+  const {pool, mountainPeak} = buildStorybookNeighborhood(batch, street, GROUND_Y, plan.houseBounds);
   buildYard(batch, plan);
   buildReferenceLanding(batch, plan);
   buildFloors(scene, batch, plan, canvas.ownerDocument);
@@ -923,7 +878,10 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
   const structureMeshes = scene.children.filter(node => node.isMesh);
   const lighting = createStorybookLighting(renderer, scene, plan.bounds);
   lighting.markStructure();
-  const updateWeather = buildWeather(scene, plan, showSkyArt, street.parkMinZ);
+  const water = createStorybookPoolWater(pool);
+  scene.add(water.mesh);
+  let poolEnvironment = {};
+  const updatePrecipitation = buildPrecipitation(scene, plan, street.parkMinZ);
   const footprint = plan.floorStructure.footprint;
   const floors = createFloorSupport(footprint);
   const walkable = plan.stairs.length
@@ -962,7 +920,7 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
     }
     anchors.set(item.id, { x, z, baseY, object });
   }
-  const cameraBounds = {...plan.bounds, sceneryMinZ: street.parkMinZ};
+  const cameraBounds = {...plan.bounds, sceneryMinZ: street.parkMinZ, sceneryPeak: mountainPeak};
   for (const placement of plan.placements) {
     const object = roots.get(placement.item.id);
     if (!object) continue;
@@ -1045,7 +1003,9 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
     const reduceMotion = environment.reduceMotion === true;
     const time = !reduceMotion && Number.isFinite(timeSeconds) ? timeSeconds : 0;
     const telemetryTime = animateTelemetry ? time : 0;
-    updateWeather(telemetryTime, environment, reduceMotion || !animateTelemetry);
+    updatePrecipitation(telemetryTime, environment.condition);
+    poolEnvironment = environment;
+    water.update(time, poolEnvironment);
     for (const [id, object] of roots) {
       const state = statesById[id] ?? defaultState;
       const latest = state.position;
@@ -1067,7 +1027,8 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
     if (!disposed) people.setTracks(tracks, timeSeconds, options);
   }
   function renderAmbient(timeSeconds) {
-    if (disposed || currentWidth < 1 || currentHeight < 1 || (!ambientObjects.length && !people.hasMotion)) return;
+    if (disposed || currentWidth < 1 || currentHeight < 1) return;
+    water.update(timeSeconds, poolEnvironment);
     for (const object of ambientObjects) object.animate(defaultState, timeSeconds);
     people.render(timeSeconds);
     draw();
@@ -1111,7 +1072,7 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
   const exteriorClearance = () => projectExteriorClearance(plan, camera, currentWidth, currentHeight);
   return {
     resize, render, anchor, setView, getView, projectToPlan, pickGarage, exteriorClearance, dispose,
-    hasAmbientMotion: ambientObjects.length > 0, renderAmbient, setPeople, setDetectionZones: coverage.setZones,
+    hasAmbientMotion: true, renderAmbient, setPeople, setDetectionZones: coverage.setZones,
     canPlacePerson: (x, y) => Number.isFinite(floorForPerson(x, y)) && walkable.clearance(x, y) > 0,
     get hasPeopleMotion() { return people.hasMotion; },
   };

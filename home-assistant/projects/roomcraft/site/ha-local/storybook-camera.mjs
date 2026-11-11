@@ -113,6 +113,10 @@ export function fitStorybookCamera(camera, bounds, width, height, view = 'top') 
       frame.expandByPoint(corner.set(x, -106, bounds.sceneryMinZ - 8).applyMatrix4(camera.matrixWorldInverse));
     }
   }
+  const peak = bounds.sceneryPeak;
+  if ([peak?.x, peak?.y, peak?.z].every(Number.isFinite)) {
+    frame.expandByPoint(corner.set(peak.x, peak.y + 8, peak.z).applyMatrix4(camera.matrixWorldInverse));
+  }
   const ratio = width / height;
   const halfWidth = Math.max((frame.max.x - frame.min.x) / 2,
     (frame.max.y - frame.min.y) / 2 * ratio);
