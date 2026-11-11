@@ -295,7 +295,8 @@
       return state;
     }},
     {id:'reference-v7-source-geometry',from:6,to:7,apply:window.RoomcraftReferenceGeometry.repair},
-    {id:'reference-v8-editable-structure',from:7,to:8,apply:window.RoomcraftReferenceGeometry.unlockStructure}
+    {id:'reference-v8-editable-structure',from:7,to:8,apply:window.RoomcraftReferenceGeometry.unlockStructure},
+    {id:'reference-v9-ledge-railings',from:8,to:9,apply:window.RoomcraftReferenceGeometry.closeReferenceRailings}
   ];
 
   let hasLocalDraft = false;
@@ -335,7 +336,7 @@
   }
   function normalizeProject(p){
     let next=Engine.normalizeScene(p);
-    next=clone(Engine.migrations.run(next,REFERENCE_MIGRATIONS,8,{versionKey:'editableReferenceVersion'}).project);
+    next=clone(Engine.migrations.run(next,REFERENCE_MIGRATIONS,9,{versionKey:'editableReferenceVersion'}).project);
     if(!Array.isArray(next.hotspots))next.hotspots=clone(DEFAULT_HOTSPOTS);
     for(const o of next.items)clampLinkedItem(o);
     next.version=2;

@@ -1,5 +1,11 @@
 # Decision log
 
+## Author ledge railings and store the camera as a preference
+
+Reference revision 9 adds the missing guards to the known upstairs decks as editable fence segments. It uses their existing finish and leaves the actual stair opening and house entrances clear. The common renderer keeps deck guards level and follows the stair slope along the existing flight rail. The live thumbnail placer gives the projected stair and rails room when it can keep the camera tile in reach.
+
+A saved Free view is a presentation preference for the Home Assistant user and source dashboard. Saving records the heading, tilt, and zoom. Layout import and export leave it alone. The signed-in Home Assistant Studio and Roomcraft Home read the same setting, while the private web editor uses browser storage. [Home Assistant frontend user data](https://github.com/home-assistant/core/blob/dev/homeassistant/components/frontend/storage.py)
+
 ## Keep the upper floor and the ground level distinct
 
 The home, porch and upper landing share one second-floor elevation. The authored stair rises from its local negative Y end on grade to its positive Y end at the landing. Each view derives the treads and ground approach from that object, so rotating or moving it also moves the approach.

@@ -1,5 +1,13 @@
 # Changelog
 
+## Matching exterior railings and saved Free view
+
+- Reference revision 9 adds six editable graphite railing segments to the open balcony, porch, and landing edges. The stairs and entrances stay open.
+- Live camera thumbnails prefer nearby positions clear of projected rails and stairs. Device controls and camera bindings keep their authored positions.
+- Free view can be saved as the starting camera. Home Assistant shares it between Roomcraft Home and Studio for the signed-in user. The private web editor saves it in the current browser.
+- Published through Studio and verified the 1536 × 864 plan, all 8 fences, 32 walls, and 23 unchanged object bindings. Verified the new rails in live Top down and Free view on the tablet. The saved angle read back through Home Assistant and opened in Studio. Isolated browser tests checked saving, reopening and clearing from both surfaces and confirmed three camera tiles cleared the exterior rails and stairs in all eight presets at tablet resolution.
+- Passed 130 editor and engine tests, 54 Home Assistant JavaScript tests, 15 Python tests, TypeScript, lint with zero errors and production build. The owner-private editor deployed as Site v57 from `146f7eb160b0bd3d118f4d99c77cc44fb586cb50`. To roll back Home Assistant, restore the protected pre-release dashboard backup and reinstall the prior assets. Roll back the Site separately.
+
 ## Second-floor landing and ground-level garage
 
 - The exterior stair descends from the lower-left upstairs landing toward the upper-left ground approach. Defined tread edges make it readable from above and in angled views.

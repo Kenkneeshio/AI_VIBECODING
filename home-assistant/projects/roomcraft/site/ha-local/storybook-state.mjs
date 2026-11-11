@@ -105,6 +105,8 @@ export function storybookPreview(config, snapshot) {
 /**
  * Keep targets centered whenever possible. Prioritize the most precise fixture
  * first and place nearby targets on a bounded grid when hit areas intersect.
+ * Prefer clear space around optional screen-space regions while keeping the
+ * ordinary collision-free placement available as a fallback.
  */
 export function placeStorybookTargets(targets, width, height) {
   const placed = [];
@@ -114,19 +116,32 @@ export function placeStorybookTargets(targets, width, height) {
   for (const target of ordered) {
     const w = Math.min(target.w, width);
     const h = Math.min(target.h, height);
-    let best;
-    for (let ring = 0; ring <= 3 && !best; ring++) {
+    const keepClear = target.keepClear ?? [];
+    const preferClear = keepClear.length > 0;
+    const maxRing = preferClear ? 5 : 3;
+    let fallback;
+    let nearest;
+    let nearestDistance = Infinity;
+    for (let ring = 0; ring <= maxRing && (preferClear || !fallback); ring++) {
       for (const [dx, dy] of ring === 0 ? directions.slice(0, 1) : directions.slice(1)) {
         const x = clamp(target.x + dx * ring * 34, w / 2, width - w / 2);
         const y = clamp(target.y + dy * ring * 34, h / 2, height - h / 2);
-        if (placed.every(p => Math.abs(x - p.x) >= (w + p.w) / 2 + 2 ||
-            Math.abs(y - p.y) >= (h + p.h) / 2 + 2)) {
-          best = {...target, x, y, w, h};
-          break;
+        const overlapsTarget = placed.some(p => Math.abs(x - p.x) < (w + p.w) / 2 + 2 &&
+          Math.abs(y - p.y) < (h + p.h) / 2 + 2);
+        if (overlapsTarget) continue;
+        if (ring <= 3 && !fallback) fallback = {...target, x, y, w, h};
+        if (!preferClear) break;
+        if (keepClear.some(rect => x + w / 2 > rect.left && x - w / 2 < rect.right &&
+            y + h / 2 > rect.top && y - h / 2 < rect.bottom)) continue;
+        const distance = Math.hypot(x - target.x, y - target.y);
+        if (distance < nearestDistance) {
+          nearest = {...target, x, y, w, h};
+          nearestDistance = distance;
         }
       }
     }
-    if (best) placed.push(best);
+    const chosen = nearest ?? fallback;
+    if (chosen) placed.push(chosen);
   }
   return placed;
 }

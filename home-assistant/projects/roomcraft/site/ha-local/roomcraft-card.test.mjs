@@ -1354,6 +1354,42 @@ test('popup editor receives only its own same-origin dashboard response', async 
   assert.equal(replies[0].message.data.project.version, 2);
 });
 
+test('Studio and live view share the signed-in camera preference without touching layout storage', async () => {
+  const requests = [];
+  const replies = [];
+  let stored = null;
+  const session = {
+    connected: true,
+    user: { is_admin: false },
+    callWS: async request => {
+      requests.push(request);
+      assert.equal(request.key, 'roomcraft_default_camera_v1:second-floor');
+      if (request.type === 'frontend/set_user_data') stored = request.value;
+      else if (request.type === 'frontend/get_user_data') return { value: stored };
+      else assert.fail('Camera preferences must only use user data');
+    },
+  };
+  const iframe = { postMessage: reply => replies.push(reply) };
+  const card = new Card();
+  card.hass = session;
+  card._iframe = { contentWindow: iframe };
+  const send = async (method, payload, origin = context.location.origin) => card._onMessage({
+    source: iframe, origin, data: { channel: 'roomcraft-ha', kind: 'request', id: 1, method, payload },
+  });
+  const view = { preset: 'free', azimuth: 148, tilt: 39.5, zoom: 1.25 };
+  await send('CAMERA_SET', view, 'https://outside.example');
+  assert.equal(requests.length, 0);
+  await send('CAMERA_SET', { ...view, zoom: 999 });
+  assert.equal(replies.at(-1).ok, false);
+  assert.equal(requests.length, 0);
+  await send('CAMERA_SET', { ...view, unrelated: 'discard' });
+  assert.equal(replies.at(-1).ok, true);
+  assert.deepEqual({ ...await Card.readStartupView(session, 'second-floor') }, view);
+  await Card.writeStartupView(session, 'second-floor', null);
+  await send('CAMERA_GET');
+  assert.equal(replies.at(-1).data, null);
+});
+
 test('embedded editor returns to the dashboard through the signed-in Home Assistant router', async () => {
   const navigations = [];
   const onLocationChanged = event => navigations.push(['location-changed', event.detail?.replace]);

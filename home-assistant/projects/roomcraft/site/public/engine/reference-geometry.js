@@ -174,5 +174,51 @@
     return {...project, rooms, walls, items};
   }
 
-  root.RoomcraftReferenceGeometry = Object.freeze({repair, isOpenThreshold, unlockStructure});
+  function overlapsSegment(wall, [x1, y1, x2, y2]) {
+    const vertical = x1 === x2;
+    // A nearby authored parallel rail already guards the same edge.
+    const offsets = vertical ? [wall.x1 - x1, wall.x2 - x1] : [wall.y1 - y1, wall.y2 - y1];
+    if (offsets.some(offset => Math.abs(offset) > 5)) return false;
+    const [a, b, c, d] = vertical ? [y1, y2, wall.y1, wall.y2] : [x1, x2, wall.x1, wall.x2];
+    return Math.max(Math.min(a, b), Math.min(c, d)) < Math.min(Math.max(a, b), Math.max(c, d));
+  }
+
+  /** Complete the guardrails on stock upper decks while retaining authored openings. */
+  function closeReferenceRailings(project) {
+    const walls = [...project.walls];
+    const byId = new Map(walls.map(wall => [wall.id, wall]));
+    const stockDeck = (id, points) => {
+      const room = project.rooms.find(candidate => candidate.id === id);
+      return room?.outdoor === true && matchesRoom(room, points);
+    };
+    const balconyRail = byId.get('reference-balcony-fence');
+    const stairRail = byId.get('reference-stair-fence');
+    const deckFinish = balconyRail?.kind === 'fence' ? balconyRail.finish || 'graphite' : 'graphite';
+    const stairFinish = stairRail?.kind === 'fence' ? stairRail.finish || deckFinish : deckFinish;
+    function add(id, points, finish) {
+      if (!byId.has(id) && !walls.some(wall => overlapsSegment(wall, points))) {
+        walls.push({...wallAt(id, points), kind: 'fence', finish});
+      }
+    }
+
+    if (stockDeck('reference-balcony', [[148,250],[400,250],[400,408],[342,468],[148,468]])) {
+      add('reference-balcony-west-rail', [148,250,148,468], deckFinish);
+    }
+    if (stockDeck('reference-porch', [[148,590],[248,590],[302,651],[302,882],[148,882]])) {
+      add('reference-porch-west-rail', [148,590,148,825], deckFinish);
+      add('reference-porch-south-rail', [148,882,302,882], deckFinish);
+      if (matchesWall(byId.get('w8'), [302,651,302,800])) {
+        add('reference-porch-east-rail', [302,800,302,882], deckFinish);
+      }
+    }
+    if (stockDeck('reference-landing', [[50,825],[149,825],[149,882],[50,882]])) {
+      if (stairRail?.kind === 'fence' && matchesWall(stairRail, [54,192,54,825])) {
+        add('reference-landing-west-rail', [54,825,54,882], stairFinish);
+      }
+      add('reference-landing-south-rail', [54,882,148,882], stairFinish);
+    }
+    return walls.length === project.walls.length ? project : {...project, walls};
+  }
+
+  root.RoomcraftReferenceGeometry = Object.freeze({repair, isOpenThreshold, unlockStructure, closeReferenceRailings});
 })(typeof window === 'undefined' ? globalThis : window);

@@ -432,6 +432,31 @@ function decodePng(dataUrl) {
 }
 
 class RoomcraftEditorCard extends HTMLElement {
+  static async readStartupView(hass, dashboard) {
+    const { value } = await hass.callWS({
+      type: 'frontend/get_user_data', key: `roomcraft_default_camera_v1:${dashboard}`,
+    });
+    return this.validStartupView(value) ? value : null;
+  }
+
+  static async writeStartupView(hass, dashboard, view) {
+    if (view !== null && !this.validStartupView(view)) throw new Error('Invalid Free view.');
+    const value = view === null ? null : {
+      preset: 'free', azimuth: view.azimuth, tilt: view.tilt, zoom: view.zoom,
+    };
+    await hass.callWS({
+      type: 'frontend/set_user_data', key: `roomcraft_default_camera_v1:${dashboard}`, value,
+    });
+    return value;
+  }
+
+  static validStartupView(view) {
+    return isObject(view) && view.preset === 'free' &&
+      [view.azimuth, view.tilt, view.zoom].every(Number.isFinite) &&
+      view.azimuth >= 0 && view.azimuth < 360 && view.tilt >= 0 && view.tilt <= 65 &&
+      view.zoom >= 0.6 && view.zoom <= 2.5;
+  }
+
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -554,13 +579,17 @@ class RoomcraftEditorCard extends HTMLElement {
       return;
     }
     if (message.kind !== 'request' || !Number.isSafeInteger(message.id) ||
-        message.id < 1 || !['GET', 'POST'].includes(message.method)) return;
+        message.id < 1 || !['GET', 'POST', 'CAMERA_GET', 'CAMERA_SET'].includes(message.method)) return;
     let response;
     try {
       if (!this._hass?.connected) throw new Error('Home Assistant is disconnected.');
-      const data = message.method === 'GET'
-        ? await this._readDashboard()
-        : await this._writeDashboard(message.payload);
+      let data;
+      switch (message.method) {
+        case 'GET': data = await this._readDashboard(); break;
+        case 'POST': data = await this._writeDashboard(message.payload); break;
+        case 'CAMERA_GET': data = await RoomcraftEditorCard.readStartupView(this._hass, DASHBOARD); break;
+        case 'CAMERA_SET': data = await RoomcraftEditorCard.writeStartupView(this._hass, DASHBOARD, message.payload); break;
+      }
       response = { channel: CHANNEL, kind: 'response', id: message.id, ok: true, data };
     } catch (error) {
       response = { channel: CHANNEL, kind: 'response', id: message.id, ok: false,

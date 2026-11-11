@@ -1,11 +1,12 @@
 import {createStorybookScene} from './storybook-scene.mjs';
-import {enterFreeView, normalizeCameraView, populateCameraOptions} from './storybook-camera.mjs';
+import {enterFreeView, normalizeCameraView, populateCameraOptions, readSavedFreeView} from './storybook-camera.mjs';
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
 import {placeStorybookTargets, readStorybookConfig, storybookFrame, storybookPreview} from './storybook-state.mjs';
 
 const TAG = 'roomcraft-storybook-card';
 const CONTROL_TAG = 'roomcraft-object-control';
 const CAMERA_TAG = 'roomcraft-camera-thumbnail';
+const EDITOR_TAG = 'roomcraft-editor-card';
 const FRAME_INTERVAL = 1000 / 24;
 
 class RoomcraftStorybookCard extends HTMLElement {
@@ -25,6 +26,8 @@ class RoomcraftStorybookCard extends HTMLElement {
         .view-controls select{min-height:44px;max-width:140px;border:1px solid #c9b8a0;border-radius:8px;
           background:#fffaf0;color:inherit;padding:0 7px;font:inherit}
         .bar .view-controls button{min-width:44px;font-size:20px;line-height:1}
+        .bar .view-controls .camera-default{font-size:12px;border:1px solid #c9b8a0;background:#fffaf0}
+        .default-status{color:#6c5e74;font-size:12px}
         .view-controls button:disabled{opacity:.35;cursor:default}
         .view-status{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
         a,.bar button{display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;
@@ -65,7 +68,10 @@ class RoomcraftStorybookCard extends HTMLElement {
               <button type="button" data-camera="out" aria-label="Zoom out" title="Zoom out">−</button>
               <button type="button" data-camera="in" aria-label="Zoom in" title="Zoom in">+</button>
               <button type="button" data-camera="reset" aria-label="Reset to top down view" title="Reset to top down view">⌂</button>
+              <button type="button" class="camera-default" data-camera="save-default" hidden>Save as default</button>
+              <button type="button" class="camera-default" data-camera="clear-default" hidden>Use Top down as default</button>
               <span class="view-status" role="status" aria-live="polite"></span>
+              <span class="default-status" role="status" aria-live="polite"></span>
             </div>
             <button type="button" class="weather" hidden></button>
             <a href="/second-floor/studio">Studio</a>
@@ -90,6 +96,9 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.status = this.shadowRoot.querySelector('.status');
     this.viewSelect = this.shadowRoot.querySelector('#storybook-view');
     this.viewStatus = this.shadowRoot.querySelector('.view-status');
+    this.defaultStatus = this.shadowRoot.querySelector('.default-status');
+    this.saveDefaultButton = this.shadowRoot.querySelector('[data-camera=save-default]');
+    this.clearDefaultButton = this.shadowRoot.querySelector('[data-camera=clear-default]');
     this.freeViewHint = this.shadowRoot.querySelector('#free-view-hint');
     this.cameraView = normalizeCameraView('top');
     populateCameraOptions(this.viewSelect);
@@ -106,6 +115,8 @@ class RoomcraftStorybookCard extends HTMLElement {
           case 'out': this.changeView({...current, zoom: current.zoom - .15}); break;
           case 'in': this.changeView({...current, zoom: current.zoom + .15}); break;
           case 'reset': this.changeView('top'); break;
+          case 'save-default': if (current.preset === 'free') this.saveStartupView(current); break;
+          case 'clear-default': this.saveStartupView(null); break;
         }
       });
     }
@@ -132,16 +143,31 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   setConfig(config) {
-    this.dashboard = config.dashboard || 'second-floor';
-    if (!/^[a-z0-9-]+$/.test(this.dashboard)) throw new Error('Invalid Roomcraft dashboard.');
+    const dashboard = config.dashboard || 'second-floor';
+    if (!/^[a-z0-9-]+$/.test(dashboard)) throw new Error('Invalid Roomcraft dashboard.');
+    if (this.dashboard && this.dashboard !== dashboard) {
+      this.startupViewRead = false;
+      this.startupViewRequest = undefined;
+      this.savedStartupView = null;
+      this.cameraChanged = false;
+      this.defaultStatus.textContent = '';
+      this.reset();
+      this.changeView('top', {remember: false});
+    }
+    this.dashboard = dashboard;
     this.load();
   }
 
   set hass(value) {
     const previous = this.session;
     this.session = value;
+    this.updateDefaultViewButtons();
     this.watchPublishedLayout();
-    if (previous?.connected === false && value?.connected === true) this.reset();
+    if (previous?.connected === false && value?.connected === true) {
+      this.startupViewRead = false;
+      this.startupViewRequest = undefined;
+      this.reset();
+    }
     if (!this.model) {
       this.load();
       return;
@@ -192,6 +218,9 @@ class RoomcraftStorybookCard extends HTMLElement {
     window.visualViewport?.removeEventListener('resize', this.onViewportResize);
     document.removeEventListener('visibilitychange', this.onVisibility);
     this.motionPreference.removeEventListener('change', this.onMotionChange);
+    this.startupViewRead = false;
+    this.startupViewRequest = undefined;
+    this.cameraChanged = false;
     this.reset();
   }
 
@@ -213,6 +242,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         ]),
       ]);
       if (!this.isConnected || this.loading !== request) return;
+      this.loadStartupView();
       this.model = readStorybookConfig(config);
       this.scene = createStorybookScene(this.canvas, this.model.layout);
       this.scene.setView(this.cameraView);
@@ -228,6 +258,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         return {config, element, camera};
       });
       this.status.hidden = true;
+      this.updateDefaultViewButtons();
       this.resize();
       this.refresh();
     } catch {
@@ -251,7 +282,63 @@ class RoomcraftStorybookCard extends HTMLElement {
     }
   }
 
-  changeView(view, {announce = true} = {}) {
+  updateDefaultViewButtons() {
+    const available = Boolean(this.scene) && Boolean(this.session?.connected);
+    this.saveDefaultButton.hidden = !this.scene || this.cameraView.preset !== 'free';
+    this.clearDefaultButton.hidden = !this.scene || !this.savedStartupView;
+    this.saveDefaultButton.disabled = this.clearDefaultButton.disabled =
+      !available || Boolean(this.startupViewRequest);
+  }
+
+  async loadStartupView() {
+    const store = customElements.get(EDITOR_TAG);
+    if (!store?.readStartupView || this.startupViewRead || !this.session?.connected) return;
+    this.startupViewRead = true;
+    const request = {};
+    this.startupViewRequest = request;
+    try {
+      const saved = await store.readStartupView(this.session, this.dashboard);
+      if (this.startupViewRequest !== request) return;
+      this.savedStartupView = readSavedFreeView(saved);
+      if (!this.cameraChanged) this.changeView(this.savedStartupView ?? 'top', {remember: false});
+    } catch {
+      if (this.startupViewRequest === request) this.defaultStatus.textContent = 'Saved view unavailable';
+    } finally {
+      if (this.startupViewRequest === request) {
+        this.startupViewRequest = undefined;
+        this.updateDefaultViewButtons();
+      }
+    }
+  }
+
+  async saveStartupView(view) {
+    const store = customElements.get(EDITOR_TAG);
+    if (!store?.writeStartupView || !this.scene || !this.session?.connected || this.startupViewRequest) return;
+    const request = {};
+    this.startupViewRequest = request;
+    this.defaultStatus.textContent = 'Saving view…';
+    this.updateDefaultViewButtons();
+    try {
+      const saved = await store.writeStartupView(this.session, this.dashboard, view);
+      if (this.startupViewRequest !== request) return;
+      this.savedStartupView = readSavedFreeView(saved);
+      if (!view) this.changeView('top');
+      this.defaultStatus.textContent = view ? 'Default view saved' : 'Top down is the default';
+    } catch {
+      if (this.startupViewRequest === request) this.defaultStatus.textContent = 'Could not save default view';
+    } finally {
+      if (this.startupViewRequest === request) {
+        this.startupViewRequest = undefined;
+        this.updateDefaultViewButtons();
+      }
+    }
+  }
+
+  changeView(view, {announce = true, remember = true} = {}) {
+    if (remember) {
+      this.cameraChanged = true;
+      this.defaultStatus.textContent = '';
+    }
     this.cameraView = normalizeCameraView(view);
     this.scene?.setView(this.cameraView);
     if (announce) {
@@ -264,6 +351,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     }
     this.shadowRoot.querySelector('[data-camera=out]').disabled = this.cameraView.zoom <= .6;
     this.shadowRoot.querySelector('[data-camera=in]').disabled = this.cameraView.zoom >= 2.5;
+    this.updateDefaultViewButtons();
     this.anchorDirty = true;
     this.schedule();
   }
@@ -328,6 +416,8 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   positionControls() {
     const {width, height} = this;
+    if (!width || !height) return;
+    const keepClear = this.scene.exteriorClearance();
     const targets = [];
     for (const control of this.controls) {
       const {config, element, camera} = control;
@@ -342,7 +432,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       const priority = config.roomcraft_visual_kind === 'light' || config.roomcraft_device_form === 'presence_switch'
         ? 0 : camera ? 2 : 1;
       targets.push({...control, x: anchor.x * width, y: anchor.y * height, w, h, priority,
-        id: item.id});
+        id: item.id, keepClear: camera ? keepClear : undefined});
     }
     const byId = new Map(targets.map(target => [target.id, target]));
     const placements = placeStorybookTargets(targets, width, height);
@@ -383,6 +473,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.scene?.dispose();
     this.scene = undefined;
     this.syncFreeViewMode();
+    this.updateDefaultViewButtons();
     this.width = this.height = undefined;
     this.failed = false;
   }

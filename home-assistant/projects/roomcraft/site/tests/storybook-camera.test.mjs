@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
-import {CAMERA_PRESETS, enterFreeView, fitStorybookCamera, normalizeCameraView} from '../ha-local/storybook-camera.mjs';
+import {CAMERA_PRESETS, enterFreeView, fitStorybookCamera, normalizeCameraView, readSavedFreeView, studioCameraPreferences} from '../ha-local/storybook-camera.mjs';
 import {bindFreeViewGestures} from '../ha-local/storybook-orbit.mjs';
 
 const bounds = {minX: 20, maxX: 1510, minZ: 110, maxZ: 850};
@@ -32,6 +32,39 @@ test('camera preferences normalize without modifying caller data or the presets'
   assert.deepEqual(normalizeCameraView({preset: 'bad', tilt: NaN, zoom: -1}), {...topView, zoom: 0.6});
   assert.equal(normalizeCameraView('dollhouse').tilt, 30);
   assert.deepEqual(normalizeCameraView('top'), topView);
+});
+
+test('browser Studio saves the exact Free view pose across reload and clears it to Top down', async () => {
+  const storage = new Map();
+  const host = {localStorage: {
+    getItem: key => storage.get(key) ?? null,
+    setItem: (key, value) => storage.set(key, value),
+    removeItem: key => storage.delete(key),
+  }};
+  const view = {preset: 'free', azimuth: 143.125, tilt: 0, zoom: 1.37};
+  assert.equal(await studioCameraPreferences(host).read(), null);
+  await studioCameraPreferences(host).write(view);
+  assert.deepEqual(await studioCameraPreferences(host).read(), view);
+  await studioCameraPreferences(host).write(null);
+  assert.equal(await studioCameraPreferences(host).read(), null);
+  assert.equal(readSavedFreeView({preset: 'free', tilt: 31, zoom: 1}), null);
+  assert.equal(readSavedFreeView(topView), null);
+});
+
+test('signed-in Studio uses only its Home Assistant bridge for camera preferences', async () => {
+  const calls = [];
+  const view = {preset: 'free', azimuth: 230, tilt: 42, zoom: 1};
+  const store = studioCameraPreferences({
+    get localStorage() { throw new Error('Signed-in Studio must not persist this preference locally'); },
+    RoomcraftDashboardBridge: {request: async (method, payload) => {
+      calls.push([method, payload]);
+      if (method === 'CAMERA_GET') return view;
+    }},
+  });
+  assert.deepEqual(await store.read(), view);
+  await store.write(view);
+  await store.write(null);
+  assert.deepEqual(calls, [['CAMERA_GET', undefined], ['CAMERA_SET', view], ['CAMERA_SET', null]]);
 });
 
 test('side presets view the cutaway from the corresponding plan edge', () => {

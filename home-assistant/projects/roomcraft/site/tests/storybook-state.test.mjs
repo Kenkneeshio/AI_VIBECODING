@@ -99,3 +99,26 @@ test('co-located fan and light stay individually tappable inside a tablet viewpo
   assert.ok(Math.abs(fan.x - light.x) >= 46 || Math.abs(fan.y - light.y) >= 46);
   assert.deepEqual([light, fan], placeStorybookTargets(targets, 360, 280));
 });
+
+test('camera tiles keep a railing clear without covering an existing control', () => {
+  const control = {id: 'light', x: 140, y: 198, w: 44, h: 44, priority: 0};
+  const camera = {id: 'camera', x: 140, y: 130, w: 100, h: 60, priority: 2,
+    keepClear: [{left: 80, top: 116, right: 220, bottom: 145}]};
+  const targets = [camera, control];
+  const [light, tile] = placeStorybookTargets(targets, 400, 300);
+  assert.deepEqual(light, control);
+  assert.deepEqual([tile.x, tile.y], [140, 62]);
+  assert.deepEqual([light, tile], placeStorybookTargets(targets, 400, 300));
+});
+
+test('camera tiles search farther for clear space and keep ordinary placement as a fallback', () => {
+  const target = {id: 'camera', x: 200, y: 150, w: 100, h: 70};
+  const onlyBelow = {left: 0, top: 0, right: 400, bottom: 260};
+  const [tile] = placeStorybookTargets([{...target, keepClear: [onlyBelow]}], 400, 380);
+  assert.deepEqual([tile.x, tile.y], [200, 320]);
+
+  const entirelyCovered = {left: 0, top: 0, right: 400, bottom: 380};
+  const [fallback] = placeStorybookTargets([{...target, keepClear: [entirelyCovered]}], 400, 380);
+  assert.deepEqual([fallback.x, fallback.y], [target.x, target.y]);
+  assert.deepEqual(placeStorybookTargets([target], 400, 380), [target]);
+});

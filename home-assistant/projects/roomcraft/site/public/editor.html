@@ -7,7 +7,7 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <title>Roomcraft — Second Floor Builder</title>
   <meta name="description" content="A detailed illustrated room builder based on the second-floor home plan.">
-  <link rel="stylesheet" href="styles.css?v=7aa95f2cbcdf17ed">
+  <link rel="stylesheet" href="styles.css?v=df2876a511e85eec">
 </head>
 <body>
   <div class="app-shell">
@@ -45,7 +45,7 @@
         </div>
 
         <div class="reference-card">
-          <div class="reference-thumb"><img src="assets/floorplan.png?v=7aa95f2cbcdf17ed" alt="The original furnished second-floor reference"></div>
+          <div class="reference-thumb"><img src="assets/floorplan.png?v=df2876a511e85eec" alt="The original furnished second-floor reference"></div>
           <div class="reference-copy"><strong>Starting reference</strong><span>Original furnished image</span></div>
           <button type="button" class="text-button" id="showReferenceButton">View</button>
         </div>
@@ -142,6 +142,9 @@
           <button type="button" id="sceneZoomOut" aria-label="Zoom 3D view out">−</button>
           <button type="button" id="sceneZoomIn" aria-label="Zoom 3D view in">＋</button>
           <button type="button" id="sceneReset" aria-label="Reset to Top down" title="Reset to Top down">⌂</button>
+          <button type="button" id="sceneSaveDefault" class="scene-camera-default" hidden>Save as default</button>
+          <button type="button" id="sceneClearDefault" class="scene-camera-default" hidden>Use Top down as default</button>
+          <span id="sceneDefaultStatus" class="scene-default-status" role="status" aria-live="polite"></span>
         </div>
         <div class="viewport" id="viewport">
           <canvas id="sceneCanvas" hidden aria-label="Editable three-dimensional home view"></canvas>
@@ -182,21 +185,21 @@
       <button type="button" class="primary-button" id="confirmationAccept">Continue</button>
     </div>
   </dialog>
-  <script src="editor-assets.js?v=7aa95f2cbcdf17ed" defer></script>
-  <script src="engine/deterministic-core.js?v=7aa95f2cbcdf17ed" defer></script>
-  <script src="engine/project-runtime.js?v=7aa95f2cbcdf17ed" defer></script>
-  <script src="engine/render-contract.js?v=7aa95f2cbcdf17ed" defer></script>
-  <script src="engine/verification-harness.js?v=7aa95f2cbcdf17ed" defer></script>
-  <script src="engine/wall-joins.js?v=7aa95f2cbcdf17ed" defer></script>
-  <script src="engine/reference-geometry.js?v=7aa95f2cbcdf17ed" defer></script>
-  <script src="ha-iframe-bridge.js?v=7aa95f2cbcdf17ed" defer></script>
-  <script src="inventory.js?v=7aa95f2cbcdf17ed" defer></script>
-  <script src="catalog-variants.js?v=7aa95f2cbcdf17ed" defer></script>
-  <script src="raster-renderer.js?v=7aa95f2cbcdf17ed" defer></script>
-  <script src="object-art.js?v=7aa95f2cbcdf17ed" defer></script>
-  <script src="object-controls.js?v=7aa95f2cbcdf17ed" defer></script>
-  <script src="app.js?v=7aa95f2cbcdf17ed" defer></script>
-  <script src="responsive-inspector.js?v=7aa95f2cbcdf17ed" defer></script>
-  <script src="storybook-editor.js?v=7aa95f2cbcdf17ed" defer></script>
+  <script src="editor-assets.js?v=df2876a511e85eec" defer></script>
+  <script src="engine/deterministic-core.js?v=df2876a511e85eec" defer></script>
+  <script src="engine/project-runtime.js?v=df2876a511e85eec" defer></script>
+  <script src="engine/render-contract.js?v=df2876a511e85eec" defer></script>
+  <script src="engine/verification-harness.js?v=df2876a511e85eec" defer></script>
+  <script src="engine/wall-joins.js?v=df2876a511e85eec" defer></script>
+  <script src="engine/reference-geometry.js?v=df2876a511e85eec" defer></script>
+  <script src="ha-iframe-bridge.js?v=df2876a511e85eec" defer></script>
+  <script src="inventory.js?v=df2876a511e85eec" defer></script>
+  <script src="catalog-variants.js?v=df2876a511e85eec" defer></script>
+  <script src="raster-renderer.js?v=df2876a511e85eec" defer></script>
+  <script src="object-art.js?v=df2876a511e85eec" defer></script>
+  <script src="object-controls.js?v=df2876a511e85eec" defer></script>
+  <script src="app.js?v=df2876a511e85eec" defer></script>
+  <script src="responsive-inspector.js?v=df2876a511e85eec" defer></script>
+  <script src="storybook-editor.js?v=df2876a511e85eec" defer></script>
 </body>
 </html>

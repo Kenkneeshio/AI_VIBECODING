@@ -163,15 +163,21 @@ function compileFence(wall, rooms, stairs) {
   const centerX = (wall.x1 + wall.x2) / 2;
   const centerZ = (wall.y1 + wall.y2) / 2;
   const deck = rooms.some(room => touchesRoom(room, centerX, centerZ));
+  const followsDeck = rooms.some(room => isOutdoorRoom(room) &&
+    touchesRoom(room, centerX, centerZ) &&
+    touchesRoom(room, wall.x1, wall.y1) && touchesRoom(room, wall.x2, wall.y2));
   let base1 = deck ? 0 : GROUND_Y;
   let base2 = base1;
-  for (const stair of stairs) {
-    const start = stairGrade(stair, wall.x1, wall.y1);
-    const end = stairGrade(stair, wall.x2, wall.y2);
-    if (start !== null && end !== null) {
-      base1 = start;
-      base2 = end;
-      break;
+  // A rail along a full upper ledge stays level even beside a descending flight.
+  if (!followsDeck) {
+    for (const stair of stairs) {
+      const start = stairGrade(stair, wall.x1, wall.y1);
+      const end = stairGrade(stair, wall.x2, wall.y2);
+      if (start !== null && end !== null) {
+        base1 = start;
+        base2 = end;
+        break;
+      }
     }
   }
   const [, cap, base] = wallPalette(wall);
@@ -811,6 +817,41 @@ function tableMount(plan, placement, roots) {
   return 0;
 }
 
+// The live camera thumbnails yield to the visible stair and rail geometry.
+export function projectExteriorClearance(plan, camera, width, height) {
+  const projected = new THREE.Vector3();
+  const padding = 7;
+  const bounds = corners => {
+    const rect = {left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity};
+    for (const corner of corners) {
+      projected.set(...corner).project(camera);
+      const x = (projected.x + 1) * width / 2;
+      const y = (1 - projected.y) * height / 2;
+      rect.left = Math.min(rect.left, x - padding);
+      rect.right = Math.max(rect.right, x + padding);
+      rect.top = Math.min(rect.top, y - padding);
+      rect.bottom = Math.max(rect.bottom, y + padding);
+    }
+    return rect;
+  };
+  const rails = plan.fences.map(({x1, y1, x2, y2, base1, base2}) => bounds([
+    [x1, base1, y1], [x1, base1 + FENCE_HEIGHT, y1],
+    [x2, base2, y2], [x2, base2 + FENCE_HEIGHT, y2],
+  ]));
+  const stairs = plan.stairs.map(({x, z, angle, item, apronDepth}) => {
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const corners = [];
+    for (const side of [-item.w / 2, item.w / 2]) {
+      for (const [run, level] of [[-item.h / 2 - apronDepth, STAIR_BASE], [item.h / 2, 0]]) {
+        corners.push([x + side * cos - run * sin, level, z + side * sin + run * cos]);
+      }
+    }
+    return bounds(corners);
+  });
+  return [...rails, ...stairs];
+}
+
 export function createStorybookScene(canvas, layout) {
   const plan = compileStorybookPlan(layout);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'low-power' });
@@ -961,5 +1002,6 @@ export function createStorybookScene(canvas, layout) {
     lighting.dispose();
     renderer.dispose();
   }
-  return { resize, render, anchor, setView, getView, projectToPlan, pickGarage, dispose };
+  const exteriorClearance = () => projectExteriorClearance(plan, camera, currentWidth, currentHeight);
+  return { resize, render, anchor, setView, getView, projectToPlan, pickGarage, exteriorClearance, dispose };
 }

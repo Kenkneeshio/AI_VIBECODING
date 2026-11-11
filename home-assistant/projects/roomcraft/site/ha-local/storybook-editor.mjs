@@ -1,5 +1,5 @@
 import {compileStorybookPlan, createStorybookScene} from './storybook-scene.mjs';
-import {CAMERA_PRESETS, enterFreeView, populateCameraOptions} from './storybook-camera.mjs';
+import {CAMERA_PRESETS, enterFreeView, populateCameraOptions, studioCameraPreferences} from './storybook-camera.mjs';
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
 import {placeStorybookTargets} from './storybook-state.mjs';
 
@@ -69,6 +69,10 @@ export function mountStorybookEditor(document, host) {
     in: document.getElementById('sceneZoomIn'),
   };
   const resetButton = document.getElementById('sceneReset');
+  const saveDefaultButton = document.getElementById('sceneSaveDefault');
+  const clearDefaultButton = document.getElementById('sceneClearDefault');
+  const defaultStatus = document.getElementById('sceneDefaultStatus');
+  const preferences = studioCameraPreferences(host);
   const look = document.createElement('label');
   look.className = 'scene-dashboard-look';
   look.hidden = true;
@@ -110,6 +114,9 @@ export function mountStorybookEditor(document, host) {
   let drag;
   let resizeFrame;
   let disposed = false;
+  let cameraChanged = false;
+  let savedStartupView = null;
+  let defaultBusy = false;
 
   const is3D = () => mode !== 'plan';
   const isFree = () => mode === 'free';
@@ -184,6 +191,21 @@ export function mountStorybookEditor(document, host) {
   }
   function updateButtons() {
     for (const button of Object.values(buttons)) if (button) button.disabled = !is3D();
+    if (saveDefaultButton) {
+      saveDefaultButton.hidden = !scene || !isFree();
+      saveDefaultButton.disabled = defaultBusy;
+    }
+    if (clearDefaultButton) {
+      clearDefaultButton.hidden = !scene || !is3D() || !savedStartupView;
+      clearDefaultButton.disabled = defaultBusy;
+    }
+  }
+  function setDefaultStatus(text) {
+    if (defaultStatus) defaultStatus.textContent = text;
+  }
+  function markCameraChanged() {
+    cameraChanged = true;
+    setDefaultStatus('');
   }
   function updateCanvasInteraction() {
     canvas.tabIndex = isFree() ? 0 : -1;
@@ -192,7 +214,8 @@ export function mountStorybookEditor(document, host) {
       ? 'Free view. Use arrow keys to orbit and plus or minus to zoom.'
       : editorCanvasLabel);
   }
-  function choose(next) {
+  function choose(next, {initial = false, savedView = null} = {}) {
+    if (!initial) markCameraChanged();
     orbit.cancel();
     restoreDrag();
     const previousView = scene?.getView() ?? view;
@@ -220,7 +243,7 @@ export function mountStorybookEditor(document, host) {
       setStatus('Plan view · edit rooms, walls, floors and objects');
       return;
     }
-    const nextView = isFree() ? enterFreeView(previousView) : {preset: mode};
+    const nextView = savedView ?? (isFree() ? enterFreeView(previousView) : {preset: mode});
     view = scene ? scene.setView(nextView) : nextView;
     refresh();
     if (!scene) return;
@@ -285,11 +308,13 @@ export function mountStorybookEditor(document, host) {
           markerLayer.append(marker);
         }
       }
+      updateButtons();
       draw();
     } catch { fail(); }
   }
   function changeCamera(edit) {
     if (!scene || !is3D()) return;
+    markCameraChanged();
     restoreDrag();
     scene.setView(edit(scene.getView()));
     view = scene.getView();
@@ -311,6 +336,7 @@ export function mountStorybookEditor(document, host) {
     getView: () => isFree() ? scene?.getView() : null,
     onChange: next => {
       if (!scene || !isFree()) return;
+      markCameraChanged();
       view = scene.setView(next);
       onResize();
     },
@@ -398,11 +424,50 @@ export function mountStorybookEditor(document, host) {
   const zoomIn = () => changeCamera(current => ({...current, zoom: current.zoom * 1.2}));
   const resetView = () => choose('top');
   const changeLook = () => draw();
+  async function loadStartupView() {
+    defaultBusy = true;
+    updateButtons();
+    try {
+      savedStartupView = await preferences.read();
+      if (!disposed && !cameraChanged && savedStartupView) {
+        choose('free', {initial: true, savedView: savedStartupView});
+      }
+    } catch {
+      if (!disposed) setDefaultStatus('Saved view unavailable');
+    } finally {
+      defaultBusy = false;
+      if (!disposed) updateButtons();
+    }
+  }
+  async function writeStartupView(viewToSave) {
+    if (!scene || !is3D() || defaultBusy) return;
+    defaultBusy = true;
+    setDefaultStatus('Saving view…');
+    updateButtons();
+    try {
+      await preferences.write(viewToSave);
+      if (disposed) return;
+      savedStartupView = viewToSave;
+      if (!viewToSave) choose('top');
+      setDefaultStatus(viewToSave ? 'Default view saved' : 'Top down is the default');
+    } catch {
+      if (!disposed) setDefaultStatus('Could not save default view');
+    } finally {
+      defaultBusy = false;
+      if (!disposed) updateButtons();
+    }
+  }
+  const saveStartupView = () => {
+    if (isFree() && scene) writeStartupView(scene.getView());
+  };
+  const clearStartupView = () => writeStartupView(null);
   buttons.left?.addEventListener('click', rotateLeft);
   buttons.right?.addEventListener('click', rotateRight);
   buttons.out?.addEventListener('click', zoomOut);
   buttons.in?.addEventListener('click', zoomIn);
   resetButton?.addEventListener('click', resetView);
+  saveDefaultButton?.addEventListener('click', saveStartupView);
+  clearDefaultButton?.addEventListener('click', clearStartupView);
   lookCheckbox.addEventListener('change', changeLook);
   choice.addEventListener('change', onChoice);
   canvas.addEventListener('pointerdown', onPointerDown);
@@ -417,7 +482,8 @@ export function mountStorybookEditor(document, host) {
   host.addEventListener('roomcraft-editor-tool', onTool);
   const observer = new host.ResizeObserver(onResize);
   observer.observe(viewport);
-  choose(mode);
+  choose(mode, {initial: true});
+  loadStartupView();
 
   return {
     getView: () => scene?.getView() ?? {...view},
@@ -443,6 +509,8 @@ export function mountStorybookEditor(document, host) {
       buttons.out?.removeEventListener('click', zoomOut);
       buttons.in?.removeEventListener('click', zoomIn);
       resetButton?.removeEventListener('click', resetView);
+      saveDefaultButton?.removeEventListener('click', saveStartupView);
+      clearDefaultButton?.removeEventListener('click', clearStartupView);
       choice.removeEventListener('change', onChoice);
       canvas.removeEventListener('pointerdown', onPointerDown);
       canvas.removeEventListener('pointermove', onPointerMove);

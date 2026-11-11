@@ -48,6 +48,31 @@ export function enterFreeView(value) {
   return {...current, preset: 'free', tilt: current.tilt || CAMERA_PRESETS.free.tilt};
 }
 
+/** The startup view can be cleared, or store one exact Free view pose. */
+export function readSavedFreeView(value) {
+  if (value?.preset !== 'free' || ![value.azimuth, value.tilt, value.zoom].every(Number.isFinite)) return null;
+  return normalizeCameraView(value);
+}
+
+/** Browser-only Studio uses local storage. Embedded Studio delegates to its signed-in HA parent. */
+export function studioCameraPreferences(host) {
+  const bridge = host.RoomcraftDashboardBridge;
+  if (bridge?.request) {
+    return {
+      read: async () => readSavedFreeView(await bridge.request('CAMERA_GET')),
+      write: view => bridge.request('CAMERA_SET', view),
+    };
+  }
+  const key = 'roomcraft.default-camera.v1';
+  return {
+    async read() { return readSavedFreeView(JSON.parse(host.localStorage.getItem(key))); },
+    async write(view) {
+      if (view) host.localStorage.setItem(key, JSON.stringify(view));
+      else host.localStorage.removeItem(key);
+    },
+  };
+}
+
 /** Fit one authored bounding box at an explicit viewport and orthographic pose. */
 export function fitStorybookCamera(camera, bounds, width, height, view = 'top') {
   if (![bounds?.minX, bounds?.maxX, bounds?.minZ, bounds?.maxZ, width, height].every(Number.isFinite) ||

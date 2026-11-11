@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { test } from 'node:test';
 import { installRoomcraftEngine } from './engine-loader.mjs';
+import { compileStorybookPlan } from '../ha-local/storybook-scene.mjs';
 
 const source = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
 const controlsSource = readFileSync(new URL('../public/object-controls.js', import.meta.url), 'utf8');
@@ -160,12 +161,77 @@ test('two taps draw a fence and exterior wall edits survive a reload', () => {
   assert.deepEqual(boot(editor.read()).read().walls,[fence]);
 });
 
+function upperDeckLayout() {
+  const room = (id, coordinates) => ({id, outdoor:true, surface:'patio',
+    points:coordinates.map(([x, y]) => ({x, y}))});
+  return {
+    version:2, editableReferenceVersion:8, hotspots:[],
+    rooms:[
+      room('reference-balcony', [[148,250],[400,250],[400,408],[342,468],[148,468]]),
+      room('reference-porch', [[148,590],[248,590],[302,651],[302,882],[148,882]]),
+      room('reference-landing', [[50,825],[149,825],[149,882],[50,882]]),
+    ],
+    walls:[
+      {id:'w8', x1:302,y1:651,x2:302,y2:800},
+      {id:'reference-balcony-fence', kind:'fence', finish:'graphite', x1:148,y1:250,x2:400,y2:250},
+      {id:'reference-stair-fence', kind:'fence', finish:'graphite', x1:54,y1:192,x2:54,y2:825},
+    ],
+    items:[{id:'reference-stairs', type:'stairs', x:99, y:508.5, w:98, h:633, rotation:0, steps:14}],
+  };
+}
+
+const migrateInStudio = layout => JSON.parse(JSON.stringify(
+  boot(layout).window.RoomcraftEditorViewport.getProject()));
+
+test('revision 9 adds editable matching rails at the upper ledges while keeping both entrances and the stair head open', () => {
+  const before = upperDeckLayout();
+  const migrated = migrateInStudio(before);
+  assert.equal(migrated.editableReferenceVersion, 9);
+  assert.deepEqual(migrated.rooms, before.rooms);
+  assert.deepEqual(migrated.items, before.items);
+  assert.deepEqual(migrated.walls.slice(0,before.walls.length), before.walls);
+  const additions = migrated.walls.slice(before.walls.length);
+  assert.ok(additions.every(wall => wall.kind === 'fence' && wall.finish === 'graphite'));
+  assert.deepEqual(additions.map(({id,x1,y1,x2,y2}) => [id,x1,y1,x2,y2]), [
+    ['reference-balcony-west-rail',148,250,148,468],
+    ['reference-porch-west-rail',148,590,148,825],
+    ['reference-porch-south-rail',148,882,302,882],
+    ['reference-porch-east-rail',302,800,302,882],
+    ['reference-landing-west-rail',54,825,54,882],
+    ['reference-landing-south-rail',54,882,148,882],
+  ]);
+  const {fences} = compileStorybookPlan(migrated);
+  for (const fence of fences) {
+    assert.equal(fence.base1, fence.id === 'reference-stair-fence' ? -108 : 0);
+    assert.equal(fence.base2, 0);
+    assert.equal(fence.color, fences[0].color);
+    assert.equal(fence.postColor, fences[0].postColor);
+  }
+
+  const edited = {...migrated, walls: migrated.walls.filter(wall => wall.id !== 'reference-porch-west-rail')};
+  assert.deepEqual(migrateInStudio(edited), edited, 'a later removal remains removed');
+});
+
+test('revision 9 respects a customized deck, nearby authored rail, and an edited stock ID', () => {
+  const authored = upperDeckLayout();
+  authored.rooms[0].points[0].x += 24;
+  authored.walls.push(
+    {id:'my-porch-rail', kind:'fence', finish:'sage', x1:151,y1:610,x2:151,y2:780},
+    {id:'reference-porch-east-rail', kind:'fence', finish:'walnut', x1:290,y1:810,x2:290,y2:882},
+  );
+  const migrated = migrateInStudio(authored);
+  assert.deepEqual(migrated.walls.slice(0,authored.walls.length), authored.walls);
+  assert.ok(!migrated.walls.some(wall => wall.id === 'reference-balcony-west-rail' ||
+    wall.id === 'reference-porch-west-rail'));
+  assert.equal(migrated.walls.filter(wall => wall.id === 'reference-porch-east-rail').length, 1);
+});
+
 test('reference geometry repair reorients only the original bed and keeps its binding', () => {
   const bed = {id:'i6', type:'bed', name:'My bed', x:1331, y:373, w:213, h:194, rotation:0, entityId:'switch.example'};
   const from = items => boot({version:2, editableReferenceVersion:6, rooms:[], walls:[], items, hotspots:[]})
     .window.RoomcraftEditorViewport.getProject();
   const repaired = from([bed]);
-  assert.equal(repaired.editableReferenceVersion, 8);
+  assert.equal(repaired.editableReferenceVersion, 9);
   assert.equal(repaired.items[0].rotation, 90);
   assert.equal(repaired.items[0].entityId, 'switch.example');
   const custom = from([{...bed, x:1300, rotation:15}]);
@@ -317,7 +383,7 @@ test('migrates a saved plan into movable lamp and room fixtures without duplicat
   editor.pointer('pointermove', 1393, 516);
   editor.pointer('pointerup', 1393, 516);
   const migrated = editor.read();
-  assert.equal(migrated.editableReferenceVersion, 8);
+  assert.equal(migrated.editableReferenceVersion, 9);
   assert.equal(migrated.items.filter(i => i.id === 'i14').length, 1);
   assert.equal(migrated.items.filter(i => i.id.startsWith('fixture-')).length, 7);
   assert.equal(migrated.items.find(i => i.id === 'office-desk-lamp')?.type, 'lamp');
@@ -350,7 +416,7 @@ test('remove all objects stays empty after reload and restore rebuilds the compl
   editor.dispatch('confirmationAccept', 'click', {});
   await removing;
   const empty = editor.read();
-  assert.equal(empty.editableReferenceVersion, 8);
+  assert.equal(empty.editableReferenceVersion, 9);
   assert.equal(empty.items.length, 0);
 
   const reopened = boot(empty);
@@ -373,7 +439,7 @@ test('v6 owns the final shell object and separates fan, fan light, and detached 
   ] };
   const editor=boot(v5);
   const migrated = editor.window.RoomcraftEditorViewport.getProject();
-  assert.equal(migrated.editableReferenceVersion, 8);
+  assert.equal(migrated.editableReferenceVersion, 9);
   assert.equal(migrated.items.filter(i => i.id === 'living-wall-unit').length, 1);
   assert.equal(migrated.items.find(i=>i.id==='fan').type,'fans-five-blade-fan-white');
   assert.deepEqual(
