@@ -27,7 +27,9 @@ class InstallTests(unittest.TestCase):
         self.remote = Mock(spec=installer.Remote)
         self.remote.exists.return_value = True
         self.remote.download.side_effect = self.download
-        self.remote.shell.return_value = CompletedProcess([], 0, stdout="")
+        self.remote.shell.side_effect = lambda command, **_: CompletedProcess(
+            [], 0, stdout="0\n" if command.startswith("cat ") else ""
+        )
         self.ready = Mock()
 
     def download(self, source, destination, *, recursive=False):
@@ -42,11 +44,14 @@ class InstallTests(unittest.TestCase):
     def commands(self):
         return [call.args[0] for call in self.remote.shell.call_args_list]
 
+    def restarts(self):
+        return [command for command in self.commands() if command.startswith("nohup ")]
+
     def test_component_upgrade_uses_one_restart_and_never_uploads_yaml(self):
         with patch.object(installer, "verify_files") as verify:
             installer.install(self.remote, self.source, self.backup, None, self.ready)
-        self.assertEqual(self.commands().count("ha core restart"), 1)
-        self.assertLess(self.commands().index("ha core check"), self.commands().index("ha core restart"))
+        self.assertEqual(len(self.restarts()), 1)
+        self.assertLess(self.commands().index("ha core check"), self.commands().index(self.restarts()[0]))
         self.assertTrue(all(".yaml" not in command for command in self.commands()))
         self.assertEqual(verify.call_count, 4)
         self.ready.assert_called_once()
@@ -58,7 +63,7 @@ class InstallTests(unittest.TestCase):
         with patch.object(installer, "verify_files"):
             with self.assertRaisesRegex(RuntimeError, "Previous files restored"):
                 installer.install(self.remote, self.source, self.backup, None, self.ready)
-        self.assertNotIn("ha core restart", self.commands())
+        self.assertEqual(self.restarts(), [])
         self.assertIn("/previous", self.commands()[-1])
         self.ready.assert_not_called()
 
@@ -67,9 +72,20 @@ class InstallTests(unittest.TestCase):
         with patch.object(installer, "verify_files"):
             with self.assertRaisesRegex(RuntimeError, "Previous files restored"):
                 installer.install(self.remote, self.source, self.backup, None, self.ready)
-        self.assertEqual(self.commands().count("ha core restart"), 2)
-        self.assertIn("/previous", self.commands()[-2])
+        self.assertEqual(len(self.restarts()), 2)
+        self.assertTrue(any("if [ -d " in command and "/previous" in command for command in self.commands()))
         self.assertEqual(self.ready.call_count, 2)
+
+    def test_unconfirmed_supervisor_restart_preserves_candidate_and_avoids_duplicate_restart(self):
+        self.remote.shell.side_effect = lambda command, **_: CompletedProcess(
+            [], 0, stdout="1\n" if command.startswith("cat ") else ""
+        )
+        with patch.object(installer, "verify_files"):
+            with self.assertRaisesRegex(RuntimeError, "Check Supervisor and the runtime"):
+                installer.install(self.remote, self.source, self.backup, None, self.ready)
+        self.assertEqual(len(self.restarts()), 1)
+        self.assertFalse(any("/failed" in command for command in self.commands()))
+        self.ready.assert_not_called()
 
     def test_full_install_rolls_back_both_yaml_files_after_failed_core_check(self):
         private = self.root / "private.yaml"

@@ -71,3 +71,5 @@ python -m unittest discover -s tests -p 'test_*.py'
 
 After deployment, cold-reload the HA frontend so it evaluates the newly registered module. Verify the resource URL and health view through Lovelace readback, then check map fit and at least one node detail on the target tablet. Do not create a real failure or actuate a device solely for visual QA.
 
+The component installer records the Supervisor restart result in its private backup directory. If the restart is unconfirmed, inspect the Supervisor job, Core state, and Watchdog summary before retrying or restoring files. A disconnected SSH client can leave an accepted restart running.
+

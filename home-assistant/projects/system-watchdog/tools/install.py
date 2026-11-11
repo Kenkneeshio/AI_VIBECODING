@@ -22,6 +22,10 @@ INCLUDE = "system_watchdog: !include system_watchdog.yaml"
 SUMMARY_PATH = "/api/states/sensor.system_watchdog_summary"
 
 
+class RestartUnconfirmed(RuntimeError):
+    """Supervisor may still be processing a restart after the SSH client exits."""
+
+
 def run(args: list[str], *, check: bool = True, timeout: int = 120) -> subprocess.CompletedProcess[str]:
     result = subprocess.run(args, capture_output=True, text=True, timeout=timeout, check=False)
     if check and result.returncode:
@@ -69,6 +73,30 @@ def wait_for_watchdog(adapter: Path) -> None:
             pass
         time.sleep(4)
     raise RuntimeError("The Watchdog summary did not return after the Home Assistant restart.")
+
+
+def restart_core(remote: Remote, archive: str, operation: str) -> None:
+    status = f"{archive}/{operation}.status"
+    log = f"{archive}/{operation}.log"
+    command = (f"ha core restart --no-progress >{log} 2>&1\n"
+               f"printf '%s\\n' \"$?\" >{status}.pending\n"
+               f"mv {status}.pending {status}")
+    try:
+        remote.shell(f"nohup sh -c {shlex.quote(command)} </dev/null >/dev/null 2>&1 &", timeout=15)
+    except (RuntimeError, OSError, subprocess.TimeoutExpired) as error:
+        raise RestartUnconfirmed("Could not confirm Supervisor received the restart request.") from error
+    deadline = time.monotonic() + 16 * 60
+    while time.monotonic() < deadline:
+        try:
+            result = remote.shell(f"cat {status}", check=False, timeout=12)
+            if result.returncode == 0:
+                if result.stdout.strip() == "0":
+                    return
+                raise RestartUnconfirmed("Supervisor did not report a completed restart.")
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+        time.sleep(8)
+    raise RestartUnconfirmed("Supervisor has not reported the restart result.")
 
 
 def install(remote: Remote, source: Path, backup: Path, private_config: Path | None, wait_ready) -> str:
@@ -136,14 +164,16 @@ def install(remote: Remote, source: Path, backup: Path, private_config: Path | N
         if remote.shell("ha core check", check=False, timeout=180).returncode:
             raise RuntimeError("Home Assistant configuration validation failed.")
         restart_attempted = True
-        remote.shell("ha core restart", timeout=180)
+        restart_core(remote, archive, "restart")
         wait_ready()
         verify_files(remote, COMPONENT, files)
+    except RestartUnconfirmed as error:
+        raise RuntimeError(f"{error} Check Supervisor and the runtime before retrying. Private backup: {archive}.") from None
     except (RuntimeError, OSError, subprocess.TimeoutExpired) as error:
         try:
             remote.shell("\n".join(rollback))
             if restart_attempted:
-                remote.shell("ha core restart", timeout=180)
+                restart_core(remote, archive, "rollback")
                 if installed:
                     wait_ready()
         except (RuntimeError, OSError, subprocess.TimeoutExpired) as rollback_error:
