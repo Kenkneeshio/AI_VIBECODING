@@ -31,7 +31,7 @@ export const REQUIRED_ENGINE_SOURCES = Object.freeze([
   'engine/reference-geometry.js'
 ]);
 const ALLOWED_RUNTIME_EXTENSIONS = new Set([
-  '.css', '.html', '.js', '.json', '.md', '.mjs', '.mts', '.png', '.py', '.sh', '.svg', '.ts', '.tsx'
+  '.css', '.html', '.js', '.json', '.md', '.mjs', '.mp3', '.mts', '.png', '.ps1', '.py', '.sh', '.svg', '.ts', '.tsx'
 ]);
 
 function posixPath(value) {
@@ -50,8 +50,8 @@ function sha256(buffer) {
 
 export function canonicalInputBytes(path, bytes = readFileSync(path)) {
   // Git may check text out as CRLF on Windows and LF in CI. Hash the logical
-  // source, not a workstation's checkout policy; binary artwork stays exact.
-  if (extension(posixPath(path)) === '.png') return bytes;
+  // source independent of checkout policy. Keep binary assets byte for byte.
+  if (['.mp3', '.png'].includes(extension(posixPath(path)))) return bytes;
   return Buffer.from(bytes.toString('utf8').replace(/\r\n?/g, '\n'), 'utf8');
 }
 

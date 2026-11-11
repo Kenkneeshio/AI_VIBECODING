@@ -1,7 +1,7 @@
 import {readDetectionZones, readPersonTracks, trackingSnapshots, trackingStatus} from './storybook-tracking.mjs';
 import {bindLiveModelLibrary} from './storybook-library.mjs';
 import {createStorybookScene} from './storybook-scene.mjs';
-import {createStorybookDemo, DEMO_DURATION_MS} from './storybook-demo.mjs';
+import {createStorybookDemo, DEMO_DURATION_MS, STORYBOOK_DEMO_VOICE_CUES} from './storybook-demo.mjs';
 import {createStorybookDemoScenario} from './storybook-demo-frame.mjs';
 import {createStorybookNarrator} from './storybook-demo-narration.mjs';
 import {bindSnapshotDialog, SNAPSHOT_DIALOG_MARKUP} from './storybook-snapshots.mjs';
@@ -25,6 +25,7 @@ const DETECTION_ZONE_KEY = 'roomcraft.show-detection-zone.v1';
 const CAMERA_TILES_KEY = 'roomcraft.show-camera-tiles.v1';
 const REDUCE_MOTION_KEY = 'roomcraft.reduce-motion.v1';
 const DEMO_MUTED_KEY = 'roomcraft.demo-muted.v1';
+const DEMO_NARRATION_URL = new URL('./demo-narration-v1.mp3', import.meta.url).href;
 const AMBIENT_TRAFFIC = Object.freeze({severity: 'ambient'});
 
 function readPreference(key, fallback) {
@@ -351,7 +352,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.demoProgress = this.demo.querySelector('.demo-progress span');
     this.demoStopButton = this.demo.querySelector('.demo-stop');
     this.demoMuteButton = this.demo.querySelector('.demo-mute');
-    this.demoNarrator = createStorybookNarrator(window);
+    this.demoNarrator = createStorybookNarrator(window, {trackUrl: DEMO_NARRATION_URL, cues: STORYBOOK_DEMO_VOICE_CUES});
     this.demoMuted = readPreference(DEMO_MUTED_KEY, false);
     this.demoMuteButton.hidden = !this.demoNarrator.available;
     this.syncDemoMute();

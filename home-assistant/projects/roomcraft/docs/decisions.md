@@ -4,6 +4,8 @@
 
 Give household visitors 45 seconds to see what the live dashboard reads and how it looks across weather and time of day. Sample the tour's conditions, wind, moon phases, narration and camera from one elapsed clock. Keep example state in the renderer and stop speech when the tour stops. Captions carry the same explanation if audio is muted or unavailable.
 
+Ship a recording of the cue table with the dashboard so the Android Companion WebView can play narration through its media player. Seek by cue ID when the published layout skips a chapter. Regenerate the recording when the cue wording or timings change.
+
 In the live scene, use Home Assistant's sun and wind data and the moon phase from the configured entity. Derive the cloud forms from the reported weather condition. Use the illustrated moon path when the source supplies only a phase. Keep scenery and tree animation outside the authored floor plan and follow the reduced-motion preference in both the live view and the tour.
 
 ## Keep the road active between traffic readings

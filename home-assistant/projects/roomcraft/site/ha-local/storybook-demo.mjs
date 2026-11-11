@@ -25,12 +25,24 @@ const shots = [
 ];
 
 const weatherCues = [
-  {at: 0, id: 'weather-sky', text: 'Live weather shapes the sky and its reflection.'},
-  {at: 4000, id: 'weather-effects', text: 'Watch the coast change through clouds, wind, rain and snow.'},
-  {at: 11200, id: 'weather-moon', text: 'At night, each moon phase appears in the sky and water.'},
+  {at: 0, id: 'weather-sky', text: 'The sun moves across the sky and its reflection.'},
+  {at: 4000, id: 'weather-effects', text: 'Cloud shapes follow local weather. Wind speed and direction move clouds and trees.'},
+  {at: 11200, id: 'weather-moon', text: 'The moon crosses the sky through all eight phases.'},
 ];
 
 export const DEMO_DURATION_MS = shots.reduce((total, shot) => total + shot.duration, 0);
+
+// The recording follows the full tour. Each cue keeps its original slot
+// when the camera timeline redistributes time for a smaller layout.
+export const STORYBOOK_DEMO_VOICE_CUES = Object.freeze(shots.flatMap((shot, index) => {
+  const startMs = shots.slice(0, index).reduce((total, previous) => total + previous.duration, 0);
+  if (shot.beat !== 'weather') {
+    return [Object.freeze({id: shot.beat, text: shot.narration ?? shot.caption, startMs, durationMs: shot.duration})];
+  }
+  return weatherCues.map(({id, text, at}, cueIndex) => Object.freeze({
+    id, text, startMs: startMs + at, durationMs: (weatherCues[cueIndex + 1]?.at ?? shot.duration) - at,
+  }));
+}));
 
 function narrationFor(shot, time) {
   if (shot.beat === 'weather') {

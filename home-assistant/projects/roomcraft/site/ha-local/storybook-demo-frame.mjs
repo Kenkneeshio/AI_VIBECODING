@@ -13,7 +13,7 @@ const DAY = {night: false, daylightKnown: true, condition: 'partlycloudy', sunEl
 const GOLDEN_HOUR = {...DAY, condition: 'sunny', sunElevation: 13, sunRising: false};
 const MOON = {...DAY, night: true, condition: 'clear-night', moonPhase: 'full_moon', sunElevation: -16};
 const WEATHER_CONDITIONS = [
-  ['sunny', 'Sun and high clouds', 2, 80],
+  ['sunny', 'Sun and high cirrus clouds', 2, 80],
   ['partlycloudy', 'Partly cloudy · Cumulus', 4, 110],
   ['cloudy', 'Overcast · Stratus', 5, 150],
   ['fog', 'Coastal fog', 1, 180],

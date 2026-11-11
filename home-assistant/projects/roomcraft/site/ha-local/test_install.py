@@ -112,6 +112,25 @@ class InstallResourceTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "unexpected bytes for storybook-editor.js"):
                     install.copy_assets("ha.example.test", "root", root / "test-key", root, ())
 
+    def test_storybook_install_verifies_the_narration_asset(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in ("editor.html", "ha-iframe-bridge.js", "app.js", "storybook-editor.js",
+                         "demo-narration-v1.mp3", install.STORYBOOK_RESOURCE):
+                (root / name).write_bytes(name.encode())
+
+            class Reply(BytesIO):
+                status = 200
+
+            def served(url, timeout):
+                name = url.rsplit("/", 1)[-1]
+                return Reply(b"stale audio" if name.endswith(".mp3") else (root / name).read_bytes())
+
+            with patch.object(install, "run"), patch.object(install, "urlopen", side_effect=served):
+                with self.assertRaisesRegex(RuntimeError, "unexpected bytes for demo-narration-v1.mp3"):
+                    install.copy_assets("ha.example.test", "root", root / "test-key", root,
+                                        (root / install.STORYBOOK_RESOURCE,))
+
 
 if __name__ == "__main__":
     unittest.main()

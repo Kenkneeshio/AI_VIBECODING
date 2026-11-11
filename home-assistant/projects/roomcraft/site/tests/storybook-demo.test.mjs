@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {createStorybookDemo, DEMO_DURATION_MS} from '../ha-local/storybook-demo.mjs';
+import {createStorybookDemo, DEMO_DURATION_MS, STORYBOOK_DEMO_VOICE_CUES} from '../ha-local/storybook-demo.mjs';
 
 const original = Object.freeze({preset: 'free', azimuth: 355, tilt: 29.5, zoom: 1.03});
 const cameraAnchors = {
@@ -66,9 +66,9 @@ test('scripted captions and spoken cues align to the weather and moon windows', 
   assert.match(overview.narration, /live home/i);
   const weatherStart = 23_800;
   for (const [offset, cueId, keyword] of [
-    [0, 'weather-sky', /live weather/i], [3999, 'weather-sky', /reflection/i],
-    [4000, 'weather-effects', /wind, rain and snow/i], [11199, 'weather-effects', /clouds/i],
-    [11200, 'weather-moon', /moon phase/i], [15999, 'weather-moon', /sky and water/i],
+    [0, 'weather-sky', /sun moves/i], [3999, 'weather-sky', /reflection/i],
+    [4000, 'weather-effects', /wind speed and direction/i], [11199, 'weather-effects', /clouds and trees/i],
+    [11200, 'weather-moon', /moon crosses the sky/i], [15999, 'weather-moon', /eight phases/i],
   ]) {
     const shot = sample(weatherStart + offset);
     assert.equal(shot.beat, 'weather');
@@ -82,4 +82,17 @@ test('scripted captions and spoken cues align to the weather and moon windows', 
   assert.equal(noDevices(42_999).beat, 'weather');
   assert.equal(noDevices(43_000).beat, 'finale');
   assert.equal(noDevices(42_999).beatTimeMs, 15_999);
+});
+
+test('the bundled recording spans the full timeline with the same cue text', () => {
+  assert.equal(STORYBOOK_DEMO_VOICE_CUES.length, 13);
+  let nextStart = 0;
+  for (const {id, text, startMs, durationMs} of STORYBOOK_DEMO_VOICE_CUES) {
+    assert.equal(startMs, nextStart);
+    assert.equal(sample(startMs).cueId, id);
+    assert.equal(sample(startMs).narration, text);
+    nextStart += durationMs;
+    assert.equal(sample(nextStart - 1).cueId, id);
+  }
+  assert.equal(nextStart, DEMO_DURATION_MS);
 });

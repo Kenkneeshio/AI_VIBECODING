@@ -49,6 +49,8 @@ def copy_assets(host: str, user: str, key: Path, public: Path, modules: tuple[Pa
     for module in modules:
         run("scp", *ssh_options, str(module), f"{target}:{REMOTE_STATIC}/{module.name}")
     entrypoints = ("editor.html", "ha-iframe-bridge.js", "app.js", "storybook-editor.js")
+    if any(module.name == STORYBOOK_RESOURCE for module in modules):
+        entrypoints += ("demo-narration-v1.mp3",)
     for asset in (*(public / name for name in entrypoints), *modules):
         with urlopen(f"http://{host}:8123/local/roomcraft/{asset.name}", timeout=15) as response:
             if response.status != 200 or response.read() != asset.read_bytes():
