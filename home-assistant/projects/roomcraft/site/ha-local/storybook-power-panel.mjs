@@ -1,4 +1,6 @@
 import {powerHistorySamples, powerPanelModel} from './storybook-power.mjs';
+import {readRoomcraftEnergy} from './storybook-energy.mjs';
+import {bindEnergyExplorer, ENERGY_EXPLORER_MARKUP, ENERGY_EXPLORER_STYLE} from './storybook-energy-panel.mjs';
 
 const HOUR = 60 * 60 * 1000;
 const REFRESH = 60 * 1000;
@@ -39,6 +41,7 @@ export const POWER_PANEL_MARKUP = `
         <div data-period="month">${readingMarkup('power-period', '<span class="power-month-art" aria-hidden="true"></span>')}</div>
       </div>
     </div>
+    ${ENERGY_EXPLORER_MARKUP}
     <section class="power-other" hidden aria-label="Other readings">
       <h3>Other readings</h3><div class="power-other-rows"></div>
     </section>
@@ -134,6 +137,7 @@ export const POWER_PANEL_STYLE = `
     .power-periods:has(> [hidden]){grid-template-columns:1fr}
     .power-period{min-height:82px}
   }
+  ${ENERGY_EXPLORER_STYLE}
 `;
 
 function makeReadingButton(button, onDetails) {
@@ -238,6 +242,7 @@ export function bindStorybookPower(card) {
   let request;
   let refreshTimer;
   let otherSignature;
+  let energyConfig;
 
   const offline = () => card.session?.connected === false;
   function details(entityId) {
@@ -246,6 +251,7 @@ export function bindStorybookPower(card) {
     card.dispatchEvent(new CustomEvent('hass-more-info',
       {bubbles: true, composed: true, detail: {entityId}}));
   }
+  const energy = bindEnergyExplorer(card, dialog, details);
   const paintMain = makeReadingButton(dialog.querySelector('.power-main'), details);
   const paintToday = makeReadingButton(today.querySelector('button'), details);
   const paintMonth = makeReadingButton(month.querySelector('button'), details);
@@ -258,6 +264,7 @@ export function bindStorybookPower(card) {
     clearInterval(refreshTimer);
     resize.disconnect();
     request = undefined;
+    energy.close();
   });
 
   function showHistory(data, message = '') {
@@ -305,6 +312,7 @@ export function bindStorybookPower(card) {
 
   function refresh(previous) {
     if (!dialog.open) return;
+    energy.refresh(previous);
     const session = card.session;
     if (previous && previous.connected === session?.connected &&
         entries.every(({entity}) => previous.states?.[entity] === session?.states?.[entity])) return;
@@ -321,7 +329,8 @@ export function bindStorybookPower(card) {
     month.hidden = !model.month;
     periods.hidden = today.hidden && month.hidden;
     paintToday(model.today, actions);
-    paintMonth(model.month, actions);
+    const billed = model.month?.entity === energyConfig?.home.billing;
+    paintMonth(billed && model.month ? {...model.month, name: 'Billing cycle'} : model.month, actions);
 
     const rows = [...model.loads, ...model.other, ...model.unavailable];
     const signature = JSON.stringify(rows.map(row => [row.entity, row.name, row.reading, Boolean(actions?.[row.entity])]));
@@ -353,11 +362,19 @@ export function bindStorybookPower(card) {
       entries = readings;
       dialog.showModal();
       resize.observe(canvas);
+      energy.open();
       refresh();
       refreshTimer = setInterval(fetchHistory, REFRESH);
     },
     refresh,
     close() { if (dialog.open) dialog.close(); },
-    reducedMotion(reduced) { dialog.toggleAttribute('data-reduced-motion', reduced); },
+    setEnergyConfig(raw) {
+      energyConfig = readRoomcraftEnergy(raw);
+      energy.setConfig(energyConfig);
+    },
+    reducedMotion(reduced) {
+      dialog.toggleAttribute('data-reduced-motion', reduced);
+      energy.setReducedMotion(reduced);
+    },
   };
 }

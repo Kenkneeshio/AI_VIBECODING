@@ -14,7 +14,7 @@ function normalized(value) {
   return typeof value === 'string' ? value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() : '';
 }
 
-function reading(entry, snapshot) {
+export function powerMeterReading(entry, snapshot) {
   const state = snapshot?.[entry.entity];
   const attributes = state?.attributes;
   const unit = typeof attributes?.unit_of_measurement === 'string' ? attributes.unit_of_measurement.trim() : '';
@@ -48,7 +48,7 @@ function period(row, expression) {
 
 /** Classify configured meter readings without estimating or adding independent values. */
 export function powerPanelModel(entries, snapshot) {
-  const rows = (entries ?? []).map(entry => reading(entry, snapshot));
+  const rows = (entries ?? []).map(entry => powerMeterReading(entry, snapshot));
   const power = rows.filter(row => row.kind === 'power');
   const main = power.filter(row => row.wholeHome);
   const primary = main.find(row => row.available) ?? main[0] ??

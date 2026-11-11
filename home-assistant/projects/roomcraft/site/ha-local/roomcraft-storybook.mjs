@@ -10,6 +10,7 @@ import {storybookWeather, storybookWeatherMarkup, storybookWeatherStyles, update
 import {COASTAL_SKY_STYLE, COASTAL_SKY_MARKUP, updateCoastalSky} from './storybook-coastal-sky.mjs';
 import {readStorybookUtilities, utilityReading} from './storybook-utilities.mjs';
 import {bindStorybookPower, POWER_PANEL_MARKUP, POWER_PANEL_STYLE} from './storybook-power-panel.mjs';
+import {bindStorybookCommutes, COMMUTE_DIALOG_MARKUP} from './storybook-commutes.mjs';
 
 const TAG = 'roomcraft-storybook-card';
 const CONTROL_TAG = 'roomcraft-object-control';
@@ -87,14 +88,21 @@ class RoomcraftStorybookCard extends HTMLElement {
         [aria-pressed=true] .menu-toggle{flex-direction:row-reverse;background:#d8e6d2;color:#2b5034}
         [aria-pressed=true] .menu-toggle::before{background:#397247}
         [aria-pressed=true] .menu-toggle::after{content:"On"}
-        .tracking-dialog,.utility-dialog,.snapshot-dialog{box-sizing:border-box;width:min(420px,calc(100% - 24px));max-height:75dvh;overflow:auto;
+        .tracking-dialog,.utility-dialog,.snapshot-dialog,.link-dialog{box-sizing:border-box;width:min(420px,calc(100% - 24px));max-height:75dvh;overflow:auto;
           border:1px solid #c9b8a0;border-radius:14px;background:#fffaf0;color:#3c3247;padding:16px}
         .utility-dialog{width:min(520px,calc(100% - 24px))}
-        :is(.tracking-dialog,.utility-dialog,.snapshot-dialog)::backdrop{background:#182a2a9c}
-        :is(.tracking-dialog,.utility-dialog,.snapshot-dialog) header{display:flex;align-items:center;justify-content:space-between;gap:12px}
-        :is(.tracking-dialog,.utility-dialog,.snapshot-dialog) h2{font-size:17px;margin:0}
-        :is(.tracking-dialog,.utility-dialog,.snapshot-dialog) button{font:inherit;min-height:44px;padding:6px 12px;border:1px solid #c9b8a0;
+        :is(.tracking-dialog,.utility-dialog,.snapshot-dialog,.link-dialog)::backdrop{background:#182a2a9c}
+        :is(.tracking-dialog,.utility-dialog,.snapshot-dialog,.link-dialog) header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+        :is(.tracking-dialog,.utility-dialog,.snapshot-dialog,.link-dialog) h2{font-size:17px;margin:0}
+        :is(.tracking-dialog,.utility-dialog,.snapshot-dialog,.link-dialog) button{font:inherit;min-height:44px;padding:6px 12px;border:1px solid #c9b8a0;
           border-radius:7px;background:#fffaf0;color:inherit}
+        .link-dialog p{color:#665849}
+        .link-dialog a{border:1px solid #bbab90;border-radius:9px;background:#f2e6d3}
+        .planner-links{display:grid;gap:6px;margin-top:12px}
+        .commute-route{display:grid;gap:4px;margin-top:10px}
+        .commute-dialog [hidden]{display:none}
+        .commute-route select{min-height:44px;border:1px solid #c9b8a0;border-radius:7px;padding:4px 8px;
+          background:#fffdf6;color:inherit;font:inherit}
         .snapshot-dialog form{display:grid;gap:7px}
         .snapshot-dialog form[hidden],.snapshot-status:empty{display:none}
         .snapshot-dialog select{min-height:44px;max-width:100%;padding:0 9px;border:1px solid #c9b8a0;border-radius:7px;
@@ -219,6 +227,11 @@ class RoomcraftStorybookCard extends HTMLElement {
                 <section class="menu-group" aria-label="Dashboard tour">
                   <button type="button" class="demo-start" disabled>30-second demo</button>
                 </section>
+                <section class="menu-group" aria-label="Household">
+                  <button type="button" data-link-dialog="planner" aria-haspopup="dialog">Calendar &amp; to-dos</button>
+                  <button type="button" data-link-dialog="location" aria-haspopup="dialog">Location sharing</button>
+                  <button type="button" data-link-dialog="commute" aria-haspopup="dialog">Commute traffic</button>
+                </section>
                 <section class="menu-group" aria-label="On the map">
                   <p class="menu-heading" aria-hidden="true">On the map</p>
                   <button type="button" class="map-toggle toggle-object-details" aria-pressed="false">Object details <span class="menu-toggle" aria-hidden="true"></span></button>
@@ -277,11 +290,25 @@ class RoomcraftStorybookCard extends HTMLElement {
         <header><h2 id="utility-title"></h2><button type="button" class="close-utility">Close</button></header>
         <div class="utility-rows"></div>
       </dialog>
+      <dialog class="link-dialog location-dialog" aria-labelledby="location-title">
+        <header><h2 id="location-title">Location sharing</h2><button type="button" data-close-link>Close</button></header>
+        <p>Google Maps location sharing setup</p>
+        <a href="https://myaccount.google.com/locationsharing" target="_blank" rel="noopener noreferrer">Open Google Location Sharing ↗</a>
+      </dialog>
+      <dialog class="link-dialog planner-dialog" aria-labelledby="planner-title">
+        <header><h2 id="planner-title">Calendar &amp; to-dos</h2><button type="button" data-close-link>Close</button></header>
+        <nav class="planner-links" aria-label="Household planning">
+          <a href="/calendar">Calendar</a>
+          <a href="/todo">To-do lists</a>
+        </nav>
+      </dialog>
+      ${COMMUTE_DIALOG_MARKUP}
       ${SNAPSHOT_DIALOG_MARKUP}
       ${POWER_PANEL_MARKUP}`;
     bindLiveModelLibrary(this);
     this.snapshots = bindSnapshotDialog(this);
     this.power = bindStorybookPower(this);
+    this.commutes = bindStorybookCommutes(this);
     this.world = this.shadowRoot.querySelector('.world');
     this.coastalSky = this.shadowRoot.querySelector('.coastal-sky');
     this.stage = this.shadowRoot.querySelector('.stage');
@@ -349,6 +376,16 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.trackingDialog.showModal();
     });
     this.shadowRoot.querySelector('.close-tracking').addEventListener('click', () => this.trackingDialog.close());
+    this.linkDialogs = [];
+    for (const trigger of this.shadowRoot.querySelectorAll('[data-link-dialog]')) {
+      const dialog = this.shadowRoot.querySelector(`.${trigger.dataset.linkDialog}-dialog`);
+      this.linkDialogs.push(dialog);
+      trigger.addEventListener('click', () => {
+        this.setMainMenu(false, true);
+        dialog.showModal();
+      });
+      dialog.querySelector('[data-close-link]').addEventListener('click', () => dialog.close());
+    }
     this.menuButton.addEventListener('click', () => this.setMainMenu(this.mainMenu.hidden));
     this.onMenuPointerDown = event => {
       const path = event.composedPath();
@@ -651,6 +688,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       if (!this.isConnected || this.loading !== request) return;
       this.loadStartupView();
       this.model = readStorybookConfig(config);
+      for (const id of this.commutes.configure(config?.roomcraft_commutes)) this.model.watch.add(id);
       this.prepareUtilities(config);
       this.scene = createStorybookScene(this.canvas, this.model.layout);
       this.scene.setView(this.cameraView);
@@ -707,6 +745,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   prepareUtilities(config) {
     const {panels, devices} = readStorybookUtilities(config);
     this.utilityPanels = panels;
+    this.power.setEnergyConfig(config?.roomcraft_energy);
     for (const button of this.utilityButtons) button.hidden = !panels[button.dataset.utility];
     if (!devices || !customElements.get('roomcraft-entity-menu')?.prototype.open) return;
     this.devicesDrawer = document.createElement('roomcraft-entity-menu');
@@ -909,6 +948,9 @@ class RoomcraftStorybookCard extends HTMLElement {
     const states = offline ? {} : this.session.states;
     const now = Date.now();
     this.frame = storybookFrame(this.model, states, now);
+    const commute = this.commutes.update(offline ? undefined : states, now);
+    this.frame.environment.traffic = commute.profile;
+    this.frame.moving ||= Boolean(commute.profile);
     this.frame.people = readPersonTracks(this.model.layout.items, states, now);
     const mappedTargetCounts = new Map();
     for (const track of this.frame.people) {
@@ -920,7 +962,8 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.trackingButton.hidden = !this.model.layout.items.some(item => item.type === 'presenceSwitch' && item.presenceTrackEntityId);
     if (this.trackingDialog.open) this.paintTracking();
     clearTimeout(this.frameExpiryTimer);
-    const expires = Math.min(this.frame.nextRefreshAt ?? Infinity, ...this.frame.people.map(track => track.expiresAt));
+    const expires = Math.min(this.frame.nextRefreshAt ?? Infinity, commute.expiresAt ?? Infinity,
+      ...this.frame.people.map(track => track.expiresAt));
     if (Number.isFinite(expires)) {
       this.frameExpiryTimer = setTimeout(() => this.refresh(), Math.max(1, expires - now));
     }
@@ -1049,9 +1092,11 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.detectionZoneButton.setAttribute('aria-pressed', 'false');
     this.detectionZoneLegend.hidden = true;
     if (this.utilityDialog.open) this.utilityDialog.close();
+    for (const dialog of this.linkDialogs) if (dialog.open) dialog.close();
     this.power.close();
     this.utilityRows = null;
     this.utilityPanels = null;
+    this.power.setEnergyConfig(null);
     this.devicesDrawer?.remove();
     this.devicesDrawer = null;
     this.devicesButton.hidden = true;

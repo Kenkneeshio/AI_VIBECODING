@@ -1,5 +1,15 @@
 # Decision log
 
+## Keep energy totals scoped to their meters
+
+Use a radial energy tree and a searchable directory for the same meter data. The tree emphasizes the meters that fit the viewport, and the directory provides every configured reading and its native Home Assistant source. Show separate live, daily, calendar-month, and billing-cycle values. Use the home meter for the hub and keep shared circuits and individual plugs independent to avoid double-counting.
+
+Use the integration’s direct billing-cycle reading and its reported reset date. Calendar month uses the difference between Recorder’s exact boundary sum and its latest usable cumulative sample. The boundary is set in the Home Assistant timezone and each result carries its recorded-through timestamp. Missing boundaries leave the reading unavailable. Store the meter bindings in the private versioned dashboard configuration, outside layout snapshots and project exports.
+
+## Show commute pace from configured travel-time data
+
+Use a named Home Assistant route and a clear-road reference to drive the road scene. Car density and pace illustrate the ratio between those travel times. Hide the cars while the feed is missing or stale, and hold their positions under reduced motion. Keep routes and the clear-road reference in private dashboard configuration. Location sharing opens Google’s account controls, while Calendar and To-do lists use Home Assistant’s native pages.
+
 ## Use the Power panel to explain current electrical usage
 
 Give the household operator a readable meter, one hour of recorded history, and energy totals for the configured periods. Use the house illustration as a status cue and keep the numeric readings and graph visible on both tablet and phone. A tap on a reading opens its Home Assistant details.

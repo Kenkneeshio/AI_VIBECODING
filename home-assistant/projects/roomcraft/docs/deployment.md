@@ -22,6 +22,29 @@ python ha-local/install.py --storybook --host <HA-LAN-IP> --ssh-key <SSH-KEY-PAT
 
 Run `npm run build` before installing. The installer copies the public editor and Roomcraft modules to `/config/www/roomcraft/`, reconciles content-versioned Lovelace resources and reads back the saved config and resource URLs. It detects the consolidated dashboard on future upgrades. An asset-only refresh is available with `--assets-only`.
 
+### Connect energy and commute data
+
+From `site/`, run the Emporia mapping tool against the private management adapter. Review the counts before repeating the command with `--apply`. Applying creates a private backup, confirms the dashboard still matches the preflight copy, and verifies the saved configuration. The version 1 `roomcraft_energy` field belongs to the Home Assistant dashboard root.
+
+```powershell
+python ha-local/seed_storybook_energy.py --management-root <PRIVATE-HA-MANAGEMENT-DIR>
+```
+
+Open **Power → Energy map** and compare the hub and several meter readings with their Home Assistant sources. Check search, billing reset labels, Recorder’s recorded-through timestamp, missing readings, and reduced motion on both the wall tablet and a phone. Verify the energy mapping through dashboard and snapshot readback.
+
+For commute traffic, create a Home Assistant travel-time sensor for the chosen route. Put the route label, sensor ID, and clear-road reference in the private dashboard root. A route accepts a positive `baselineMinutes` or a separate `baselineEntity` with a duration in seconds, minutes, or hours. The example uses a separate sensor. Verify the route label, detail button, missing and stale states, and motion settings. [Waze Travel Time](https://www.home-assistant.io/integrations/waze_travel_time/)
+
+```yaml
+roomcraft_commutes:
+  version: 1
+  routes:
+    - name: Example commute
+      entity: sensor.example_commute
+      baselineEntity: sensor.example_clear_road_time
+```
+
+Verify that **Location sharing** opens Google’s account settings and **Calendar & to-dos** opens the native Home Assistant pages. The previous runtime source is `b9b93fb3a843272c8bfc7a44a42aa1fc9c3bb0f9`. If required, reinstall those assets, restore the private pre-release dashboard backup, and verify the current Home and Studio views. The previous owner-private Site version is 72. [Google Location Sharing settings](https://support.google.com/accounts/answer/9363497)
+
 ### Verify layout snapshots
 
 In **Roomcraft Home → Menu → Manage → Layout snapshots**, check that an administrator can see the previous layouts and that ordinary users have no restore action. For an isolated test dashboard, publish four distinct layouts across both Studio transports and confirm the history holds the three most recent displaced designs. Restore one and check that Home and Studio open the selected layout, the published picture card and image match it, and the displaced layout is available for undo. Keep the private pre-install backup and its original images for whole-dashboard recovery.

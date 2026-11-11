@@ -4,9 +4,23 @@ Roomcraft Studio edits the layout used by Roomcraft Home. Use the 3D view to arr
 
 ## Use the live dashboard
 
-Open **Roomcraft Home** in the Home Assistant sidebar for the live view. **Power** shows the current reading, the last hour of recorded power, and the configured energy totals for today and this month. Tap a reading for its Home Assistant details. **Weather** opens native weather details, and **Menu** holds the remaining controls. All three are along the bottom.
+Open **Roomcraft Home** in the Home Assistant sidebar for the live view. **Power** opens the meter and **Energy map**. **Weather** opens native weather details, and **Menu** holds the remaining controls. All three are along the bottom.
 
 Use **On the map** for Object details and Presence tracking, and **View controls** for view presets, rotation, zoom and default view settings. **Manage** opens Layout Studio and popups for Object models, Devices and sensors, Indoor air and System health when configured. The labels from **Object details** show each linked control's name and current state. The toggle is saved in the current browser.
+
+### Explore energy use
+
+The Power meter shows the current reading and the last hour of recorded power. Under **Energy map**, choose **Live power**, **Today**, **Calendar month**, or **Billing cycle**. Select the illustrated whole-home hub or a branch to see its readings. Use **Find a circuit or plug** to search all configured meters, including branches outside the visible tree. Tap a reading with an arrow to open its source in Home Assistant.
+
+Calendar month starts on the first day in Home Assistant’s timezone. Its **Recorded through** timestamp shows the latest usable Recorder measurement for the selected meter. **Billing cycle** follows the meter’s actual cycle reset. **Shared circuit** means the reading covers the connected circuit as a whole. A smart plug shows its own measured load. The whole-home hub reads its own meter so overlapping channels stay separate.
+
+### Open planning and commute tools
+
+Choose **Menu → Location sharing** to open your Google account’s sharing setup. Choose recipients and duration in Google Maps. [Google Maps Location Sharing](https://support.google.com/maps/answer/15437054)
+
+Choose **Menu → Calendar & to-dos** for Home Assistant’s own Calendar and To-do lists.
+
+Choose **Menu → Commute traffic** for a configured route’s travel time and delay. The road cars illustrate the measured pace relative to the route’s clear-road time. The panel offers a setup link before a route is connected. [Waze Travel Time](https://www.home-assistant.io/integrations/waze_travel_time/)
 
 ### Restore a previous layout
 

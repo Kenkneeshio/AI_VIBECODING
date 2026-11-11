@@ -12,6 +12,7 @@ import { createFloorSupport } from './storybook-floor-support.mjs';
 import { createStorybookCoverage } from './storybook-coverage.mjs';
 import { createStorybookOcean } from './storybook-ocean.mjs';
 import { buildStorybookNeighborhood, buildStorybookStreet, storybookStreetBounds } from './storybook-street.mjs';
+import { createStorybookTraffic } from './storybook-traffic.mjs';
 
 const DEG = Math.PI / 180;
 const WALL_WIDTH = 14;
@@ -867,7 +868,8 @@ export function createStorybookScene(canvas, layout) {
   scene.add(ground);
   const batch = makeStaticBatch(scene);
   const street = storybookStreetBounds(plan);
-  buildStorybookStreet(batch, street, GROUND_Y, ground.geometry.parameters.width, ground.position.x);
+  const road = buildStorybookStreet(batch, street, GROUND_Y, ground.geometry.parameters.width, ground.position.x);
+  let traffic;
   const {water} = buildStorybookNeighborhood(batch, street, GROUND_Y, plan.houseBounds,
     ground.geometry.parameters.width, ground.position.x);
   buildYard(batch, plan);
@@ -1004,6 +1006,11 @@ export function createStorybookScene(canvas, layout) {
     const reduceMotion = environment.reduceMotion === true;
     const time = !reduceMotion && Number.isFinite(timeSeconds) ? timeSeconds : 0;
     const telemetryTime = animateTelemetry ? time : 0;
+    if (!traffic && environment.traffic) {
+      traffic = createStorybookTraffic(road);
+      scene.add(traffic.root);
+    }
+    traffic?.update(timeSeconds, environment.traffic, {reduceMotion, night: environment.night === true});
     updatePrecipitation(telemetryTime, environment.condition);
     oceanEnvironment = environment;
     ocean.update(time, oceanEnvironment);
@@ -1052,6 +1059,7 @@ export function createStorybookScene(canvas, layout) {
     disposed = true;
     people.dispose();
     coverage.dispose();
+    traffic?.dispose();
     const geometries = new Set();
     const materials = new Set();
     const textures = new Set();

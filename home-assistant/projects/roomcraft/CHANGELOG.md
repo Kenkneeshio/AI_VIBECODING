@@ -1,5 +1,12 @@
 # Changelog
 
+## Energy map and household shortcuts
+
+- **Power → Energy map** adds a circular tree and searchable meter directory. Select the whole-home hub, a circuit, or a smart plug to see live power, today’s energy, calendar-month energy, and billing-cycle energy. Each available source opens its Home Assistant details.
+- The map distinguishes shared circuits from individual plugs. Calendar-month totals show how far Recorder has measured, and the billing view shows the meter’s reported cycle start.
+- **Menu** adds Google Location Sharing setup, Home Assistant Calendar and To-do lists, and a Commute traffic panel. A connected travel-time sensor with a clear-road reference drives the illustrated cars.
+- Grok Build supplied four independent speed-ratio fixtures. The reviewed cases are included in the commute tests. [Codex and Grok development guide](docs/ai-pair-development.md)
+
 ## Power at a glance
 
 - The illustrated **Power** panel shows the current meter reading, the last hour of recorded power, and the configured energy totals for today and this month. Tap a reading to open its native Home Assistant details.
