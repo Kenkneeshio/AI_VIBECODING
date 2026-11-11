@@ -1,6 +1,18 @@
 # Decision log
 
+## Consolidate Home and Studio in one dashboard
+
+Keep the wall tablet on Home for everyday use and open Studio for editing. Put device discovery, status summaries, system health, object models and presence in popups. Main Dashboard remains an independent Home Assistant dashboard.
+
+Store the editable project, complete projected picture card and optional health configuration at the root of Roomcraft Home. The 2D view in Studio remains an editing tool. Retaining the projected card as data preserves the export image and the existing control, camera, weather and utility definitions without exposing a separate Floor Plan page. The installer keeps the old registration during readback and validation so recovery can use the private archives.
+
+## Render tracked characters above the scene
+
+The floor projection resolves the sensor's calibrated position, even where a wall or piece of furniture occludes it in 3D. Draw fresh characters and their rings in a separate foreground pass using the same camera and coordinates. Keep the room lighting, weather and time unchanged by the tracking layer. Expiry and invalid-floor rules still apply. The synthetic wall-and-cabinet reproduction showed that the previous renderer hid valid positions.
+
 ## Keep everyday controls on Roomcraft Home
+
+The following records the previous sidebar-only cleanup.
 
 Give a wall-tablet user one current Roomcraft entry and keep Main Dashboard available. Second Floor holds the saved project and the existing Studio, Floor Plan and System Health paths, so it stays registered with its sidebar entry hidden. Preserve the prototype's dashboard metadata and configuration in the private archive before removing its registration. The user and system defaults stay on their existing dashboards.
 

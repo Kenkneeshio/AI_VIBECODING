@@ -4,13 +4,13 @@ Roomcraft Studio edits the layout used by Roomcraft Home. Use the 3D view to arr
 
 ## Use the live dashboard
 
-Open **Roomcraft Home** in the Home Assistant sidebar. Under **Menu → On the map**, turn on **Object details** to see each linked control's name and current state beside the object. Turn it off to clear the labels. This setting is shared with Floor Plan in the same browser. **View controls** has rotation, zoom and default view settings. **Manage** opens Layout Studio, Object models or System health.
+Open **Roomcraft Home** in the Home Assistant sidebar for the live view. **Menu → Manage → Layout Studio** opens the editor. Use **On the map** for Object details and Presence tracking, and **View controls** for rotation, zoom and default view settings. **Manage** also opens popups for Object models, Devices and sensors, Indoor air, Electrical and System health when configured. The labels from **Object details** show each linked control's name and current state. The toggle is saved in the current browser.
 
 The weather beside the menu shows the sun or moon, with clouds and precipitation for the current condition. Tap the weather to open Home Assistant's weather details. Reduced motion uses still weather artwork.
 
 ## Find and edit object models
 
-Open **Main menu → Object models** in Studio or Roomcraft Home. Choose **On the plan** to find and edit an existing object, **Add objects** to search the catalog, or **Home Assistant devices** to match a device to a model. Choose a suggested model or browse all compatible choices. Roomcraft Home opens Studio for placement and edits.
+Open **Menu → Manage → Object models** in Roomcraft Home or **Main menu → Object models** in Studio. Choose **On the plan** to find and edit an existing object, **Add objects** to search the catalog, or **Home Assistant devices** to match a device to a model. Choose a suggested model or browse all compatible choices. Roomcraft Home opens Studio for placement and edits.
 
 Select a placed object and open **Dimensions** in the Inspector. Enter width and depth in plan pixels. **Keep width/depth ratio** applies to numeric edits and corner drags. Enter **Height in 3D** where available, or leave it blank for the model's natural height. **Reset dimensions** restores the catalog footprint and natural height.
 
@@ -24,7 +24,7 @@ An administrator enables detailed reporting for the compatible switch in Home As
 
 Use **Plan pixels per metre**, **Rotation offset**, and **Flip radar left and right** to align the radar with the drawing. Select **Use switch position** to apply those settings from the placed switch. Have someone stand at two known points, preferably at different distances and on different sides of the switch, and adjust until their positions agree with the plan. Use **Export to dashboard** to publish the calibration. The advanced transform field accepts six affine coefficients when additional adjustment is needed.
 
-Characters leave the live view when fresh positions stop. Each switch tracks independently, so overlapping coverage can show the same person twice. Positions stay in Roomcraft Home and authenticated Home Assistant Studio. Layout exports and the private web editor contain the saved calibration. [Home Assistant presence setup](../ha-presence/README.md)
+Characters and their location rings stay visible over furniture and walls at the calibrated point. They disappear when fresh positions stop. If the tracking popup reports a target without a mapped point, check the calibration against two known spots. Each switch tracks independently, so overlapping coverage can show the same person twice. Positions stay in Roomcraft Home and authenticated Home Assistant Studio. Layout exports and the private web editor contain the saved calibration. [Home Assistant presence setup](../ha-presence/README.md)
 
 ## Change the view
 
@@ -50,9 +50,9 @@ The older 2D plan view is shown above. The left palette chooses objects, floor f
 
 The canvas is a top-down plan with lightly raised walls and furniture. The balcony and stair are outdoors at left. The stair begins at the lower-left landing and descends toward the top-left. The house, balcony, and lower-left stair landing are on the second floor. The detached garage sits on the first-floor ground plane. Choose **From west** to see the height difference clearly. Doorways between upstairs rooms remain on one floor level. Bedroom, study, baths, and living spaces have different finishes. The editor uses this image as a reference and separate illustrated assets to redraw edited geometry; an edited scene can differ from individual pixels in the reference PNG.
 
-### Wall-to-wall tablet view
+### Full-width plan export
 
-The full-width view uses the existing drawing and keeps every original column, x0–1536. It shows project y80–944 as a 1536 × 864 image, an exact 16:9 shape. The authored house, stair, balcony, rooms, and furnishings do not change size or position in the editable 1536 × 1024 project. When you move a lamp, fan, control, or camera frame in Studio and export, Roomcraft places its Home Assistant target over the matching object in the displayed image. Keep the camera frame inside the visible lower exterior before exporting; it remains movable in the editor. The image fills the tablet width by showing less sky and ground, without clipping the sides or stretching the house.
+The plan export keeps every original column, x0–1536, and uses project y80–944 for a 1536 × 864 image. The editable 1536 × 1024 project still holds the house, stair, balcony, rooms and furnishings. Export stores the image and matching control placement with the project. On the tablet, Roomcraft Home projects the controls over the 3D scene.
 
 The original reference is a single PNG, but Design mode reconstructs its removable contents as scene items. Rugs, original windows, cabinetry, bath fixtures, furniture, lights, controls, and newly placed catalog objects can all be selected, moved, resized, rotated, or removed independently. Floors, walls, railings, and stairs also come from editable layout records. Check **Design** against **Reference** after a large move to compare the editable reconstruction with the source image.
 
@@ -62,13 +62,9 @@ This public-safe PNG shows the corrected sofa orientation, recessed blue windows
 
 ## 1. Open the editor and choose a view
 
-In Roomcraft Home, open **Menu → Manage → Layout Studio**. On the home network, you can also open `http://<HA-LAN-IP>:8123/second-floor/studio` and sign in. The pencil-ruler icon in Floor Plan also opens Studio. An administrator account can publish a layout. Studio loads the current saved project on opening and offers **Recover previous browser draft** when a different local draft exists. The local draft remains available during a Home Assistant outage.
+In Roomcraft Home, open **Menu → Manage → Layout Studio**. On the home network, you can also open `http://<HA-LAN-IP>:8123/roomcraft-home/studio` and sign in. An administrator account can publish a layout. Studio loads the current saved project on opening and offers **Recover previous browser draft** when a different local draft exists. The local draft remains available during a Home Assistant outage.
 
-**Roomcraft Home** is the owner's default dashboard. **Main Dashboard** remains available in the sidebar and is the system default. Second Floor keeps the shared layout and the direct links for Studio, Floor Plan and System Health. Home Assistant Companion is the default Android Home app on the Apolosign Calendar wall tablet, so pressing Home returns to the panel. [Tablet access and recovery](tablet-access.md)
-
-![Home Assistant Floor Plan in a 960 by 600 browser viewport, with the full plan, device markers, weather, clock, and Studio edit icon visible](images/tablet-preview.png)
-
-This 960 × 600 browser preview shows the previous 3:2 plan card without page scrolling. The current full-width view was checked on the actual tablet in a separate private capture. That capture is not published because it includes authenticated live camera media. Use the live dashboard for the current appearance; this older image remains a guide to the control locations and editor entry.
+**Roomcraft Home** is the owner's default dashboard. **Main Dashboard** remains available in the sidebar and is the system default. Roomcraft Home keeps the shared layout for its Home and Studio views. Home Assistant Companion is the default Android Home app on the Apolosign Calendar wall tablet, so pressing Home returns to the panel. [Tablet access and recovery](tablet-access.md)
 
 The owner-private cloud editor is an alternate route when available; use the Site URL supplied by the owner. It has its own sign-in. Both editors share the dashboard's saved `roomcraft_layout` and load it on opening. Use **Import from dashboard** to refresh without reloading the page after someone else publishes a change. Use Layout Studio on the home network as the normal authoring path.
 
@@ -126,20 +122,20 @@ Use **Rooms** for the balcony and porch surfaces and **Objects** for the exterio
 
 The plan's markers represent Home Assistant controls. Select a marker to change its title, entity ID, location percentage, tap action, or hold action. The Inspector accepts an entity ID in `domain.object_id` form, such as `light.example_living_room`.
 
-On the live **Floor Plan**, open the top-left device menu and use **Show object details on plan** when identifying controls or troubleshooting a binding. A compact card appears next to each interactive object with its label, current HA state, and entity ID; camera tiles show their bound camera entity beside the frame. The cards automatically choose the side with available screen space and do not cover the object itself. Turn the option off to restore the clean illustrated view. The choice is remembered separately by each browser or tablet and does not change the saved layout.
+In Roomcraft Home, use **Menu → On the map → Object details** when identifying controls or troubleshooting a binding. A compact label appears near each interactive object with its name, current Home Assistant state and entity ID. Camera tiles show their bound camera entity beside the frame. Turn the option off to clear the labels. The choice is remembered separately by each browser or tablet.
 
 ### Make a lamp or fan a live control
 
 1. Place a lamp, ceiling light, or fan in its actual room, then select it.
 2. In the Inspector, enter the matching Home Assistant **Entity ID**, for example `light.example_living_room` or `fan.example_ceiling_fan`. Leave it blank for a decorative object. Choose **Live graphic** if Automatic classifies the fixture incorrectly: light, fan, air conditioning, window/blinds, door/garage, general device, or no state graphic.
-3. Export to the dashboard and open **Floor Plan**. The object itself is the control target. Home Assistant supplies a high-contrast active/inactive treatment without a visible status badge. Its accessible name carries the current state and actions; the hover title shows the state. A tap briefly outlines it in turquoise and a hold in amber. Unknown or unavailable state stays neutral; the editor never stores live state in the layout JSON. See the [state and motion guide](live-object-graphics.md).
+3. Export to the dashboard and return to **Roomcraft Home**. The object itself is the control target. Its graphic and accessible name show the current state. Tap to use the configured action, or hold to open details. Unknown or unavailable state stays neutral. [State and motion guide](live-object-graphics.md)
 4. If a separate control marker already represents the same entity, review its position before publishing. The linked fixture takes the entity's placement in the exported plan so there is one control for that device.
 
 The furnished scene includes bedside and office desk lamps plus room light fixtures as editable objects. The office has one physical desk lamp, drawn with the same raised lamp style as the bedroom; it is the single office light control. The previous separate study ceiling fixture duplicated that light and has been removed. These objects can be moved, resized, or removed without changing the original PNG. A fixture with no entity binding is artwork only. When a crafted light is bound, the dashboard keeps its table, floor, faceted ceiling, pendant, or sconce construction while Home Assistant supplies truthful on, off, and unavailable treatment.
 
 The dining ceiling fan and its center light are two independent controls. Tap the blades to toggle the verified motor channel; hold for native details. Tap the small center lamp to toggle the verified light channel. Its compact transparent target leaves the surrounding blades available for the fan. The blades rotate in low-frame-rate steps only while the motor channel reports on, and the center adds a glow only while the light channel reports on. Reduced-motion preference stops animation without changing state. The old ceiling-fan entity and scene controls are historical and are not used by these artworks.
 
-The master humidifier and dining air purifier use the same object-first pattern. Their illustrated appliances are the buttons; mist or airflow appears only while that appliance reports on. At the bottom-right, immediately above the forecast strip, one uniform row holds Layout Studio, indoor-air, and electrical controls. The pencil-ruler opens the editor. The air and lightning markers open informational panels upward so they remain on screen; tapping a sensor row opens Home Assistant details and never toggles equipment. All three controls remain movable in Studio.
+The master humidifier and dining air purifier use the same object-first pattern. Their illustrated appliances are the buttons. Mist or airflow appears while that appliance reports on. **Menu → Manage** opens **Indoor air** and **Electrical**. A sensor row opens Home Assistant details.
 
 The robot is intentionally compact. Tap it for its authenticated map, status, Start/Pause/Dock/Locate, and available room actions; hold for native details. The robot moves on the plan only from fresh calibrated map coordinates and animates only while Home Assistant reports cleaning or returning. A fixed robot is omitted from the exported background so there is never a second frozen copy.
 
@@ -160,7 +156,7 @@ The current plan includes these additional editable controls. Select one to insp
 1. In **Objects**, choose **Cameras & controls → Camera thumbnail** and place separate frames for the doorbell, overhead view, and garage. Each is independently movable and resizable.
 2. Enter each frame's `camera.*` entity in **Camera entity ID**. For a dated last-event image, add its `image.*` entity in **Event image entity**.
 3. For the doorbell choose **Live during an event** and list its ring/person `binary_sensor.*` entities in **Event sensors**. Between events the last image stays visible. A ring or person event starts a 60-second live attempt; if that battery camera cannot stream, the tile returns to the still.
-4. For an overhead camera that already plays in Home Assistant choose **Always show live feed**. For the garage choose **Live stream** so a tap requests a stream. Hold or right-click any frame for native camera details. Export, then check all three frames independently in **Floor Plan** while signed in.
+4. For an overhead camera that already plays in Home Assistant choose **Always show live feed**. For the garage choose **Live stream** so a tap requests a stream. Hold or right-click any frame for native camera details. Export, then check all three frames independently in **Roomcraft Home** while signed in.
 
 The current installation has three frames: a front-door dated still between events, a separately bound garage stream, and an overhead stream. A private tablet capture showed both garage and overhead **LIVE** after decoded playback; a real doorbell event has not yet been observed in this release. Check each selected feed and trigger sensor in Home Assistant before changing its binding. The overhead mode mounts native playback but does not send a wake command merely because it appears.
 
@@ -168,7 +164,7 @@ The design canvas shows stylized placeholders, not private camera frames. The da
 
 ### Read the outdoor weather
 
-Roomcraft Home shows the current condition in the header. In **Floor Plan**, the exterior layer also offers a 12-hour forecast strip. Tap a forecast tick to preview that hour's rain, snow, clouds, daylight or night briefly. The artwork then returns to the current weather. Forecast times follow Home Assistant's configured time zone. An administrator configures the weather binding in the Home Assistant dashboard. Reduced motion stops decorative animation.
+Roomcraft Home shows the current condition in the header and reflects it in the scene. Tap the weather in the header to open the weather entity's native Home Assistant details. Reduced motion stops decorative animation.
 
 Confirm a device's physical location in Home Assistant before placing a control. A friendly name does not prove the room. The editor stores control placement; Home Assistant performs actual device actions. A device that is unavailable or missing should be corrected in Home Assistant before use.
 
@@ -185,15 +181,15 @@ Use the two buttons at the lower-left of either editor to work with the live das
 3. **Export to dashboard** renders a detailed PNG, uploads it to Home Assistant, and saves the editable project with the dashboard. Reload the dashboard to see the result.
 4. Import once more to verify that the same project opens for the next editing session. If you switch between the HA-hosted and cloud editors, import in the second editor before editing.
 
-Select **← Dashboard** in the editor header to return to the Second Floor plan. The HA-hosted editor uses the same-origin dashboard route; the owner-private Site uses the dashboard address supplied by its authenticated connection. If you have edits that have not been exported to Home Assistant, the editor asks before leaving and keeps a browser draft. Choose **Cancel** to remain in Studio. Returning to the dashboard does not publish those edits; use **Export to dashboard** first when you want them visible on the wall panel. During an import or export, the control asks you to wait and stays in the editor. If the dashboard link is unavailable or the unpublished draft cannot be saved, it stays in the editor with a message; export editable JSON for recovery if browser storage is full.
+Select **← Dashboard** in the editor header to return to Roomcraft Home. The HA-hosted editor uses the same-origin dashboard route. The owner-private Site uses the dashboard address supplied by its authenticated connection. If you have unpublished edits, the editor asks before leaving and keeps a browser draft. Choose **Cancel** to remain in Studio or **Export to dashboard** when you want the edits visible on the wall panel. During an import or export, the control asks you to wait. If the dashboard link is unavailable or the unpublished draft cannot be saved, Studio displays a message. Export editable JSON for recovery if browser storage is full.
 
 The editor checks the dashboard revision before exporting. If another change happened, import the newest dashboard version and review your draft before retrying. This protects a teammate's more recent dashboard edit.
 
 The **Export** menu also provides a PNG and a manual Home Assistant YAML fallback. The YAML references a local image path; copy the PNG to that path before applying it manually.
 
-The **Floor Plan** view overlays high-contrast device states, exterior weather and time, the edit icon, and three authenticated camera frames. Its centered 16:9 image retains the full original house width on the wall tablet. Tap a bound robot vacuum to open its nearby state and map panel. The panel provides Start, Pause, Dock, Locate, and room buttons when the map supplies room identifiers; opening it does not start a command. Hold the robot to open native Home Assistant details. When the item has a valid map-to-plan calibration, its marker follows fresh map coordinates while cleaning or returning and parks at its last calibrated position while docked. A stale active map freezes the marker instead of fabricating travel. The current private Dreame calibration is installation-specific and should be rechecked if either the vacuum map or illustrated floor plan changes. **Live Home** shows native Home Assistant weather, time, sun, garage, fan, vacuum status and map, second-floor controls, and a garage camera card. Live Home reads from Home Assistant; the Roomcraft editor controls the authored room layout.
+Tap a bound robot vacuum in Roomcraft Home to open its state and map panel. The panel provides Start, Pause, Dock, Locate and room buttons when the map supplies room identifiers. Hold the robot to open native Home Assistant details. With a valid map calibration, its marker follows fresh coordinates while cleaning or returning, parks at its last calibrated position while docked and pauses on stale data. Recheck the calibration if the vacuum map or illustrated plan changes.
 
-The shipped drawer has **On plan**, **All entities**, search with registry availability, and six curated groups: Planning, Weather and Air Quality, Lighting, Security and Control, Energy, and Robot Vacuum. The [Main Dashboard map](main-dashboard-map.md) lists their source references. The Studio edit link remains on the plan; use **Live Home** for native detailed cards. The plan fit on the target tablet's actual display; the drawer's fit and touch behavior still need an on-device check.
+**Menu → Manage → Devices and sensors** opens the device drawer on Home. The drawer includes **On plan**, **All entities**, search with registry availability and curated groups for planning, weather and air quality, lighting, security, energy and the robot vacuum. [Main Dashboard map](main-dashboard-map.md)
 
 ## Undo and recovery
 
@@ -215,6 +211,6 @@ The shipped drawer has **On plan**, **All entities**, search with registry avail
 | Dashboard image updates but browser shows the prior image | Reload the Home Assistant view; its browser may still hold the earlier image. |
 | Layout Studio shows **Configuration error** after a card update | Reload the affected Home Assistant tab. If the error persists, check the registered Roomcraft card resource and dashboard configuration using the [deployment guide](deployment.md). The cause of the observed transient error was not confirmed. |
 | HA-hosted Studio opens but the editor is blank | Click **Open editor in a new tab** in Studio and keep the Studio tab open. The new tab can still import and export through its authenticated opener. |
-| HA-hosted Studio opens but transfer is unavailable | Confirm you opened `/second-floor/studio` while signed in to Home Assistant, or used its own-tab button while keeping Studio open. Direct `/local/roomcraft/editor.html` lacks the dashboard bridge. Publishing needs an administrator account. See the [deployment guide](deployment.md). |
+| HA-hosted Studio opens but transfer is unavailable | Confirm you opened `/roomcraft-home/studio` while signed in to Home Assistant, or used its own-tab button while keeping Studio open. Direct `/local/roomcraft/editor.html` lacks the dashboard bridge. Publishing needs an administrator account. See the [deployment guide](deployment.md). |
 | Cloud editor transfer is unavailable | Confirm the owner-private Site sign-in and its server-side Home Assistant connection. |
 

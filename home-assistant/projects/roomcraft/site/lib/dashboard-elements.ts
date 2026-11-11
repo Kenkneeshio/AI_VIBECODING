@@ -334,13 +334,21 @@ export function mergeDashboardElements(hotspots: JsonObject[], existing: unknown
   return [...managed, ...objects, ...cameraThumbnailElements(items), entityMenuElement(items, existing), ...retained];
 }
 
-export function withUpdatedPlanCard(config: JsonObject, image: string, hotspots: JsonObject[], items: unknown = []): { config: JsonObject; card: JsonObject } {
-  const next = structuredClone(config);
-  const views = Array.isArray(next.views) ? next.views : [];
+export function roomcraftPlanCard(config: JsonObject): JsonObject | undefined {
+  if (Object.hasOwn(config, "roomcraft_plan")) {
+    const card = config.roomcraft_plan;
+    return isObject(card) && card.type === "picture-elements" && Array.isArray(card.elements) ? card : undefined;
+  }
+  const views = Array.isArray(config.views) ? config.views : [];
   const view = views.find((candidate) => isObject(candidate) && candidate.path === "plan");
   const cards = isObject(view) && Array.isArray(view.cards) ? view.cards : [];
-  const card = cards.find((candidate) => isObject(candidate) && candidate.type === "picture-elements");
-  if (!isObject(card)) throw new Error("Floor-plan card was not found");
+  return cards.find((candidate) => isObject(candidate) && candidate.type === "picture-elements");
+}
+
+export function withUpdatedPlanCard(config: JsonObject, image: string, hotspots: JsonObject[], items: unknown = []): { config: JsonObject; card: JsonObject } {
+  const next = structuredClone(config);
+  const card = roomcraftPlanCard(next);
+  if (!card) throw new Error("Roomcraft dashboard projection was not found");
   const previousScene = card.roomcraft_scene ?? null;
   card.image = image;
   card.roomcraft_scene = ROOMCRAFT_SCENE;

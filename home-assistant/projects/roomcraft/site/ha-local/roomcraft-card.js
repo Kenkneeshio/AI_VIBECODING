@@ -6,6 +6,8 @@
  */
 const CHANNEL = 'roomcraft-ha';
 const DASHBOARD = 'second-floor';
+const HOME_DASHBOARD = 'roomcraft-home';
+const STUDIO_PATHS = ['/second-floor/studio', '/roomcraft-home/studio'];
 const PLAN_VIEW = 'plan';
 const MAX_PNG_BYTES = 10 * 1024 * 1024;
 const MAX_JSON_BYTES = 16 * 1024 * 1024;
@@ -83,6 +85,11 @@ function stableStringify(value) {
 }
 
 function findPlanCard(config) {
+  if (Object.hasOwn(config, 'roomcraft_plan')) {
+    const card = config.roomcraft_plan;
+    if (isObject(card) && card.type === 'picture-elements' && Array.isArray(card.elements)) return card;
+    throw new Error('The saved Roomcraft control projection is invalid.');
+  }
   const view = Array.isArray(config.views)
     ? config.views.find(candidate => isObject(candidate) && candidate.path === PLAN_VIEW)
     : null;
@@ -289,7 +296,7 @@ function applyEditableUi(element, items) {
   let item = null;
   if (result.type === 'state-label' && result.entity === 'sensor.time') item = uiItem(items, 'uiTime');
   else if (result.type === 'icon' && result.icon === 'mdi:pencil-ruler' &&
-      result.tap_action?.navigation_path === '/second-floor/studio') item = uiItem(items, 'uiEdit');
+      STUDIO_PATHS.includes(result.tap_action?.navigation_path)) item = uiItem(items, 'uiEdit');
   else if (result.type === 'custom:roomcraft-status-popup' && result.roomcraft_status_kind === 'air') item = uiItem(items, 'uiStatusAir');
   else if (result.type === 'custom:roomcraft-status-popup' && result.roomcraft_status_kind === 'electrical') item = uiItem(items, 'uiStatusElectrical');
   else if (result.type === 'custom:roomcraft-weather-outdoor') {
@@ -349,7 +356,7 @@ function migrateHeaderChrome(element, previousScene) {
   if (previousScene === ROOMCRAFT_SCENE || !isObject(result.style) || result.style.top !== previousTop) return result;
   const action = isObject(result.tap_action) ? result.tap_action : {};
   const editorLink = result.type === 'icon' && result.icon === 'mdi:pencil-ruler' &&
-    action.navigation_path === '/second-floor/studio';
+    STUDIO_PATHS.includes(action.navigation_path);
   if (stateLabel || editorLink) result.style.top = HEADER_TOP;
   return result;
 }
@@ -441,9 +448,14 @@ function decodePng(dataUrl) {
 }
 
 class RoomcraftEditorCard extends HTMLElement {
+  static startupViewKey(dashboard) {
+    // Existing Home Assistant users saved this preference before Home and Studio were combined.
+    return `roomcraft_default_camera_v1:${dashboard === HOME_DASHBOARD ? DASHBOARD : dashboard}`;
+  }
+
   static async readStartupView(hass, dashboard) {
     const { value } = await hass.callWS({
-      type: 'frontend/get_user_data', key: `roomcraft_default_camera_v1:${dashboard}`,
+      type: 'frontend/get_user_data', key: this.startupViewKey(dashboard),
     });
     return this.validStartupView(value) ? value : null;
   }
@@ -454,7 +466,7 @@ class RoomcraftEditorCard extends HTMLElement {
       preset: 'free', azimuth: view.azimuth, tilt: view.tilt, zoom: view.zoom,
     };
     await hass.callWS({
-      type: 'frontend/set_user_data', key: `roomcraft_default_camera_v1:${dashboard}`, value,
+      type: 'frontend/set_user_data', key: this.startupViewKey(dashboard), value,
     });
     return value;
   }
@@ -527,6 +539,10 @@ class RoomcraftEditorCard extends HTMLElement {
     if (this.isConnected) this._navigateIframe();
   }
 
+  get dashboardPath() {
+    return this._config?.dashboard === HOME_DASHBOARD ? HOME_DASHBOARD : DASHBOARD;
+  }
+
   set hass(value) { this._hass = value; }
   getCardSize() { return 12; }
 
@@ -584,7 +600,7 @@ class RoomcraftEditorCard extends HTMLElement {
     const message = event.data;
     if (!message || message.channel !== CHANNEL) return;
     if (message.kind === 'navigate') {
-      const path = this._hass?.panels?.['roomcraft-home']
+      const path = this.dashboardPath === HOME_DASHBOARD || this._hass?.panels?.[HOME_DASHBOARD]
         ? '/roomcraft-home/home' : '/second-floor/plan';
       window.history.pushState(null, '', path);
       window.dispatchEvent(new CustomEvent('location-changed', { detail: { replace: false } }));
@@ -603,8 +619,8 @@ class RoomcraftEditorCard extends HTMLElement {
       switch (message.method) {
         case 'GET': data = await this._readDashboard(); break;
         case 'POST': data = await this._writeDashboard(message.payload); break;
-        case 'CAMERA_GET': data = await RoomcraftEditorCard.readStartupView(this._hass, DASHBOARD); break;
-        case 'CAMERA_SET': data = await RoomcraftEditorCard.writeStartupView(this._hass, DASHBOARD, message.payload); break;
+        case 'CAMERA_GET': data = await RoomcraftEditorCard.readStartupView(this._hass, this.dashboardPath); break;
+        case 'CAMERA_SET': data = await RoomcraftEditorCard.writeStartupView(this._hass, this.dashboardPath, message.payload); break;
         case 'TRACK_GET': {
           const ids = message.payload;
           if (!Array.isArray(ids) || ids.length > 12 || !ids.every(id =>
@@ -623,7 +639,7 @@ class RoomcraftEditorCard extends HTMLElement {
   }
 
   async _getConfig() {
-    const config = await this._hass.callWS({ type: 'lovelace/config', url_path: DASHBOARD });
+    const config = await this._hass.callWS({ type: 'lovelace/config', url_path: this.dashboardPath });
     if (!isObject(config)) throw new Error('Home Assistant returned an invalid dashboard.');
     findPlanCard(config);
     return config;
@@ -653,7 +669,8 @@ class RoomcraftEditorCard extends HTMLElement {
       hotspots: editableHotspots(card.elements, card.roomcraft_scene),
       entityOptions,
       storybookPreview: customElements.get('roomcraft-storybook-card')?.preview?.(config, this._hass?.states),
-      source: `${location.origin}/${DASHBOARD}/${PLAN_VIEW}`,
+      source: this.dashboardPath === HOME_DASHBOARD
+        ? `${location.origin}/${HOME_DASHBOARD}/home` : `${location.origin}/${DASHBOARD}/${PLAN_VIEW}`,
       revision,
     };
   }
@@ -700,7 +717,7 @@ class RoomcraftEditorCard extends HTMLElement {
       }
       const { next } = updatePlanCard(latest, image, project.hotspots, project.items);
       next.roomcraft_layout = project;
-      await this._hass.callWS({ type: 'lovelace/config/save', url_path: DASHBOARD, config: next });
+      await this._hass.callWS({ type: 'lovelace/config/save', url_path: this.dashboardPath, config: next });
       const verified = await this._getConfig();
       if (stableStringify(verified) !== stableStringify(next)) {
         throw new Error('Dashboard save could not be verified. Reload before trying again.');
@@ -1547,7 +1564,14 @@ class RoomcraftEntityMenu extends HTMLElement {
 
   disconnectedCallback() {
     window.removeEventListener?.(DETAIL_VISIBILITY_EVENT, this._onDetailVisibility);
+    this._returnFocus = null;
     this._close();
+  }
+
+  open({returnFocus} = {}) {
+    if (this._portal) return;
+    this._returnFocus = returnFocus || this._launch;
+    this._open();
   }
 
   _build() {
@@ -1559,7 +1583,7 @@ class RoomcraftEntityMenu extends HTMLElement {
     button.textContent = '☰';
     button.title = 'Devices and sensors';
     button.setAttribute('aria-label', 'Open devices and sensors menu');
-    button.addEventListener('click', () => this._open());
+    button.addEventListener('click', () => this.open());
     this.shadowRoot.append(style, button);
     this._launch = button;
   }
@@ -1568,6 +1592,8 @@ class RoomcraftEntityMenu extends HTMLElement {
     document.removeEventListener('keydown', this._onKeyDown);
     this._portal?.remove();
     this._portal = null;
+    this._returnFocus?.focus();
+    this._returnFocus = null;
   }
 
   _open() {
@@ -1642,7 +1668,9 @@ class RoomcraftEntityMenu extends HTMLElement {
     search.placeholder = 'Search every entity, room, or device';
     search.setAttribute('aria-label', 'Search devices and sensors');
     search.addEventListener('input', () => { this._limit = 80; this._renderRows(); });
-    head.append(title, links, portalLinks, detailMode, search);
+    head.append(title);
+    if (this._config.show_navigation !== false) head.append(links, portalLinks);
+    head.append(detailMode, search);
     const sections = document.createElement('div');
     sections.className = 'sections';
     const summary = document.createElement('div');

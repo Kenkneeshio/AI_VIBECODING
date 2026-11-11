@@ -1,5 +1,12 @@
 # Changelog
 
+## One live view and one editor
+
+- Roomcraft Home contains **Home** and **Studio**. The former Floor Plan supplies the saved control projection and export image. Its separate dashboard page is retired. **Main Dashboard** stays separate.
+- **Menu** opens popups for devices and sensors, indoor air, electrical readings, system health, presence and object models. The header weather opens Home Assistant details. Studio opens for editing and returns to Home.
+- Fresh, calibrated radar positions use a foreground render pass in Home and authenticated 3D Studio. Furniture and walls no longer hide the characters or their location rings. The room keeps its normal lighting and animation. Invalid or expired positions disappear.
+- A synthetic Chrome test reproduced invisible radar targets under a wall and a cabinet, then verified that both characters appeared and that clearing or rejecting the positions restored the unchanged scene.
+
 ## Clearer live controls, weather and presence
 
 - Roomcraft Home groups **Menu** actions under **On the map**, **View controls** and **Manage**. **Object details** toggles labels beside linked controls and shares the existing preference with Floor Plan. The 3D view uses measured label sizes to avoid covering nearby controls, cameras, and other labels where space permits.

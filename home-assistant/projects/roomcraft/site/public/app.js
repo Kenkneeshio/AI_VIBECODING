@@ -318,8 +318,10 @@
   let focusCanvas = false;
   let dashboardRevision = null;
   let dashboardTransferBusy = false;
+  const DASHBOARD_HOME = '/roomcraft-home/home';
+  const DASHBOARD_PATHS = new Set([DASHBOARD_HOME, '/second-floor/plan']);
   let dashboardSource = location.pathname.startsWith('/local/roomcraft/')
-    ? new URL('/second-floor/plan', location.origin).href : null;
+    ? new URL(DASHBOARD_HOME, location.origin).href : null;
   let dashboardPublishedProject = null;
   let dashboardDefaultProject = null;
   let dashboardPreview = null;
@@ -1373,7 +1375,7 @@
     if(typeof source!=='string')return;
     try{
       const url=new URL(source);
-      if(!['http:','https:'].includes(url.protocol)||url.username||url.password||url.pathname!=='/second-floor/plan')return;
+      if(!['http:','https:'].includes(url.protocol)||url.username||url.password||!DASHBOARD_PATHS.has(url.pathname))return;
       if(location.pathname.startsWith('/local/roomcraft/')&&url.origin!==location.origin)return;
       dashboardSource=url.href;
     }catch(_){}
@@ -1424,7 +1426,7 @@
   function projectFromDashboard(data){
     const hasEditable=!!data.project;
     let next=hasEditable?data.project:clone(STARTER);
-    // The plan card is authoritative for live control placement. Another HA
+    // The published projection is authoritative for live control placement. Another HA
     // editor may have changed those markers since the Roomcraft JSON was saved.
     if(Array.isArray(data.hotspots)){
       const previousIds=new Map((Array.isArray(next.hotspots)?next.hotspots:[]).map(h=>[h.entity,h.id]));

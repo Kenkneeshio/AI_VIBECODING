@@ -1,9 +1,9 @@
 import { env } from "cloudflare:workers";
 import { storybookPreview } from "../../../ha-local/storybook-state.mjs";
-import { SCENE_HEIGHT, SCENE_WIDTH, editableDashboardHotspots, validCameraThumbnail, validObjectControl, withUpdatedPlanCard } from "../../../lib/dashboard-elements";
+import { SCENE_HEIGHT, SCENE_WIDTH, editableDashboardHotspots, roomcraftPlanCard, validCameraThumbnail, validObjectControl, withUpdatedPlanCard } from "../../../lib/dashboard-elements";
 
-const DASHBOARD_PATH = "second-floor";
-const VIEW_PATH = "plan";
+const ROOMCRAFT_DASHBOARD = "roomcraft-home";
+const LEGACY_DASHBOARD = "second-floor";
 const MAX_PNG_BYTES = 10 * 1024 * 1024;
 const MAX_JSON_BYTES = 16 * 1024 * 1024;
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -30,6 +30,12 @@ class BridgeError extends Error {
     message: string,
   ) {
     super(message);
+  }
+}
+
+class HomeAssistantCommandError extends BridgeError {
+  constructor(readonly commandCode: string | undefined) {
+    super(502, "ha_command_failed", "Home Assistant rejected the dashboard operation.");
   }
 }
 
@@ -99,18 +105,8 @@ async function revisionOf(value: unknown): Promise<string> {
 }
 
 function findCard(config: JsonObject): DashboardCard {
-  const views = config.views;
-  if (!Array.isArray(views)) {
-    throw new BridgeError(409, "dashboard_changed", "The Home Assistant dashboard structure has changed.");
-  }
-  const view = views.find((candidate) => isObject(candidate) && candidate.path === VIEW_PATH);
-  const cards = isObject(view) ? view.cards : null;
-  const card = Array.isArray(cards)
-    ? cards.find((candidate) => isObject(candidate) && candidate.type === "picture-elements")
-    : null;
-  if (!isObject(card) || card.type !== "picture-elements") {
-    throw new BridgeError(409, "dashboard_changed", "The Home Assistant floor-plan card was not found.");
-  }
+  const card = roomcraftPlanCard(config);
+  if (!card) throw new BridgeError(409, "dashboard_changed", "The Roomcraft dashboard projection was not found.");
   return card as DashboardCard;
 }
 
@@ -124,10 +120,14 @@ function absoluteImageUrl(haOrigin: string, image: unknown): string | null {
   }
 }
 
+function isLayoutProject(value: unknown): value is LayoutProject {
+  return isObject(value) && value.version === 2 &&
+    Array.isArray(value.rooms) && Array.isArray(value.walls) &&
+    Array.isArray(value.items) && Array.isArray(value.hotspots);
+}
+
 function validateProject(value: unknown): LayoutProject {
-  if (!isObject(value) || value.version !== 2 ||
-      !Array.isArray(value.rooms) || !Array.isArray(value.walls) ||
-      !Array.isArray(value.items) || !Array.isArray(value.hotspots)) {
+  if (!isLayoutProject(value)) {
     throw new BridgeError(400, "invalid_project", "The layout is not a supported Roomcraft project.");
   }
   if (value.hotspots.length > 100 || value.items.length > 2000 || value.walls.length > 2000) {
@@ -147,7 +147,7 @@ function validateProject(value: unknown): LayoutProject {
       throw new BridgeError(400, "invalid_project", "The layout has an invalid object control.");
     }
   }
-  return value as LayoutProject;
+  return value;
 }
 
 function decodePng(dataUrl: unknown): Uint8Array {
@@ -218,7 +218,11 @@ class HomeAssistantSocket {
           clearTimeout(task.timeout);
           this.pending.delete(message.id);
           if (message.success === true) task.resolve(message.result);
-          else task.reject(new BridgeError(502, "ha_command_failed", "Home Assistant rejected the dashboard operation."));
+          else {
+            const error = message.error;
+            const code = isObject(error) && typeof error.code === "string" ? error.code : undefined;
+            task.reject(new HomeAssistantCommandError(code));
+          }
         }
       });
     });
@@ -247,12 +251,41 @@ class HomeAssistantSocket {
   }
 }
 
-async function getConfig(socket: HomeAssistantSocket): Promise<JsonObject> {
-  const config = await socket.call("lovelace/config", { url_path: DASHBOARD_PATH });
+async function readConfig(socket: HomeAssistantSocket, dashboardPath: string): Promise<JsonObject> {
+  const config = await socket.call("lovelace/config", { url_path: dashboardPath });
   if (!isObject(config)) {
     throw new BridgeError(502, "ha_invalid_response", "Home Assistant returned an invalid dashboard.");
   }
   return config;
+}
+
+type DashboardSnapshot = {
+  dashboardPath: typeof ROOMCRAFT_DASHBOARD | typeof LEGACY_DASHBOARD;
+  config: JsonObject;
+};
+
+async function getConfig(socket: HomeAssistantSocket): Promise<DashboardSnapshot> {
+  let current: JsonObject | undefined;
+  try {
+    current = await readConfig(socket, ROOMCRAFT_DASHBOARD);
+  } catch (error) {
+    if (!(error instanceof HomeAssistantCommandError) || error.commandCode !== "config_not_found") throw error;
+  }
+  // The original Roomcraft Home shell stored its project in the separate Second Floor dashboard.
+  if (current && (Object.hasOwn(current, "roomcraft_layout") || Object.hasOwn(current, "roomcraft_plan"))) {
+    if (!Object.hasOwn(current, "roomcraft_plan") || !isLayoutProject(current.roomcraft_layout)) {
+      throw new BridgeError(409, "dashboard_changed", "The Roomcraft Home layout or projection is missing.");
+    }
+    findCard(current);
+    return { dashboardPath: ROOMCRAFT_DASHBOARD, config: current };
+  }
+  const config = await readConfig(socket, LEGACY_DASHBOARD);
+  findCard(config);
+  return { dashboardPath: LEGACY_DASHBOARD, config };
+}
+
+function dashboardSource(haOrigin: string, dashboardPath: DashboardSnapshot["dashboardPath"]): string {
+  return `${haOrigin}/${dashboardPath}/${dashboardPath === ROOMCRAFT_DASHBOARD ? "home" : "plan"}`;
 }
 
 async function uploadImage(haOrigin: string, token: string, png: Uint8Array): Promise<string> {
@@ -298,7 +331,7 @@ export async function GET(request: Request): Promise<Response> {
     const config = settings();
     authorize(request, config.ownerEmail);
     socket = new HomeAssistantSocket(config.haOrigin, config.token);
-    const dashboard = await getConfig(socket);
+    const { dashboardPath, config: dashboard } = await getConfig(socket);
     const card = findCard(dashboard);
     const states = await socket.call("get_states");
     const records = Array.isArray(states) ? states.filter((item) => isObject(item) &&
@@ -317,7 +350,7 @@ export async function GET(request: Request): Promise<Response> {
       hotspots: editableDashboardHotspots(card.elements, card.roomcraft_scene),
       entityOptions,
       storybookPreview: storybookPreview(dashboard, Object.fromEntries(records.map(item => [item.entity_id, item]))),
-      source: `${config.haOrigin}/${DASHBOARD_PATH}/${VIEW_PATH}`,
+      source: dashboardSource(config.haOrigin, dashboardPath),
       revision: await revisionOf(dashboard),
     });
   } catch (error) {
@@ -349,29 +382,28 @@ export async function POST(request: Request): Promise<Response> {
     const png = decodePng(body.pngDataUrl);
     socket = new HomeAssistantSocket(config.haOrigin, config.token);
     const original = await getConfig(socket);
-    findCard(original);
-    if (await revisionOf(original) !== body.revision) {
+    if (await revisionOf(original.config) !== body.revision) {
       throw new BridgeError(409, "dashboard_changed", "The Home Assistant dashboard changed. Import it again before exporting.");
     }
     const image = await uploadImage(config.haOrigin, config.token, png);
     // Fetch once more after upload to avoid overwriting an edit made during it.
     const latest = await getConfig(socket);
-    if (await revisionOf(latest) !== body.revision) {
+    if (latest.dashboardPath !== original.dashboardPath || await revisionOf(latest.config) !== body.revision) {
       throw new BridgeError(409, "dashboard_changed", "The Home Assistant dashboard changed. Import it again before exporting.");
     }
-    const { config: next, card } = withUpdatedPlanCard(latest, image, project.hotspots as JsonObject[], project.items);
+    const { config: next, card } = withUpdatedPlanCard(latest.config, image, project.hotspots as JsonObject[], project.items);
     next.roomcraft_layout = project;
-    await socket.call("lovelace/config/save", { url_path: DASHBOARD_PATH, config: next });
+    await socket.call("lovelace/config/save", { url_path: latest.dashboardPath, config: next });
     const verified = await getConfig(socket);
-    if (stableStringify(verified) !== stableStringify(next)) {
+    if (verified.dashboardPath !== latest.dashboardPath || stableStringify(verified.config) !== stableStringify(next)) {
       throw new BridgeError(502, "verification_failed", "Dashboard save could not be verified. Reload before trying again.");
     }
     return json({
       project,
       imageUrl: absoluteImageUrl(config.haOrigin, image),
       hotspots: editableDashboardHotspots(card.elements, card.roomcraft_scene),
-      source: `${config.haOrigin}/${DASHBOARD_PATH}/${VIEW_PATH}`,
-      revision: await revisionOf(verified),
+      source: dashboardSource(config.haOrigin, verified.dashboardPath),
+      revision: await revisionOf(verified.config),
     });
   } catch (error) {
     return reportError(error);

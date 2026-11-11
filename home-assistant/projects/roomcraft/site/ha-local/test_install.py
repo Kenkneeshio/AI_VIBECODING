@@ -23,6 +23,27 @@ class FakeAPI:
 
 
 class InstallResourceTests(unittest.TestCase):
+    def test_consolidation_keeps_projection_and_health_without_legacy_pages(self):
+        plan = {"type": "picture-elements", "image": "/local/example.png", "elements": [
+            {"type": "custom:roomcraft-object-control", "entity": "light.example"},
+        ]}
+        layout = {"version": 2, "rooms": [], "walls": [], "items": [{"id": "example"}]}
+        health = {"path": "health", "cards": [{"type": "entities", "entities": ["sensor.example"]}]}
+        legacy = {"roomcraft_layout": layout, "views": [
+            {"path": "plan", "cards": [plan]}, {"path": "live"}, health, {"path": "storybook"},
+        ]}
+        home = {"title": "Roomcraft Home", "views": [{"path": "home", "type": "panel", "cards": [
+            {"type": "custom:roomcraft-storybook-card", "dashboard": "second-floor"},
+        ]}]}
+        result = install.update_roomcraft_home(home, "abc", legacy)
+        self.assertEqual([view["path"] for view in result["views"]], ["home", "studio"])
+        self.assertEqual(result["roomcraft_layout"], layout)
+        self.assertEqual(result["roomcraft_plan"], plan)
+        self.assertEqual(result["roomcraft_health"], health)
+        self.assertEqual([view["cards"][0]["dashboard"] for view in result["views"]], ["roomcraft-home"] * 2)
+        self.assertEqual(install.update_roomcraft_home(result, "abc"), result)
+        self.assertNotIn("roomcraft_layout", home)
+
     def test_storybook_preserves_plan_data_and_is_idempotent(self):
         plan = {"path": "plan", "cards": [{"type": "picture-elements", "elements": [
             {"type": "icon", "title": "Edit layout in Roomcraft",

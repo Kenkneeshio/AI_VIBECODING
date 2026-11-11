@@ -5,6 +5,7 @@ import {enterFreeView, normalizeCameraView, populateCameraOptions, readSavedFree
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
 import {placeStorybookDetails, placeStorybookTargets, readStorybookConfig, storybookFrame, storybookPreview} from './storybook-state.mjs';
 import {storybookWeather, storybookWeatherMarkup, storybookWeatherStyles, updateStorybookWeather} from './storybook-weather.mjs';
+import {readStorybookUtilities, utilityReading} from './storybook-utilities.mjs';
 
 const TAG = 'roomcraft-storybook-card';
 const CONTROL_TAG = 'roomcraft-object-control';
@@ -65,13 +66,28 @@ class RoomcraftStorybookCard extends HTMLElement {
         [aria-pressed=true] .menu-toggle{flex-direction:row-reverse;background:#d8e6d2;color:#2b5034}
         [aria-pressed=true] .menu-toggle::before{background:#397247}
         [aria-pressed=true] .menu-toggle::after{content:"On"}
-        .tracking-dialog{box-sizing:border-box;width:min(420px,calc(100% - 24px));max-height:75dvh;overflow:auto;
+        .tracking-dialog,.utility-dialog{box-sizing:border-box;width:min(420px,calc(100% - 24px));max-height:75dvh;overflow:auto;
           border:1px solid #c9b8a0;border-radius:14px;background:#fffaf0;color:#3c3247;padding:16px}
-        .tracking-dialog::backdrop{background:#182a2a9c}
-        .tracking-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px}
-        .tracking-dialog h2{font-size:17px;margin:0}
-        .tracking-dialog button{font:inherit;min-height:44px;padding:6px 12px;border:1px solid #c9b8a0;
+        .utility-dialog{width:min(520px,calc(100% - 24px))}
+        .tracking-dialog::backdrop,.utility-dialog::backdrop{background:#182a2a9c}
+        :is(.tracking-dialog,.utility-dialog) header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+        :is(.tracking-dialog,.utility-dialog) h2{font-size:17px;margin:0}
+        :is(.tracking-dialog,.utility-dialog) button{font:inherit;min-height:44px;padding:6px 12px;border:1px solid #c9b8a0;
           border-radius:7px;background:#fffaf0;color:inherit}
+        .utility-rows{display:grid;gap:6px;margin-top:10px}
+        .utility-rows .utility-row{display:block;width:100%;padding:9px 10px;text-align:left;border-color:#ebdecb;
+          background:#fffcf6;overflow-wrap:anywhere}
+        .utility-row:not(:disabled){cursor:pointer}
+        .utility-row:not(:disabled):hover{background:#f2e9d9}
+        .utility-line{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+        .utility-reading{text-align:right;font-variant-numeric:tabular-nums}
+        .utility-row[data-level=healthy] .utility-reading{color:#236b49}
+        .utility-row[data-level=warning] .utility-reading{color:#805518}
+        .utility-row[data-level=critical] .utility-reading{color:#9b3031}
+        .utility-row[data-level=unavailable] .utility-reading{color:#6d6259}
+        .utility-note,.utility-issues small{display:block;margin-top:2px;color:#655747}
+        .utility-note[hidden]{display:none}
+        .utility-issues small::before{content:'• '}
         .tracking-list p{margin:10px 0 0;padding:8px;border:1px solid #eee2cf;border-radius:7px}
         .tracking-list small{display:block;margin-top:3px}
         .tracking-legend{display:flex;gap:4px 12px;flex-wrap:wrap;list-style:none;margin:10px 0 0;padding:0;
@@ -100,9 +116,11 @@ class RoomcraftStorybookCard extends HTMLElement {
         .device:focus-within{z-index:3}
         .status{position:absolute;inset:0;display:grid;place-items:center;padding:20px;
           background:#e7eadb;text-align:center}
-        .status[hidden],.status a[hidden],.bar button[hidden],.device[hidden],.camera[hidden]{display:none}
+        .status[hidden],.recovery[hidden],.bar button[hidden],.device[hidden],.camera[hidden]{display:none}
         .status-inner{max-width:27em}
-        .status a{border-radius:9px;background:#53455e;color:#fff4e9;margin-top:8px}
+        .recovery{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+        .recovery button,.recovery a{box-sizing:border-box;border-radius:9px;background:#53455e;color:#fff4e9;
+          min-height:44px;padding:0 12px;border:0;font:inherit;cursor:pointer}
         .tethers{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
         @media(max-width:540px){.bar nav{gap:5px}.brand{gap:5px}.bar a,.bar button{padding:0 7px}}
         @media(max-width:400px){.brand-name{display:none}.view-controls select{max-width:105px}}
@@ -140,9 +158,12 @@ class RoomcraftStorybookCard extends HTMLElement {
                 </section>
                 <section class="menu-group" aria-label="Manage">
                   <p class="menu-heading" aria-hidden="true">Manage</p>
-                  <a href="/second-floor/studio">Layout Studio</a>
-                  <a href="/second-floor/studio?panel=models" data-open-models>Object models</a>
-                  <a href="/second-floor/health">System health</a>
+                  <a href="/roomcraft-home/studio" data-studio-link>Layout Studio</a>
+                  <button type="button" data-open-models aria-haspopup="dialog">Object models</button>
+                  <button type="button" data-open-devices aria-haspopup="dialog" hidden>Devices and sensors</button>
+                  <button type="button" data-utility="air" aria-haspopup="dialog" hidden>Indoor air</button>
+                  <button type="button" data-utility="electrical" aria-haspopup="dialog" hidden>Electrical</button>
+                  <button type="button" data-utility="health" aria-haspopup="dialog" hidden>System health</button>
                 </section>
               </div>
             </div>
@@ -154,7 +175,11 @@ class RoomcraftStorybookCard extends HTMLElement {
           <svg class="tethers" aria-hidden="true"></svg>
           <div class="overlay"></div>
           <div class="status"><div class="status-inner">
-            <div role="status">Opening the storybook…</div><a href="/second-floor/plan" hidden>Open floor plan</a>
+            <div role="status">Opening Roomcraft…</div>
+            <div class="recovery" hidden>
+              <button type="button" class="retry">Try again</button>
+              <a href="/roomcraft-home/studio" data-studio-link>Layout Studio</a>
+            </div>
           </div></div>
         </div>
       </section>
@@ -167,6 +192,10 @@ class RoomcraftStorybookCard extends HTMLElement {
           <li><i aria-hidden="true"></i>Clear</li>
           <li class="unavailable"><i aria-hidden="true"></i>Unavailable</li>
         </ul>
+      </dialog>
+      <dialog class="utility-dialog" aria-labelledby="utility-title">
+        <header><h2 id="utility-title"></h2><button type="button" class="close-utility">Close</button></header>
+        <div class="utility-rows"></div>
       </dialog>`;
     bindLiveModelLibrary(this);
     this.stage = this.shadowRoot.querySelector('.stage');
@@ -176,6 +205,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.header = this.shadowRoot.querySelector('.bar');
     this.weather = this.shadowRoot.querySelector('.weather');
     this.status = this.shadowRoot.querySelector('.status');
+    this.recovery = this.status.querySelector('.recovery');
     this.viewSelect = this.shadowRoot.querySelector('#storybook-view');
     this.viewStatus = this.shadowRoot.querySelector('.view-status');
     this.defaultStatus = this.shadowRoot.querySelector('.default-status');
@@ -185,6 +215,22 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.cameraView = resolveDefaultCameraView(null);
     this.menuButton = this.shadowRoot.querySelector('.main-menu-button');
     this.mainMenu = this.shadowRoot.querySelector('.main-menu');
+    this.utilityDialog = this.shadowRoot.querySelector('.utility-dialog');
+    this.utilityButtons = [...this.shadowRoot.querySelectorAll('[data-utility]')];
+    this.devicesButton = this.shadowRoot.querySelector('[data-open-devices]');
+    this.devicesButton.addEventListener('click', () => {
+      this.setMainMenu(false, true);
+      this.devicesDrawer?.open?.({returnFocus: this.menuButton});
+    });
+    for (const button of this.utilityButtons) {
+      button.addEventListener('click', () => this.openUtility(button.dataset.utility));
+    }
+    this.shadowRoot.querySelector('.close-utility').addEventListener('click', () => this.utilityDialog.close());
+    this.utilityDialog.addEventListener('close', () => { this.utilityRows = null; });
+    this.recovery.querySelector('.retry').addEventListener('click', () => {
+      this.reset();
+      this.load();
+    });
     this.trackingButton = this.shadowRoot.querySelector('.open-tracking');
     this.trackingDialog = this.shadowRoot.querySelector('.tracking-dialog');
     this.trackingList = this.shadowRoot.querySelector('.tracking-list');
@@ -271,12 +317,17 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.changeView('default', {remember: false});
     }
     this.dashboard = dashboard;
+    for (const link of this.shadowRoot.querySelectorAll('[data-studio-link]')) link.href = this.studioPath;
     this.load();
   }
+
+  get studioPath() { return `/${this.dashboard || 'roomcraft-home'}/studio`; }
 
   set hass(value) {
     const previous = this.session;
     this.session = value;
+    if (this.devicesDrawer) this.devicesDrawer.hass = value?.connected === false ? undefined : value;
+    this.refreshUtility(previous);
     this.updateDefaultViewButtons();
     this.watchPublishedLayout();
     if (previous?.connected === false && value?.connected === true) {
@@ -375,7 +426,8 @@ class RoomcraftStorybookCard extends HTMLElement {
   async load() {
     if (!this.isConnected || !this.dashboard || !this.session || this.model || this.loading || this.failed) return;
     this.status.hidden = false;
-    this.status.querySelector('[role=status]').textContent = 'Opening the storybook…';
+    this.recovery.hidden = true;
+    this.status.querySelector('[role=status]').textContent = 'Opening Roomcraft…';
     const request = {};
     this.loading = request;
     let waitTimer;
@@ -392,6 +444,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       if (!this.isConnected || this.loading !== request) return;
       this.loadStartupView();
       this.model = readStorybookConfig(config);
+      this.prepareUtilities(config);
       this.scene = createStorybookScene(this.canvas, this.model.layout, {showSkyArt: false});
       this.scene.setView(this.cameraView);
       this.syncFreeViewMode();
@@ -411,10 +464,76 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.resize();
       this.refresh();
     } catch {
-      if (this.loading === request) this.fail('The storybook could not open on this screen.');
+      if (this.loading === request) this.fail('Roomcraft could not open on this screen.');
     } finally {
       clearTimeout(waitTimer);
       if (this.loading === request) this.loading = undefined;
+    }
+  }
+
+  prepareUtilities(config) {
+    const {panels, devices} = readStorybookUtilities(config);
+    this.utilityPanels = panels;
+    for (const button of this.utilityButtons) button.hidden = !panels[button.dataset.utility];
+    if (!devices || !customElements.get('roomcraft-entity-menu')?.prototype.open) return;
+    this.devicesDrawer = document.createElement('roomcraft-entity-menu');
+    this.devicesDrawer.hidden = true;
+    this.devicesDrawer.setConfig({...devices, show_navigation: false});
+    this.devicesDrawer.hass = this.session;
+    this.shadowRoot.append(this.devicesDrawer);
+    this.devicesButton.hidden = false;
+  }
+
+  openUtility(kind) {
+    const panel = this.utilityPanels?.[kind];
+    if (!panel || this.utilityDialog.open) return;
+    this.setMainMenu(false, true);
+    this.utilityDialog.querySelector('h2').textContent = panel.title;
+    this.utilityRows = panel.entities.map(entry => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'utility-row';
+      const line = document.createElement('span');
+      line.className = 'utility-line';
+      const name = document.createElement('strong');
+      const reading = document.createElement('span');
+      reading.className = 'utility-reading';
+      const message = document.createElement('small');
+      message.className = 'utility-note';
+      const issues = document.createElement('span');
+      issues.className = 'utility-issues';
+      line.append(name, reading);
+      button.append(line, message, issues);
+      button.addEventListener('click', () => {
+        this.utilityDialog.close();
+        this.dispatchEvent(new CustomEvent('hass-more-info',
+          {bubbles: true, composed: true, detail: {entityId: entry.entity}}));
+      });
+      return {entry, button, name, reading, message, issues, health: kind === 'health'};
+    });
+    this.utilityDialog.querySelector('.utility-rows').replaceChildren(...this.utilityRows.map(row => row.button));
+    this.refreshUtility();
+    this.utilityDialog.showModal();
+  }
+
+  refreshUtility(previous) {
+    if (!this.utilityRows) return;
+    const snapshot = this.session?.connected === false ? {} : this.session?.states;
+    for (const row of this.utilityRows) {
+      const id = row.entry.entity;
+      if (previous && previous.connected === this.session?.connected && previous.states?.[id] === snapshot?.[id]) continue;
+      const status = utilityReading(row.entry, snapshot, row.health);
+      row.button.disabled = !snapshot?.[id];
+      row.button.dataset.level = status.level;
+      row.name.textContent = status.name;
+      row.reading.textContent = status.reading;
+      row.message.textContent = status.message;
+      row.message.hidden = !status.message;
+      row.issues.replaceChildren(...status.issues.map(issue => {
+        const entry = document.createElement('small');
+        entry.textContent = issue;
+        return entry;
+      }));
     }
   }
 
@@ -679,6 +798,13 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.loading = undefined;
     this.model = undefined;
     this.frame = undefined;
+    if (this.utilityDialog.open) this.utilityDialog.close();
+    this.utilityRows = null;
+    this.utilityPanels = null;
+    this.devicesDrawer?.remove();
+    this.devicesDrawer = null;
+    this.devicesButton.hidden = true;
+    for (const button of this.utilityButtons) button.hidden = true;
     this.overlay.replaceChildren();
     this.tethers.replaceChildren();
     this.scene?.dispose();
@@ -693,7 +819,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.reset();
     this.failed = true;
     this.status.querySelector('[role=status]').textContent = reason;
-    this.status.querySelector('a').hidden = false;
+    this.recovery.hidden = false;
     this.status.hidden = false;
   }
 }

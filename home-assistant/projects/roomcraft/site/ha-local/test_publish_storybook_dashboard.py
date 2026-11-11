@@ -64,3 +64,20 @@ class StorybookDashboardTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "custom edits"):
                 storybook.publish(api, Path(path), make_default=True)
         self.assertEqual(api.writes, [])
+
+    def test_promotes_consolidated_dashboard_after_legacy_is_removed(self):
+        class ConsolidatedHomeAssistant(FakeHomeAssistant):
+            def call(self, kind, **fields):
+                if fields.get("url_path") == storybook.SOURCE:
+                    raise AssertionError("Consolidated Home must not request the retired dashboard")
+                return super().call(kind, **fields)
+
+        api = ConsolidatedHomeAssistant()
+        api.dashboard = {"url_path": storybook.DASHBOARD, "title": storybook.TITLE, "mode": "storage"}
+        api.config = {"roomcraft_layout": {"version": 2},
+                      "roomcraft_plan": {"type": "picture-elements", "elements": []},
+                      "views": [{"path": "home"}, {"path": "studio"}]}
+        with TemporaryDirectory() as path:
+            storybook.publish(api, Path(path), make_default=True)
+        self.assertEqual(api.core["default_panel"], "roomcraft-home")
+        self.assertEqual(api.writes, ["frontend/set_user_data"])

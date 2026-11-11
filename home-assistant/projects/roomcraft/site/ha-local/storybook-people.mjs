@@ -47,12 +47,13 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
   let preference = false;
   let reduced = false;
   let lastTime = 0;
+  let hasVisibleTracks = false;
 
   function makeArt() {
     return {
       sphere: new THREE.SphereGeometry(1, 12, 8),
       disc: new THREE.CircleGeometry(1, 24).rotateX(-Math.PI / 2),
-      groundRing: new THREE.RingGeometry(14.2, 16.5, 28).rotateX(-Math.PI / 2),
+      groundRing: new THREE.RingGeometry(13.8, 17.5, 32).rotateX(-Math.PI / 2),
       palette: STYLES.map(style => Object.fromEntries(
         Object.entries(style).map(([part, color]) => [part, paintedMaterial(color)]),
       )),
@@ -61,7 +62,7 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
       shoes: paintedMaterial('#514656'),
       white: paintedMaterial('#fff1dc'),
       shadow: new THREE.MeshBasicMaterial({color:'#433849', transparent:true, opacity:0.22, depthWrite:false}),
-      groundMark: new THREE.MeshBasicMaterial({color:'#fbe9cc', transparent:true, opacity:0.74, depthWrite:false}),
+      groundMark: new THREE.MeshBasicMaterial({color:'#fff1cd', depthWrite:false, toneMapped:false}),
     };
   }
 
@@ -91,7 +92,7 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
     const tinted = (parts, parent, ...shape) => parts.push(ellipse(parent, art.white, ...shape));
     const shadow = new THREE.Mesh(art.disc, art.shadow);
     shadow.position.y = 0.13;
-    shadow.scale.set(16, 1, 14);
+    shadow.scale.set(19, 1, 19);
     root.add(shadow);
     const groundMark = new THREE.Mesh(art.groundRing, art.groundMark);
     groundMark.position.y = 0.26;
@@ -152,6 +153,7 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
   function render(seconds, reduceMotion = preference) {
     lastTime = Number.isFinite(seconds) ? seconds : lastTime;
     reduced = reduceMotion || preference;
+    hasVisibleTracks = false;
     for (const track of tracks.values()) {
       const {character} = track.model;
       const amount = reduced ? 1 : progress(track, lastTime);
@@ -160,6 +162,7 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
       const floor = floorAt(x, z);
       character.root.visible = Number.isFinite(floor);
       if (!character.root.visible) continue;
+      hasVisibleTracks = true;
       character.root.position.set(x, floor, z);
       character.root.rotation.y = track.heading;
       const walking = track.walking && amount < 1 && !reduced;
@@ -229,5 +232,6 @@ export function createStorybookPeople(scene, floorAt = () => 0) {
     render,
     dispose,
     get hasMotion() { return !reduced && tracks.size > 0; },
+    get hasVisibleTracks() { return hasVisibleTracks; },
   };
 }

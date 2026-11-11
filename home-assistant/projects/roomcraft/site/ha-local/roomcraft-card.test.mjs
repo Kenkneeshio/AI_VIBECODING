@@ -117,6 +117,34 @@ test('LAN bridge replaces a marked camera thumbnail and retains manual overlays'
   assert.equal(saved.views[1].cards[0].title, 'Live');
 });
 
+test('consolidated Studio imports and publishes the projection in Roomcraft Home', async () => {
+  const legacy = dashboard();
+  let saved = {
+    roomcraft_layout: {version: 2, rooms: [], walls: [], hotspots: [], items: []},
+    roomcraft_plan: legacy.views[0].cards[0],
+    roomcraft_health: {cards: [{type: 'entities', entities: ['sensor.example_health']}]},
+    views: [{path: 'home'}, {path: 'studio'}],
+  };
+  const card = new Card();
+  card.setConfig({dashboard: 'roomcraft-home'});
+  card.hass = {
+    connected: true, user: {is_admin: true},
+    callWS: async request => {
+      assert.equal(request.url_path, 'roomcraft-home');
+      if (request.type === 'lovelace/config') return structuredClone(saved);
+      if (request.type === 'lovelace/config/save') { saved = structuredClone(request.config); return null; }
+      throw new Error('Unexpected HA command');
+    },
+    fetchWithAuth: async () => ({ok: true, json: async () => ({id: 'b'.repeat(32)})}),
+  };
+  const imported = await card._readDashboard();
+  assert.equal(imported.source, 'http://ha.example.test/roomcraft-home/home');
+  await card._writeDashboard({project: imported.project, revision: imported.revision, pngDataUrl: pngDataUrl()});
+  assert.deepEqual(saved.views, [{path: 'home'}, {path: 'studio'}]);
+  assert.equal(saved.roomcraft_health.cards[0].entities[0], 'sensor.example_health');
+  assert.equal(saved.roomcraft_plan.image, '/api/image/serve/' + 'b'.repeat(32) + '/original');
+});
+
 test('LAN bridge rejects invalid camera thumbnail before image upload', async () => {
   let uploads = 0;
   const card = new Card();

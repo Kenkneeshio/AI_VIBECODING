@@ -1,13 +1,13 @@
 # Deployment, verification, and rollback
 
-The official editor is served by Home Assistant itself. Its `studio` view hosts a Roomcraft custom card and the shared static editor. The owner-private cloud Site is an optional second transport. Source commits, Site publication, static asset installation, and dashboard changes are separate release steps.
+Home Assistant serves Roomcraft at `/roomcraft-home/home` and `/roomcraft-home/studio`. Studio hosts a Roomcraft custom card and the shared editor. The owner-private cloud Site is an optional second transport. Source commits, Site publication, static asset installation and dashboard changes are separate release steps.
 
 For the separately paired Apolosign Calendar wall tablet and phone Codex Remote recovery, use the [tablet and remote access runbook](tablet-access.md). Its ADB pairing and connection ports must be read from the tablet at the time of use.
 
 ## Prerequisites
 
-- Back up the Second Floor dashboard configuration and current plan image outside this repository.
-- Confirm Home Assistant serves `/config/www/` as `/local/`, allows a Lovelace JavaScript module resource, and has the `plan`, `studio`, and `live` views. The `plan` view needs a `picture-elements` card and an installed `custom:grid-layout` resource for the current centered fit.
+- Keep private dashboard configuration backups outside this repository and retain the referenced plan image in Home Assistant. A migration needs the Roomcraft Home dashboard and its legacy Second Floor source with a saved version 2 layout and picture card.
+- Confirm Home Assistant serves `/config/www/` as `/local/` and allows Lovelace JavaScript module resources. Consolidated Roomcraft Home needs the Home and Studio views, the saved layout and its control projection.
 - Use an HA administrator account to install the resource and publish a layout. A signed-in non-admin may still open the Studio view, subject to Home Assistant permissions.
 - For scripted installation, use a workstation with Python, OpenSSH, a trusted SSH key, and a private `HomeAssistantManagement/ha_manage.py` adapter. Keep that adapter, key, and backups outside GitHub.
 - Record the HA and browser versions tested. This project has been exercised on one Home Assistant 2026.10 installation; no general compatibility range is claimed.
@@ -17,18 +17,20 @@ For the separately paired Apolosign Calendar wall tablet and phone Codex Remote 
 The public [HA local package guide](../site/ha-local/README.md) describes the card and installer. From the `site/` source directory, run the installer with private paths supplied locally:
 
 ```powershell
-python ha-local/install.py --host <HA-LAN-IP> --ssh-key <SSH-KEY-PATH> --management-root <PRIVATE-HA-MANAGEMENT-DIR> --backup-dir <PRIVATE-BACKUP-DIR>
+python ha-local/install.py --storybook --host <HA-LAN-IP> --ssh-key <SSH-KEY-PATH> --management-root <PRIVATE-HA-MANAGEMENT-DIR> --backup-dir <PRIVATE-BACKUP-DIR>
 ```
 
-The script copies `public/` into `/config/www/roomcraft/`, installs `roomcraft-card.js` and `roomcraft-weather-outdoor.js`, registers or updates both content-versioned Lovelace module resources, backs up the dashboard, makes `studio` a panel with `custom:roomcraft-editor-card`, and points the plan edit icon to `/second-floor/studio`. It reads the dashboard and resources back to verify the write. It does not copy credentials or a live entity inventory into static assets. An asset-only refresh is available with `--assets-only`.
+Run `npm run build` before installing. The installer copies the public editor and Roomcraft modules to `/config/www/roomcraft/`, reconciles content-versioned Lovelace resources and reads back the saved config and resource URLs. It detects the consolidated dashboard on future upgrades. An asset-only refresh is available with `--assets-only`.
 
-The normal laptop and tablet URL on the home network is `http://<HA-LAN-IP>:8123/second-floor/studio`. Sign in to Home Assistant. Some Chrome sessions leave the embedded frame blank. In that case click **Open editor in a new tab** from Studio and keep the Studio tab open. The new tab uses its opener for authenticated import/export. Opening `/local/roomcraft/editor.html` directly from the address bar bypasses the authenticated card and cannot transfer a layout to the dashboard.
+For the one-time migration from Second Floor, add `--consolidate` to the command. The installer saves a private archive containing both dashboard registrations and configurations, copies the layout into Roomcraft Home and verifies both the archive and the new configuration. The new root `roomcraft_layout` holds the editable project. Root `roomcraft_plan` holds the full projected picture card and its export image. Root `roomcraft_health` holds the existing health configuration when available. The dashboard exposes just `home` and `studio`. The old registration remains available while the new views are verified.
 
-### Full-width scene release order
+Before removing the legacy registration, compare the copied layout and projected card with the private archive. Open Home, use the popups and check camera tiles. Open Studio from Home, import the project, and return to Home. Check the installed tablet and the authenticated Site when used. Then retire only the legacy `second-floor` registration through the Lovelace API and verify that the Home and Studio views still open. Preserve Main Dashboard and the existing user and system defaults.
 
-The 1536 × 864 image, editor, HA card, optional cloud bridge, and plan-view width form one release. Keep the editable `roomcraft_layout` project at 1536 × 1024; do not scale room, wall, or item coordinates. Take a private dashboard/image backup, install the matching HA assets/card, publish the matching cloud Site if used, then **Import from dashboard** and **Export to dashboard** once from the updated Studio. Position the editable camera frame inside the visible source height y80–944 before publishing; the full x0–1536 width remains visible. Export creates the 16:9 image, writes `roomcraft_scene: full-width-v1` on the plan card, and remaps its managed overlays. The plan grid's center width uses the 16:9 aspect, for example `min(100%, calc(100dvh * 1.77777778))`. Read back the card image, marker, project, controls, and other views. An image, bridge, and grid from different releases can misalign controls.
+Open `http://<HA-LAN-IP>:8123/roomcraft-home/studio` and sign in. If Chrome leaves the embedded editor blank, use **Open editor in a new tab** and keep Studio open. The new tab uses its opener for authenticated import and export. A direct visit to `/local/roomcraft/editor.html` cannot transfer the dashboard layout.
 
-The original 3:2 card has no scene marker, while the preceding 1472 × 828 crop uses `wall-to-wall-v1`. Both updated bridges import either without changing saved project geometry; the next export writes `full-width-v1`. On a first export from an unmarked card or the preceding crop, known menu/weather/time/editor chrome moves to a safe top position above the outer wall. Verify a subsequent import returns the original project-space marker positions, and that a second export preserves later chrome edits. If release verification fails, restore the backed-up dashboard and matching older HA assets/cloud deployment together.
+### Full-width export
+
+The editable layout stays at 1536 × 1024. Studio exports a 1536 × 864 image using project y80–944 and the full x0–1536 width. The export writes `roomcraft_scene: full-width-v1` on `roomcraft_plan` and updates its managed overlays. Read back the image, marker, project and controls together. The earlier 3:2 cards and `wall-to-wall-v1` crops still import without scaling saved project geometry.
 
 ### Earlier live-object and second-camera release (historical)
 
@@ -38,9 +40,9 @@ After a card resource update, an existing Chrome tab may briefly show **Configur
 
 After modifying anything under `site/public/`, run `npm run release:stamp-editor` and commit the resulting HTML URL updates. The child scripts, stylesheet, and artwork use the same content key. This is separate from the Studio card's top-level asset version and protects existing browsers with month-long static caches. Reload already-open editors after deploying. Export the current saved design once if its published image still uses the previous renderer.
 
-### Three-camera and outdoor-weather release order
+### Three-camera and outdoor-weather release (historical)
 
-The current three-camera release was installed after a private dashboard and image backup, matching Site publication, and both HA module assets. The office contains one `lamp` item and one light binding; remove the duplicate study ceiling fixture if importing an older private project. The doorbell frame uses **Live during an event** with the doorbell camera, last-event image, and verified ring/person `binary_sensor.*` triggers. The garage frame remains in **Live stream** tap-to-start mode. The third overhead frame uses its own camera and **Always show live feed** mode. The editor stores `eventEntityIds` in the version 2 project; export derives `event_entities` for the HA card. Validate actual IDs and availability privately before future publishing. Do not place stream URLs or frames in layout JSON.
+The earlier three-camera release was installed after a private dashboard and image backup, matching Site publication, and both HA module assets. The office contains one `lamp` item and one light binding; remove the duplicate study ceiling fixture if importing an older private project. The doorbell frame uses **Live during an event** with the doorbell camera, last-event image, and verified ring/person `binary_sensor.*` triggers. The garage frame remains in **Live stream** tap-to-start mode. The third overhead frame uses its own camera and **Always show live feed** mode. The editor stores `eventEntityIds` in the version 2 project; export derives `event_entities` for the HA card. Validate actual IDs and availability privately before future publishing. Do not place stream URLs or frames in layout JSON.
 
 Add one weather picture element to the `plan` card after the weather resource is registered. Replace the placeholder entity IDs in this example only in the private dashboard configuration:
 
@@ -62,25 +64,25 @@ The weather module uses a full 1536 × 864 viewBox and masks its art to every ex
 
 ## Optional cloud editor
 
-Build and publish the `site/` source through its Site workflow with owner-private access. Configure `HA_URL`, `HA_TOKEN`, and `OWNER_EMAIL` in the hosted runtime, never in source. The cloud editor has a separate owner sign-in. Both editors read and write the same `roomcraft_layout` in the Second Floor dashboard. Opening either editor loads the latest saved layout; use **Import from dashboard** when the other editor is already open after an export.
+Build and publish the `site/` source through its Site workflow with owner-private access. Configure `HA_URL`, `HA_TOKEN`, and `OWNER_EMAIL` in the hosted runtime, never in source. The cloud editor has a separate owner sign-in. Both editors read and write the same `roomcraft_layout` in Roomcraft Home after consolidation. Opening either editor loads the latest saved layout. Use **Import from dashboard** when the other editor is already open after an export.
 
 ## Release verification
 
 | Check | Pass condition |
 | --- | --- |
-| HA login | Studio opens in a fresh laptop browser with the HA login. The plan pencil-ruler icon navigates there. |
+| HA login | Studio opens in a fresh laptop browser with the HA login. **Menu → Manage → Layout Studio** opens it from Home. |
 | Own-tab fallback | If the embedded frame is blank, **Open editor in a new tab** loads the same editor and completes an import/export while Studio remains open. |
-| Back to dashboard | **← Dashboard** in the header returns to the Second Floor plan from HA Studio and the owner-private Site. With unpublished edits it prompts, **Cancel** stays in Studio, and **View dashboard** preserves a browser draft without publishing. While an import/export runs or the destination/draft storage is unavailable, it stays in the editor and reports why. |
+| Back to dashboard | **← Dashboard** in the header returns to Roomcraft Home from HA Studio and the owner-private Site. With unpublished edits it prompts, **Cancel** stays in Studio, and **View dashboard** preserves a browser draft without publishing. While an import/export runs or the destination/draft storage is unavailable, it stays in the editor and reports why. |
 | Layout default | The editor loads the current dashboard project on opening. A different browser draft is saved for recovery; if HA is unavailable, the local draft remains usable. **Import from dashboard** refreshes an already open editor. |
 | Art | Furnished default, recessed windows, added wall-mounted windows, furniture, baby items, one movable office desk lamp with the bedroom-style sprite, other room fixtures, and floor textures render in Design mode and the detailed PNG. No duplicate office ceiling fixture returns after import or fixture restoration. |
 | Editor | Select, drag, corner-resize (including Shift proportions), rotate, draw wall, reshape room, repaint floor/wall, undo/redo, and JSON import/export work. |
-| Dashboard transfer | Export updates the plan image, object controls (including separate fan and light targets), managed camera overlays, and `roomcraft_layout`; import reads back the same project. Weather, time, edit link, `studio`, and `live` remain. |
+| Dashboard transfer | Export updates the image, object controls and managed camera overlays in `roomcraft_plan` with `roomcraft_layout`. Import reads back the same project. The dashboard retains its Home and Studio views. |
 | Full-width alignment | Exported PNG is 1536 × 864, cropped from the unchanged 1536 × 1024 project at y80 with the entire x width preserved. The plan card has `roomcraft_scene: full-width-v1`. Object, window, lamp, fan, independent marker, and camera targets still align after both HA-hosted and cloud export/import round trips; `wall-to-wall-v1` and legacy unmarked imports stay readable. The camera frame and top chrome are fully visible. |
 | Conflict handling | A stale editor revision is rejected after a separate dashboard edit; no newer change is silently replaced. |
 | Cloud parity | If the cloud Site is deployed, import its dashboard copy after an HA editor export; repeat in the other direction. |
-| Responsive view | A private 1920 × 1080 tablet capture of the 1536 × 864 export showed the full original left staircase and right exterior wall, a visible live porch thumbnail, and no side gutters. Menu, clock, weather, and editor link remained visible. A later private 1920 × 1080 capture also showed the new object-state graphics and both camera widgets, including a visible garage feed. Physical touch and smaller viewports still need checks. The preceding 1472 × 828 release was visually checked in a separate private capture; the earlier 3:2 installation was checked at 960 × 600 CSS pixels (696 × 465 plan), 2560 × 1271 (centered 1763-pixel card), and on the tablet (about 1612 × 1074 with side gutters). |
+| Responsive view | Check Home on the wall tablet and at a smaller viewport. Confirm the menu, weather and camera thumbnails fit and that dialogs can be dismissed. |
 | Existing controls | Confirm light, switch, cover, fan, garage, vacuum, and camera behavior through Home Assistant before relying on their dashboard cards. An event still is not proof of a live stream. |
-| Current drawer | Confirm **On plan**, **All entities**, search, registry availability, and all six curated Main Dashboard groups. Check the three separate living-window blind controls. |
+| Popups | Open **Devices and sensors**, **Indoor air**, **Electrical**, **System health**, **Presence tracking** and **Object models** from Home. Confirm the device drawer can search and that all panels close back to Home. |
 | Fan and light | Confirm the dining fan and center light bind to the verified motor/light channels, each uses `toggle`, and no scene target remains. Read back the exact entities and actions without sending a device command. The rotor/glow must follow only their own channel. |
 | Appliances and summaries | Confirm the humidifier and purifier export their device forms, animate only from their own state, and retain hold-for-details. Confirm electrical/air markers open data panels without a service call. |
 | Moving art | Confirm clean PNG export omits bound fan and robot art. The live card must render exactly one rotor and one tracked robot. |
@@ -89,7 +91,8 @@ Build and publish the `site/` source through its Site workflow with owner-privat
 | Front-door camera | Between events its dated latest-event still appears without a live claim. Synthetic ring/person transitions open a bounded 60-second live attempt; a failed stream returns to the still. Check that the event sensor list and camera/image bindings survive export/import. |
 | Overhead camera | A third independent tile mounts native HA playback without `camera.turn_on`. **LIVE** requires advancing video time or frame count, including when HA reports the entity `idle`. Check a failed or unavailable stream without disturbing the doorbell or garage tiles. |
 | Garage camera | A separately bound `cameraThumbnail` shows a preview while idle and requests `camera.turn_on` only on tap; hold/right-click opens native details. **LIVE** requires a decoded playing frame. Test a failed stream falling back to preview or unavailable without affecting the other tiles. |
-| Outdoor weather | Confirm the separate module resource loads and the element survives HA and cloud export. Compare current condition with HA state, preview forecast hours across dusk/dawn, check the actual next-12-hour timestamps and time zone, and confirm rain/snow/night washes are clipped to exterior pixels. Test reduced motion and a hidden tab. |
+| Outdoor weather | Compare Home's weather header and outdoor lighting with HA state. Tap the header to open native weather details. Test reduced motion and a hidden tab. |
+| Radar visibility | A fresh calibrated position over furniture or wall geometry shows a character and its ring. A stale, unavailable or off-floor position clears. Use synthetic input for controlled position tests. |
 | Privacy | No tokens, SSH keys, raw HA exports, current device values, camera access URLs, or private backups appear in `/local/roomcraft/` or GitHub. The public inventory under `docs/ha-inventory/` contains only reviewed metadata. |
 
 The earlier v19 release read back 36 editable items, including eight photo-inspired play-area objects, 10 object controls, separate fan and light scene targets, and the exterior camera. The first full-width release exported a 1536 × 864 PNG with the `full-width-v1` marker and no side gutters on a private 1920 × 1080 tablet capture. Those figures remain historical; the private capture and camera media are not in GitHub.
@@ -103,9 +106,9 @@ The default-dashboard choice is a Home Assistant **user profile** preference, no
 ## Rollback
 
 1. Export any unsaved editable layout JSON from the browser.
-2. Restore the private dashboard backup recorded by `ha-local/install.py` through `lovelace/config/save` for `url_path="second-floor"`, then read it back and compare. This restores the prior Studio view, plan image, and controls together.
+2. For a consolidated dashboard upgrade, restore the private Roomcraft Home config through `lovelace/config/save` and read it back. To reverse the consolidation, use the private two-dashboard archive. Recreate the legacy Lovelace registration from its saved metadata if it was retired. Restore the archived Second Floor and Roomcraft Home configurations to their recorded paths and compare both readbacks.
 3. If only the static editor files are faulty, reinstall a known working asset version and update the registered card resource URL. A resource left registered is inert when the restored dashboard does not use the card.
-4. Reload Home Assistant and verify the plan and controls. If the cloud Site was also changed, restore its previous deployment separately.
+4. Reload Home Assistant and verify Home, Studio and controls. If the cloud Site was also changed, restore its previous deployment separately.
 
 An image may be uploaded before a dashboard save fails or conflicts. In that case the unreferenced image does not become the live plan; clean it up in a separate reviewed storage task.
 

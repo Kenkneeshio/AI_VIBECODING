@@ -19,7 +19,7 @@ export function bindLiveModelLibrary(card) {
         window.sessionStorage.setItem(window.RoomcraftModels.handoffKey, JSON.stringify(command));
       } catch { /* Studio can still open its model library without a selection. */ }
       library.close();
-      window.history.pushState(null, '', button.getAttribute('href'));
+      window.history.pushState(null, '', `${card.studioPath}?panel=models`);
       window.dispatchEvent(new CustomEvent('location-changed', {detail:{replace:false}}));
     });
     card.setMainMenu(false, true);

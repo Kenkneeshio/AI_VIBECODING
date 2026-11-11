@@ -32,15 +32,13 @@ def dashboard_record(api):
 
 
 def publish(api, backup_dir: Path, make_default: bool) -> Path:
-    source = api.call("lovelace/config", url_path=SOURCE)
-    if not source.get("roomcraft_layout") or not any(view.get("path") == "plan" for view in source.get("views", [])):
-        raise RuntimeError("The published Roomcraft layout or plan is missing")
     if not any(resource.get("type") == "module" and resource.get("url", "").split("?", 1)[0] == RESOURCE
                for resource in api.call("lovelace/resources")):
         raise RuntimeError("Install the Storybook module before publishing this dashboard")
 
     existing = dashboard_record(api)
     original = None
+    target = CONFIG
     if existing:
         if existing.get("mode") != "storage" or existing.get("title") != TITLE:
             raise RuntimeError("The dashboard URL is already in use")
@@ -50,9 +48,21 @@ def publish(api, backup_dir: Path, make_default: bool) -> Path:
             if "config_not_found" not in str(error):
                 raise
         if original is not None and original != CONFIG:
-            raise RuntimeError("The dashboard has custom edits; review them before replacing it")
+            projection = original.get("roomcraft_plan", {})
+            layout = original.get("roomcraft_layout", {})
+            if not (isinstance(projection, dict) and projection.get("type") == "picture-elements" and
+                    isinstance(projection.get("elements"), list) and
+                    isinstance(layout, dict) and layout.get("version") == 2 and
+                    [view.get("path") for view in original.get("views", [])] == ["home", "studio"]):
+                raise RuntimeError("The dashboard has custom edits; review them before replacing it")
+            target = original
     elif make_default:
         raise RuntimeError("Create and inspect the Storybook dashboard before making it the default")
+
+    if target is CONFIG:
+        source = api.call("lovelace/config", url_path=SOURCE)
+        if not source.get("roomcraft_layout") or not any(view.get("path") == "plan" for view in source.get("views", [])):
+            raise RuntimeError("The published Roomcraft layout or plan is missing")
 
     core = api.call("frontend/get_user_data", key="core").get("value") or {}
     backup_dir.mkdir(parents=True, exist_ok=True)
@@ -66,8 +76,8 @@ def publish(api, backup_dir: Path, make_default: bool) -> Path:
         api.call("lovelace/dashboards/create", url_path=DASHBOARD, title=TITLE, icon=ICON,
                  require_admin=False, show_in_sidebar=True, mode="storage")
     if original is None:
-        api.call("lovelace/config/save", url_path=DASHBOARD, config=CONFIG)
-    if not dashboard_record(api) or api.call("lovelace/config", url_path=DASHBOARD) != CONFIG:
+        api.call("lovelace/config/save", url_path=DASHBOARD, config=target)
+    if not dashboard_record(api) or api.call("lovelace/config", url_path=DASHBOARD) != target:
         raise RuntimeError("The Storybook dashboard did not verify")
 
     if make_default:

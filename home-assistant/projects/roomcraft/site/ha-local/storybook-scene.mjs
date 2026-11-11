@@ -900,7 +900,14 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
   lighting.markStructure();
   const updateWeather = buildWeather(scene, plan, showSkyArt);
   const floorForPerson = trackedFloor(plan);
-  const people = createStorybookPeople(scene, floorForPerson);
+  // The tracker is a foreground overlay. Use the same camera so the character
+  // stays anchored to the measured floor position behind walls and furniture.
+  const trackingOverlay = new THREE.Scene();
+  const trackingFill = new THREE.HemisphereLight('#fff5e1', '#c9bfd7', 1.8);
+  const trackingKey = new THREE.DirectionalLight('#fff1d8', 1.65);
+  trackingKey.position.set(-4, 9, 6);
+  trackingOverlay.add(trackingFill, trackingKey);
+  const people = createStorybookPeople(trackingOverlay, floorForPerson);
   const anchors = new Map();
   const roots = new Map();
   const garages = new Map();
@@ -984,6 +991,18 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
     }
     return null;
   }
+  function draw() {
+    renderer.render(scene, camera);
+    if (!people.hasVisibleTracks) return;
+    // Clear the house depth, while keeping the avatars' own depth and shading.
+    renderer.autoClear = false;
+    try {
+      renderer.clearDepth();
+      renderer.render(trackingOverlay, camera);
+    } finally {
+      renderer.autoClear = true;
+    }
+  }
   function render(timeSeconds = 0, statesById = {}, environment = {}, {animateTelemetry = true} = {}) {
     if (disposed || currentWidth < 1 || currentHeight < 1) return;
     lighting.update(environment, statesById, groundMaterial);
@@ -1001,7 +1020,7 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
       object.animate?.(state, object.ambientMotion ? time : telemetryTime);
     }
     people.render(timeSeconds, reduceMotion);
-    renderer.render(scene, camera);
+    draw();
   }
   function setPeople(tracks, timeSeconds, options) {
     if (!disposed) people.setTracks(tracks, timeSeconds, options);
@@ -1010,7 +1029,7 @@ export function createStorybookScene(canvas, layout, {showSkyArt = true} = {}) {
     if (disposed || currentWidth < 1 || currentHeight < 1 || (!ambientObjects.length && !people.hasMotion)) return;
     for (const object of ambientObjects) object.animate(defaultState, timeSeconds);
     people.render(timeSeconds);
-    renderer.render(scene, camera);
+    draw();
   }
   function anchor(itemId) {
     const entry = anchors.get(itemId);

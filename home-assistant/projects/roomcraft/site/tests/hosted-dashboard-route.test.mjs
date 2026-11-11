@@ -1,0 +1,134 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {fileURLToPath} from 'node:url';
+import {buildSync} from 'esbuild';
+
+const {outputFiles: [bundle]} = buildSync({
+  entryPoints: [fileURLToPath(new URL('../app/api/dashboard/route.ts', import.meta.url))],
+  bundle: true, format: 'cjs', platform: 'node', write: false, external: ['cloudflare:workers'],
+});
+const startBridge = new Function('module', 'exports', 'require', 'WebSocket', 'fetch', bundle.text);
+const project = {version: 2, rooms: [], walls: [], items: [], hotspots: []};
+const plan = {type: 'picture-elements', image: '/local/old.png', elements: []};
+const home = {
+  roomcraft_layout: project,
+  roomcraft_plan: plan,
+  roomcraft_utilities: {health: []},
+  views: [{path: 'home'}, {path: 'studio'}],
+};
+const legacy = {
+  roomcraft_layout: project,
+  views: [{path: 'plan', cards: [plan]}, {path: 'studio'}],
+};
+const shell = {views: [{path: 'home'}]};
+const canonicalPath = 'roomcraft-home';
+const legacyPath = 'second-floor';
+const origin = 'https://studio.example.test';
+const testEmail = 'owner@example.test';
+
+function harness(records, {onUpload, readError} = {}) {
+  const dashboards = structuredClone(records);
+  const calls = [];
+  class Socket {
+    listeners = new Map();
+    constructor() { this.emit({type: 'auth_required'}); }
+    addEventListener(name, listener) { this.listeners.set(name, listener); }
+    emit(payload) {
+      queueMicrotask(() => this.listeners.get('message')?.({data: JSON.stringify(payload)}));
+    }
+    send(payload) {
+      const command = JSON.parse(payload);
+      if (command.type === 'auth') {
+        this.emit({type: 'auth_ok'});
+        return;
+      }
+      const {id, type, url_path: path} = command;
+      calls.push([type, path]);
+      if (type === 'get_states') this.emit({id, success: true, result: []});
+      if (type === 'lovelace/config/save') {
+        dashboards[path] = command.config;
+        this.emit({id, success: true});
+      }
+      if (type === 'lovelace/config') {
+        const error = readError?.(path) || (!dashboards[path] && 'config_not_found');
+        if (error) this.emit({id, success: false, error: {code: error}});
+        else this.emit({id, success: true, result: dashboards[path]});
+      }
+    }
+    close() {}
+  }
+  const bridgeModule = {exports: {}};
+  startBridge(bridgeModule, bridgeModule.exports, name => {
+    assert.equal(name, 'cloudflare:workers');
+    return {env: {HA_URL: 'https://ha.example.test', HA_TOKEN: 'test-token', OWNER_EMAIL: testEmail}};
+  }, Socket, async () => {
+    onUpload?.(dashboards);
+    return Response.json({id: 'a'.repeat(32)});
+  });
+  return {route: bridgeModule.exports, calls, dashboards};
+}
+
+function request(body) {
+  return new Request(`${origin}/api/dashboard`, {
+    method: body ? 'POST' : 'GET',
+    headers: {
+      'oai-authenticated-user-id': 'test-user',
+      'oai-authenticated-user-email': testEmail,
+      ...(body && {'Content-Type': 'application/json', Origin: origin}),
+    },
+    body: body && JSON.stringify(body),
+  });
+}
+
+function testPng() {
+  const png = Buffer.alloc(24);
+  Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(png);
+  png.writeUInt32BE(1536, 16);
+  png.writeUInt32BE(864, 20);
+  return `data:image/png;base64,${png.toString('base64')}`;
+}
+
+test('hosted editor reads and saves the canonical dashboard without recreating the floor plan view', async () => {
+  const {route, calls, dashboards} = harness({[canonicalPath]: home, [legacyPath]: legacy});
+  const before = await route.GET(request());
+  assert.equal(before.status, 200);
+  const imported = await before.json();
+  assert.equal(imported.source, 'https://ha.example.test/roomcraft-home/home');
+  const nextProject = {...project, hotspots: [{type: 'state-icon', entity: 'light.example', style: {left: '33%', top: '43%'}}]};
+  const after = await route.POST(request({revision: imported.revision, project: nextProject, pngDataUrl: testPng()}));
+  assert.equal(after.status, 200);
+  assert.deepEqual(dashboards[canonicalPath].roomcraft_layout, nextProject);
+  assert.deepEqual(dashboards[canonicalPath].views, home.views);
+  assert.deepEqual(dashboards[canonicalPath].roomcraft_utilities, home.roomcraft_utilities);
+  assert.equal(dashboards[canonicalPath].roomcraft_plan.elements[0].entity, 'light.example');
+  assert.deepEqual(dashboards[legacyPath], legacy);
+  assert.equal(calls.some(([, path]) => path === legacyPath), false);
+});
+
+test('hosted editor falls back only for an unmigrated or missing Roomcraft Home', async () => {
+  for (const current of [undefined, shell]) {
+    const {route} = harness({[canonicalPath]: current, [legacyPath]: legacy});
+    const response = await route.GET(request());
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).source, 'https://ha.example.test/second-floor/plan');
+  }
+  for (const [current, options, status] of [
+    [{...home, roomcraft_plan: null}, {}, 409],
+    [{...shell, roomcraft_layout: project}, {}, 409],
+    [shell, {readError: path => path === canonicalPath ? 'unauthorized' : undefined}, 502],
+  ]) {
+    const {route, calls} = harness({[canonicalPath]: current, [legacyPath]: legacy}, options);
+    assert.equal((await route.GET(request())).status, status);
+    assert.equal(calls.some(([, path]) => path === legacyPath), false);
+  }
+});
+
+test('hosted editor rejects a dashboard migration that lands during image upload', async () => {
+  const {route, calls} = harness({[canonicalPath]: shell, [legacyPath]: legacy}, {
+    onUpload: dashboards => { dashboards[canonicalPath] = structuredClone(home); },
+  });
+  const imported = await (await route.GET(request())).json();
+  const response = await route.POST(request({revision: imported.revision, project, pngDataUrl: testPng()}));
+  assert.equal(response.status, 409);
+  assert.equal(calls.some(([type]) => type === 'lovelace/config/save'), false);
+});

@@ -761,23 +761,23 @@ test('startup keeps a browser draft if Home Assistant is unreachable', async () 
   assert.match(editor.elements.get('dashboardTransferStatus').textContent, /browser layout kept: Offline/);
 });
 
-test('Dashboard header returns to the actual Home Assistant plan in both editor contexts', async () => {
+test('Dashboard header returns to Roomcraft Home in both editor contexts', async () => {
   const project = { version: 2, editableReferenceVersion: 2, rooms: [], walls: [], hotspots: [], items: [] };
-  const source = 'https://ha.example/second-floor/plan';
+  const source = 'https://ha.example/roomcraft-home/home';
   const response = async () => ({ revision: 'current', project, hotspots: [], source });
   const hosted = boot(project, response);
   const cloud = boot(project, response, { pathname: '/editor', origin: 'https://studio.example' });
   await new Promise(resolve => setImmediate(resolve));
   await hosted.dispatch('backDashboardButton', 'click', {});
   await cloud.dispatch('backDashboardButton', 'click', {});
-  assert.deepEqual(hosted.navigation, ['http://ha.test/second-floor/plan']);
+  assert.deepEqual(hosted.navigation, ['http://ha.test/roomcraft-home/home']);
   assert.deepEqual(cloud.navigation, [source]);
 });
 
 test('Dashboard return keeps unpublished edits in the browser and allows cancellation', async () => {
   const project = { version: 2, editableReferenceVersion: 2, rooms: [], walls: [], hotspots: [],
     items: [{ id: 'chair', type: 'chair', name: 'Chair', x: 500, y: 500, w: 48, h: 48, rotation: 0, entityId: '' }] };
-  const editor = boot(project, async () => ({ revision: 'current', project, hotspots: [], source: 'http://ha.test/second-floor/plan' }));
+  const editor = boot(project, async () => ({ revision: 'current', project, hotspots: [], source: 'http://ha.test/roomcraft-home/home' }));
   await new Promise(resolve => setImmediate(resolve));
   editor.pointer('pointerdown', 500, 500);
   editor.pointer('pointermove', 540, 500);
@@ -790,7 +790,7 @@ test('Dashboard return keeps unpublished edits in the browser and allows cancell
   const secondReturn = editor.dispatch('backDashboardButton', 'click', {});
   editor.dispatch('confirmationAccept', 'click', {});
   await secondReturn;
-  assert.deepEqual(editor.navigation, ['http://ha.test/second-floor/plan']);
+  assert.deepEqual(editor.navigation, ['http://ha.test/roomcraft-home/home']);
   assert.equal(editor.read().items.find(item => item.id === 'chair').x, 540);
 });
 

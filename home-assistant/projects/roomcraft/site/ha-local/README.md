@@ -1,26 +1,26 @@
 # Home Assistant LAN editor
 
-The official local editor is the **Layout Studio** view at `http://<HA-LAN-IP>:8123/second-floor/studio`. It uses the Home Assistant login in any browser on the same network. The cloud Site remains an alternate entry to the same `roomcraft_layout` dashboard data. Both editors load the current dashboard layout on opening, preserving a different local browser draft for recovery. Use **Import from dashboard** to refresh an editor that is already open after someone else exports.
+Roomcraft Home has the live view at `/roomcraft-home/home` and Layout Studio at `/roomcraft-home/studio`. Open either path on the Home Assistant host and sign in. The private Site is an alternate editor for the same saved layout. Both editors load the saved layout on opening and retain a different local browser draft for recovery. Use **Import from dashboard** to refresh an editor already open when another editor publishes.
 
 ## Architecture
 
 - `public/` is copied to Home Assistant `/config/www/roomcraft/`. It contains the editor, graphics, and the small `ha-iframe-bridge.js`. The source contains no access tokens or live entity IDs.
 - `roomcraft-card.js` is registered as a Lovelace module resource and is the only card in the dashboard's `studio` panel view. Home Assistant supplies the card with the signed-in user's `hass` object. The card embeds the editor and provides **Open editor in a new tab** for browsers that leave the embedded frame blank.
-- `roomcraft-weather-outdoor.js` is a separate Lovelace module for the `plan` picture card. It reads the configured weather entity, the sun entity, and optionally a moon-phase sensor from the signed-in Home Assistant session. Hourly forecasts come from `weather.get_forecasts`; the outdoor artwork and 12-hour strip use forecast timestamps, not fixed hour slots. The module contains no site-specific entity IDs or credentials.
+- The live card reads `roomcraft_plan.elements` for bindings, cameras, weather, and utility configuration, and `roomcraft_health` for health readings. The original weather module remains available for legacy picture cards.
 - The embedded editor exchanges request/response messages with its parent card. The new-tab editor uses its `window.opener` instead. The card checks the exact iframe or opened window, origin, request ID, and method before answering.
 - The card reads and saves the dashboard through Home Assistant's authenticated WebSocket commands. It uploads the rendered PNG with `hass.fetchWithAuth` using the current user's session; it never sends the token to the iframe. Publishing requires an HA administrator. A stored snapshot is checked before and after image upload, and the saved dashboard is read back.
-- Export writes the `roomcraft_layout` and the `plan` picture card's rendered image, object hit targets, camera thumbnail, one entity menu, and any independent state-icon hotspots. Weather, clock, edit link, and unrelated dashboard views are retained. Bound fixtures and windows replace their duplicate floating icons.
+- Export updates the dashboard's `roomcraft_layout` and `roomcraft_plan` projection, including the rendered image, object and camera bindings, and independent hotspots. Home and Studio are the dashboard's only views. The projection is stored with the layout for both editors and the live card.
 - A bound item's artwork is its live tap target. The Inspector sets its Home Assistant entity, label, icon, tap action, and hold action. The invisible button area is an editable target for baked artwork such as windows; it contributes no pixels to the exported plan PNG. Tap toggles a light, switch, or fan by default; runs a scene, script, or button; and opens native details for other entities. Hold opens native details by default. Optional tap and hold target entities let one illustrated object display a switch's live state while running separate on/off scenes. A scene's timestamp is displayed as **Ready**, not as a false light on/off state.
-- The plan's compact menu searches live Home Assistant entities and, when the signed-in account may read the entity registry, also lists disabled registrations. Curated sections retain the old Main Dashboard's six groups. The public Site never receives the registry or camera feed through these local card elements.
+- **Menu → Manage** opens the device drawer and utility popups for Home. The drawer can search live entities and list disabled registrations when the signed-in user can read the entity registry. The curated sections retain the old Main Dashboard's six groups.
 
 The static editor files at `/local/roomcraft/` are public to anyone who can reach Home Assistant. This includes the bundled illustrative floor-plan image, which is already present in the public project repository. The current editable dashboard JSON and live HA entity bindings are **not** copied there. Uploaded plan images use Home Assistant's image library with unguessable IDs; Home Assistant serves an image to anyone with its exact image URL, as it does for the existing plan. Do not put secrets or private layouts in `public/`.
 
 ## Install or update
 
-Run from a workstation with OpenSSH, Python, and the private authenticated `HomeAssistantManagement/ha_manage.py` adapter. The adapter and SSH key stay outside the repository. The script uploads assets, registers or updates both module resources with a content-based cache version, backs up the dashboard, switches Studio to a panel card, updates the plan edit icon, then verifies the saved dashboard and resources.
+Run `npm ci` and `npm run build` from `site/`. On the workstation with OpenSSH, Python, and the private Home Assistant adapter, run the installer to copy and version the assets, back up the dashboard, and verify the saved views and resources.
 
 ```powershell
-python ha-local/install.py --host <HA-LAN-IP> --ssh-key <SSH-KEY-PATH> --management-root <PRIVATE-HA-MANAGEMENT-DIR> --backup-dir <PRIVATE-BACKUP-DIR>
+python ha-local/install.py --host <HA-LAN-IP> --ssh-key <SSH-KEY-PATH> --management-root <PRIVATE-HA-MANAGEMENT-DIR> --backup-dir <PRIVATE-BACKUP-DIR> --storybook
 ```
 
 For an asset-only refresh without changing the dashboard:
@@ -29,7 +29,7 @@ For an asset-only refresh without changing the dashboard:
 python ha-local/install.py --host <HA-LAN-IP> --ssh-key <SSH-KEY-PATH> --assets-only
 ```
 
-Keep `/second-floor/studio` as the link given to LAN users. If Studio shows **Configuration error** after a card update, reload the HA tab; we observed stale frontend state clear on reload. If its editor area stays blank, use **Open editor in a new tab** on that page. The Studio tab must remain open while the new tab imports or exports. Opening `/local/roomcraft/editor.html` directly from the address bar bypasses the authenticated Lovelace card and cannot transfer a layout to the dashboard.
+If Studio shows **Configuration error** after a card update, reload the HA tab. If its editor area stays blank, choose **Open editor in a new tab** and keep the Studio tab open during import or export. The standalone static editor at `/local/roomcraft/editor.html` has no authenticated dashboard bridge.
 
 The static files, custom card resource, and dashboard configuration persist across Home Assistant restarts. Updating the editor uses the same install command and does not require a Home Assistant core restart. The one-time interactive-plan migration is in `migrate_interactive_plan.py`; run its default dry run, review the planned changes, then run `--apply`. It privately backs up and verifies the dashboard. The migration maps the exterior camera to the porch live stream and turns the three blind windows into movable control areas.
 
@@ -49,17 +49,17 @@ Place the weather element once in the plan's picture-elements `elements` array. 
     z-index: 2
 ```
 
-## Storybook preview
+## Migrate an older installation
 
-Run `npm ci` and `npm run build` from `site/`, then add `--storybook` to the installer command. Open **Second Floor → Storybook** at `/second-floor/storybook`. It reads the published v2 layout and plan bindings. Change the layout in Studio, publish it, then reopen the preview. The 3D bundle is local to Home Assistant and loaded as a versioned module. Compatible browsers need WebGL 2. Use the **Floor plan** link if the renderer cannot open. The original plan remains the first view.
+When the separate Roomcraft Home shell already exists, add `--consolidate` to the installer command. It archives both configurations and copies the Second Floor layout, control projection, and health data to Home. Verify Home, Studio, the private Site if enabled, and the utilities before removing the archived Second Floor registration with the Lovelace API. Home needs WebGL 2. If the renderer cannot open, use **Try again** or **Layout Studio**.
 
-Check the fan motor and light as separate touch targets, the dimmer with occupancy on and off, day/night and adverse weather, and all three camera tile modes. Verify the physical tablet separately, including frame pacing and a longer run with the camera feeds. Use read-only checks or synthetic states to test animations without operating devices. Restore the installer dashboard backup to remove the Storybook tab.
+Check the fan motor and light as separate touch targets, the dimmer with occupancy on and off, day/night and adverse weather, and all three camera tile modes. Verify the physical tablet separately, including frame pacing with the camera feeds. Use read-only checks or synthetic states to test animations without operating devices.
 
 ### Standalone dashboard and profile default
 
-After installing the built module, run `python ha-local/publish_storybook_dashboard.py --management-root <private-adapter-directory> --backup-dir <private-backup-directory>`. Open `/roomcraft-home/home` and check the view. Repeat the command with `--make-default` to set it for the user authenticated by the adapter. The command backs up that user's prior preferences and refuses to replace an edited dashboard. The card continues reading the shared layout from Second Floor.
+For a legacy installation, `publish_storybook_dashboard.py` can create the initial Roomcraft Home shell before consolidation. After inspecting Home, use its `--make-default` option to set the authenticated user's default dashboard. It preserves a consolidated dashboard and backs up the user's prior preferences.
 
-To restore the prior dashboard choice, use **Profile → Appearance → Dashboard** or set the `core` user data to the `user_core` object in the private backup using the authenticated frontend WebSocket API. The Floor plan and Studio links are available on the new dashboard.
+To restore the prior dashboard choice, use **Profile → Appearance → Dashboard** or restore the `user_core` object from the private backup through the authenticated frontend WebSocket API.
 
 ## Verification
 
@@ -67,10 +67,10 @@ To restore the prior dashboard choice, use **Profile → Appearance → Dashboar
 2. Confirm the editor loads the current dashboard layout by default when there is no unsaved browser draft. Otherwise press **Import from dashboard**.
 3. Move a control area without changing any device state, export to the dashboard, and read back the plan and `roomcraft_layout` through the HA API. Move it back after the check.
 4. Import from dashboard in the cloud editor; confirm the same layout. Reverse the change and export again if it was only a probe.
-5. Check a narrow viewport and the plan's edit icon.
+5. Check the live and editor views at a narrow viewport, including the Studio return link and popup navigation.
 
 Run `node --test ha-local/roomcraft-card.test.mjs` for the bridge, object control, camera, menu, and conflict checks. Run `python -m unittest discover -s ha-local -p test_install.py` for resource registration. The Site's bridge tests remain independent. The manual YAML export also emits these custom element types and therefore requires the `/local/roomcraft/roomcraft-card.js` Lovelace module resource. The outdoor weather element requires `/local/roomcraft/roomcraft-weather-outdoor.js`.
 
 ## Rollback
 
-The installer prints a private dashboard backup path. Restore that exact JSON through `lovelace/config/save` for `url_path="second-floor"`, then read back and compare. The resource can remain registered without affecting the restored views; remove or update it separately if needed. The asset copy is additive and keeps old files, so no recursive delete is part of installation.
+For a routine update, restore the printed private backup to the original URL through `lovelace/config/save`. For a migration rollback, recreate the legacy dashboard from the backup's `legacy.dashboard` metadata, save `legacy.config` there, and restore the prior Roomcraft Home `config`. Reinstall the matching assets and verify both configs by readback.

@@ -226,7 +226,7 @@
     };
     const uiElements = [
       ['uiTime', { type: 'state-label', entity: 'sensor.time' }],
-      ['uiEdit', { type: 'icon', icon: 'mdi:pencil-ruler', title: 'Edit layout in Roomcraft', tap_action: { action: 'navigate', navigation_path: '/second-floor/studio' } }],
+      ['uiEdit', { type: 'icon', icon: 'mdi:pencil-ruler', title: 'Edit layout in Roomcraft', tap_action: { action: 'navigate', navigation_path: '/roomcraft-home/studio' } }],
       ['uiStatusAir', { type: 'custom:roomcraft-status-popup', roomcraft_status_kind: 'air', title: 'Indoor air', entities: [] }],
       ['uiStatusElectrical', { type: 'custom:roomcraft-status-popup', roomcraft_status_kind: 'electrical', title: 'Electrical', entities: [] }]
     ].flatMap(([type, element]) => { const position=findUi(type); return position?[{...element,

@@ -7,10 +7,10 @@ const ACTIVE_HVAC = new Set(['cooling', 'heating', 'drying', 'fan', 'preheating'
 /** Select data from the same dashboard projection that powers the plan. */
 export function readStorybookConfig(config) {
   const layout = config?.roomcraft_layout;
-  const plan = config?.views?.find(view => view.path === 'plan')?.cards
-    ?.find(card => card.type === 'picture-elements');
+  const plan = config && Object.hasOwn(config, 'roomcraft_plan') ? config.roomcraft_plan :
+    config?.views?.find(view => view.path === 'plan')?.cards?.find(card => card.type === 'picture-elements');
   if (layout?.version !== 2 || !Array.isArray(layout.items) || !Array.isArray(layout.rooms) ||
-      !Array.isArray(layout.walls) || !Array.isArray(plan?.elements)) {
+      !Array.isArray(layout.walls) || plan?.type !== 'picture-elements' || !Array.isArray(plan.elements)) {
     throw new Error('A published Roomcraft layout is required.');
   }
   const items = new Map(layout.items.map(item => [item.id, item]));

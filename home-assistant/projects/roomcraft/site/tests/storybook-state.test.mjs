@@ -44,6 +44,13 @@ test('storybook selects only layout-owned plan controls and keeps camera event m
   assert.ok(!model.watch.has('light.wrong_binding'));
 });
 
+test('consolidated Home uses its projection data without a floor plan view', () => {
+  const home = {roomcraft_layout: config.roomcraft_layout, roomcraft_plan: config.views[0].cards[0],
+    views: [{path: 'home'}, {path: 'studio'}]};
+  assert.deepEqual(readStorybookConfig(home), model);
+  assert.throws(() => readStorybookConfig({...config, roomcraft_plan: {}}), /published Roomcraft layout/);
+});
+
 test('live refresh watches radar-only updates independently from ordinary switch and occupancy updates', () => {
   const initial = {'sensor.example_radar': {state: '0'}};
   const changed = {...initial, 'sensor.example_radar': {state: '1'}};
