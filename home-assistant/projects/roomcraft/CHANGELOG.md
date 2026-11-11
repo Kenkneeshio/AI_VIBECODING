@@ -1,5 +1,10 @@
 # Changelog
 
+## A 30-second dashboard demo
+
+- Choose **Menu → 30-second demo** in Roomcraft Home for a guided tour of the 3D home, live objects and outdoor animation.
+- The tour uses the current Home Assistant state and restores your previous view when it ends. Use **Stop** or press **Escape** to finish early. Reduced motion keeps the view still while the captions advance.
+
 ## A coastal sky strip and brighter ocean reflections
 
 - A narrow sky strip at the top of Home shows clouds and the sun or moon. A clear line along its lower edge separates the sky from the 3D scene.

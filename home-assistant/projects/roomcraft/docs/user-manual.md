@@ -10,6 +10,8 @@ Use **On the map** for Object details and Presence tracking, and **View controls
 
 Open **Menu → More options** to show or hide **Camera tiles** or turn on **Reduce motion**. These settings are saved in the current browser.
 
+Choose **Menu → 30-second demo** to show someone around the live dashboard. Follow the captions as the tour changes the view and introduces the home, its interactive objects and the outdoor animation. The demo shows current device states and leaves device and camera controls untouched. Select **Stop** or press **Escape** to finish early. Roomcraft returns to your previous view when the demo ends. With **Reduce motion** enabled in Roomcraft or on your device, the captions advance with the view held still.
+
 Use **Menu → On the map → Detection zone** to see the radar's saved bounds as a light cyan dashed outline. For a switch with the Inovelli VZM32-SN profile, the solid amber outline and shaded area show the manufacturer's estimated coverage. The marker shows the calibrated switch position and the line points forward. Home's legend shows the rated range when available. Select the presence dimmer in 3D Studio to preview the same overlays and edit the display settings. Use a walk or sit test to confirm detection where it matters. [Inovelli field-of-view chart, manual page 33](https://help.inovelli.com/en/articles/8807172-blue-series-mmwave-presence-dimmer-switch-manual)
 
 ## Find and edit object models

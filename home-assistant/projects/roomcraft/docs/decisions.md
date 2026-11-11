@@ -1,5 +1,11 @@
 # Decision log
 
+## Guide a visitor through the live dashboard
+
+Give a household operator a 30-second tour they can start from Home's menu. Timed captions and gentle changes in view introduce the live objects and the animated scene. Every caption should make sense even when a device is idle or a presence sensor has no fresh targets.
+
+Sample a fixed sequence against elapsed time and the view captured at launch. Keep the run in dashboard memory. Use existing device states and rendered animation, with no Home Assistant service or camera actions initiated by the tour. Restore the captured view on completion or cancellation. Respect reduced motion by holding the captured view while captions advance. Scope the tour to the Home dashboard.
+
 ## Show the coastal sky above the 3D scene
 
 Give Home a narrow sky strip at the top with a distinct lower edge. Draw the clouds and the sun or moon there so the weather is easy to read while the user rotates or zooms the beach scene. Draw the reflected body and its light trail on the ocean surface so they follow the moving water and the scene camera.

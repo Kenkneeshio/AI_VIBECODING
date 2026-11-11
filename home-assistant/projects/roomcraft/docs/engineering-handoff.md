@@ -21,6 +21,12 @@ The [latest release record](../CHANGELOG.md) includes browser exports, live imag
 
 The retained picture projection keeps the authored bottom-right interface positions for manual and legacy exports. Keep the shared projection aligned in `object-controls.js`, `lib/dashboard-elements.ts`, and `ha-local/roomcraft-card.js`. Preserve owner-edited positions.
 
+## Guided dashboard demo
+
+`storybook-demo.mjs` samples a fixed 30-second timeline from elapsed time, the initial view and the reduced-motion setting. It owns the caption and view sequence. `roomcraft-storybook.mjs` owns the menu action, frame scheduling, stop controls and restoration of the previous view. The Home Assistant Home view owns the tour. The saved layout, camera preferences and Studio editor remain outside this runtime path.
+
+For acceptance, verify that the same sample inputs return the same chapter and view, the timeline finishes at 30 seconds, and reduced motion keeps the initial view throughout. In Home, start from a custom view and verify that natural completion, **Stop** and **Escape** restore it. Check caption and stop control legibility at tablet and phone widths. Confirm the demo issues no device service calls and initiates no camera actions. Reinstall the previous Home Assistant assets from `b24a9f44c6453892605586fbbfa21cb8cd091e59` to roll back. [Deployment and rollback](deployment.md)
+
 ## Bottom controls and outdoor scenery
 
 `roomcraft-storybook.mjs` places Power, Weather and Menu in the bottom action row. Power reuses the electrical readings dialog and Weather opens native details for the configured Home Assistant weather entity. The menu groups camera presets and tools with map and management actions. More options stores Camera tiles and Reduce motion preferences in the browser.
