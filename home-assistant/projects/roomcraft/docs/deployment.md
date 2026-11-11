@@ -72,6 +72,8 @@ The weather module uses a full 1536 × 864 viewBox and masks its art to every ex
 
 Build and publish the `site/` source through its Site workflow with owner-private access. Configure `HA_URL`, `HA_TOKEN`, and `OWNER_EMAIL` in the hosted runtime, never in source. The cloud editor has a separate owner sign-in. Both editors read and write the same `roomcraft_layout` in Roomcraft Home after consolidation. Opening either editor loads the latest saved layout. Use **Import from dashboard** when the other editor is already open after an export.
 
+When updating an existing Site checkout, mirror changes from the GitHub revision that last supplied its source. Include intervening Home-only changes when they are dependencies of the shared Site build. Build the Site checkout with its own clean dependency install before saving the exact commit and archive.
+
 ## Release verification
 
 | Check | Pass condition |

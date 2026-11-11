@@ -40,6 +40,13 @@ The updated lockfile patches Next, the React server components runtime, Zod, Vit
 
 Roomcraft's release gate, visual checks, and deployment readback apply to the exact published revision. Use the [release standard](release-standard.md) and the [deployment checklist](deployment.md) to reproduce those results.
 
+## Release evidence
+
+- Runtime source `dbc2818045e3fd998d5b87669f9e40598d7ff306` passed the clean install, 182 JavaScript tests, 55 Home Assistant card and weather tests, 24 Python tests, five presence protocol tests, type checks, lint, build, and release manifest verification. The release manifest digest is `sha256:eca0e2ad86d10117e048f0ec27436f59b17f417ee0de4904cd5373a743b42411`. Lint reported 17 pre-existing warnings.
+- Synthetic Chromium checks restored and undid a layout, confirmed the three-entry cap and blocked stale or missing-image writes. Portrait layout and admin visibility passed. Coastal art was checked by day and night at tablet, phone, and short-landscape sizes, including reduced motion.
+- Home Assistant served the tested Home, Studio bridge and editor bytes. The current authored layout and projection matched the private pre-install backup. The verified seed added two previous designs with distinct presence calibration. A cold launch on the wall tablet showed the larger daylight reflection and opened the snapshot picker. The restore and undo operations were exercised on synthetic data.
+- Owner-private Studio version 71 deployed from Site source `af3a7af088f727735db33e8e453e6d6017ed437e`. The deployed source was read back against the archive build. The Site checkout was brought forward from its last mirrored GitHub revision, including the intervening Home-only demo dependency.
+
 ## Deferred maintenance
 
 1. Roll out Tablet Keeper 0.1.1 with someone at the tablet and verify a supervised reboot, Companion launch, and paired ADB recovery. Install the separate Watchdog update during a planned Home Assistant restart. The adjacent tests above used source builds and did not change either runtime.
