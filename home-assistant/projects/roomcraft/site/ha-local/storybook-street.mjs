@@ -4,7 +4,7 @@ const WALK_WIDTH = 26;
 const ROAD_WIDTH = 92;
 const CURB_WIDTH = 4;
 const VERGE_WIDTH = 18;
-const NEIGHBORHOOD_DEPTH = 172;
+const BEACH_VIEW_DEPTH = 188;
 
 export function storybookStreetBounds(plan) {
   const {minZ, maxZ} = plan.houseBounds;
@@ -12,7 +12,7 @@ export function storybookStreetBounds(plan) {
   const path = plan.editableStructure ? Infinity : minZ - 146;
   const nearZ = Math.min(plan.bounds.minZ, shrubs, path) - VERGE_WIDTH;
   const farZ = nearZ - 2 * WALK_WIDTH - ROAD_WIDTH;
-  return {nearZ, farZ, parkMinZ: farZ - NEIGHBORHOOD_DEPTH};
+  return {nearZ, farZ, sceneryMinZ: farZ - BEACH_VIEW_DEPTH};
 }
 
 export function buildStorybookStreet(batch, {nearZ, farZ}, groundY, width, centerX) {
@@ -45,188 +45,154 @@ export function buildStorybookStreet(batch, {nearZ, farZ}, groundY, width, cente
   }
 }
 
-function boxBetween(batch, from, to, width, color) {
-  const start = new THREE.Vector3(...from);
-  const end = new THREE.Vector3(...to);
-  const direction = end.clone().sub(start);
-  const center = start.clone().lerp(end, .5);
-  const geometry = new THREE.BoxGeometry(width, direction.length(), width);
-  geometry.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(
-    new THREE.Vector3(0, 1, 0), direction.normalize(),
-  ));
-  batch.add(geometry, color, center.x, center.y, center.z);
+function beachStrip(batch, south, north, color) {
+  const vertices = [];
+  const faces = [];
+  for (let i = 0; i < south.length; i++) {
+    vertices.push(...south[i], ...north[i]);
+    if (i > 0) {
+      const a = (i - 1) * 2;
+      const b = i * 2;
+      faces.push(a, b, a + 1, b, b + 1, a + 1);
+    }
+  }
+  const surface = new THREE.BufferGeometry();
+  surface.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  surface.setIndex(faces);
+  surface.computeVertexNormals();
+  batch.add(surface, color, 0, 0, 0);
 }
 
-function framePool(batch, {x, z, width, depth, y}, groundY) {
-  const deckWidth = width + 60;
-  const deckDepth = depth + 24;
-  const halfX = deckWidth / 2;
-  const halfZ = deckDepth / 2;
-  const deckColor = '#c8bda9';
-  for (const side of [-1, 1]) {
-    batch.box(deckWidth, 2.4, 12, deckColor, x, groundY + 1.2, z + side * (depth / 2 + 6));
-    batch.box(30, 2.4, depth, deckColor, x + side * (width / 2 + 15), groundY + 1.2, z);
-    batch.box(width + 8, 2.2, 4, '#eadcc5', x, y + .2, z + side * (depth / 2 + 2));
-    batch.box(4, 2.2, depth, '#eadcc5', x + side * (width / 2 + 2), y + .2, z);
-  }
-  batch.box(width, .65, depth, '#67b6b6', x, y - .6, z);
-
-  const fenceColor = '#799486';
-  const post = (px, pz) => batch.box(2.8, 11, 2.8, '#718779', px, groundY + 5.5, pz);
-  for (const side of [-1, 1]) {
-    const railX = x + side * halfX;
-    batch.box(1.9, 1.6, deckDepth, fenceColor, railX, groundY + 8.5, z);
-    for (let i = 0; i <= 4; i++) post(railX, z - halfZ + deckDepth * i / 4);
-  }
-  batch.box(deckWidth, 1.6, 1.9, fenceColor, x, groundY + 8.5, z - halfZ);
-  for (let i = 1; i < 8; i++) post(x - halfX + deckWidth * i / 8, z - halfZ);
-  const gate = 25;
-  for (const side of [-1, 1]) {
-    const railWidth = halfX - gate / 2;
-    batch.box(railWidth, 1.6, 1.9, fenceColor, x + side * (halfX + gate / 2) / 2,
-      groundY + 8.5, z + halfZ);
-    for (let i = 0; i < 4; i++) post(x + side * (gate / 2 + railWidth * i / 4), z + halfZ);
-  }
-
-  const towelColor = '#c5917e';
-  for (const offset of [-12, 4]) {
-    const loungeX = x + width / 2 + 15;
-    batch.box(16, 1.8, 6.4, '#9b8d78', loungeX, groundY + 3.25, z + offset);
-    batch.box(14, .8, 5.2, '#e1c59a', loungeX, groundY + 4.5, z + offset);
-    batch.box(5.2, .65, 5.1, towelColor, loungeX + 3.8, groundY + 5.2, z + offset);
-  }
-  const umbrellaX = x - width / 2 - 16;
-  batch.box(1.3, 9, 1.3, '#b49371', umbrellaX, groundY + 6, z + 3);
-  const canopy = new THREE.ConeGeometry(10, 4.4, 9);
-  batch.add(canopy, '#d4a17f', umbrellaX, groundY + 12, z + 3);
-  batch.ball(1.8, 1.3, 1.8, '#edc6a3', umbrellaX, groundY + 14.4, z + 3);
-}
-
-function buildPlayground(batch, x, z, groundY) {
-  const rubber = '#ba927a';
-  const padWidth = 142;
-  const padDepth = 61;
-  batch.box(padWidth, 1.55, padDepth, '#a89b80', x, groundY + .78, z);
-  batch.box(padWidth - 7, .65, padDepth - 7, rubber, x, groundY + 1.82, z);
-  const coral = '#ac795f';
-  const swingX = x - 28;
-  const swingZ = z - 2;
-  for (const side of [-1, 1]) {
-    const postX = swingX + side * 26;
-    for (const leg of [-1, 1]) {
-      boxBetween(batch, [postX, groundY + 2, swingZ + leg * 12],
-        [postX, groundY + 20, swingZ], 2.7, coral);
-    }
-  }
-  batch.box(56, 2.5, 2.5, coral, swingX, groundY + 20, swingZ);
-  for (const seat of [-12, 12]) {
-    for (const side of [-1, 1]) {
-      const chainX = swingX + seat + side * 3.6;
-      boxBetween(batch, [chainX, groundY + 7, swingZ + 2], [chainX, groundY + 20, swingZ], .9, '#cfc1a4');
-    }
-    batch.box(10, 1.35, 5.2, '#749385', swingX + seat, groundY + 7, swingZ + 2);
-  }
-
-  const towerX = x + 32;
-  const towerZ = z - 13;
-  const platform = groundY + 15;
-  for (const offsetX of [-6, 6]) {
-    for (const offsetZ of [-6, 6]) {
-      batch.box(2.2, 15, 2.2, '#9b8772', towerX + offsetX, groundY + 8, towerZ + offsetZ);
-    }
-    boxBetween(batch, [towerX + offsetX * .75, groundY + 2.6, towerZ - 13],
-      [towerX + offsetX * .75, platform, towerZ - 5.8], 1.8, '#8c806d');
-  }
-  for (let i = 1; i < 4; i++) {
-    batch.box(9, 1.2, 2.2, '#ac9779', towerX, groundY + 2.6 + 3.1 * i, towerZ - 13 + 1.8 * i);
-  }
-  batch.box(13, 1.8, 13, '#aa9272', towerX, platform, towerZ);
-  const slideStart = towerZ + 5.8;
-  const slideEnd = towerZ + 27;
-  const drop = platform - groundY - 4;
-  const pitch = Math.atan2(drop, slideEnd - slideStart);
-  const length = Math.hypot(drop, slideEnd - slideStart);
-  const slide = new THREE.BoxGeometry(9, 1.65, length);
-  slide.rotateX(pitch);
-  const slideY = platform - drop / 2;
-  const slideZ = (slideStart + slideEnd) / 2;
-  batch.add(slide, '#d3ae6e', towerX, slideY, slideZ);
-  for (const side of [-1, 1]) {
-    const rail = new THREE.BoxGeometry(1.5, 2.4, length);
-    rail.rotateX(pitch);
-    batch.add(rail, '#c59b5e', towerX + side * 4.6, slideY + .8, slideZ);
+function addDuneGrass(batch, x, z, groundY, size, twist) {
+  const dark = '#9e9c70';
+  const gold = '#bab484';
+  for (let i = 0; i < 4; i++) {
+    const blade = new THREE.ConeGeometry(size * (.13 + .018 * i), size * (1.25 - .14 * i), 3);
+    blade.rotateZ(.22 + i * .1);
+    blade.rotateY(twist + i * 1.62);
+    const dx = Math.cos(twist + i * 1.62) * size * .21;
+    const dz = Math.sin(twist + i * 1.62) * size * .21;
+    batch.add(blade, i % 2 ? gold : dark, x + dx, groundY + size * .46, z + dz);
   }
 }
 
-const MOUNTAIN_COLORS = [
-  ['#78926d', '#859974', '#819470'],
-  ['#899683', '#8f9c83', '#95a089'],
-  ['#9ea499', '#a5a99a', '#aeb0a0'],
-  ['#b5b7a4', '#bfc0ab', '#cac9b2'],
-];
+function addBeachDunes(batch, centerX, farZ, span, groundY) {
+  for (const [fraction, offsetZ, width, height] of [
+    [-.51, -18, 54, 5], [-.36, -25, 47, 6], [-.10, -18, 44, 4.8], [.12, -24, 49, 6],
+    [.30, -16, 38, 5.3], [.49, -24, 53, 5.6], [.65, -17, 60, 5.2],
+  ]) {
+    const x = centerX + fraction * span;
+    const z = farZ + offsetZ;
+    const y = groundY + .1;
+    batch.ball(width, height, 13, '#d7bd94', x, y, z);
+    batch.ball(width * .62, height * .78, 10, '#dfc598', x + width * .28, y + .5, z + 4);
+    for (const [dx, dz, size] of [[-.38, 1, 4.4], [-.08, -3.5, 5.6], [.2, 4.5, 4.5], [.56, 2, 3.8]]) {
+      addDuneGrass(batch, x + width * dx, z + dz, y + height * .75, size, dx * 7);
+    }
+  }
+}
 
-function buildMountain(batch, x, z, groundY, radiusX, radiusZ, height, lean) {
-  const ridge = [1, .76, .53, .28];
-  const levels = [0, .26, .56, .8];
-  const segments = 15;
-  const rings = ridge.map((radius, ring) => Array.from({length: segments}, (_, i) => {
-    const angle = (i / segments + ring * .024) * 2 * Math.PI;
-    const variation = 1 + .075 * Math.cos(angle * 3 + lean) + .035 * Math.sin(angle * 7);
-    const elevation = levels[ring];
-    return [
-      Math.cos(angle) * radius * radiusX * variation + lean * elevation,
-      .2 + height * elevation + (ring === 0 ? 0 : Math.cos(angle * 4) * 2.7),
-      Math.sin(angle) * radius * radiusZ * variation - elevation * 4,
+function boardwalk(batch, x, farZ, groundY) {
+  const length = 27;
+  const width = 19;
+  const z = farZ - length / 2 + .6;
+  batch.box(width, 2.5, length, '#ac987e', x, groundY + 1.28, z);
+  for (let plank = 0; plank < 7; plank++) {
+    batch.box(width + 1, .7, 3.45, plank % 2 ? '#c5af8f' : '#cdb696',
+      x, groundY + 2.6, farZ - 1.25 - plank * 3.8);
+  }
+  for (const side of [-1, 1]) {
+    batch.box(.9, .8, length + .6, '#b4a086', x + side * width / 2, groundY + 2.8, z);
+  }
+}
+
+function beachUmbrella(batch, x, z, groundY, shade, trim, rotation) {
+  const radius = 16;
+  const poleHeight = 16.6;
+  const ribs = 8;
+  batch.box(1.4, poleHeight, 1.4, '#b5a08a', x, groundY + poleHeight / 2, z);
+  batch.ball(1.6, .95, 1.6, trim, x, groundY + poleHeight + 3.6, z);
+  for (let i = 0; i < ribs; i++) {
+    const p = (angle, distance, y) => [Math.cos(angle) * distance, y, Math.sin(angle) * distance];
+    const left = rotation + i * 2 * Math.PI / ribs;
+    const right = rotation + (i + 1) * 2 * Math.PI / ribs;
+    const points = [
+      [0, poleHeight + 3.4, 0], p(left, radius * .54, poleHeight + 2.1),
+      p(right, radius * .54, poleHeight + 2.1), p(left, radius, poleHeight - .55),
+      p(right, radius, poleHeight - .55), p(left, radius, poleHeight - 2.0),
+      p(right, radius, poleHeight - 2.0),
     ];
-  }));
-  const peak = [lean, height, -4];
-  const facets = new Map();
-  function addTriangle(color, a, b, c) {
-    if (!facets.has(color)) facets.set(color, []);
-    facets.get(color).push(...a, ...b, ...c);
+    const panel = new THREE.BufferGeometry();
+    panel.setAttribute('position', new THREE.Float32BufferAttribute(points.flat(), 3));
+    panel.setAttribute('uv', new THREE.Float32BufferAttribute(
+      points.flatMap(([px, , pz]) => [px / (2 * radius) + .5, pz / (2 * radius) + .5]), 2));
+    panel.setIndex([0, 2, 1, 1, 2, 4, 1, 4, 3, 3, 4, 5, 4, 6, 5]);
+    panel.computeVertexNormals();
+    batch.add(panel, i % 2 ? trim : shade, x, groundY, z);
   }
-  for (const [ring, outer] of rings.entries()) {
-    const inner = rings[ring + 1];
-    for (let i = 0; i < segments; i++) {
-      const next = (i + 1) % segments;
-      const palette = MOUNTAIN_COLORS[ring];
-      const color = palette[(i + ring * 2) % palette.length];
-      addTriangle(color, outer[i], inner ? inner[i] : peak, outer[next]);
-      if (inner) addTriangle(palette[(i + 1) % palette.length], outer[next], inner[i], inner[next]);
-    }
-  }
-  for (const [color, positions] of facets) {
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    geometry.computeVertexNormals();
-    batch.add(geometry, color, x, groundY, z);
-  }
-  return {x: x + peak[0], y: groundY + peak[1], z: z + peak[2]};
 }
 
-function facilityTree(batch, groundY, x, z, size) {
-  batch.box(2.5, 13, 2.5, '#93816b', x, groundY + 6.5, z);
-  batch.ball(size, size * .81, size * .77, '#79916c', x, groundY + 12, z);
-  batch.ball(size * .71, size * .69, size * .74, '#96a57a', x - size * .27, groundY + 16, z + 2);
+function beachChair(batch, x, z, groundY, fabric, rotation) {
+  const position = (dx, dz) => [x + dx * Math.cos(rotation) + dz * Math.sin(rotation),
+    z - dx * Math.sin(rotation) + dz * Math.cos(rotation)];
+  const seat = (w, h, d, shade, dx, y, dz) => {
+    const [px, pz] = position(dx, dz);
+    batch.box(w, h, d, shade, px, groundY + y, pz, rotation);
+  };
+  for (const side of [-1, 1]) {
+    seat(1.1, 1.2, 18, '#988679', side * 4.5, 2.15, 0);
+    seat(1, 2.1, 1.2, '#988679', side * 4.4, 1.08, 6.6);
+  }
+  seat(8.4, .75, 12, fabric, 0, 2.8, 2);
+  const [px, pz] = position(0, -5.5);
+  const back = new THREE.BoxGeometry(8.4, .85, 8);
+  back.rotateX(-Math.PI / 6);
+  batch.add(back, fabric, px, groundY + 4.4, pz, rotation);
 }
 
-export function buildStorybookNeighborhood(batch, {farZ}, groundY, {minX, maxX}) {
-  const centerX = (minX + maxX) / 2;
-  const facilityOffset = Math.min(206, Math.max(162, (maxX - minX) * .166));
-  const pool = {x: centerX - facilityOffset, z: farZ - 46, width: 216, depth: 54, y: groundY + 3.1};
-  framePool(batch, pool, groundY);
-  const playgroundX = centerX + facilityOffset;
-  buildPlayground(batch, playgroundX, farZ - 42, groundY);
-  batch.box(19, .85, 9, '#c4b699', pool.x, groundY + .45, farZ - 3.5);
-  batch.box(13, .85, 12, '#c4b699', playgroundX, groundY + .45, farZ - 5);
-  batch.box(2 * facilityOffset, .65, 8, '#c7ba9d', centerX, groundY + .35, farZ - 91);
+function placeBeachSets(batch, centerX, farZ, span, groundY) {
+  for (const [fraction, offsetZ, shade, trim, rotation] of [
+    [-.43, -57, '#c87a72', '#fae2bd', -.09],
+    [-.16, -67, '#589eab', '#e5dfbd', .14],
+    [.14, -54, '#dca658', '#f7dfb5', -.19],
+    [.41, -64, '#9c86ae', '#ecddc2', .13],
+  ]) {
+    const x = centerX + fraction * span;
+    const z = farZ + offsetZ;
+    beachUmbrella(batch, x, z, groundY, shade, trim, rotation);
+    beachChair(batch, x - 13, z - 15, groundY, trim, rotation - .17);
+    beachChair(batch, x + 14, z - 14, groundY, shade, rotation + .12);
+    batch.box(8.6, .22, 15, '#e9cda5', x + 23, groundY + .99, z + 7, rotation * 2);
+  }
+}
 
-  buildMountain(batch, centerX - 123, farZ - 120, groundY, 78, 30, 48, -11);
-  buildMountain(batch, centerX + 125, farZ - 120, groundY, 76, 28, 45, 12);
-  const mountainPeak = buildMountain(batch, centerX - 6, farZ - 123, groundY, 125, 40, 74, 16);
-  for (const [dx, dz, size] of [
-    [-265, -110, 11], [-221, -93, 12], [-104, -86, 10],
-    [88, -84, 10], [212, -100, 12], [257, -120, 11],
-  ]) facilityTree(batch, groundY, centerX + dx, farZ + dz, size);
-  return {pool, mountainPeak};
+export function buildStorybookNeighborhood(batch, {farZ}, groundY, {minX, maxX},
+  groundWidth = 6200, groundCenterX = (minX + maxX) / 2) {
+  const focusX = (minX + maxX) / 2;
+  const segments = Math.ceil(groundWidth / 50);
+  const left = groundCenterX - groundWidth / 2;
+  const shoreline = Array.from({length: segments + 1}, (_, index) => {
+    const x = left + groundWidth * index / segments;
+    const offset = x - focusX;
+    const z = farZ - 108 + 14 * Math.cos((offset + 110) * .006)
+      + 7 * Math.sin((offset - 90) * .013);
+    return {x, z};
+  });
+
+  const edge = shoreline.map(({x}) => [x, groundY + .28, farZ + .4]);
+  const drySand = shoreline.map(({x, z}) => [x, groundY + .71, z + 22]);
+  const dampSand = shoreline.map(({x, z}) => [x, groundY + .44, z + 6]);
+  const submerged = shoreline.map(({x, z}) => [x, groundY + .17, z - 31]);
+  beachStrip(batch, edge, drySand, '#e3cba0');
+  beachStrip(batch, drySand, dampSand, '#dbbd92');
+  beachStrip(batch, dampSand, submerged, '#c8a47e');
+
+  const span = Math.max(940, maxX - minX);
+  addBeachDunes(batch, focusX, farZ, span, groundY);
+  for (const direction of [-1, 1]) {
+    boardwalk(batch, focusX + direction * span * .245, farZ, groundY);
+  }
+  placeBeachSets(batch, focusX, farZ, span, groundY + .55);
+
+  return {water: {y: groundY + 1.05, farZ: farZ - 1850, shoreline, focusX}};
 }

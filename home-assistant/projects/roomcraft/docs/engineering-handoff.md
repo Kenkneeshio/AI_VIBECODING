@@ -25,11 +25,11 @@ The retained picture projection keeps the authored bottom-right interface positi
 
 `roomcraft-storybook.mjs` places Power, Weather and Menu in the bottom action row. Power reuses the electrical readings dialog and Weather opens native details for the configured Home Assistant weather entity. The menu groups camera presets and tools with map and management actions. More options stores Camera tiles and Reduce motion preferences in the browser.
 
-`storybook-street.mjs` supplies the street, sidewalks and ground-level neighborhood scenery in Home and 3D Studio. The pool deck and playground sit in front of the small mountain. `storybook-camera.mjs` fits the mountain's summit and the ground at the far edge of the scenery. Keep the neighborhood scenery in the shared 3D renderer and use the authored layout for editing, 2D export and device targets.
+`storybook-street.mjs` supplies the street, sidewalks and beach scenery in Home and 3D Studio. Paths run from the far sidewalk through raised dunes to umbrellas, deck chairs and the curved shoreline. `storybook-camera.mjs` fits the shore and near water with the house. Farther water appears as the view opens up. Keep the beach in the shared 3D renderer and use the authored layout for editing, 2D export and device targets.
 
-`storybook-pool-water.mjs` clips the weather-driven reflections and ripples to the pool surface. It uses daylight and moon phase, and cloud cover can obscure the sun or moon. The operating system's reduced-motion setting, the dashboard preference and the paused Studio weather preview hold the animation still. The bottom Weather button carries the accessible condition and temperature reading.
+`storybook-ocean.mjs` draws the animated surf and weather-driven reflections in the ocean beyond the beach. The ocean uses daylight, moon phase and cloud cover. The operating system's reduced-motion setting and the dashboard preference hold the animation still. The bottom Weather button carries the accessible condition and temperature reading.
 
-Check the pool reflection in daylight and at night. Check reduced motion, the bottom controls and the far-side scenery at tablet and phone widths. Reinstall the previous Home Assistant assets from `0de15c578e7e41024612d850038c3a244a3a72a4` to roll back the neighborhood and pool reflections. Roll back the owner-private Site to v67 separately if its shared 3D scene also needs rollback. [Deployment and rollback](deployment.md)
+Check surf and ocean reflections in daylight and at night. Check reduced motion, the bottom controls and beach framing at tablet and phone widths. Reinstall the previous Home Assistant assets from `1eabef374c2f7112110932d20285503d04d0ea24` to restore the HOA scenery. Roll back the owner-private Site to v68 separately if its shared 3D scene also needs rollback. [Deployment and rollback](deployment.md)
 
 ## Presence tracking and calibration
 

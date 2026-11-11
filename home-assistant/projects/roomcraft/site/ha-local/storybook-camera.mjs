@@ -108,14 +108,15 @@ export function fitStorybookCamera(camera, bounds, width, height, view = 'top') 
         frame.expandByPoint(corner.set(x, y, z).applyMatrix4(camera.matrixWorldInverse));
       }
     }
-    // Frame the neighborhood at ground level to keep angled views close to the home.
+    // Frame the beach and the near surf, while the rest of the ocean extends past the view.
     if (Number.isFinite(bounds.sceneryMinZ)) {
       frame.expandByPoint(corner.set(x, -106, bounds.sceneryMinZ - 8).applyMatrix4(camera.matrixWorldInverse));
     }
   }
-  const peak = bounds.sceneryPeak;
-  if ([peak?.x, peak?.y, peak?.z].every(Number.isFinite)) {
-    frame.expandByPoint(corner.set(peak.x, peak.y + 8, peak.z).applyMatrix4(camera.matrixWorldInverse));
+  if (Number.isFinite(bounds.sceneryMinZ)) {
+    const margin = (frame.max.y - frame.min.y) * .025;
+    frame.min.y -= margin;
+    frame.max.y += margin;
   }
   const ratio = width / height;
   const halfWidth = Math.max((frame.max.x - frame.min.x) / 2,

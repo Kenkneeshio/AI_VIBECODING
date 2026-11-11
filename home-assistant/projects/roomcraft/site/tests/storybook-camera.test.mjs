@@ -142,28 +142,33 @@ test('an authored tall model extends the camera framing', () => {
   }
 });
 
-test('portrait and tablet framing include the HOA pool and mountain without cropping the house', () => {
+test('portrait and tablet framing keep the curved beach and the house in view', () => {
   const scene = {bounds, houseBounds: {...bounds, minZ: 240}, editableStructure: true};
   const street = storybookStreetBounds(scene);
-  assert.ok(street.parkMinZ < street.farZ && street.farZ < street.nearZ && street.nearZ < bounds.minZ);
+  assert.ok(street.sceneryMinZ < street.farZ && street.farZ < street.nearZ && street.nearZ < bounds.minZ);
   assert.equal(storybookStreetBounds({...scene, editableStructure: false}).nearZ, 76);
   const batch = {box() {}, ball() {}, add(geometry) { geometry.dispose(); }};
-  const {pool, mountainPeak} = buildStorybookNeighborhood(batch, street, -111, scene.houseBounds);
-  assert.ok(mountainPeak.z < pool.z - pool.depth / 2 && pool.z + pool.depth / 2 < street.farZ);
-  const frame = {...bounds, sceneryMinZ: street.parkMinZ, sceneryPeak: mountainPeak};
+  const {water} = buildStorybookNeighborhood(batch, street, -111, scene.houseBounds, 6200, 768);
+  assert.ok(water.shoreline.length > 2);
+  assert.ok(water.shoreline.every(({x, z}, index, points) =>
+    (index === 0 || x > points[index - 1].x) && water.farZ < z && z < street.farZ));
+  const visibleShore = water.shoreline.filter(({x}) => x >= bounds.minX && x <= bounds.maxX);
+  assert.ok(new Set(visibleShore.map(point => point.z)).size > 2);
+  const frame = {...bounds, sceneryMinZ: street.sceneryMinZ};
   const steep = {preset: 'free', azimuth: 355, tilt: 64, zoom: 1};
-  for (const view of ['top', 'dollhouse', 'corner', steep]) {
+  const savedView = {preset: 'free', azimuth: 3, tilt: 29, zoom: 1.04};
+  for (const view of ['top', 'dollhouse', 'corner', steep, savedView]) {
     for (const [width, height] of [[1920, 900], [390, 680]]) {
       const camera = makeCamera();
       fitStorybookCamera(camera, frame, width, height, view);
       for (const x of [bounds.minX, bounds.maxX]) {
-        for (const [y, z] of [[-106, street.parkMinZ], [-106, street.farZ], [0, bounds.minZ], [56, bounds.maxZ]]) {
+        for (const [y, z] of [[-106, street.sceneryMinZ], [-106, street.farZ], [0, bounds.minZ], [56, bounds.maxZ]]) {
           const projected = new THREE.Vector3(x, y, z).project(camera);
           assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1, `${view} ${width}×${height}`);
         }
       }
-      for (const landmark of [mountainPeak, pool]) {
-        const projected = new THREE.Vector3(landmark.x, landmark.y, landmark.z).project(camera);
+      for (const {x, z} of visibleShore) {
+        const projected = new THREE.Vector3(x, water.y, z).project(camera);
         assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1);
       }
     }

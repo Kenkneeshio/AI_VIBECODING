@@ -10,7 +10,7 @@ import { applyModelHeight } from './storybook-size.mjs';
 import { createStorybookPeople } from './storybook-people.mjs';
 import { createFloorSupport } from './storybook-floor-support.mjs';
 import { createStorybookCoverage } from './storybook-coverage.mjs';
-import { createStorybookPoolWater } from './storybook-pool-water.mjs';
+import { createStorybookOcean } from './storybook-ocean.mjs';
 import { buildStorybookNeighborhood, buildStorybookStreet, storybookStreetBounds } from './storybook-street.mjs';
 
 const DEG = Math.PI / 180;
@@ -868,7 +868,8 @@ export function createStorybookScene(canvas, layout) {
   const batch = makeStaticBatch(scene);
   const street = storybookStreetBounds(plan);
   buildStorybookStreet(batch, street, GROUND_Y, ground.geometry.parameters.width, ground.position.x);
-  const {pool, mountainPeak} = buildStorybookNeighborhood(batch, street, GROUND_Y, plan.houseBounds);
+  const {water} = buildStorybookNeighborhood(batch, street, GROUND_Y, plan.houseBounds,
+    ground.geometry.parameters.width, ground.position.x);
   buildYard(batch, plan);
   buildReferenceLanding(batch, plan);
   buildFloors(scene, batch, plan, canvas.ownerDocument);
@@ -878,10 +879,10 @@ export function createStorybookScene(canvas, layout) {
   const structureMeshes = scene.children.filter(node => node.isMesh);
   const lighting = createStorybookLighting(renderer, scene, plan.bounds);
   lighting.markStructure();
-  const water = createStorybookPoolWater(pool);
-  scene.add(water.mesh);
-  let poolEnvironment = {};
-  const updatePrecipitation = buildPrecipitation(scene, plan, street.parkMinZ);
+  const ocean = createStorybookOcean(water);
+  scene.add(ocean.mesh);
+  let oceanEnvironment = {};
+  const updatePrecipitation = buildPrecipitation(scene, plan, street.sceneryMinZ);
   const footprint = plan.floorStructure.footprint;
   const floors = createFloorSupport(footprint);
   const walkable = plan.stairs.length
@@ -920,7 +921,7 @@ export function createStorybookScene(canvas, layout) {
     }
     anchors.set(item.id, { x, z, baseY, object });
   }
-  const cameraBounds = {...plan.bounds, sceneryMinZ: street.parkMinZ, sceneryPeak: mountainPeak};
+  const cameraBounds = {...plan.bounds, sceneryMinZ: street.sceneryMinZ};
   for (const placement of plan.placements) {
     const object = roots.get(placement.item.id);
     if (!object) continue;
@@ -1004,8 +1005,8 @@ export function createStorybookScene(canvas, layout) {
     const time = !reduceMotion && Number.isFinite(timeSeconds) ? timeSeconds : 0;
     const telemetryTime = animateTelemetry ? time : 0;
     updatePrecipitation(telemetryTime, environment.condition);
-    poolEnvironment = environment;
-    water.update(time, poolEnvironment);
+    oceanEnvironment = environment;
+    ocean.update(time, oceanEnvironment);
     for (const [id, object] of roots) {
       const state = statesById[id] ?? defaultState;
       const latest = state.position;
@@ -1028,7 +1029,7 @@ export function createStorybookScene(canvas, layout) {
   }
   function renderAmbient(timeSeconds) {
     if (disposed || currentWidth < 1 || currentHeight < 1) return;
-    water.update(timeSeconds, poolEnvironment);
+    ocean.update(timeSeconds, oceanEnvironment);
     for (const object of ambientObjects) object.animate(defaultState, timeSeconds);
     people.render(timeSeconds);
     draw();
