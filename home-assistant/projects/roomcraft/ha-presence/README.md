@@ -12,6 +12,10 @@ The sensor exposes `tracking_schema: roomcraft-presence-v1`, a `tracks` array of
 
 Track count is unknown while waiting or after eight seconds without a valid frame. A valid zero-target frame or an explicit vacant state from the ZHA occupancy entity yields zero. The `track_status` and `observation_source` attributes distinguish these cases. Silence alone never yields zero. Zone flags are last reported, so clients can decide whether their timestamp is recent enough. The bridge excludes tracks, zones, status and timestamps from recorder attributes. HA can still record the target count under its usual history settings.
 
+Version 1.1 records 25 cm grid hits from at most one target report per source every five seconds, grouped by minute. It stores seven rolling days in private Home Assistant storage and saves every five minutes and on clean shutdown. It starts collecting on install and runs with no dashboard open. It stores counts only for occupied cells, without target IDs, velocity, or raw coordinates. The authenticated `roomcraft_presence/heatmap` command allows 15, 60, 1440, or 10080 minutes and checks read permission for every requested radar entity. The existing Recorder target-count history cannot reconstruct previous positions.
+
+For an installed copy, run `python ha-presence/install.py --host <HA-LAN-IP> --ssh-key <SSH-KEY-PATH> --backup-dir <PRIVATE-BACKUP-DIR> --restart` from the Roomcraft project root. It backs up the component, checks staged file hashes, validates Core configuration, and optionally restarts Core. Verify the command response and fresh observations before relying on the overlay.
+
 The sensor reports radar targets, which can include interference or miss an occupant. The interface has no heart rate or respiration values. Detailed reporting can send updates about once a second while targets are detected. [Inovelli advanced mmWave configuration](https://help.inovelli.com/en/articles/12773613-blue-series-mmwave-presence-dimmer-switch-advanced-mmwave-configuration)
 
 ## Rollback

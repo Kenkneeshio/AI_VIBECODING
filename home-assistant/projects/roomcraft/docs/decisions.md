@@ -1,5 +1,11 @@
 # Decision log
 
+## Compare measured radar detections with the plan
+
+Record anonymized 25 cm sensor-local coverage bins on Home Assistant. Use at most one position report every five seconds per switch, summarize per minute, and expire coverage after seven days. Keep the high-frequency target details excluded from Recorder. Map the bins with the current calibration when requested. A radar coverage test uses controlled observations at known points. A heat map cannot establish whether an unobserved area was empty or out of range. The calibration fit preserves one scale across both axes and exposes residual and held-out errors before publishing.
+
+Keep tracked motion within the same floor and wall geometry used by the renderer. Hold or briefly hide a marker when a reported line crosses a solid wall. A repeated valid point may reacquire independently. Seating is an inferred illustration supported by a nearby valid seat. The dashboard retains the radar location ring.
+
 ## Use the home's solar position to light the miniature
 
 Use Home Assistant's solar elevation and clockwise-from-north azimuth as the live inputs. Derive a single solar frame for the sky, water and scene lights, with separate dawn and dusk colors and cloud attenuation. Keep the north-up world orientation and bound very long shadows so the miniature stays legible. Ease successive readings over a short interval when motion is enabled. Studio provides fixed preview readings. No coordinates, sunset estimates, or solar readings enter saved layouts or the source repository.

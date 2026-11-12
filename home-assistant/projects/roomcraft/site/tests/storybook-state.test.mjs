@@ -37,6 +37,21 @@ const config = {
 };
 const model = readStorybookConfig(config);
 
+test('a television follows its power entity without exporting playback details or requiring a control', () => {
+  const television = {id: 'television', type: 'tv', entityId: 'media_player.test_tv'};
+  const tvConfig = {...config, roomcraft_layout: {...config.roomcraft_layout, items: [...items, television]}};
+  const tvModel = readStorybookConfig(tvConfig);
+  assert.ok(tvModel.watch.has(television.entityId));
+  assert.ok(!tvModel.controls.some(control => control.roomcraft_item_id === television.id));
+  for (const [state, active] of [['on', true], ['playing', true], ['paused', true], ['off', false],
+    ['standby', false], ['unavailable', false], ['unknown', false], ['idle', false]]) {
+    const snapshot = {[television.entityId]: {state, attributes: {media_title: 'Private title'}}};
+    assert.deepEqual(storybookFrame(tvModel, snapshot).states.television,
+      {state, active, presence: 'unavailable', attributes: {}});
+    assert.deepEqual(storybookPreview(tvConfig, snapshot).states.television.attributes, {});
+  }
+});
+
 test('waterfront activity uses the Home Assistant time zone and live daylight', () => {
   const timeZone = 'America/Los_Angeles';
   for (const [now, sun, expected] of [

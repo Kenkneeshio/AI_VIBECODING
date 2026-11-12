@@ -1,23 +1,37 @@
 import * as THREE from 'three';
+import {createStorybookMotion} from './storybook-motion.mjs';
+import {canUseStorybookSeat, createSeatDwell} from './storybook-seating.mjs';
 
 const MAX_TRACKS = 24;
-const MOVE_SECONDS = 0.32;
-const MAX_INTERPOLATION_DISTANCE = 125;
 // Bounds the pose, ground ring and shadow in every heading.
 const AVATAR_FOOTPRINT_RADIUS = 24;
+const SIT_SECONDS = .42;
+const STAND_SECONDS = .24;
+const SEAT_HIPS = 8.9;
 const STYLES = [
   {role: 'papa', scale: [1.26, 1.25, 1.22], sweater: '#537eaa', trim: '#ffcc81', skin: '#db9f76', hair: '#4b3533'},
   {role: 'mama', scale: [1.09, 1.18, 1.12], sweater: '#c86587', trim: '#ffdeaf', skin: '#e8af83', hair: '#5a3841'},
   {role: 'baby', scale: [.92, .83, .92], sweater: '#8b78cf', trim: '#ffe492', skin: '#f1b98e', hair: '#674138'},
 ];
+const POSES = {
+  idle: {lean:.03, tilt:0, thighs:-1.30, shins:1.16, hands:[-.43,-.40], fidget:.10, pace:2.1},
+  lounge: {lean:-.13, tilt:.07, thighs:-1.16, shins:.92, hands:[-.22,-.14], fidget:.13, pace:1.8},
+  dining: {lean:.06, tilt:.02, thighs:-1.34, shins:1.26, hands:[-.61,-.51], fidget:.14, pace:2.8},
+  desk: {lean:.16, tilt:0, thighs:-1.26, shins:1.18, hands:[-.98,-.92], fidget:.12, pace:6.3},
+  bench: {lean:.04, tilt:-.09, thighs:-1.28, shins:1.10, hands:[-.35,-.56], fidget:.22, pace:3.3},
+};
+const mix = (from, to, amount) => from + (to - from) * amount;
+const clampUnit = value => Math.min(1, Math.max(0, value));
+const angleDelta = (target, start) => Math.atan2(Math.sin(target - start), Math.cos(target - start));
 
 function paintedMaterial(color, emissiveIntensity = 0.12) {
   return new THREE.MeshStandardMaterial({color, roughness: 0.78, emissive: color, emissiveIntensity});
 }
 
-function animateFace(character, idle, reducedMotion) {
+function animateFace(character, idle, reducedMotion, forwardTilt = 0, lookAside = 0) {
   const blinking = !reducedMotion && idle % 4.8 < 0.13;
-  character.head.rotation.x = -0.62 + (reducedMotion ? 0 : Math.sin(idle * 1.5) * 0.047);
+  character.head.rotation.x = -0.62 + forwardTilt + (reducedMotion ? 0 : Math.sin(idle * 1.5) * 0.047);
+  character.head.rotation.y = lookAside;
   character.head.rotation.z = reducedMotion ? 0 : Math.sin(idle * 3.4) * 0.047;
   for (const eye of character.eyes) eye.scale.y = blinking ? 0.15 : 0.87;
 }
@@ -27,7 +41,7 @@ function animateFace(character, idle, reducedMotion) {
  * Time is monotonic seconds supplied by the scene adapter.
  * Route and clearance queries use the same compiled surface as floorAt.
  */
-export function createStorybookPeople(scene, floorAt = () => 0, {supportsRoute, floorClearance} = {}) {
+export function createStorybookPeople(scene, floorAt = () => 0, {supportsRoute, floorClearance, seats = []} = {}) {
   const group = new THREE.Group();
   group.name = 'tracked-people';
   scene.add(group);
@@ -67,13 +81,16 @@ export function createStorybookPeople(scene, floorAt = () => 0, {supportsRoute, 
     const baby = role === 'baby';
     const root = new THREE.Group();
     root.name = `radar-avatar-${role}`;
+    const poseRoot = new THREE.Group();
+    poseRoot.name = 'radar-avatar-pose';
     const body = new THREE.Group();
     const head = new THREE.Group();
     const eyes = [];
     const arms = [];
     const legs = [];
     group.add(root);
-    root.add(body);
+    root.add(poseRoot);
+    poseRoot.add(body);
     body.scale.set(...scale);
 
     const ellipse = (parent, material, x, y, z, width, height, depth) => {
@@ -104,10 +121,15 @@ export function createStorybookPeople(scene, floorAt = () => 0, {supportsRoute, 
       const leg = new THREE.Group();
       leg.position.set(side * 3.4, 10.3, 0.1);
       body.add(leg);
-      ellipse(leg, baby ? sweater : art.ink, 0, -3.2, 0, 2.65, 4.6, 2.6);
-      ellipse(leg, baby ? trim : art.shoes, 0, -8.15, 1.25, 3.1, 2.1, 4);
-      ellipse(leg, art.white, 0, -8.8, 3.25, 2.75, 1.1, 2);
-      legs.push(leg);
+      const shin = new THREE.Group();
+      shin.position.y = -4.65;
+      leg.add(shin);
+      const pants = baby ? sweater : art.ink;
+      ellipse(leg, pants, 0, -2.35, 0, 2.65, 3.25, 2.6);
+      ellipse(shin, pants, 0, -1.6, 0, 2.4, 3.1, 2.4);
+      ellipse(shin, baby ? trim : art.shoes, 0, -3.5, 1.25, 3.1, 2.1, 4);
+      ellipse(shin, art.white, 0, -4.15, 3.25, 2.75, 1.1, 2);
+      legs.push({thigh: leg, shin});
 
       const arm = new THREE.Group();
       arm.position.set(side * 6.25, 19.1, 0);
@@ -153,52 +175,111 @@ export function createStorybookPeople(scene, floorAt = () => 0, {supportsRoute, 
     }
     if (role === 'papa') ellipse(head, art.ink, 0, 1.6, 9.35, 1.1, .28, .35);
     ellipse(head, art.ink, 0, -1.95, 9.15, 1.38, 0.45, 0.38);
-    return {root, body, head, arms, legs, eyes, styleIndex, baby};
+    return {root, poseRoot, body, head, arms, legs, eyes, styleIndex, baby};
   }
 
-  function progress(track, time) {
-    return track.duration > 0 ? THREE.MathUtils.clamp((time - track.start) / track.duration, 0, 1) : 1;
+  const allowsPoint = (x, z) => Number.isFinite(floorAt(x, z)) && (!floorClearance || floorClearance(x, z) > 0);
+
+  function nearestSeat(x, z, taken) {
+    let nearest;
+    let distance = Infinity;
+    for (const seat of seats) {
+      const next = Math.hypot(x - seat.x, z - seat.z);
+      if (next >= distance || taken.has(seat.id) || !canUseStorybookSeat(seat, x, z, supportsRoute)) continue;
+      nearest = seat;
+      distance = next;
+    }
+    return nearest;
   }
 
-  function render(seconds, reduceMotion = preference) {
+  function updateSeat(track, target) {
+    let elapsed = Math.max(0, lastTime - track.poseAt);
+    if (!track.seat && target) {
+      track.seat = target;
+      elapsed = 0;
+    }
+    track.poseAt = lastTime;
+    const delta = target ? elapsed / SIT_SECONDS : -elapsed / STAND_SECONDS;
+    track.seatAmount = reduced ? Number(Boolean(target)) : clampUnit(track.seatAmount + delta);
+    if (!target && !track.seatAmount) track.seat = undefined;
+  }
+
+  function drawCharacter(track, sample) {
+    const {character, seat, seatAmount} = track;
+    const {x, y:z, heading, walking, progress:amount} = sample;
+    const floor = floorAt(x, z);
+    const fit = floorClearance ? Math.min(1, floorClearance(x, z) / AVATAR_FOOTPRINT_RADIUS) : 1;
+    const blend = seatAmount * seatAmount * (3 - 2 * seatAmount);
+    const cos = Math.cos(heading);
+    const sin = Math.sin(heading);
+    const dx = (seat ? seat.x - x : 0) * blend;
+    const dz = (seat ? seat.z - z : 0) * blend;
+    const posture = POSES[seat?.pose ?? 'idle'];
+    const seatFit = seat?.fit ?? fit;
+    const raise = seat ? seat.y - floor - SEAT_HIPS * STYLES[character.styleIndex].scale[1] * seatFit : 0;
+    character.root.position.set(x, floor, z);
+    character.root.rotation.y = heading;
+    character.root.scale.setScalar(fit);
+    // Keep the ground ring at the observed position while the inferred body settles on the cushion.
+    character.poseRoot.position.set((dx * cos - dz * sin) / fit, raise * blend / fit, (dx * sin + dz * cos) / fit);
+    character.poseRoot.scale.setScalar(mix(fit, seatFit, blend) / fit);
+    character.poseRoot.rotation.y = seat ? angleDelta(seat.heading, heading) * blend : 0;
+    character.poseRoot.userData.pose = blend > 0 ? seat.pose : 'standing';
+    const idle = Math.floor(Math.max(0, lastTime - track.born) * 16) / 16 + .7 + character.styleIndex * .62;
+    const step = Math.floor(amount * 12) / 12 * Math.PI * 4;
+    const stride = walking ? Math.sin(step) * .56 : 0;
+    const bounce = walking ? Math.abs(Math.sin(step)) * 1.9 : (1 + Math.sin(idle * 4.7)) * .47;
+    const breath = .19 * (1 + Math.sin(idle * 2.6));
+    character.body.position.y = reduced ? 0 : mix(bounce * (character.baby ? 1.5 : 1), breath, blend);
+    character.body.rotation.x = posture.lean * blend;
+    const sway = reduced ? 0 : walking ? stride * .15 : Math.sin(idle * 2.8) * .045;
+    character.body.rotation.z = mix(sway, posture.tilt, blend);
+    for (let i = 0; i < 2; i++) {
+      const side = i === 0 ? -1 : 1;
+      const standingArm = walking ? -stride * side : reduced ? 0 : Math.sin(idle * 3.1 + i) * .09;
+      const fidget = reduced ? 0 : Math.sin(idle * posture.pace + i * 2.6) * posture.fidget;
+      const nod = reduced ? 0 : Math.sin(idle * 2.7 + i) * .035;
+      character.arms[i].rotation.x = mix(standingArm, posture.hands[i] + fidget, blend);
+      character.legs[i].thigh.rotation.x = mix(stride * side, posture.thighs + nod, blend);
+      character.legs[i].shin.rotation.x = (posture.shins + nod * 2) * blend;
+    }
+    const look = reduced || seat?.pose === 'desk' ? 0 : Math.sin(idle * 1.08) * .13 * blend;
+    animateFace(character, idle, reduced, posture.lean * .45 * blend, look);
+  }
+
+  function render(seconds, reduceMotion = preference, allowSeats = true) {
     lastTime = Number.isFinite(seconds) ? seconds : lastTime;
     reduced = reduceMotion || preference;
     hasVisibleTracks = false;
+    const visible = [];
+    const taken = new Set();
     for (const track of tracks.values()) {
       const {character} = track;
-      if (reduced) track.duration = 0;
-      let amount = progress(track, lastTime);
-      let x = THREE.MathUtils.lerp(track.fromX, track.x, amount);
-      let z = THREE.MathUtils.lerp(track.fromZ, track.z, amount);
-      let floor = floorAt(x, z);
-      if (!Number.isFinite(floor) && amount < 1) {
-        // An interpolated point must never appear over unsupported space.
-        track.duration = 0;
-        amount = 1;
-        x = track.x;
-        z = track.z;
-        floor = floorAt(x, z);
+      const sample = track.motion.sample(lastTime, reduced);
+      character.root.visible = Boolean(sample);
+      if (!sample) {
+        track.seat = undefined;
+        track.seatAmount = 0;
+        track.poseAt = lastTime;
+        continue;
       }
-      const fit = floorClearance ? Math.min(1, floorClearance(x, z) / AVATAR_FOOTPRINT_RADIUS) : 1;
-      character.root.visible = Number.isFinite(floor) && fit > 0;
-      if (!character.root.visible) continue;
       hasVisibleTracks = true;
-      character.root.position.set(x, floor, z);
-      character.root.rotation.y = track.heading;
-      character.root.scale.setScalar(fit);
-      const walking = track.walking && amount < 1 && !reduced;
-      const idle = Math.floor(Math.max(0, lastTime - track.born) * 16) / 16 + .7 + character.styleIndex * .62;
-      const step = Math.floor(amount * 12) / 12 * Math.PI * 4;
-      const stride = walking ? Math.sin(step) * .56 : 0;
-      const bounce = walking ? Math.abs(Math.sin(step)) * 1.9 : (1 + Math.sin(idle * 4.7)) * .47;
-      character.body.position.y = reduced ? 0 : bounce * (character.baby ? 1.5 : 1);
-      character.body.rotation.z = reduced ? 0 : walking ? stride * .15 : Math.sin(idle * 2.8) * .045;
-      for (let i = 0; i < 2; i++) {
-        const side = i === 0 ? -1 : 1;
-        character.arms[i].rotation.x = walking ? -stride * side : reduced ? 0 : Math.sin(idle * 3.1 + i) * .09;
-        character.legs[i].rotation.x = stride * side;
+      const {x, y:z, current} = sample;
+      const ready = allowSeats && current && track.dwell.ready(x, z, lastTime);
+      if (track.seat) {
+        if (allowSeats && canUseStorybookSeat(track.seat, x, z, supportsRoute, 1.18)) taken.add(track.seat.id);
+        else {
+          track.seat = undefined;
+          track.seatAmount = 0;
+        }
       }
-      animateFace(character, idle, reduced);
+      visible.push({track, sample, ready});
+    }
+    for (const {track, sample, ready} of visible) {
+      const target = ready ? track.seat ?? nearestSeat(sample.x, sample.y, taken) : undefined;
+      if (target) taken.add(target.id);
+      updateSeat(track, target);
+      drawCharacter(track, sample);
     }
   }
 
@@ -209,7 +290,7 @@ export function createStorybookPeople(scene, floorAt = () => 0, {supportsRoute, 
     for (const point of Array.isArray(snapshot) ? snapshot : []) {
       if (typeof point?.id !== 'string' || !point.id || point.id.length > 256 ||
           !Number.isFinite(point.x) || !Number.isFinite(point.y) || next.has(point.id) ||
-          !Number.isFinite(floorAt(point.x, point.y))) continue;
+          !allowsPoint(point.x, point.y)) continue;
       next.set(point.id, point);
       if (next.size === MAX_TRACKS) break;
     }
@@ -227,22 +308,13 @@ export function createStorybookPeople(scene, floorAt = () => 0, {supportsRoute, 
       const styleIndex = styleCounts.indexOf(Math.min(...styleCounts));
       styleCounts[styleIndex]++;
       const character = unused[styleIndex].pop() ?? makeCharacter(styleIndex);
-      const {x, y: z} = next.get(id);
-      tracks.set(id, {character, fromX:x, fromZ:z, x, z, heading:0, born:time, start:time, duration:0});
+      const motion = createStorybookMotion({allowsPoint, allowsRoute:supportsRoute ?? (() => true)});
+      tracks.set(id, {character, motion, dwell:createSeatDwell(), born:time, poseAt:time, seatAmount:0});
     }
-    for (const [id, {x, y: z}] of next) {
-      const old = tracks.get(id);
-      if (old.x !== x || old.z !== z) {
-        const amount = reduceMotion ? 1 : progress(old, time);
-        const fromX = THREE.MathUtils.lerp(old.fromX, old.x, amount);
-        const fromZ = THREE.MathUtils.lerp(old.fromZ, old.z, amount);
-        const distance = Math.hypot(x - fromX, z - fromZ);
-        const heading = distance > 1 ? Math.atan2(x - fromX, z - fromZ) : old.heading;
-        const canWalk = !reduceMotion && distance > 0 && distance <= MAX_INTERPOLATION_DISTANCE &&
-          supportsRoute?.(fromX, fromZ, x, z);
-        const duration = canWalk ? MOVE_SECONDS : 0;
-        Object.assign(old, {fromX, fromZ, x, z, heading, start:time, duration, walking:distance > 2});
-      }
+    for (const [id, point] of next) {
+      const {motion, dwell} = tracks.get(id);
+      motion.observe(point, time, {observation:point.expiresAt, reduceMotion});
+      if (seats.length) dwell.observe(point, time);
     }
     render(time, reduceMotion);
   }
@@ -269,5 +341,6 @@ export function createStorybookPeople(scene, floorAt = () => 0, {supportsRoute, 
     setVisible(visible) { group.visible = visible; },
     get hasMotion() { return !reduced && tracks.size > 0; },
     get hasVisibleTracks() { return hasVisibleTracks; },
+    get hasPendingReacquisition() { return [...tracks.values()].some(({motion}) => motion.pendingReacquisition); },
   };
 }

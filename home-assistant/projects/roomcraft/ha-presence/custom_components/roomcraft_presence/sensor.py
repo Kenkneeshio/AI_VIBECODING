@@ -51,8 +51,9 @@ def zha_device_entry(hass, ieee):
 class RadarRuntime:
     """Track each supported device and reattach its listener after a ZHA reload."""
 
-    def __init__(self, hass):
+    def __init__(self, hass, coverage):
         self.hass = hass
+        self.coverage = coverage
         self.radars = {}
         self._add_entities = None
         self._cancel_discovery = None
@@ -89,7 +90,7 @@ class RadarRuntime:
             attached.add(ieee)
             radar = self.radars.get(ieee)
             if radar is None:
-                radar = self.radars[ieee] = RadarTargets(ieee, entry)
+                radar = self.radars[ieee] = RadarTargets(ieee, entry, self.coverage.history)
                 new.append(radar)
             radar.attach(cluster, device.available)
             occupancy_entity = next((
@@ -127,8 +128,10 @@ class RadarTargets(SensorEntity):
         "tracks", "zones", "observed_at", "zones_observed_at", "track_status", "observation_source",
     })
 
-    def __init__(self, ieee, device):
+    def __init__(self, ieee, device, coverage):
         self._attr_unique_id = f"{ieee}-radar-targets"
+        self._coverage = coverage
+        self._coverage_key = ieee
         self._attr_device_info = DeviceInfo(
             identifiers={("zha", ieee)},
             name=f"{device.name_by_user or device.name or DEVICE_MODEL} Radar",
@@ -266,6 +269,7 @@ class RadarTargets(SensorEntity):
             self._tracks = tracks
             self._observed_target_report = True
             self._observed_at = time.time_ns() // 1_000_000
+            self._coverage.record(self._coverage_key, self._observed_at, tracks)
             if tracks:
                 self._native_vacant_at = None
             self._cancel_timeout = async_call_later(self.hass, REPORT_TIMEOUT_SECONDS, self._expire_tracks)

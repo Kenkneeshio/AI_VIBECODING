@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { makeStorybookHabitat } from './storybook-habitats.mjs';
+import { attachStorybookTelevision } from './storybook-television.mjs';
 
 // These miniatures use the editor's existing footprint units. All geometry is
 // floor-relative, centered on the item, and independent of Home Assistant.
@@ -610,9 +611,8 @@ export function makeStorybookFurniture(item) {
     p.box(0, 28, 0, w * .40, 6, d * .32, color.ink, 1.4);
     p.box(0, 33, 0, w * .29, 52, d * .89, color.ink, 2.5);
     p.box(-w * .155, 36, 0, 1.6, 46, d * .84, color.darkGlass, .6);
-    p.box(-w * .187, 68, -d * .12, .6, 6, d * .33, color.glass, .15);
     p.oval(-w * .173, 35, d * .34, 1.2, 1.2, 1.2, color.honey);
-    top = 85;
+    return attachStorybookTelevision(p.finish(85), w, d);
   } else if (type === 'table' || type.includes('dining-set')) {
     top = table(p, w, d, tint || color.oakLight, type);
   } else if (type === 'diningTable' || /^living-(?:petal|round|rectangular)-dining-table-/.test(type)) {

@@ -1717,6 +1717,15 @@
   window.RoomcraftEditorViewport = Object.freeze({
     getProject: () => clone(project),
     getPreview: () => dashboardPreview,
+    setRadarCalibration(id, entity, transform) {
+      const item = project.items.find(entry => entry.id === id && entry.type === 'presenceSwitch');
+      const change = window.RoomcraftObjectControls.propertyUpdate('presenceTrackTransform', transform.join(', '));
+      if (!item || item.presenceTrackEntityId !== entity || !change.valid) return false;
+      snapshot();
+      item.presenceTrackTransform = change.value;
+      afterChange('Radar calibration applied to the draft. Export to dashboard when ready.');
+      return true;
+    },
     setSceneSetting(key, value) {
       const next = SceneSettings.withFeature(project.sceneSettings, key, value);
       if (next === project.sceneSettings) return false;

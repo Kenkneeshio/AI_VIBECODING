@@ -1,5 +1,11 @@
 # Changelog
 
+## Calibrate radar coverage and keep movement on the floor
+
+- Radar avatars stay on home floors and avoid walls. They walk through clear doorways and can take a seat after repeated nearby detections. The vacuum also respects walls. A blocked report can disappear and reacquire at a confirmed point without drawing a path across the wall.
+- **Radar heat map** shows detections collected by Home Assistant, even when the tablet is closed. Studio fits a radar calibration from measured points and reports the error before applying it to a draft.
+- Free view can tilt down to the horizon. The TV shows an illustrated screen when its Home Assistant power entity reports on. Demo narration starts muted, with captions and an Unmute control.
+
 ## Sunrise and sunset at home
 
 - Home uses Home Assistant's live solar elevation and compass bearing to light the miniature. Low sunlight casts directional shadows, sunrise gives the sky and water a cooler glow, and sunset warms the horizon and reflections before fading into night.

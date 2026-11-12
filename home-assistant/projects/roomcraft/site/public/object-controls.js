@@ -336,6 +336,7 @@
       + entityField('Radar targets entity', 'presenceTrackEntityId', item.presenceTrackEntityId || '',
         entityOptions, 'sensor', escape)
       + '<p class="field-hint">Characters follow recent positions from this radar sensor. Preview live positions in Home Assistant Studio and publish the layout to use the calibration on the dashboard.</p>'
+      + '<button type="button" class="secondary-button full-width" data-radar-calibration>Calibrate from measured points</button>'
       + '<div class="field-grid">'
       + '<div class="field"><label for="presence-track-scale">Plan pixels per metre</label>'
       + '<input id="presence-track-scale" type="number" min="1" max="1000" step="any" value="' + scale + '"></div>'

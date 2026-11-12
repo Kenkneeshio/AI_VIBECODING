@@ -47,12 +47,15 @@ function oceanGeometry({shoreline, farZ, focusX}) {
 const vertexShader = `
   varying vec2 coastPoint;
   varying vec3 surfacePoint;
+  #include <fog_pars_vertex>
 
   void main() {
     coastPoint = uv;
     vec4 worldPoint = modelMatrix * vec4(position, 1.0);
     surfacePoint = worldPoint.xyz;
-    gl_Position = projectionMatrix * viewMatrix * worldPoint;
+    vec4 mvPosition = viewMatrix * worldPoint;
+    gl_Position = projectionMatrix * mvPosition;
+    #include <fog_vertex>
   }
 `;
 
@@ -79,6 +82,7 @@ const fragmentShader = `
   uniform vec3 bodyTint;
   uniform vec3 solarWarmTint;
   uniform vec3 solarCoolTint;
+  #include <fog_pars_fragment>
 
   float softEllipse(vec2 point, vec2 center, vec2 radius, float softness) {
     vec2 delta = (point - center) / radius;
@@ -179,11 +183,13 @@ const fragmentShader = `
       fog * (0.26 + 0.42 * smoothstep(15.0, 145.0, offshore)));
     gl_FragColor = vec4(color, 1.0);
     #include <colorspace_fragment>
+    #include <fog_fragment>
   }
 `;
 
 export function createStorybookOcean({y, farZ, shoreline, focusX}) {
   const uniforms = {
+    ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog),
     waterTime: {value: 0},
     rain: {value: 0},
     fog: {value: 0},
@@ -202,7 +208,7 @@ export function createStorybookOcean({y, farZ, shoreline, focusX}) {
   for (const [index, name] of COLOR_UNIFORMS.entries()) {
     uniforms[name] = {value: PALETTES.clear[index].clone()};
   }
-  const material = new THREE.ShaderMaterial({uniforms, vertexShader, fragmentShader, toneMapped: false});
+  const material = new THREE.ShaderMaterial({uniforms, vertexShader, fragmentShader, toneMapped: false, fog: true});
   const mesh = new THREE.Mesh(oceanGeometry({shoreline, farZ, focusX}), material);
   mesh.name = 'Ocean and shore wash';
   mesh.position.set(focusX, y, farZ);

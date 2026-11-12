@@ -1,5 +1,6 @@
 import {keepPreviousDashboardDesign, stableDashboardJson as stableStringify} from './dashboard-snapshots.mjs';
 import {validSceneSettings} from './storybook-scene-settings.mjs';
+import {FREE_VIEW_TILT_LIMIT} from './storybook-camera.mjs';
 
 /**
  * Roomcraft's Home Assistant transport. The editor artwork and interaction
@@ -470,7 +471,7 @@ class RoomcraftEditorCard extends HTMLElement {
   static validStartupView(view) {
     return isObject(view) && view.preset === 'free' &&
       [view.azimuth, view.tilt, view.zoom].every(Number.isFinite) &&
-      view.azimuth >= 0 && view.azimuth < 360 && view.tilt >= 0 && view.tilt <= 65 &&
+      view.azimuth >= 0 && view.azimuth < 360 && view.tilt >= 0 && view.tilt <= FREE_VIEW_TILT_LIMIT &&
       view.zoom >= 0.6 && view.zoom <= 2.5;
   }
 

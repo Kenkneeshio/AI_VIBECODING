@@ -15,6 +15,7 @@ import {readStorybookUtilities, utilityReading} from './storybook-utilities.mjs'
 import {bindStorybookPower, POWER_PANEL_MARKUP, POWER_PANEL_STYLE} from './storybook-power-panel.mjs';
 import {bindStorybookCommutes, COMMUTE_DIALOG_MARKUP, COMMUTE_DIALOG_STYLE} from './storybook-commutes.mjs';
 import {createStorybookLocation, STORYBOOK_LOCATION_MARKUP, STORYBOOK_LOCATION_STYLE} from './storybook-location.mjs';
+import {bindStorybookHeatMap, HEAT_MAP_LEGEND, HEAT_MAP_STYLE, HEAT_MAP_TOGGLE} from './storybook-heatmap-panel.mjs';
 
 const TAG = 'roomcraft-storybook-card';
 const CONTROL_TAG = 'roomcraft-object-control';
@@ -25,7 +26,7 @@ const DETAIL_VISIBILITY_EVENT = 'roomcraft-detail-visibility';
 const DETECTION_ZONE_KEY = 'roomcraft.show-detection-zone.v1';
 const CAMERA_TILES_KEY = 'roomcraft.show-camera-tiles.v1';
 const REDUCE_MOTION_KEY = 'roomcraft.reduce-motion.v1';
-const DEMO_MUTED_KEY = 'roomcraft.demo-muted.v1';
+const DEMO_MUTED_KEY = 'roomcraft.demo-muted.v2';
 const DEMO_NARRATION_URL = new URL('./demo-narration-v1.mp3', import.meta.url).href;
 const AMBIENT_TRAFFIC = Object.freeze({severity: 'ambient'});
 
@@ -207,6 +208,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         ${POWER_PANEL_STYLE}
         ${COMMUTE_DIALOG_STYLE}
         ${STORYBOOK_LOCATION_STYLE}
+        ${HEAT_MAP_STYLE}
       </style>
       <section class="world" aria-label="Roomcraft Storybook">
         ${COASTAL_SKY_MARKUP}
@@ -220,6 +222,7 @@ class RoomcraftStorybookCard extends HTMLElement {
             <li data-zone-kind="nominal"><i aria-hidden="true"></i><span>Rated coverage (estimate)</span></li>
             <li data-zone-kind="origin"><i aria-hidden="true"></i>Sensor position and aim</li>
           </ul>
+          ${HEAT_MAP_LEGEND}
           <div class="status"><div class="status-inner">
             <div role="status">Opening Roomcraft…</div>
             <div class="recovery" hidden>
@@ -233,7 +236,7 @@ class RoomcraftStorybookCard extends HTMLElement {
               <span class="demo-caption"></span>
             </div>
             <div class="demo-actions">
-              <button type="button" class="demo-mute" aria-label="Mute narration" aria-pressed="false">Mute</button>
+              <button type="button" class="demo-mute" aria-label="Unmute narration" aria-pressed="true">Unmute</button>
               <button type="button" class="demo-stop" aria-label="Stop demo">Stop</button>
             </div>
             <span class="demo-weather-detail" hidden></span>
@@ -263,6 +266,7 @@ class RoomcraftStorybookCard extends HTMLElement {
                   <button type="button" class="map-toggle toggle-object-details" aria-pressed="false">Object details <span class="menu-toggle" aria-hidden="true"></span></button>
                   <button type="button" class="open-tracking" hidden>Presence tracking</button>
                   <button type="button" class="map-toggle toggle-detection-zone" aria-controls="detection-zone-legend" aria-pressed="false" hidden>Detection zone <span class="menu-toggle" aria-hidden="true"></span></button>
+                  ${HEAT_MAP_TOGGLE}
                 </section>
                 <section class="menu-group" aria-label="View controls">
                   <p class="menu-heading" aria-hidden="true">View controls</p>
@@ -361,7 +365,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.demoStopButton = this.demo.querySelector('.demo-stop');
     this.demoMuteButton = this.demo.querySelector('.demo-mute');
     this.demoNarrator = createStorybookNarrator(window, {trackUrl: DEMO_NARRATION_URL, cues: STORYBOOK_DEMO_VOICE_CUES});
-    this.demoMuted = readPreference(DEMO_MUTED_KEY, false);
+    this.demoMuted = readPreference(DEMO_MUTED_KEY, true);
     this.demoMuteButton.hidden = !this.demoNarrator.available;
     this.syncDemoMute();
     this.demoMuteButton.addEventListener('click', () => {
@@ -386,6 +390,17 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.detectionZoneVisible = !this.detectionZoneVisible;
       savePreference(DETECTION_ZONE_KEY, this.detectionZoneVisible);
       this.syncDetectionZones();
+    });
+    this.heatMap = bindStorybookHeatMap(this.shadowRoot, {
+      getSession: () => this.session,
+      setHistory: history => {
+        const drawn = this.scene?.setHeatMap?.(history);
+        this.anchorDirty = true;
+        this.schedule();
+        return drawn;
+      },
+      dismissMenu: () => this.setMainMenu(false, true),
+      isPaused: () => Boolean(this.demoRun),
     });
     this.utilityDialog = this.shadowRoot.querySelector('.utility-dialog');
     this.utilityButtons = [...this.shadowRoot.querySelectorAll('[data-utility]')];
@@ -497,6 +512,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.refresh();
     });
     this.onVisibility = () => {
+      this.heatMap.sync();
       if (document.hidden) {
         this.stopDemo(false);
         this.freeViewGestures?.cancel();
@@ -548,6 +564,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   set hass(value) {
     const previous = this.session;
     this.session = value;
+    this.heatMap.sync();
     this.snapshots.sync();
     this.commutes.sync();
     if (this.devicesDrawer) this.devicesDrawer.hass = value?.connected === false ? undefined : value;
@@ -583,6 +600,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       ['beach', 'coast', 'road'].includes(target) ? target : scenario.targets[target]));
     this.demoRun = {startedAt: performance.now(), view, timeline, scenario,
       timer: setTimeout(() => this.stopDemo(), DEMO_DURATION_MS)};
+    this.heatMap.sync();
     this.setMainMenu(false);
     this.freeViewGestures?.cancel();
     this.syncFreeViewMode();
@@ -653,6 +671,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.demoNarrator.stop();
     window.removeEventListener('keydown', this.onDemoEscape, true);
     this.demoRun = undefined;
+    this.heatMap.sync();
     this.overlay.inert = this.dock.inert = false;
     this.demo.hidden = true;
     delete this.world.dataset.demoBeat;
@@ -783,6 +802,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.scene.setView(this.cameraView);
       this.detectionZones = readDetectionZones(this.model.layout.items);
       this.syncDetectionZones();
+      this.heatMap.configure(this.model.layout.items);
       this.syncFreeViewMode();
       this.controls = this.model.controls.map(config => {
         const camera = config.type === `custom:${CAMERA_TAG}`;
@@ -1107,7 +1127,7 @@ class RoomcraftStorybookCard extends HTMLElement {
           this.scene.setPeople(frame.people, time, options);
           this.scene.render(time, frame.states, {...frame.environment, reduceMotion}, options);
           this.lastFrame = at;
-          if (this.anchorDirty) {
+          if (this.anchorDirty || (!demo && this.scene.trackedControlChanged)) {
             if (!demo) this.positionControls();
             this.anchorDirty = false;
           }
@@ -1116,7 +1136,7 @@ class RoomcraftStorybookCard extends HTMLElement {
           return;
         }
       }
-      if (motion || this.demoRun) this.schedule();
+      if (motion || this.demoRun || this.scene?.hasPendingReacquisition) this.schedule();
     });
   }
 
@@ -1182,6 +1202,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   reset() {
+    this.heatMap.configure();
     this.stopDemo(false);
     this.freeViewGestures?.cancel();
     cancelAnimationFrame(this.animationFrame);

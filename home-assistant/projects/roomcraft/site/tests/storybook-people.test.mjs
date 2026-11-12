@@ -2,16 +2,17 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 import {createStorybookPeople} from '../ha-local/storybook-people.mjs';
+import {compileStorybookSeats} from '../ha-local/storybook-seating.mjs';
 
 function setup(floorAt, geometry) {
   const scene = new THREE.Scene();
   const people = createStorybookPeople(scene, floorAt, geometry);
-  const report = (x, y, time, options) => people.setTracks([{id: 'radar:1', x, y}], time, options);
+  const report = (x, y, time, options, expiresAt) => people.setTracks([{id: 'radar:1', x, y, expiresAt}], time, options);
   const avatar = () => scene.getObjectByName('radar-avatar-papa');
   return {people, report, avatar};
 }
 
-test('a track snaps to the reported point across a narrow unsupported gap', () => {
+test('a track holds across an unsupported gap and reacquires only after a distinct report and hidden interval', () => {
   const gapStart = 40.17;
   const gapEnd = 40.19;
   const floorAt = x => x <= gapStart || x >= gapEnd ? 0 : null;
@@ -20,9 +21,15 @@ test('a track snaps to the reported point across a narrow unsupported gap', () =
   const {people, report, avatar} = setup(floorAt, {supportsRoute});
   report(20, 30, 1);
   report(60, 30, 2);
-  assert.deepEqual(avatar().position.toArray(), [60, 0, 30]);
+  assert.deepEqual(avatar().position.toArray(), [20, 0, 30]);
+  report(60, 30, 2.1);
   people.render(2.1);
-  assert.deepEqual(avatar().position.toArray(), [60, 0, 30]);
+  assert.deepEqual(avatar().position.toArray(), [20, 0, 30]);
+  report(63, 30, 2.2);
+  assert.equal(avatar().visible, false);
+  people.render(2.5);
+  assert.deepEqual(avatar().position.toArray(), [63, 0, 30]);
+  assert.equal(avatar().visible, true);
 });
 
 test('interpolation follows a supported segment and keeps the reported destination', () => {
@@ -37,7 +44,7 @@ test('interpolation follows a supported segment and keeps the reported destinati
   assert.deepEqual(avatar().position.toArray(), [60, 8, 50]);
 });
 
-test('a frame that loses floor support snaps to the reported destination immediately', () => {
+test('a frame that loses floor support hides before reacquiring the destination', () => {
   let supportChanged = false;
   const floorAt = x => !supportChanged || x <= 40 || x >= 55 ? 0 : null;
   const {people, report, avatar} = setup(floorAt, {supportsRoute: () => true});
@@ -45,9 +52,11 @@ test('a frame that loses floor support snaps to the reported destination immedia
   report(80, 30, 2);
   supportChanged = true;
   people.render(2.16);
-  assert.equal(avatar().visible, true);
-  assert.deepEqual(avatar().position.toArray(), [80, 0, 30]);
+  assert.equal(avatar().visible, false);
   people.render(2.2);
+  assert.equal(avatar().visible, false);
+  people.render(2.5);
+  assert.equal(avatar().visible, true);
   assert.deepEqual(avatar().position.toArray(), [80, 0, 30]);
 });
 
@@ -57,7 +66,7 @@ test('the model fits at a measured edge point and an off-floor report clears it'
   const {people, report, avatar} = setup(floorAt, {floorClearance});
   report(70, 40, 1);
   assert.equal(avatar().scale.x, 1);
-  report(4, 40, 2);
+  report(4, 40, 2, {reduceMotion:true});
   assert.deepEqual(avatar().position.toArray(), [4, 0, 40]);
   assert.ok(avatar().scale.x > 0 && avatar().scale.x < 1);
   const bounds = new THREE.Box3().setFromObject(avatar());
@@ -65,4 +74,85 @@ test('the model fits at a measured edge point and an off-floor report clears it'
   report(-1, 40, 3);
   assert.equal(avatar().visible, false);
   assert.equal(people.hasVisibleTracks, false);
+});
+
+const cushion = {id:'sofa:0', x:70, z:60, y:37, heading:0, forwardX:0, forwardZ:1,
+  pose:'lounge', reach:32, behind:16, fit:1};
+const poseOf = avatar => avatar.getObjectByName('radar-avatar-pose');
+
+test('seating needs distinct settled reports and blends the body while the radar marker stays calibrated', () => {
+  const {people, report, avatar} = setup(() => 0, {seats:[cushion]});
+  report(60, 65, 1, undefined, 1000);
+  report(60, 65, 2.2, undefined, 1000);
+  assert.equal(poseOf(avatar()).userData.pose, 'standing');
+  report(61, 65, 2.3, undefined, 2300);
+  assert.equal(poseOf(avatar()).position.y, 0);
+  people.render(2.51);
+  const rising = poseOf(avatar()).getWorldPosition(new THREE.Vector3());
+  assert.ok(rising.y > 4 && rising.y < 24);
+  people.render(2.8);
+  const seated = poseOf(avatar()).getWorldPosition(new THREE.Vector3());
+  assert.equal(poseOf(avatar()).userData.pose, 'lounge');
+  assert.equal(seated.x, cushion.x);
+  assert.equal(seated.z, cushion.z);
+  assert.deepEqual(avatar().position.toArray(), [61,0,65]);
+  report(105, 67, 3, undefined, 3000);
+  people.render(3.45);
+  assert.equal(poseOf(avatar()).userData.pose, 'standing');
+  assert.deepEqual(avatar().position.toArray(), [105,0,67]);
+});
+
+test('a wall blocks a nearby cushion and a walk-by never accumulates seating evidence', () => {
+  const seat = {...cushion, x:60, z:40};
+  const route = (x, _z, endX) => Math.max(x, endX) < 50 || Math.min(x, endX) > 54;
+  const blocked = setup(() => 0, {seats:[seat], supportsRoute:route});
+  blocked.report(47, 40, 1, undefined, 1000);
+  blocked.report(48, 41, 2.4, undefined, 2400);
+  blocked.people.render(3);
+  assert.equal(poseOf(blocked.avatar()).userData.pose, 'standing');
+  const passing = setup(() => 0, {seats:[seat]});
+  for (const [x, time] of [[43,1],[58,1.6],[73,2.2],[92,2.8]]) {
+    passing.report(x, 42, time, undefined, time * 1000);
+    passing.people.render(time + .4);
+    assert.equal(poseOf(passing.avatar()).userData.pose, 'standing');
+  }
+});
+
+test('two characters cannot share a cushion and reduced motion keeps the desk pose still', () => {
+  const scene = new THREE.Scene();
+  const people = createStorybookPeople(scene, () => 0, {seats:[{...cushion, pose:'desk'}]});
+  for (const time of [1, 2.3]) people.setTracks([
+    {id:'radar:2', x:66, y:61, expiresAt:time*1000}, {id:'radar:1', x:65, y:60, expiresAt:time*1000},
+  ], time, {reduceMotion:true});
+  const papa = scene.getObjectByName('radar-avatar-papa');
+  const mama = scene.getObjectByName('radar-avatar-mama');
+  assert.equal(poseOf(papa).userData.pose, 'desk');
+  assert.equal(poseOf(mama).userData.pose, 'standing');
+  const transforms = () => poseOf(papa).children[0].children.map(child => child.rotation.toArray());
+  const before = transforms();
+  people.render(3.5, true);
+  assert.deepEqual(transforms(), before);
+  people.render(3.6, true, false);
+  assert.equal(poseOf(papa).userData.pose, 'standing');
+});
+
+test('seat anchors respect authored rotation, cushion variants, floor support and mesh height', () => {
+  const placement = (id, type, w, h, x, z, angle = 0) => ({item:{id,type,w,h}, x,z,angle,baseY:0});
+  const items = [
+    placement('sofa','sofa',120,192,130,190),
+    placement('dining','diningChair',34,26,200,120,Math.PI/2),
+    placement('desk','desk',105,95,310,160),
+    placement('chair','chair',34,36,310,116),
+    placement('bench','bedroomBench',86,32,225,250),
+    placement('off-floor','stool',38,38,470,460),
+  ];
+  const roots = new Map(items.map(({item}) => [item.id,{root:{position:{y:0},scale:{y:item.id==='dining' ? 1.5 : 1}}}]));
+  const seats = compileStorybookSeats(items, roots, x => x < 400 ? 30 : 0);
+  assert.equal(seats.filter(({pose}) => pose==='lounge').length, 4);
+  assert.equal(seats.filter(({pose}) => pose==='bench').length, 2);
+  assert.equal(seats.filter(({pose}) => pose==='desk').length, 1);
+  const dining = seats.find(({pose}) => pose==='dining');
+  assert.equal(dining.heading, -Math.PI / 2);
+  assert.equal(dining.y, 45);
+  assert.equal(seats.some(({id}) => id.startsWith('off-floor:')), false);
 });

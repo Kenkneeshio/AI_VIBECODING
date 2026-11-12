@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 
 const cameraPreset = (label, azimuth, tilt) => Object.freeze({label, azimuth, tilt, zoom: 1});
+const PRESET_TILT_LIMIT = 65;
+export const FREE_VIEW_TILT_LIMIT = 88;
+export const STORYBOOK_CAMERA_FAR = 4400;
+const CAMERA_DISTANCE = 1900;
+const SCENERY_FLOOR = -111;
 
 export const CAMERA_PRESETS = Object.freeze({
   default: cameraPreset('Default', 0, 0),
@@ -37,10 +42,11 @@ export function normalizeCameraView(value = 'top') {
   const preset = Object.hasOwn(CAMERA_PRESETS, input.preset) ? input.preset : 'top';
   const base = CAMERA_PRESETS[preset];
   const azimuth = Number.isFinite(input.azimuth) ? input.azimuth : base.azimuth;
+  const maxTilt = preset === 'free' || preset === 'default' ? FREE_VIEW_TILT_LIMIT : PRESET_TILT_LIMIT;
   return {
     preset,
     azimuth: ((azimuth % 360) + 360) % 360,
-    tilt: Number.isFinite(input.tilt) ? THREE.MathUtils.clamp(input.tilt, 0, 65) : base.tilt,
+    tilt: Number.isFinite(input.tilt) ? THREE.MathUtils.clamp(input.tilt, 0, maxTilt) : base.tilt,
     zoom: Number.isFinite(input.zoom) ? THREE.MathUtils.clamp(input.zoom, 0.6, 2.5) : base.zoom,
   };
 }
@@ -59,6 +65,13 @@ export function readSavedFreeView(value) {
 /** Select the saved angle or the overhead fallback without entering Free view. */
 export function resolveDefaultCameraView(saved) {
   return normalizeCameraView({...readSavedFreeView(saved), preset: 'default'});
+}
+
+/** Fade the distant ground and ocean before their mesh edges enter a shallow orbit. */
+export function storybookHorizonFog(tilt) {
+  if (tilt <= PRESET_TILT_LIMIT) return null;
+  const horizon = THREE.MathUtils.smoothstep(tilt, PRESET_TILT_LIMIT, 84);
+  return {near:THREE.MathUtils.lerp(3530, 2680, horizon), far:THREE.MathUtils.lerp(4260, 3690, horizon)};
 }
 
 /** Preserve the authored frame proportions within the view's touch and space limits. */
@@ -107,7 +120,7 @@ export function fitStorybookCamera(camera, bounds, width, height, view = 'top', 
   // Explicit up removes the pole ambiguity of lookAt in the overhead preset.
   camera.up.set(-Math.sin(azimuth) * Math.cos(tilt), Math.sin(tilt),
     -Math.cos(azimuth) * Math.cos(tilt));
-  camera.position.copy(center).addScaledVector(outward, 1900);
+  camera.position.copy(center).addScaledVector(outward, CAMERA_DISTANCE);
   camera.lookAt(center);
   camera.updateMatrixWorld(true);
 
@@ -116,7 +129,7 @@ export function fitStorybookCamera(camera, bounds, width, height, view = 'top', 
   const corner = new THREE.Vector3();
   for (const x of [bounds.minX - 37, bounds.maxX + 37]) {
     for (const z of [bounds.minZ - 53, bounds.maxZ + 36]) {
-      for (const y of [-111, upperY]) {
+      for (const y of [SCENERY_FLOOR, upperY]) {
         frame.expandByPoint(corner.set(x, y, z).applyMatrix4(camera.matrixWorldInverse));
       }
     }
@@ -148,6 +161,16 @@ export function fitStorybookCamera(camera, bounds, width, height, view = 'top', 
   camera.top = centerY + halfHeight;
   // Demo framing is intentionally excluded from the returned camera preference.
   camera.zoom = Number.isFinite(demoZoom) ? THREE.MathUtils.clamp(demoZoom, 0.6, 4.5) : normalized.zoom;
+  // Orthographic framing is unchanged by moving along the view ray. At a shallow
+  // angle, give the lowest view ray enough room to start above the foreground.
+  const lowestOrigin = camera.position.y + (centerY - halfHeight / camera.zoom) * camera.up.y;
+  const additionalDistance = normalized.tilt > PRESET_TILT_LIMIT
+    ? Math.max(0, (SCENERY_FLOOR + 24 - lowestOrigin) / outward.y) : 0;
+  if (additionalDistance > 0) {
+    camera.position.addScaledVector(outward, additionalDistance);
+    camera.updateMatrixWorld(true);
+  }
+  camera.far = STORYBOOK_CAMERA_FAR + additionalDistance;
   camera.updateProjectionMatrix();
   return normalized;
 }

@@ -1532,10 +1532,12 @@ test('Studio and live view share the signed-in camera preference without touchin
   const send = async (method, payload, origin = context.location.origin) => card._onMessage({
     source: iframe, origin, data: { channel: 'roomcraft-ha', kind: 'request', id: 1, method, payload },
   });
-  const view = { preset: 'free', azimuth: 148, tilt: 39.5, zoom: 1.25 };
+  const view = { preset: 'free', azimuth: 148, tilt: 87.5, zoom: 1.25 };
   await send('CAMERA_SET', view, 'https://outside.example');
   assert.equal(requests.length, 0);
   await send('CAMERA_SET', { ...view, zoom: 999 });
+  assert.equal(replies.at(-1).ok, false);
+  await send('CAMERA_SET', { ...view, tilt: 89 });
   assert.equal(replies.at(-1).ok, false);
   assert.equal(requests.length, 0);
   await send('CAMERA_SET', { ...view, unrelated: 'discard' });

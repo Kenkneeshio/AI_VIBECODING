@@ -5,6 +5,7 @@ const CAMERA = 'custom:roomcraft-camera-thumbnail';
 const MOTION_WEATHER = new Set(['pouring', 'rainy', 'lightning', 'lightning-rainy', 'snowy',
   'snowy-rainy', 'hail', 'windy', 'windy-variant', 'fog']);
 const ACTIVE_HVAC = new Set(['cooling', 'heating', 'drying', 'fan', 'preheating', 'defrosting']);
+const ACTIVE_TV = new Set(['on', 'playing', 'paused', 'buffering']);
 const VACUUM_POSITION_MAX_AGE_MS = 20 * 60 * 1000;
 const SPEED_FACTORS = new Map([['m/s', 1], ['km/h', 1 / 3.6], ['mph', .44704], ['kn', .514444], ['ft/s', .3048]]);
 const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
@@ -66,8 +67,13 @@ export function readStorybookConfig(config) {
   });
   const weather = plan.elements.find(element => element.type === 'custom:roomcraft-weather-outdoor') ?? {};
   const watch = new Set([weather.weather_entity, weather.sun_entity, weather.moon_entity, 'sun.sun']);
+  const televisions = new Map();
   for (const item of layout.items) {
     if (item.type === 'presenceSwitch' && item.presenceTrackEntityId) watch.add(item.presenceTrackEntityId);
+    if (item.type === 'tv' && /^media_player\.[a-z0-9_]+$/.test(item.entityId || '')) {
+      televisions.set(item.id, item.entityId);
+      watch.add(item.entityId);
+    }
   }
   for (const element of controls) {
     for (const key of ['entity', 'roomcraft_tap_entity', 'roomcraft_hold_entity',
@@ -77,7 +83,7 @@ export function readStorybookConfig(config) {
     for (const event of element.event_entities ?? []) watch.add(event);
   }
   watch.delete(undefined);
-  return { layout, items, controls, weather, watch };
+  return { layout, items, controls, weather, watch, televisions };
 }
 
 function vacuumPosition(element, snapshot, state, active, now) {
@@ -95,7 +101,8 @@ function vacuumPosition(element, snapshot, state, active, now) {
   const x = a * Number(p.x) + b * Number(p.y) + c;
   const y = d * Number(p.x) + e * Number(p.y) + f;
   if (Number.isFinite(x) && Number.isFinite(y) && x >= 0 && x <= 1536 && y >= 80 && y <= 944) {
-    return {position: {x, y}, expiresAt: active ? expiresAt : undefined};
+    return {position: {x, y}, observedAt: expiresAt - VACUUM_POSITION_MAX_AGE_MS,
+      expiresAt: active ? expiresAt : undefined};
   }
 }
 
@@ -147,9 +154,16 @@ export function storybookFrame(model, snapshot = {}, now = 0, timeZone) {
     const telemetry = kind === 'vacuum' ? vacuumPosition(element, snapshot, state, active, now) : undefined;
     const position = telemetry?.position;
     if (telemetry?.expiresAt !== undefined) nextRefreshAt = Math.min(nextRefreshAt ?? Infinity, telemetry.expiresAt);
-    states[element.roomcraft_item_id] = {state, attributes, presence, active, position};
+    states[element.roomcraft_item_id] = {state, attributes, presence, active, position,
+      positionObservedAt: telemetry?.observedAt};
     moving ||= presence === 'on' || ['opening', 'closing'].includes(state) ||
       active && (['fan', 'climate', 'device'].includes(kind) || kind === 'vacuum' && Boolean(position));
+  }
+  for (const [id, entity] of model.televisions ?? []) {
+    const state = snapshot[entity]?.state ?? 'unavailable';
+    const active = ACTIVE_TV.has(state);
+    states[id] = {state, active, presence: 'unavailable', attributes: {}};
+    moving ||= active;
   }
   return {states, environment, moving, nextRefreshAt};
 }

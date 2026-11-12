@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
-import {CAMERA_PRESETS, enterFreeView, fitStorybookCamera, normalizeCameraView, populateCameraOptions, readSavedFreeView, resolveDefaultCameraView, studioCameraPreferences} from '../ha-local/storybook-camera.mjs';
+import {CAMERA_PRESETS, FREE_VIEW_TILT_LIMIT, enterFreeView, fitStorybookCamera, normalizeCameraView,
+  populateCameraOptions, readSavedFreeView, resolveDefaultCameraView, storybookHorizonFog,
+  studioCameraPreferences} from '../ha-local/storybook-camera.mjs';
 import {bindFreeViewGestures} from '../ha-local/storybook-orbit.mjs';
 import {buildStorybookNeighborhood, storybookStreetBounds} from '../ha-local/storybook-street.mjs';
 
@@ -51,6 +53,36 @@ test('camera preferences normalize without modifying caller data or the presets'
   assert.deepEqual(normalizeCameraView({preset: 'bad', tilt: NaN, zoom: -1}), {...topView, zoom: 0.6});
   assert.equal(normalizeCameraView('dollhouse').tilt, 30);
   assert.deepEqual(normalizeCameraView('top'), topView);
+});
+
+test('Free view reaches a shallow horizon and a saved Default preserves the same framing', () => {
+  const saved = normalizeCameraView({preset:'free', azimuth:0, tilt:92, zoom:1});
+  assert.equal(saved.tilt, FREE_VIEW_TILT_LIMIT);
+  assert.equal(readSavedFreeView(saved).tilt, 88);
+  const restored = resolveDefaultCameraView(saved);
+  assert.equal(restored.tilt, saved.tilt);
+  const frame = {...bounds, sceneryMinZ:-290};
+  for (const [width,height] of [[1280,800],[390,680]]) {
+    const camera = makeCamera();
+    fitStorybookCamera(camera, frame, width, height, saved);
+    near(camera.getWorldDirection(new THREE.Vector3()).y, -Math.cos(88 * Math.PI / 180));
+    const foregroundRay = new THREE.Raycaster();
+    foregroundRay.setFromCamera(new THREE.Vector2(0, -1), camera);
+    assert.ok(foregroundRay.ray.origin.y > -111);
+    for (const x of [bounds.minX,bounds.maxX]) for (const z of [bounds.minZ,bounds.maxZ]) {
+      const projected = new THREE.Vector3(x, 0, z).project(camera);
+      assert.ok(Math.abs(projected.x) < 1 && Math.abs(projected.y) < 1);
+    }
+    const orbit = camera.projectionMatrix.clone();
+    fitStorybookCamera(camera, frame, width, height, restored);
+    assert.deepEqual(camera.projectionMatrix.elements, orbit.elements);
+    fitStorybookCamera(camera, frame, width, height, 'default');
+    assert.equal(camera.far, makeCamera().far);
+  }
+  assert.equal(storybookHorizonFog(65), null);
+  const haze = storybookHorizonFog(saved.tilt);
+  assert.ok(haze.near > 2500 && haze.far < makeCamera().far && haze.near < haze.far);
+  assert.ok(haze.far < storybookHorizonFog(70).far);
 });
 
 test('the shared Default option displays the saved angle without entering Free view', () => {
@@ -269,6 +301,9 @@ test('Free view owns its drag and pinch gestures and releases them on exit', () 
   const canceled = view;
   pointer('pointermove', 1, 300, 300);
   assert.equal(view, canceled);
+  for (let repeat = 0; repeat < 12; repeat++) canvas.dispatchEvent(Object.assign(
+    new Event('keydown', {cancelable:true}), {key:'ArrowDown'}));
+  assert.equal(view.tilt, FREE_VIEW_TILT_LIMIT);
   gesture.dispose();
   assert.equal(pointer('pointerdown', 3, 100, 100), true);
 });

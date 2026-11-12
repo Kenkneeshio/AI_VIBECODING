@@ -7,7 +7,7 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <title>Roomcraft — Second Floor Builder</title>
   <meta name="description" content="A detailed illustrated room builder based on the second-floor home plan.">
-  <link rel="stylesheet" href="styles.css?v=a0340c55732399df">
+  <link rel="stylesheet" href="styles.css?v=6849d98faf52d145">
 </head>
 <body>
   <div class="app-shell">
@@ -59,7 +59,7 @@
         </div>
 
         <div class="reference-card">
-          <div class="reference-thumb"><img src="assets/floorplan.png?v=a0340c55732399df" alt="The original furnished second-floor reference"></div>
+          <div class="reference-thumb"><img src="assets/floorplan.png?v=6849d98faf52d145" alt="The original furnished second-floor reference"></div>
           <div class="reference-copy"><strong>Starting reference</strong><span>Original furnished image</span></div>
           <button type="button" class="text-button" id="showReferenceButton">View</button>
         </div>
@@ -200,6 +200,27 @@
       <div id="scenePreviewWeather" hidden></div>
     </fieldset>
   </dialog>
+  <dialog id="radarCalibrationDialog" class="app-dialog scene-settings-dialog radar-calibration" aria-labelledby="radarCalibrationTitle">
+    <form method="dialog"><button type="submit" class="dialog-close" aria-label="Close radar calibration">×</button></form>
+    <h2 id="radarCalibrationTitle">Calibrate radar</h2>
+    <p>Pick a point on the plan, then have one person stand still on that spot. Capture at least four well-spaced points, including the sofa and the dining or kitchen area.</p>
+    <canvas width="1536" height="1024" id="radarCalibrationPlan" aria-label="Floor plan for choosing a survey point"></canvas>
+    <div class="radar-survey-fields">
+      <label>Plan X <input type="number" data-survey="x" min="0" max="1536" step="1"></label>
+      <label>Plan Y <input type="number" data-survey="y" min="0" max="1024" step="1"></label>
+      <button type="button" class="secondary-button" data-survey="capture">Capture radar point</button>
+    </div>
+    <ol data-survey="points" aria-label="Captured survey points"></ol>
+    <label>Measured distance from point 1 to 2 in metres (optional)
+      <input type="number" data-survey="distance" min="0.1" step="0.01">
+    </label>
+    <p data-survey="quality" role="status"></p>
+    <p data-survey="status" role="status"></p>
+    <div class="radar-survey-actions">
+      <button type="button" class="secondary-button" data-survey="undo">Remove last point</button>
+      <button type="button" class="primary-button" data-survey="apply">Apply to draft</button>
+    </div>
+  </dialog>
   <dialog id="helpDialog" class="app-dialog">
     <form method="dialog"><button class="dialog-close" aria-label="Close" value="cancel">×</button></form>
     <p class="eyebrow">HOW IT WORKS</p><h2>A little room to play.</h2>
@@ -216,23 +237,23 @@
       <button type="button" class="primary-button" id="confirmationAccept">Continue</button>
     </div>
   </dialog>
-  <script src="editor-assets.js?v=a0340c55732399df" defer></script>
-  <script src="engine/deterministic-core.js?v=a0340c55732399df" defer></script>
-  <script src="engine/project-runtime.js?v=a0340c55732399df" defer></script>
-  <script src="engine/render-contract.js?v=a0340c55732399df" defer></script>
-  <script src="engine/verification-harness.js?v=a0340c55732399df" defer></script>
-  <script src="engine/wall-joins.js?v=a0340c55732399df" defer></script>
-  <script src="engine/reference-geometry.js?v=a0340c55732399df" defer></script>
-  <script src="engine/scene-settings.js?v=a0340c55732399df" defer></script>
-  <script src="ha-iframe-bridge.js?v=a0340c55732399df" defer></script>
-  <script src="inventory.js?v=a0340c55732399df" defer></script>
-  <script src="model-library.js?v=a0340c55732399df" defer></script>
-  <script src="catalog-variants.js?v=a0340c55732399df" defer></script>
-  <script src="raster-renderer.js?v=a0340c55732399df" defer></script>
-  <script src="object-art.js?v=a0340c55732399df" defer></script>
-  <script src="object-controls.js?v=a0340c55732399df" defer></script>
-  <script src="app.js?v=a0340c55732399df" defer></script>
-  <script src="responsive-inspector.js?v=a0340c55732399df" defer></script>
-  <script src="storybook-editor.js?v=a0340c55732399df" defer></script>
+  <script src="editor-assets.js?v=6849d98faf52d145" defer></script>
+  <script src="engine/deterministic-core.js?v=6849d98faf52d145" defer></script>
+  <script src="engine/project-runtime.js?v=6849d98faf52d145" defer></script>
+  <script src="engine/render-contract.js?v=6849d98faf52d145" defer></script>
+  <script src="engine/verification-harness.js?v=6849d98faf52d145" defer></script>
+  <script src="engine/wall-joins.js?v=6849d98faf52d145" defer></script>
+  <script src="engine/reference-geometry.js?v=6849d98faf52d145" defer></script>
+  <script src="engine/scene-settings.js?v=6849d98faf52d145" defer></script>
+  <script src="ha-iframe-bridge.js?v=6849d98faf52d145" defer></script>
+  <script src="inventory.js?v=6849d98faf52d145" defer></script>
+  <script src="model-library.js?v=6849d98faf52d145" defer></script>
+  <script src="catalog-variants.js?v=6849d98faf52d145" defer></script>
+  <script src="raster-renderer.js?v=6849d98faf52d145" defer></script>
+  <script src="object-art.js?v=6849d98faf52d145" defer></script>
+  <script src="object-controls.js?v=6849d98faf52d145" defer></script>
+  <script src="app.js?v=6849d98faf52d145" defer></script>
+  <script src="responsive-inspector.js?v=6849d98faf52d145" defer></script>
+  <script src="storybook-editor.js?v=6849d98faf52d145" defer></script>
 </body>
 </html>
