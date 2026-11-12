@@ -1,6 +1,6 @@
 # Editable office campus landmark
 
-**Status:** implementation in progress; the exact release gate and deployment evidence will be recorded below. Previous verified runtime: `4490638e`, HA resource `309de5e7f537f676`, private Studio version106.
+**Status:** deployed and verified on 12 November 2026. Runtime `779097d4`, HA resource `6707571f81774d15`, owner-private Studio version 107. The complete release gate passed 639 tests; authenticated Studio Save/readback and the calendar tablet verified the placed landmark.
 
 ## Customer outcome
 
@@ -16,7 +16,7 @@ The model is an artistic miniature with simplified proportions and inferred smal
 
 ![Synthetic office model from front, three-quarter, overhead and Canvas views](images/exterior-office-model.png)
 
-The model uses four opaque merged layers and 17,900 triangles. The default height is122.8 plan units; the 3D height control scales it vertically without moving its support plane. Factory bytes are deterministic, and each instance owns its disposable geometry/materials.
+The model uses four opaque merged layers and 17,900 triangles. The default height is 122.8 plan units; the 3D height control scales it vertically without moving its support plane. Factory bytes are deterministic, and each instance owns its disposable geometry/materials.
 
 ## Studio controls and contract
 
@@ -47,7 +47,20 @@ The campus is one movable recipe; its building, parking deck, roof details and p
 
 ## Release evidence
 
-Pending the exact source revision. Run the complete [release standard](release-standard.md), then the built-bundle exterior browser fixture. Freeze runtime source before deployment; record source, manifests, test totals, CI, HA asset/layout readback, Site version/audience and tablet evidence here. A synthetic check must not be described as a production or tablet check.
+| Check | Exact result |
+| --- | --- |
+| Frozen runtime | `779097d47e7ccc0677aee2b89880118d75d457f6` |
+| Full source manifest | `sha256:723bb3d0195fecc119d399e0be22bd613a501bbc4a2ed984a608c6c681413a40` — 360 inputs |
+| Release gate | Clean dependency install; 536 site, 65 HA bridge/weather, 30 installer and 8 presence tests passed (639 total); architecture guard, TypeScript, lint, production build, manifest verification and whitespace checks passed. Lint reports 17 existing warnings and no errors. |
+| GitHub CI | [Runtime run passed](https://github.com/Kenkneeshio/AI_VIBECODING/actions/runs/43310177485) |
+| Built Studio fixture | Real Chrome selection, position, dimensions/height/reset, move/Undo, Delete/Undo, nonblank thumbnail and mocked PNG/project Save passed. Home/street bounds, ground support and default framing remained stable. Decorative primary/secondary bindings are rejected. |
+| HA resource | `6707571f81774d15`; all 11 installed assets match the build over LAN and the remote origin. Home/Studio/Controls and eight unrelated dashboard fields matched the installer backup before layout publication. |
+| Authenticated Studio | Placed the office through the real editor at center (2020, 700), width 220, depth 180 and rotation 90°. One image upload and one Save completed; API readback matched the actual submitted project exactly. All 79 previous objects and existing bindings were preserved; the saved layout now contains 80 objects. |
+| Wall tablet | Trusted ADB and Companion HOME alias verified. Companion 2026.10.1-full cold-launched; a subsequent private 1920 × 1080 capture showed the complete office to the right of the ranch and farther inland, with the home, coast and menu visible. The initial 12-second capture still showed loading, so it was not used as rendering proof. |
+| Private Site source | `7504a5ba2ff2c565f2293f5175b3123210de098d`; subset manifest `sha256:2c3188eb43409de672be4cdb2d4606469589e4bb1d14c7f9a0999cd063496aaa` (263 inputs) |
+| Private Site artifact | Version 107, archive `sha256:91074833230a1b0b5e51e05bb61ef809695d176406da67a05cc8b831848da7bf`; deployment `appgdep_6af62f5023408191bc6d5c75d03836fd` succeeded; audience remains owner-only. No separate hosted-browser visual check was run. |
+
+The public proof image contains only synthetic model views. Actual dashboard projects, reference images and tablet/browser captures remain in protected local management storage. Both asset installation and layout publication created rollback copies before writing. No physical device was actuated by these checks.
 
 ## Rollback
 

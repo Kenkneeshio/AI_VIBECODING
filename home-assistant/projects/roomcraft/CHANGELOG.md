@@ -1,10 +1,10 @@
 # Changelog
 
-## Editable office campus — pending release
+## Editable office campus — 12 November 2026
 
 - Add a detailed six-story office campus to Exterior scenery, with shared Home/Studio rendering and normal move, dimensions, height, rotation, Delete and Undo controls.
 - Preserve existing home/street geometry and device bindings; include the new ground-level landmark in camera framing, terrain support and planting clearance.
-- Reference, editing contract, verification and rollback are recorded in the [office landmark handoff](docs/office-landmark.md). Deployment is pending.
+- Verified 639 tests, CI, built Studio editing, authenticated Save and exact HA asset/project readback. The calendar tablet shows the complete new landmark. Deployed runtime `779097d4`, HA `6707571f81774d15` and owner-private Studio version 107; reference, editing contract and rollback are recorded in the [office landmark handoff](docs/office-landmark.md).
 
 ## Editable exterior house and side street — 12 November 2026
 
