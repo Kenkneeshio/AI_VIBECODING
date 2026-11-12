@@ -5,19 +5,19 @@ The wall dashboard should evoke La Jolla from its everyday overhead view. A gues
 | Customer outcome | Acceptance |
 | --- | --- |
 | Recognize La Jolla from the wall display | The overhead view shows the Cove on the left and Shores and the pier on the right, above the entire house. |
-| See the coast in depth | The Cove shot faces exposed sandstone and planted headlands. The Shores shot frames the pier deck, pilings and landscaped promenade. House controls and camera tiles stay with the house views. |
+| See the coast in depth | The Cove shot faces one sandstone bluff with rock ledges and a crescent of sand at the water. The Shores shot frames the pier deck, pilings and landscaped promenade. House controls and camera tiles stay with the house views. |
 | Keep the water alive | Animated shore break, reflections and rainfall follow the camera and the current weather. Reduced motion, manual quality, and the Insane graphics recovery remain available. |
 | Maintain the release | Authored curves, seeded vegetation, camera bounds and verified artwork bytes can be reproduced and restored independently of the saved home. |
 
 `storybook-street.mjs` supplies the shoreline, sand grade, play sites and separate camera frames. `storybook-la-jolla-bluffs.mjs` owns the continuous bluff surface and plantings. `storybook-la-jolla-shores.mjs` owns Scripps Pier, the promenade and Kellogg Park. `storybook-ocean.mjs` maps surf to the shared coast and uses world-space wind swells offshore. `storybook-camera.mjs` fits the two seaward views independently.
 
-The two headlands share the beach's sampled height and color along their edges. Their rock, vegetation and slope fade into the same sand surface. The promenade connects to the sidewalk at both ends, and the surf width follows the shoreline through the Cove's bends.
+The continuous bluff shares the beach's sampled height and color along its edges. Point La Jolla forms the longer western shoulder, and lower shelves frame the east. The beach stair follows the sandstone face down to the sand. The ocean mesh and wet sand use the same crescent shoreline. [City aerial and ground photos](https://www.sandiego.gov/sites/default/files/californiasealionobservationslajollacovefinalrpt20160628.pdf#page=9) · [1969 Cove photo](https://www.sandiego.gov/digital-archives-photos/la-jolla-cove-beach-1969)
 
-![The overhead view has the Cove on the left and the pier on the right.](images/la-jolla-overhead-v3.png)
+![The overhead view has the continuous Cove bluff on the left and the pier on the right.](images/la-jolla-overhead-v4.png)
 
-![Roomcraft's Cove camera shows the sandstone headlands blending into the beach.](images/la-jolla-cove-v3.png)
+![Roomcraft's Cove camera shows one continuous bluff behind the crescent of sand.](images/la-jolla-cove-v4.png)
 
-![Roomcraft's Shores camera shows the Scripps Pier pilings and La Vereda promenade.](images/la-jolla-shores-v3.png)
+![Roomcraft's Shores camera shows the Scripps Pier pilings and La Vereda promenade.](images/la-jolla-shores-v4.png)
 
 ## Material provenance
 

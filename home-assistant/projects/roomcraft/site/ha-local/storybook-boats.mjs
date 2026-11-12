@@ -47,9 +47,10 @@ export function createStorybookBoatRoutes(water) {
     const reach = radius + recipe.length;
     const authored = water.boatCenters?.[recipe.id];
     const center = clamp(focusX + (Number.isFinite(authored) ? authored : recipe.center), left + reach, right - reach);
+    const offshore = water.boatOffshore?.[recipe.id] ?? recipe.offshore;
     function point(angle) {
       const x = center + Math.cos(angle) * radius;
-      const z = Math.max(farZ + 65, shoreAt(shoreline, x) - recipe.offshore - Math.sin(angle) * recipe.drift);
+      const z = Math.max(farZ + 65, shoreAt(shoreline, x) - offshore - Math.sin(angle) * recipe.drift);
       return {x, z};
     }
     return {...recipe, point};

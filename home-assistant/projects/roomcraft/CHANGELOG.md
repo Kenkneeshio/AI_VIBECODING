@@ -1,5 +1,10 @@
 # Changelog
 
+## Model the Cove as one crescent
+
+- A continuous sandstone bluff wraps around the Cove's pocket beach, with shallow rock ledges on both shoulders and stairs from the upper trail down to the sand.
+- Point La Jolla extends farther into the water on the west side. The wider shoreline follows a shallow crescent toward the Shores.
+
 ## Refine the La Jolla shoreline
 
 - The Cove sits to the left of the Shores in the overhead view. The two coastal camera presets and the demo follow the updated landmarks.

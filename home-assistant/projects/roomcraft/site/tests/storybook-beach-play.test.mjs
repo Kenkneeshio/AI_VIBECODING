@@ -34,14 +34,26 @@ test('La Jolla shares the sculpted shore between the sand, water, and cinematic 
   }).z;
   assert.ok(shoreAt(-.29) > shoreAt(-.145) + 50, 'the pocket retreats from Point La Jolla');
   assert.ok(shoreAt(-.29) > shoreAt(-.43) + 50, 'sandstone headlands enclose the pocket');
+  assert.ok(shoreAt(-.43) < shoreAt(-.145) - 14, 'Point La Jolla reaches farther seaward than the east shelf');
+  const westArc = [-.43, -.39, -.35, -.32, -.29].map(shoreAt);
+  const eastArc = [-.29, -.25, -.21, -.18, -.145].map(shoreAt);
+  assert.ok(westArc.every((z, i) => i === 0 || z > westArc[i - 1]));
+  assert.ok(eastArc.every((z, i) => i === 0 || z < eastArc[i - 1]));
   assert.ok(Math.abs(shoreAt(.36) - shoreAt(.49)) < 10, 'Shores remains a broad gentle beach');
+  assert.ok(shoreAt(.46) > Math.max(shoreAt(.05), shoreAt(.88)) + 15, 'the broader bay bows inland at Shores');
   assert.equal(coast.sand.vertices, coast.water.shoreline.length * 9);
   assert.equal(coast.sand.vertices, coast.sand.coloredVertices);
   assert.ok(coast.sandGrade.every(y => y > -111 && y < coast.water.y));
   assert.ok(coast.water.cove.x < coast.water.focusX);
   assert.ok(coast.coastalFrames.waterfront.maxX < coast.coastalFrames.shores.minX);
-  const cabin = createStorybookBoatRoutes(coast.water).find(route => route.id === 'cabin');
+  const boats = createStorybookBoatRoutes(coast.water);
+  const cabin = boats.find(route => route.id === 'cabin');
   assert.ok(cabin.point(Math.PI).x > coast.water.focusX + (room.maxX - room.minX) * .335 + cabin.beam);
+  const sailboat = boats.find(route => route.id === 'sailboat');
+  for (let step = 0; step < 12; step++) {
+    const {x,z} = sailboat.point(step / 12 * Math.PI * 2);
+    assert.ok(shoreAt((x - coast.water.focusX) / (room.maxX - room.minX)) - z > 70);
+  }
 });
 
 test('the authored shoreline gives the volleyball and sandcastle groups distinct dry-sand patches', () => {

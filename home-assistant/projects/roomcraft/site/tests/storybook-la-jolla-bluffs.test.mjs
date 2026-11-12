@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {Color, Vector3} from 'three';
+import {Color, MathUtils, Vector3} from 'three';
 import {buildLaJollaBluffs} from '../ha-local/storybook-la-jolla-bluffs.mjs';
 
 const sandColor = new Color('#eac893');
@@ -9,12 +9,12 @@ const options = {
   span:1000,
   farZ:-245,
   groundY:-111,
-  shoreZ:offset => -370 - 25 * Math.cos((offset + 130) / 120),
+  shoreZ:offset => -410 + 74 * (1 - MathUtils.smootherstep(Math.abs(offset + 290), 0, 145)),
   sampleSand: (offset, z) => ({height:-110.45 + offset * .001 + z * .003, color:sandColor}),
 };
 
 function captureBluffs() {
-  const headlands = [], scrub = [];
+  const headlands = [], scrub = [], stairs = [];
   buildLaJollaBluffs({
     add(geometry) {
       if (geometry.attributes.stoneExposure) {
@@ -24,10 +24,12 @@ function captureBluffs() {
       }
       geometry.dispose();
     },
-    box() {},
+    box(width, height, depth, color, x, y, z) {
+      if (width === 7.4) stairs.push({height, depth, x, y:y + height / 2, z});
+    },
     ball(...shape) { scrub.push(shape); },
   }, options);
-  return {headlands, scrub};
+  return {headlands, scrub, stairs};
 }
 
 function rows(positions) {
@@ -41,25 +43,36 @@ function rows(positions) {
 
 const close = (actual, expected) => Math.abs(actual - expected) < .0001;
 
-test('the two indexed headlands stay left of the house with a pocket beach between them', () => {
+test('one indexed bluff stays left of the house and backs the crescent pocket beach', () => {
   const built = captureBluffs();
   assert.deepEqual(captureBluffs(), built);
-  assert.equal(built.headlands.length, 2);
-  const [west, east] = built.headlands.map(({position}) => rows(position)[0]);
-  assert.ok(west.at(-1)[0] < east[0][0]);
-  assert.ok(east.at(-1)[0] < options.focusX);
-  for (const headland of built.headlands) {
-    const grid = rows(headland.position);
-    const stride = grid[0].length;
-    assert.ok(grid.length > 20);
-    assert.ok(grid.every(row => row.length === stride));
-    assert.equal(headland.index.length, (grid.length - 1) * (stride - 1) * 6);
-    assert.ok(headland.normal.every(Number.isFinite));
-    assert.ok(Math.max(...grid.flat().map(([, y]) => y)) > options.groundY + 40);
-    assert.ok(grid.flat().every(([, , z]) => z < options.farZ - 14));
-    assert.ok(headland.stoneExposure.some(value => value > .95));
-  }
+  assert.equal(built.headlands.length, 1);
+  const [headland] = built.headlands;
+  const grid = rows(headland.position);
+  const [toe] = grid;
+  const stride = toe.length;
+  assert.ok(toe.at(-1)[0] < options.focusX);
+  assert.ok(grid.length > 20);
+  assert.ok(grid.every(row => row.length === stride));
+  assert.equal(headland.index.length, (grid.length - 1) * (stride - 1) * 6);
+  assert.ok(headland.normal.every(Number.isFinite));
+  assert.ok(grid.flat().every(([, , z]) => z < options.farZ - 14));
+  assert.ok(headland.stoneExposure.some(value => value > .95));
   assert.ok(built.scrub.every(([, , , , , y]) => y > options.groundY));
+
+  function offsetAt(fraction) {
+    return toe.reduce((closest, [x], i) => {
+      const target = options.focusX + fraction * options.span;
+      return Math.abs(x - target) < Math.abs(toe[closest][0] - target) ? i : closest;
+    }, 0);
+  }
+  const [west, center, east] = [-.43, -.29, -.145].map(offsetAt);
+  const sandWidth = index => toe[index][2] - options.shoreZ(toe[index][0] - options.focusX);
+  assert.ok(sandWidth(center) > 22 && sandWidth(center) < 32);
+  assert.ok(sandWidth(west) < 12 && sandWidth(east) < 12);
+  for (let index = west; index <= east; index++) {
+    assert.ok(Math.max(...grid.map(row => row[index][1])) > options.groundY + 35);
+  }
 });
 
 test('all toes, sides, and landward skirts taper beneath the adjacent sand with its normals and tint', () => {
@@ -80,4 +93,16 @@ test('all toes, sides, and landward skirts taper beneath the adjacent sand with 
       }
     }
   }
+});
+
+test('the narrow stairs climb from the pocket sand to the continuous bluff trail', () => {
+  const {stairs} = captureBluffs();
+  assert.equal(stairs.length, 17);
+  assert.ok(stairs.every(step => step.height > 0 && step.depth > 1 && step.x === stairs[0].x));
+  for (let index = 1; index < stairs.length; index++) {
+    assert.ok(stairs[index].y > stairs[index - 1].y);
+    assert.ok(stairs[index].z > stairs[index - 1].z);
+  }
+  assert.ok(stairs[0].y - options.sampleSand(stairs[0].x - options.focusX, stairs[0].z).height < 5);
+  assert.ok(stairs.at(-1).y > options.groundY + 35);
 });

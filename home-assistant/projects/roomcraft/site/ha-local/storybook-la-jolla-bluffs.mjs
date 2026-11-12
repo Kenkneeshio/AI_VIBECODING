@@ -1,9 +1,14 @@
 import {BufferGeometry, Color, CylinderGeometry, DodecahedronGeometry, Float32BufferAttribute, MathUtils, Quaternion, Vector3} from 'three';
 
-const HEADLANDS = Object.freeze([
-  {center:-.43, west:.183, east:.112, height:59, phase:2.8, cave:.37, cuts:[[.72, .094, 11], [-.04, .118, 14], [-.65, .104, 9]]},
-  {center:-.145, west:.091, east:.123, height:48, phase:1.1, cuts:[[.49, .105, 11], [-.27, .082, 8]]},
-]);
+const COVE_BLUFF = Object.freeze({
+  center:-.29,
+  west:.315,
+  east:.265,
+  height:56,
+  phase:2.4,
+  cave:-.53,
+  cuts:[[-.72, .046, 9], [-.40, .054, 13], [-.14, .063, 7], [.18, .055, 8], [.53, .058, 11], [.78, .048, 6]],
+});
 
 // Front to back. The toe and the wave-cut platform sit low; recessed joints
 // above them give way to a rounded, planted upland that meets the beach again.
@@ -40,7 +45,8 @@ const TERRAIN = '#fff9e9';
 const SAND_TINT = new Color('#e4c797');
 const PALETTE = CROSS_SECTION.map(([, , color]) => new Color(color));
 const CAP_ROW = 17;
-const SECTIONS = 68;
+const SECTIONS = 132;
+const ACCESS_COLUMN = 86;
 const UP = new Vector3(0, 1, 0);
 
 function layeredMaterial(batch, sandstone) {
@@ -124,7 +130,7 @@ function layeredMaterial(batch, sandstone) {
 }
 
 function shoreRecess(spec, u, height, depth) {
-  const radius = Math.hypot((u - (spec.cave ?? 4)) / .16, (height - .106) / .28);
+  const radius = Math.hypot((u - spec.cave) / .075, (height - .106) / .28);
   return (1 - MathUtils.smoothstep(radius, .05, 1)) * (1 - MathUtils.smoothstep(depth, .21, .36));
 }
 
@@ -144,12 +150,15 @@ function weatheredColor(row, u, spec) {
 function form(spec, offset, coast, farZ, sampleSand, focusX, u, row) {
   const [height, depth] = CROSS_SECTION[row];
   const phase = spec.phase;
-  const shoulder = .48 + .11 * Math.sin(phase + u * 1.4) + .09 * MathUtils.smoothstep(depth, .36, .9);
+  const bay = 1 - MathUtils.smootherstep(Math.abs(u), .09, .58);
+  const shoulder = .64 + .07 * Math.sin(phase + u * 1.4) + .08 * MathUtils.smoothstep(depth, .36, .9);
   const silhouette = 1 - MathUtils.smoothstep(Math.abs(u), shoulder, 1);
-  const relief = silhouette * (1 + .105 * Math.sin(u * 5.2 + phase) + .045 * Math.cos(u * 16 + phase));
+  const relief = silhouette * (1 - .22 * bay - .10 * u + .085 * Math.sin(u * 5.2 + phase) + .04 * Math.cos(u * 16 + phase));
   const indent = Math.sin(u * 17 + phase) * 2.4 + Math.sin(u * 34.6 - phase) * 1.34;
-  const ridge = (Math.sin(u * 8.2 + phase) * 5 + indent) * silhouette;
-  const toe = coast + 1.5 + ridge + 18 * (1 - silhouette);
+  const ridge = (Math.sin(u * 8.2 + phase) * 5 + indent) * silhouette * (1 - .66 * bay);
+  // The brow stays connected around the basin. Its toe wraps around the pocket
+  // beach and meets wave-cut ledges on the shoulders at the same water level.
+  const toe = coast + 1.5 + 24 * bay + ridge + 18 * (1 - silhouette);
   const run = MathUtils.clamp(farZ - 25 - toe, 27, 124);
   const cave = shoreRecess(spec, u, height, depth) * 21;
   const gully = spec.cuts.reduce((sum, [center, width, amplitude]) =>
@@ -293,17 +302,54 @@ function scrub(batch, [x, y, z], size, angle, flowers) {
   }
 }
 
+function profileHeight(profile, z) {
+  let highest = -Infinity;
+  for (let i = 1; i < profile.length; i++) {
+    const [, y0, z0] = profile[i - 1];
+    const [, y1, z1] = profile[i];
+    if (z0 === z1 || z < Math.min(z0, z1) || z > Math.max(z0, z1)) continue;
+    highest = Math.max(highest, MathUtils.lerp(y0, y1, (z - z0) / (z1 - z0)));
+  }
+  return highest;
+}
+
+function addCoveStairs(batch, mesh, sampleSand, focusX) {
+  const profile = mesh.map(row => row[ACCESS_COLUMN]);
+  const [x, topY, topZ] = between(profile[CAP_ROW], profile[CAP_ROW + 1], .72, .25);
+  const footZ = profile[0][2] - 6.5;
+  const footY = sampleSand(x - focusX, footZ).height;
+  const steps = 17;
+  const run = (topZ - footZ) / steps;
+  let previous = footY;
+  const rail = [];
+  for (let i = 1; i <= steps; i++) {
+    const z = footZ + (i - .5) * run;
+    const highZ = z + run * .5;
+    const ground = sampleSand(x - focusX, z).height;
+    const tread = Math.max(previous + .1, MathUtils.lerp(footY, topY, i / steps), profileHeight(profile, highZ) + .25);
+    const height = tread - ground + .2;
+    batch.box(7.4, height, run + .16, i % 2 ? '#b7aa8f' : '#c0b195', x, tread - height / 2, z);
+    batch.box(7.7, .2, .58, '#d8c6a5', x, tread + .1, z - run * .5 + .2);
+    if (i === 1 || i === steps || i % 5 === 0) {
+      batch.box(.44, 3.1, .44, '#927e65', x + 3.53, tread + 1.55, z);
+      rail.push([x + 3.53, tread + 3.0, z]);
+    }
+    previous = tread;
+  }
+  for (let index = 1; index < rail.length; index++) branch(batch, rail[index - 1], rail[index], .18, .18, '#927e65');
+}
+
 function addBluffTop(batch, mesh, spec) {
   const crown = mesh[CAP_ROW], hillside = mesh[CAP_ROW + 1];
   const trailOuter = [], trailInner = [];
-  for (let index = 9; index <= SECTIONS - 9; index++) {
+  for (let index = 13; index <= SECTIONS - 13; index++) {
     const sway = .09 * Math.sin(index * .18 + spec.phase);
     trailOuter.push(between(crown[index], hillside[index], .57 + sway, .10));
     trailInner.push(between(crown[index], hillside[index], .88 + sway, .10));
   }
   ribbon(batch, trailOuter, trailInner, '#c0b387');
 
-  for (let index = 8; index <= SECTIONS - 8; index += 3) {
+  for (let index = 13; index <= SECTIONS - 13; index += 4) {
     const rhythm = .5 + .5 * Math.sin(index * 2.383 + spec.phase);
     const onFace = index % 2 === 0;
     const base = onFace ? mesh[CAP_ROW - 1] : hillside;
@@ -313,45 +359,46 @@ function addBluffTop(batch, mesh, spec) {
     scrub(batch, between(base[index], next[index], u, .12), size, index * 1.49, index % 4 === 0);
   }
 
-  for (const [index, size, turn] of [[19, 18, .7], [35, 22.5, 2.4], [51, 15, 1.7]]) {
+  for (const [index, size, turn] of [[20, 16, .6], [33, 19, 1.9], [50, 16, 2.4], [74, 19, 1.7], [92, 22, 2.8], [112, 16, 4.1]]) {
     const point = between(hillside[index], mesh[CAP_ROW + 2][index], .29, .16);
     cypress(batch, point, size * (.93 + spec.phase * .046), turn + spec.phase);
   }
-  for (const [index, size] of [[23, 7.6], [40, 9.7], [53, 6.5]]) {
+  for (const [index, size] of [[25, 7.6], [39, 9.7], [55, 6.5], [71, 9.6], [83, 7.5], [106, 7.2]]) {
     const point = between(mesh[CAP_ROW - 1][index], crown[index], .61, .18);
     agave(batch, point, size, spec.phase + index);
   }
 
-  const posts = [];
-  for (let index = 13; index <= SECTIONS - 13; index += 8) {
-    const point = between(crown[index], hillside[index], .41, .18);
-    const [x, y, z] = point;
-    batch.box(.85, 3.5, .85, '#a38b70', x, y + 1.8, z);
-    posts.push([x, y + 2.92, z]);
-  }
-  for (let index = 1; index < posts.length; index++) {
-    branch(batch, posts[index - 1], posts[index], .27, .27, '#a38b70');
+  for (const [start, end] of [[17, ACCESS_COLUMN - 2], [ACCESS_COLUMN + 2, SECTIONS - 17]]) {
+    let previous;
+    for (let index = start; ; index = Math.min(end, index + 9)) {
+      const [x, y, z] = between(crown[index], hillside[index], .41, .18);
+      const post = [x, y + 2.92, z];
+      batch.box(.85, 3.5, .85, '#a38b70', x, y + 1.8, z);
+      if (previous) branch(batch, previous, post, .27, .27, '#a38b70');
+      if (index === end) break;
+      previous = post;
+    }
   }
 }
 
-/** Build continuous headlands on the animated shoreline's own coordinates. */
+/** Build the continuous bluff and retain the pocket beach on the shared coastline. */
 export function buildLaJollaBluffs(batch, {
   focusX, span, farZ, groundY, shoreZ, sandstone,
   sampleSand = () => ({height:groundY + .55, color:SAND_TINT}),
 }) {
   layeredMaterial(batch, sandstone);
-  for (const spec of HEADLANDS) {
-    const mesh = CROSS_SECTION.map(() => []);
-    for (let index = 0; index <= SECTIONS; index++) {
-      const u = index / SECTIONS * 2 - 1;
-      const radius = u < 0 ? spec.west : spec.east;
-      const offset = span * (spec.center + radius * u);
-      const coast = shoreZ(offset);
-      for (const [row, positions] of mesh.entries()) {
-        positions.push(form(spec, offset, coast, farZ, sampleSand, focusX, u, row));
-      }
+  const mesh = CROSS_SECTION.map(() => []);
+  for (let index = 0; index <= SECTIONS; index++) {
+    const u = index / SECTIONS * 2 - 1;
+    const radius = u < 0 ? COVE_BLUFF.west : COVE_BLUFF.east;
+    const offset = span * (COVE_BLUFF.center + radius * u);
+    const coast = shoreZ(offset);
+    for (const [row, positions] of mesh.entries()) {
+      positions.push(form(COVE_BLUFF, offset, coast, farZ, sampleSand, focusX, u, row));
     }
-    addTerrain(batch, mesh, sampleSand, focusX);
-    addBluffTop(batch, mesh.map(row => row.map(({point}) => point)), spec);
   }
+  addTerrain(batch, mesh, sampleSand, focusX);
+  const terrain = mesh.map(row => row.map(({point}) => point));
+  addBluffTop(batch, terrain, COVE_BLUFF);
+  addCoveStairs(batch, terrain, sampleSand, focusX);
 }
