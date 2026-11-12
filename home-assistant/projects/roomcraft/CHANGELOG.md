@@ -6,6 +6,7 @@
 - Added a cutaway roof option and separate Blue Prius hatchback and Garage overhead light models. The objects remain independently editable at garage elevation.
 - The overhead fixture uses ordinary light mapping and is left unassigned until its physical controlling entity is identified.
 - See the [garage contract and release record](docs/garage-driveway.md) for editing, module ownership, verification and rollback status.
+- Verified 605 automated tests, GitHub CI, Studio editing/publication, exact HA readback and the wall tablet. Final resource `c913eacbd528db82`; private Studio version 104. Generated shrubs now keep their full canopy clear of garage interiors and stairs.
 
 ## Protect terrain and structure edits
 

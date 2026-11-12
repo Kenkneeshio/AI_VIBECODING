@@ -38,6 +38,10 @@ For the overhead fixture, choose its actual **State entity**, **Tap** and **Hold
 
 If the entrance faces away from the street, is too close or too far away, or all tested approaches cross a structure, the connector is omitted. Reposition or rotate the garage; the engine does not guess a path through the home. [Safe editing](edit-safety.md) continues to protect committed geometry changes.
 
+![Synthetic Studio example with the garage selected, driveway connected and separate car and fixture](images/garage-studio-guide.png)
+
+*Studio demonstration using a synthetic test layout; no household camera imagery or bindings are included.*
+
 ## Persisted contract and units
 
 Layout version 2 and the 1536 × 1024 design space remain unchanged. Values are illustration units, not a physical survey.
@@ -82,7 +86,21 @@ The route uses a bounded set of deterministic candidate curves. Its start follow
 
 ## Verification and release record
 
-The release owner records the exact runtime source, complete release gate, browser/tablet captures, installed resource version, private Site version, layout publication readback and backup receipt here. Feature implementation and focused tests are not deployment evidence.
+Released on 12 November 2026. The initial implementation is `755c351880c2644bc0fcf76198f0abec6abd03db`; the final verified runtime is `1bb5c502af60651eb3222a88732fce679bda3aaa`. The final correction excludes complete shrub canopies from garage and stair footprints, after a tablet check revealed a previously hidden plant inside the cutaway garage.
+
+| Check | Observed result |
+| --- | --- |
+| Source gate | Architecture boundaries, generated-editor drift, 502 site tests, 65 HA tests, 30 installer tests, 8 presence tests, TypeScript, lint, production build and manifest verification passed. Total: 605 tests. Lint retains 17 existing warnings and no errors. |
+| Exact runtime manifest | `sha256:c6b45e4343558519343b17a8ed9d222c95cc11152d3a7d0bf517a13c37ccd73c` across 346 inputs; documentation added after this runtime is evidence, not a claim to have rebuilt that later documentation revision. |
+| GitHub CI | [Final runtime CI passed](https://github.com/Kenkneeshio/AI_VIBECODING/actions/runs/43284462490). |
+| Chrome fixture | Built Studio passed garage Inspector edits, separate catalog placement, car movement and Undo, ground elevations, unassigned light and mock Save. The generated PNG and saved project contain the new models; no physical commands were issued. |
+| Authenticated Studio | The household arrangement was saved through Studio. A post-save helper check reported an error after publication; independent API readback then verified the entire expected layout exactly: only the garage changed, two objects were added, and all other authored fields and existing bindings were preserved. A subsequent read-only Studio check passed. |
+| HA installation | Resource `c913eacbd528db82`. Eleven served files matched built bytes through both LAN and Nabu Casa. Home, Studio and Controls configuration matched the intended migration; all eight non-view fields matched the pre-install backup. |
+| Tablet | Cold-started the calendar tablet Companion app and visually inspected Home at 1920 × 1080: driveway reaches the street, cutaway garage exposes the blue Prius and separate fixture, and foliage no longer intrudes. The app was left on Home. This was visual verification, not a sustained performance benchmark or hardware-light test. |
+| Hosted Studio | Owner-private version 104 deployed successfully from source `7ab490fe12205569e96fdf0e422b04cfa1825631`. Its 256-input app-only manifest is `sha256:67d7d9bb5c3132b3dfb08b66fb7ecdfcc352dcb65530ab86ac41199792cb0545`. Source provenance was read back; hosted browser interaction was not separately repeated. |
+| Backup receipt | Protected pre-layout backup prefix `roomcraft-home-before-garage`; final pre-install backup `roomcraft-home-before-roomcraft-lan-20261112-105326-957611.json`. Both remain in the management backup directory outside Git. |
+
+The overhead fixture has no physical binding yet. The only discovered garage light was attached to the camera, which was not substituted for the requested ceiling fixture. Mapping and explicit on/off behavior are tested with synthetic state; no physical garage light or shutter was actuated. Existing camera availability is outside this change.
 
 Required checks include rotated entrance alignment, sidewalk cut continuity, obstacles and impossible routes, hillside clearance, width bounds, independent selection, real-state fixture behavior, save/import/Undo persistence, and the same objects in Home and Studio. Public tests use synthetic geometry and entity IDs. Private household bindings, backup configuration and camera imagery stay outside Git.
 
