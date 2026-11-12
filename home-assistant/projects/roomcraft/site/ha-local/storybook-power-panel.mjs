@@ -5,6 +5,9 @@ import {bindEnergyExplorer, ENERGY_EXPLORER_MARKUP, ENERGY_EXPLORER_STYLE} from 
 const HOUR = 60 * 60 * 1000;
 const REFRESH = 60 * 1000;
 const format = new Intl.NumberFormat(undefined, {maximumFractionDigits: 2});
+const POWER_FLOW = {
+  draw: 'Drawing power', reverse: 'Feeding power back', idle: 'No current flow',
+};
 
 function readingMarkup(className, decoration = '') {
   return `<button type="button" class="${className}" disabled>${decoration}
@@ -22,7 +25,10 @@ export const POWER_PANEL_MARKUP = `
       <div class="power-grid">
         <div class="power-meter" data-flow="unavailable">
           <div class="power-meter-top">
-            ${readingMarkup('power-main')}
+            <div class="power-live">
+              ${readingMarkup('power-main')}
+              <span class="power-flow"></span>
+            </div>
             <div class="power-house-art" aria-hidden="true">
               <i class="power-orbit"></i><i class="power-orbit power-orbit-inner"></i>
               <i class="power-light"></i><i class="power-house"></i><i class="power-window"></i>
@@ -50,11 +56,14 @@ export const POWER_PANEL_MARKUP = `
   </dialog>`;
 
 export const POWER_PANEL_STYLE = `
-  .power-dialog{--power-space:clamp(12px,2.5vw,20px);box-sizing:border-box;width:min(720px,calc(100% - 24px));
-    max-height:calc(100dvh - 24px);padding:0;border:1px solid #b3a28c;border-radius:18px;overflow:auto;
+  .power-dialog{--power-space:clamp(12px,2vw,28px);--power-width:min(86vw,1680px);
+    box-sizing:border-box;width:var(--power-width);height:min(88dvh,1100px);max-width:calc(100vw - 20px);max-height:calc(100dvh - 24px);
+    padding:0;border:1px solid #b3a28c;border-radius:18px;overflow:auto;
     overscroll-behavior:contain;scroll-padding-top:66px;background:#f6eee1;color:#2b3035;
     box-shadow:0 20px 70px #101923a8;color-scheme:light}
   .power-dialog::backdrop{background:#101922c7}
+  .power-dialog[open]:not([data-reduced-motion]){animation:power-dialog-enter 220ms ease-out both}
+  @keyframes power-dialog-enter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
   .power-heading,.power-chart-head,.power-time{display:flex;align-items:center;justify-content:space-between;gap:10px}
   .power-heading{position:sticky;top:0;z-index:3;padding:10px var(--power-space);background:#fff8eb;border-bottom:1px solid #d4c3a8}
   .power-content{padding:var(--power-space)}
@@ -74,6 +83,7 @@ export const POWER_PANEL_STYLE = `
     background:radial-gradient(ellipse at 92% 10%,#435452 0,transparent 58%),linear-gradient(156deg,#283b42,#202b34 70%);
     color:#fff2db;box-shadow:inset 0 1px #7b777057,0 3px 8px #382e3324}
   .power-meter-top{display:flex;align-items:center;justify-content:space-between;gap:6px}
+  .power-live{min-width:0}
   .power-main,.power-period,.power-other-row{position:relative;display:grid;align-content:center;justify-items:start;
     min-width:0;text-align:left;overflow-wrap:anywhere}
   .power-main{border:1px solid transparent;border-radius:10px;padding:6px 21px 6px 7px;margin-inline-start:-7px;background:transparent}
@@ -88,7 +98,11 @@ export const POWER_PANEL_STYLE = `
   .power-unit{font-size:14px;font-weight:650}
   .power-link{position:absolute;right:9px;top:8px;font-weight:700;font-size:15px}
   .power-dialog button:disabled .power-link,.power-dialog [hidden]{display:none}
-  .power-house-art{position:relative;isolation:isolate;flex:0 0 auto;width:clamp(65px,13vw,105px);aspect-ratio:1;pointer-events:none}
+  .power-flow{display:inline-block;margin:1px 0 2px;padding:3px 7px;border-radius:6px;border:1px solid #aa966a;
+    color:#ffebc1;font-size:12px;font-weight:650}
+  .power-meter[data-flow=reverse] .power-flow{color:#bce9de;border-color:#83aea0}
+  .power-meter[data-flow=idle] .power-flow{color:#f0e9da;border-color:#a29b8e}
+  .power-house-art{position:relative;isolation:isolate;flex:0 0 auto;width:clamp(65px,13vw,128px);aspect-ratio:1;pointer-events:none}
   .power-orbit{position:absolute;inset:9%;border-radius:50%;border:1px solid #e9be7a83;
     box-shadow:inset 0 0 12px #ffd39328,0 0 10px #ffd3931a}
   .power-orbit::after{content:"";position:absolute;top:10%;right:10%;width:6px;height:6px;border-radius:50%;background:#d3b180}
@@ -102,19 +116,27 @@ export const POWER_PANEL_STYLE = `
   .power-meter[data-flow=draw] .power-window{background-color:#fff0b5;box-shadow:0 0 12px #ffe1a68a}
   .power-meter[data-flow=reverse] .power-window{background-color:#a0eee0;box-shadow:0 0 12px #a0eee08a}
   .power-meter[data-flow=reverse] .power-main .power-value{color:#b3eedc}
-  .power-meter:is([data-flow=draw],[data-flow=reverse]) .power-light{opacity:.75;animation:power-glow 5s ease-in-out infinite}
+  .power-meter:is([data-flow=draw],[data-flow=reverse]) .power-light{opacity:.75}
+  .power-dialog[open]:not([data-reduced-motion]) .power-meter:is([data-flow=draw],[data-flow=reverse]) .power-light{
+    animation:power-glow calc(var(--power-period,8s) * .7) ease-in-out infinite}
+  .power-dialog[open]:not([data-reduced-motion]) .power-meter:is([data-flow=draw],[data-flow=reverse]) .power-orbit{
+    animation:power-circuit var(--power-period,8s) linear infinite}
+  .power-dialog[open]:not([data-reduced-motion]) .power-meter:is([data-flow=draw],[data-flow=reverse]) .power-orbit-inner{
+    animation-duration:calc(var(--power-period,8s) * 1.6)}
+  .power-dialog[open]:not([data-reduced-motion]) .power-meter[data-flow=reverse] .power-orbit{animation-direction:reverse}
   .power-meter[data-flow=reverse] .power-light{background:radial-gradient(circle,#90e4c77a,transparent 64%)}
   .power-meter[data-flow=unavailable] .power-house-art{opacity:.45}
+  @keyframes power-circuit{from{transform:rotate(0turn)}to{transform:rotate(1turn)}}
   @keyframes power-glow{50%{opacity:.38}}
-  .power-dialog[data-reduced-motion] .power-light{animation:none}
-  @media(prefers-reduced-motion:reduce){.power-meter[data-flow] .power-light{animation:none}}
   .power-history{margin-top:10px;padding-top:11px;border-top:1px solid #e0c8a16b}
   .power-chart-head{flex-wrap:wrap;gap:5px 10px}
   .power-chart-head h3,.power-other h3{font-size:15px}
   .power-peak,.power-time{font-size:12px;color:#f6e2c6}
   .power-peak{padding:3px 7px;border:1px solid #e0c8a16b;border-radius:6px;font-variant-numeric:tabular-nums}
   .power-graph{display:grid;grid-template-columns:minmax(0,1fr);place-items:center;min-height:82px}
-  .power-graph canvas{display:block;width:100%;height:88px}
+  .power-graph canvas{display:block;width:100%;height:clamp(88px,14dvh,148px)}
+  .power-dialog[open]:not([data-reduced-motion]) .power-graph canvas:not([hidden]){animation:power-chart-enter 420ms ease-out both}
+  @keyframes power-chart-enter{from{opacity:0}to{opacity:1}}
   .power-history-status{margin:6px 0;color:#f6e2c6;font-size:13px;text-align:center}
   .power-time{margin-top:2px}
   .power-periods{display:grid;grid-auto-rows:1fr;gap:12px}
@@ -138,14 +160,23 @@ export const POWER_PANEL_STYLE = `
   .power-other-row:not(:disabled):hover{background:#f2e1c6}
   .power-other-row span:last-child{text-align:right;font-variant-numeric:tabular-nums}
   @media(max-width:560px){
+    .power-dialog{--power-width:calc(100vw - 20px);height:calc(100dvh - 20px)}
     .power-grid{grid-template-columns:1fr}
     .power-periods{grid-template-columns:repeat(2,minmax(0,1fr))}
     .power-periods:has(> [hidden]){grid-template-columns:1fr}
     .power-period{min-height:82px}
+    .power-graph canvas{height:100px}
   }
   ${ENERGY_EXPLORER_STYLE}
+  .power-dialog:has(.energy-explorer:not([hidden])){width:var(--power-width)}
   .power-dialog .energy-heading h3{font-size:19px}
   .power-dialog .energy-period-status{font-size:13px}
+  .power-dialog .energy-tree-stage{max-width:720px}
+  .power-dialog .energy-tree-period,.power-dialog .energy-metrics button span{font-size:12px}
+  @media(prefers-reduced-motion:reduce){
+    .power-dialog[open]:not([data-reduced-motion]),
+    .power-dialog[open]:not([data-reduced-motion]) :is(.power-meter[data-flow] .power-orbit,.power-meter[data-flow] .power-light,.power-graph canvas){animation:none!important}
+  }
 `;
 
 function makeReadingButton(button, onDetails) {
@@ -236,6 +267,7 @@ function drawPowerHistory(canvas, history) {
 export function bindStorybookPower(card) {
   const dialog = card.shadowRoot.querySelector('.power-dialog');
   const meter = dialog.querySelector('.power-meter');
+  const flowLabel = meter.querySelector('.power-flow');
   const periods = dialog.querySelector('.power-periods');
   const today = dialog.querySelector('[data-period=today]');
   const month = dialog.querySelector('[data-period=month]');
@@ -331,8 +363,15 @@ export function bindStorybookPower(card) {
     primary = model.primary;
     const actions = offline() ? undefined : states;
     paintMain(primary, actions, 'Current power');
-    meter.dataset.flow = primary?.watts == null ? 'unavailable' :
+    const flow = primary?.watts == null ? 'unavailable' :
       primary.watts === 0 ? 'idle' : primary.watts < 0 ? 'reverse' : 'draw';
+    meter.dataset.flow = flow;
+    flowLabel.hidden = flow === 'unavailable';
+    flowLabel.textContent = POWER_FLOW[flow] ?? '';
+    if (flow === 'draw' || flow === 'reverse') {
+      const period = Math.max(3, 10 - Math.log10(Math.max(1, Math.abs(primary.watts))) * 1.6);
+      meter.style.setProperty('--power-period', `${period.toFixed(2)}s`);
+    }
     today.hidden = !model.today;
     month.hidden = !model.month;
     periods.hidden = today.hidden && month.hidden;

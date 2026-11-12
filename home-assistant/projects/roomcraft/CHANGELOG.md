@@ -1,5 +1,11 @@
 # Changelog
 
+## Expand Weather, Power and dashboard menus
+
+- The centered menu uses more of the screen. **Calendar & to-dos** has a dedicated dashboard button.
+- **Weather** opens an illustrated panel with 12-hour and seven-day views, a Home Assistant provider selector, and a Windy map. Opening Weather or Power pauses the 3D scene behind the panel.
+- The larger Power panel animates its energy flow in response to the live meter and exposes the history and period totals.
+
 ## Show live frame rate and surface alignment tools
 
 - Home adds an **FPS display** toggle and a camera movement frame limit. An optional current-view filter reduces road and sidewalk draws while zooming or changing the framing.

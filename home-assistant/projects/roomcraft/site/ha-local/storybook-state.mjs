@@ -119,9 +119,9 @@ function vacuumPosition(element, snapshot, state, active, now) {
 }
 
 /** A render input only. The snapshot and clock never enter the saved project. */
-export function storybookFrame(model, snapshot = {}, now = 0, timeZone) {
+export function storybookFrame(model, snapshot = {}, now = 0, timeZone, weatherEntityId = model.weather.weather_entity) {
   const states = Object.create(null);
-  const weather = snapshot[model.weather.weather_entity];
+  const weather = snapshot[weatherEntityId];
   const sun = snapshot[model.weather.sun_entity || 'sun.sun'];
   const moon = snapshot[model.weather.moon_entity];
   const {elevation, azimuth, rising} = sun?.attributes ?? {};

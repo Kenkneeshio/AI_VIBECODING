@@ -4,13 +4,13 @@ Roomcraft Studio edits the layout used by Roomcraft Home. Use the 3D view to arr
 
 ## Use the live dashboard
 
-Open **Roomcraft Home** in the Home Assistant sidebar for the live view. **Power** opens the meter and **Energy map**. **Weather** opens native weather details, and **Menu** holds the remaining controls. All three are along the bottom.
+Open **Roomcraft Home** in the Home Assistant sidebar for the live view. The bottom bar has **Power**, **Weather**, **Calendar & to-dos**, and **Menu**.
 
 Use **On the map** for Object details and Presence tracking, and **View controls** for view presets, rotation, zoom and default view settings. **Manage** opens Layout Studio and popups for Object models, Devices and sensors, Indoor air and System health when configured. The labels from **Object details** show each linked control's name and current state. The toggle is saved in the current browser.
 
 ### Explore energy use
 
-The Power meter shows the current reading and the last hour of recorded power. Under **Energy map**, choose **Live power**, **Today**, **Calendar month**, or **Billing cycle**. Select the illustrated whole-home hub or a branch to see its readings. Use **Find a circuit or plug** to search all configured meters, including branches outside the visible tree. Tap a reading with an arrow to open its source in Home Assistant.
+The Power meter shows the current reading and the last hour of recorded power. Its illustrated flow follows the direction and magnitude of the whole-home reading. Under **Energy map**, choose **Live power**, **Today**, **Calendar month**, or **Billing cycle**. Select the illustrated whole-home hub or a branch to see its readings. Use **Find a circuit or plug** to search all configured meters, including branches outside the visible tree. Tap a reading with an arrow to open its source in Home Assistant.
 
 Calendar month starts on the first day in Home Assistant’s timezone. Its **Recorded through** timestamp shows the latest usable Recorder measurement for the selected meter. **Billing cycle** follows the meter’s actual cycle reset. **Shared circuit** means the reading covers the connected circuit as a whole. A smart plug shows its own measured load. The whole-home hub reads its own meter so overlapping channels stay separate.
 
@@ -20,7 +20,9 @@ Choose **Menu → Location sharing** to open a map inside Roomcraft Home. Pan or
 
 To add people who already share their location with you on Google, connect the account that receives those shares. [Home Assistant setup for existing Google shares](https://www.home-assistant.io/integrations/google_maps/#note-for-existing-location-sharing-users)
 
-Choose **Menu → Calendar & to-dos** for Home Assistant’s own Calendar and To-do lists.
+Tap **Calendar & to-dos** on the bottom bar for Home Assistant’s Calendar and To-do lists. On narrower screens, the button reads **Calendar**.
+
+Tap **Weather** for current conditions, the next 12 hours, or the seven-day outlook when supported by the selected Home Assistant provider. Select a **Provider** to use it for both the popup and the scene in this browser. Open **Windy map** for an interactive regional map. Closing Weather unloads the map. [Home Assistant weather integrations](https://www.home-assistant.io/integrations/weather/) · [Windy map embed](https://embed.windy.com/config/map)
 
 Choose **Menu → Commute traffic** for **All routes** or an individual route’s travel time and delay. The road cars illustrate the measured pace relative to clear-road times. Administrators can change destinations, route sources, and clear-road times from the panel. Use a route’s Google Maps link for directions. [Google Maps Travel Time](https://www.home-assistant.io/integrations/google_travel_time/)
 

@@ -58,7 +58,7 @@ export function storybookWeather(environment = {}, offline = false) {
 }
 
 export const storybookWeatherMarkup = `
-  <button type="button" class="dock-button weather" disabled aria-label="Weather unavailable">
+  <button type="button" class="dock-button weather" disabled aria-haspopup="dialog" aria-label="Weather unavailable">
     <span class="weather-glyph" aria-hidden="true"></span>
     <span>Weather</span><span class="weather-temperature"></span>
   </button>`;

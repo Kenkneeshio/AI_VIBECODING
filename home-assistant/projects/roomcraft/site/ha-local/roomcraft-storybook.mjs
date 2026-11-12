@@ -9,6 +9,7 @@ import {enterFreeView, normalizeCameraView, populateCameraOptions, readSavedFree
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
 import {placeStorybookDetails, placeStorybookTargets, readStorybookConfig, storybookFrame, storybookPreview} from './storybook-state.mjs';
 import {storybookWeather, storybookWeatherMarkup, storybookWeatherStyles, updateStorybookWeather} from './storybook-weather.mjs';
+import {createStorybookWeatherPanel, STORYBOOK_WEATHER_PANEL_MARKUP, STORYBOOK_WEATHER_PANEL_STYLE} from './storybook-weather-panel.mjs';
 import {COASTAL_SKY_STYLE, COASTAL_SKY_MARKUP, updateCoastalSky} from './storybook-coastal-sky.mjs';
 import {sceneDockAlignment, sceneFeatureEnabled, sceneWind} from './storybook-scene-settings.mjs';
 import {bindStorybookDisplaySettings, DISPLAY_SETTINGS_MARKUP, DISPLAY_SETTINGS_STYLE,
@@ -80,18 +81,28 @@ class RoomcraftStorybookCard extends HTMLElement {
         .default-status:empty{display:none}
         .main-menu-wrap{position:relative}
         .menu-glyph{width:14px;height:2px;border-radius:2px;background:currentColor;box-shadow:0 5px 0 currentColor,0 -5px 0 currentColor}
-        .main-menu{position:absolute;right:0;bottom:calc(100% + 9px);width:min(620px,calc(100vw - 26px));
-          max-height:min(76dvh,630px);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:8px;
-          box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:10px;border:1px solid #b9a58a;border-radius:18px;
+        .main-menu{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(88vw,1400px);
+          max-height:88dvh;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start;gap:10px;
+          box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:clamp(10px,2vw,24px);border:1px solid #b9a58a;border-radius:18px;
           color-scheme:light;background:#eee4d3;color:#312f29;box-shadow:0 14px 44px #0c182977}
         .main-menu[hidden]{display:none}
-        @media(max-width:650px){.main-menu{width:min(375px,calc(100vw - 26px));grid-template-columns:minmax(0,1fr)}}
+        .main-menu-header{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 2px 3px}
+        .main-menu-header h2{margin:0;font-size:clamp(19px,3vw,27px);line-height:1.15}
+        .bar .main-menu .close-main-menu{width:auto;background:#fffaf1;border:1px solid #d8c7ae;padding-inline:14px}
+        .planner-glyph{width:15px;height:14px;box-sizing:border-box;border:1.5px solid currentColor;border-radius:3px;
+          background:linear-gradient(to bottom,transparent 3px,currentColor 3px 4px,transparent 4px)}
+        .planner-short-label{display:none}
+        @media(max-width:920px){.main-menu{width:calc(100vw - 24px);grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:610px){
+          .main-menu{grid-template-columns:minmax(0,1fr)}
+          .bar nav{flex-wrap:wrap;justify-content:inherit}
+          .bar .dock-button{min-width:0;padding-inline:8px}
+          .planner-long-label{display:none}
+          .planner-short-label{display:inline}
+        }
+        @media(max-width:365px){.bar .weather-temperature{display:none}}
         .world[data-dock=left] .bar{justify-content:flex-start}
         .world[data-dock=center] .bar{justify-content:center}
-        .world:is([data-dock=left],[data-dock=center]) .main-menu-wrap{position:static}
-        .world:is([data-dock=left],[data-dock=center]) .main-menu{right:auto;bottom:calc(100% + 4px)}
-        .world[data-dock=left] .main-menu{left:clamp(7px,1.4vw,23px)}
-        .world[data-dock=center] .main-menu{left:50%;transform:translateX(-50%)}
         .bar .main-menu :is(button,a){width:100%;justify-content:flex-start;text-align:left;border-radius:7px}
         .main-menu button:disabled{opacity:.35;cursor:default}
         .main-menu button:hover:not(:disabled),.main-menu a:hover{background:#f2e9d9;text-decoration:none}
@@ -218,6 +229,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         .tethers{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
         @media(max-width:540px){.bar nav{gap:5px}.bar a,.bar button{padding-inline:7px}}
         ${storybookWeatherStyles}
+        ${STORYBOOK_WEATHER_PANEL_STYLE}
         ${COASTAL_SKY_STYLE}
         ${DISPLAY_SETTINGS_STYLE}
         ${POWER_PANEL_STYLE}
@@ -267,10 +279,15 @@ class RoomcraftStorybookCard extends HTMLElement {
               <span class="power-glyph" aria-hidden="true"></span> Power
             </button>
             ${storybookWeatherMarkup}
+            <button type="button" class="dock-button" data-link-dialog="planner" aria-haspopup="dialog" aria-label="Calendar and to-dos">
+              <span class="planner-glyph" aria-hidden="true"></span>
+              <span class="planner-long-label">Calendar &amp; to-dos</span><span class="planner-short-label">Calendar</span>
+            </button>
             <span class="default-status" role="status" aria-live="polite"></span>
             <div class="main-menu-wrap">
               <button type="button" class="dock-button main-menu-button" aria-label="Main menu" aria-expanded="false" aria-controls="storybook-main-menu"><span class="menu-glyph" aria-hidden="true"></span> Menu</button>
-              <div class="main-menu" id="storybook-main-menu" hidden>
+              <div class="main-menu" id="storybook-main-menu" role="region" aria-label="Dashboard menu" hidden>
+                <header class="main-menu-header"><h2>Menu</h2><button type="button" class="close-main-menu">Close</button></header>
                 <section class="menu-group" aria-label="Display">
                   <p class="menu-heading" aria-hidden="true">Display</p>
                   <button type="button" class="menu-primary open-display-settings" aria-haspopup="dialog">Display settings</button>
@@ -318,7 +335,6 @@ class RoomcraftStorybookCard extends HTMLElement {
                 </section>
                 <section class="menu-group" aria-label="Household">
                   <p class="menu-heading" aria-hidden="true">Household</p>
-                  <button type="button" data-link-dialog="planner" aria-haspopup="dialog">Calendar &amp; to-dos</button>
                   <button type="button" data-link-dialog="location" aria-haspopup="dialog">Location sharing</button>
                   <button type="button" data-link-dialog="commute" aria-haspopup="dialog">Commute traffic</button>
                   <button type="button" class="demo-start" disabled>45-second demo</button>
@@ -352,6 +368,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         </nav>
       </dialog>
       ${COMMUTE_DIALOG_MARKUP}
+      ${STORYBOOK_WEATHER_PANEL_MARKUP}
       ${SNAPSHOT_DIALOG_MARKUP}
       ${DISPLAY_SETTINGS_MARKUP}
       ${STORYBOOK_LIGHT_PANEL}
@@ -374,6 +391,14 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.tethers = this.shadowRoot.querySelector('.tethers');
     this.dock = this.shadowRoot.querySelector('.bar');
     this.weather = this.shadowRoot.querySelector('.weather');
+    this.weatherDialog = this.shadowRoot.querySelector('.storybook-weather-dialog');
+    this.powerDialog = this.shadowRoot.querySelector('.power-dialog');
+    this.weatherPanel = createStorybookWeatherPanel(this.weatherDialog, {
+      onProviderChange: () => this.refresh(),
+    });
+    for (const dialog of [this.weatherDialog, this.powerDialog]) {
+      dialog.addEventListener('close', () => this.schedule());
+    }
     this.status = this.shadowRoot.querySelector('.status');
     this.recovery = this.status.querySelector('.recovery');
     this.viewSelect = this.shadowRoot.querySelector('#storybook-view');
@@ -474,6 +499,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       dialog.querySelector('[data-close-link]').addEventListener('click', () => dialog.close());
     }
     this.menuButton.addEventListener('click', () => this.setMainMenu(this.mainMenu.hidden));
+    this.mainMenu.querySelector('.close-main-menu').addEventListener('click', () => this.setMainMenu(false, true));
     this.onMenuPointerDown = event => {
       const path = event.composedPath();
       if (!path.includes(this.menuButton) && !path.includes(this.mainMenu)) {
@@ -561,9 +587,8 @@ class RoomcraftStorybookCard extends HTMLElement {
       } else this.refresh();
     };
     this.weather.addEventListener('click', () => {
-      const entityId = this.model?.weather.weather_entity;
-      if (entityId) this.dispatchEvent(new CustomEvent('hass-more-info',
-        {bubbles: true, composed: true, detail: {entityId}}));
+      this.setMainMenu(false);
+      this.weatherPanel.open();
     });
     this.canvas.addEventListener('webglcontextlost', event => {
       event.preventDefault();
@@ -603,10 +628,14 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   get studioPath() { return `/${this.dashboard || 'roomcraft-home'}/studio`; }
+  get weatherEntityId() { return this.weatherPanel.effectiveEntityId ?? this.model?.weather.weather_entity; }
+  get largePanelOpen() { return this.weatherDialog.open || this.powerDialog.open; }
 
   set hass(value) {
     const previous = this.session;
+    const previousWeatherEntity = this.weatherEntityId;
     this.session = value;
+    this.weatherPanel.update(value, this.model?.weather.weather_entity, {reduceMotion:this.motionReduced});
     this.heatMap.sync();
     this.snapshots.sync();
     this.commutes.sync();
@@ -627,7 +656,9 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.load();
       return;
     }
-    if (value?.connected !== previous?.connected || value?.config?.time_zone !== previous?.config?.time_zone ||
+    const weatherEntity = this.weatherEntityId;
+    if (weatherEntity !== previousWeatherEntity || value?.states?.[weatherEntity] !== previous?.states?.[weatherEntity] ||
+        value?.connected !== previous?.connected || value?.config?.time_zone !== previous?.config?.time_zone ||
         [...this.model.watch].some(id => value?.states?.[id] !== previous?.states?.[id])) this.refresh();
   }
 
@@ -735,6 +766,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   syncMotionPreference() {
     this.world.toggleAttribute('data-reduced-motion', this.motionReduced);
     this.power.reducedMotion(this.motionReduced);
+    this.weatherPanel.update(this.session, this.model?.weather.weather_entity, {reduceMotion:this.motionReduced});
     this.reduceMotionButton.setAttribute('aria-pressed', String(this.motionReduced));
     this.reduceMotionButton.disabled = this.motionPreference.matches;
     this.reduceMotionButton.title = this.motionPreference.matches ? 'Your device requests reduced motion' : '';
@@ -845,6 +877,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       if (!this.isConnected || this.loading !== request) return;
       this.loadStartupView();
       this.model = readStorybookConfig(config);
+      this.weatherPanel.update(this.session, this.model.weather.weather_entity, {reduceMotion:this.motionReduced});
       for (const id of this.commutes.configure(config?.roomcraft_commutes)) this.model.watch.add(id);
       this.locationPanel.configure(config?.roomcraft_location);
       this.locationPanel.update(this.session);
@@ -1164,7 +1197,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   paintWeather(environment, offline, demo = false) {
     this.paintSky(environment, offline);
     updateStorybookWeather(this.dock, this.weather, storybookWeather(environment, offline),
-      !demo && !offline && Boolean(this.model?.weather.weather_entity));
+      !demo);
   }
 
   refresh() {
@@ -1172,7 +1205,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     const offline = !this.session || this.session.connected === false;
     const states = offline ? {} : this.session.states ?? {};
     const now = Date.now();
-    this.frame = storybookFrame(this.model, states, now, this.session?.config?.time_zone);
+    this.frame = storybookFrame(this.model, states, now, this.session?.config?.time_zone, this.weatherEntityId);
     const commute = this.commutes.update(offline ? undefined : states, now);
     this.frame.environment.traffic = {...(commute.profile ?? AMBIENT_TRAFFIC),
       vehicleStyle: this.commutes.vehicleStyle()};
@@ -1218,9 +1251,13 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   schedule() {
-    if (this.animationFrame !== undefined || !this.scene || !this.frame || document.hidden) return;
+    if (this.animationFrame !== undefined || !this.scene || !this.frame || document.hidden || this.largePanelOpen) return;
     this.animationFrame = requestAnimationFrame(at => {
       this.animationFrame = undefined;
+      if (this.largePanelOpen) {
+        if (!this.fpsDisplay.hidden) this.resetFpsSample('0 FPS');
+        return;
+      }
       const {frameRate, cameraFrameRate} = this.displaySettings.value;
       const movingCamera = this.demoRun || at < this.cameraMotionUntil;
       const interval = 1000 / Math.min(frameRate, (movingCamera ? cameraFrameRate : null) ?? frameRate);
@@ -1332,6 +1369,7 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   reset() {
     this.heatMap.configure();
+    this.weatherPanel.close();
     this.vacuumMapOverlay.configure(null);
     this.lightPanel.close();
     this.stopDemo(false);

@@ -1,5 +1,9 @@
 # Decision log
 
+## Give Weather and Power room to show their data
+
+Use large panels for Weather and Power and keep the Calendar and To-do links on their own dock button. Pause the main 3D draw loop while a large data panel covers the dashboard. Weather reads authenticated Home Assistant forecasts for the selected browser-local provider. Windy opens on request with a rounded regional map center and unloads when closed. Power animation follows the signed whole-home reading and honors reduced motion.
+
 ## Measure actual scene draws and limit camera work
 
 Measure the FPS badge at the Home render loop, so it reports scene draws instead of the browser's refresh rate. The main cap always applies. Camera movement can use a lower limit, and each rendered frame applies the latest requested camera position. The optional scene optimization checks road and sidewalk actor bounds against the camera frustum, including a margin for their visible effects.
