@@ -77,6 +77,12 @@ export function compileStorybookSidewalk(road) {
   const nightAdults = [-1, 1].map(direction => walkers.find(actor => actor.direction === direction && !actor.child)).filter(Boolean);
   const nightBikes = [-1, 1].map(direction => cyclists.find(actor => actor.direction === direction)).filter(Boolean);
 
+  function pose(actor, x, gait) {
+    const path = road.sample?.(x, actor.z);
+    const yaw = (path?.yaw ?? 0) + (actor.direction > 0 ? 0 : Math.PI);
+    return {...actor, x:path?.x ?? x, z:path?.z ?? actor.z, yaw, gait};
+  }
+
   function sample(seconds = 0, reduceMotion = false, {night = false, activity} = {}) {
     const time = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
     if (activity === 'overnight') return {walkers: [], cyclists: []};
@@ -92,14 +98,12 @@ export function compileStorybookSidewalk(road) {
       const actor = actors[(passage + 1) % actors.length];
       const offset = elapsed / duration * span;
       const x = start + (actor.direction > 0 ? offset : span - offset);
-      const posed = {...actor, x, gait: elapsed * (cycling ? 7 : 10) + actor.phase};
+      const posed = pose(actor, x, elapsed * (cycling ? 7 : 10) + actor.phase);
       return cycling ? {walkers: [], cyclists: [posed]} : {walkers: [posed], cyclists: []};
     }
-    const place = (actors, speed, cadence) => actors.map(actor => ({
-      ...actor,
-      x: start + wrap(actor.offset + actor.direction * speed * time, span),
-      gait: reduceMotion ? 0 : time * cadence + actor.phase,
-    }));
+    const place = (actors, speed, cadence) => actors.map(actor =>
+      pose(actor, start + wrap(actor.offset + actor.direction * speed * time, span),
+        reduceMotion ? 0 : time * cadence + actor.phase));
     return {walkers: place(walkers, WALK_SPEED, 10), cyclists: place(cyclists, CYCLE_SPEED, 7)};
   }
   return {walkers, cyclists, sample};
@@ -227,19 +231,19 @@ export function createStorybookSidewalk(road) {
     let shadowIndex = 0;
     function shadow(actor, length, width) {
       transform.position.set(actor.x, actor.y + .065, actor.z);
-      transform.rotation.set(0, 0, 0);
+      transform.rotation.set(0, actor.yaw, 0);
       transform.scale.set(length * actor.scale, 1, width * actor.scale);
       transform.updateMatrix();
       shadows.setMatrixAt(shadowIndex++, transform.matrix);
     }
     for (const actor of frame.walkers) {
-      const {direction, scale} = actor;
+      const {scale, yaw} = actor;
       // The body, moving limbs, and painted contact shadow all fit inside this envelope.
       if (inView && !inView(actor.x, actor.y + 12 * scale, actor.z, 15 * scale)) continue;
-      const yaw = direction > 0 ? 0 : Math.PI;
+      const cosine = Math.cos(yaw), sine = Math.sin(yaw);
       paintWalker(actor, reduceMotion, (shade, x, y, z, width, height, depth, lean = 0) => {
-        transform.position.set(actor.x + x * scale * direction, actor.y + y * scale,
-          actor.z + z * scale * direction);
+        transform.position.set(actor.x + (x * cosine + z * sine) * scale, actor.y + y * scale,
+          actor.z + (z * cosine - x * sine) * scale);
         transform.rotation.set(0, yaw, lean);
         transform.scale.set(width * scale, height * scale, depth * scale);
         transform.updateMatrix();
@@ -254,7 +258,7 @@ export function createStorybookSidewalk(road) {
         Math.hypot(actor.style.length * .6, 20) * actor.scale)) continue;
       const index = bikeCounts.get(actor.style.id) ?? 0;
       transform.position.set(actor.x, actor.y, actor.z);
-      transform.rotation.set(0, actor.direction > 0 ? 0 : Math.PI, 0);
+      transform.rotation.set(0, actor.yaw, 0);
       if (!reduceMotion) transform.rotateX(Math.sin(actor.gait) * .028);
       transform.scale.setScalar(actor.scale);
       transform.updateMatrix();

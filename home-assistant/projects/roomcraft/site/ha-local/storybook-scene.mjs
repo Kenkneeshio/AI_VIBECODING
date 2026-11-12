@@ -767,7 +767,7 @@ function buildYard(batch, plan, street, treeWind) {
     for (const [shiftX, shiftZ] of [[0, 0], [lateral * (radius + 20), 0], [0, towardOutside * (radius + 20)]]) {
       const nextX = x + shiftX;
       const nextZ = z + shiftZ;
-      if (nextZ - radius <= street.nearZ) continue;
+      if (nextZ - radius <= street.sample(nextX, street.nearZ).z) continue;
       if (nextX + radius > minX && nextX - radius < maxX && nextZ + radius > minZ && nextZ - radius < maxZ) continue;
       const meetsStructure = structures.some(structure => {
         const dx = nextX - structure.x;
@@ -784,7 +784,8 @@ function buildYard(batch, plan, street, treeWind) {
   for (const [seed, kind, fx, shoreOffset] of [
     [5633, 'date-palm', .065, 21], [2081, 'fan-palm', .93, 20], [7313, 'date-palm', .985, 32],
   ]) {
-    treeWind.add({kind, x: minX + fx * width, z: street.farZ - shoreOffset,
+    const x = minX + fx * width;
+    treeWind.add({kind, x, z: street.sample(x, street.farZ).z - shoreOffset,
       groundY: GROUND_Y + .68, seed});
   }
 }
@@ -1075,7 +1076,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   const shoreCenter = water.shoreline.reduce((closest, point) =>
     Math.abs(point.x - water.focusX) < Math.abs(closest.x - water.focusX) ? point : closest);
   const sceneryFocus = {
-    road: {x: road.centerX, y: road.surfaceY + 8, z: (road.lanes[0] + road.lanes[1]) / 2},
+    road: {x: road.centerX, y: road.surfaceY + 8, z: road.sample(road.centerX, (road.lanes[0] + road.lanes[1]) / 2).z},
     coast: {x: water.cove.x, y: water.y + 9, z: water.cove.z - 20},
     beach: {x: water.focusX, y: water.y + 8, z: shoreCenter.z + 37},
   };

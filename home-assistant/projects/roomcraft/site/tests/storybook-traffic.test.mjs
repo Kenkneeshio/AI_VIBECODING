@@ -6,7 +6,9 @@ import {buildStorybookStreet} from '../ha-local/storybook-street.mjs';
 import {createStorybookTraffic, createTrafficMotion} from '../ha-local/storybook-traffic.mjs';
 import {STORYBOOK_VEHICLES} from '../ha-local/storybook-vehicles.mjs';
 
-const road = buildStorybookStreet({box() {}}, {nearZ: -80, farZ: -224}, -111, 6200, 768);
+const street = buildStorybookStreet({box() {}, add(geometry) { geometry.dispose(); }},
+  {nearZ: -80, farZ: -224}, -111, 6200, 768);
+const road = {...street, sample: undefined};
 const profile = severity => ({severity});
 const snapshot = slots => slots.map(({x, z, lane, index}) => ({x, z, lane, index}));
 
@@ -196,6 +198,47 @@ test('night beams start at modeled headlights and point forward in each lane', (
   traffic.update(3, {...profile('ambient'), vehicleStyle:'ruby-motorcycle'}, night);
   assert.equal(beams.count, slots.length);
   assert.equal(halos.count, slots.length * 2);
+  traffic.dispose();
+});
+
+test('curved lanes keep cars, shadows and night lighting on one sampled road tangent', () => {
+  const curvedRoad = {...road, sample(x, baselineZ) {
+    const phase = x * .009;
+    return {x, z:baselineZ + 42 * Math.sin(phase), yaw:-Math.atan(.378 * Math.cos(phase))};
+  }};
+  const traffic = createStorybookTraffic(curvedRoad);
+  const sedan = {...profile('ambient'), vehicleStyle:'seafoam-sedan'};
+  const time = 6;
+  const slots = createTrafficMotion(road).update(time, sedan, false, true);
+  traffic.update(time, sedan, {night:true, transientTelemetry:true});
+  const cars = traffic.root.getObjectByName('vehicle-seafoam-sedan').children[0];
+  const shadows = traffic.root.children[0];
+  const beams = traffic.root.getObjectByName('road-headlight-beams');
+  const halos = traffic.root.getObjectByName('road-lamp-halos');
+  const matrix = new THREE.Matrix4();
+  const point = new THREE.Vector3();
+  const car = new THREE.Vector3();
+  for (const [index, slot] of slots.entries()) {
+    const pose = curvedRoad.sample(slot.x, slot.z);
+    const angle = pose.yaw + (slot.lane ? Math.PI : 0);
+    const forward = new THREE.Vector3(Math.cos(angle), 0, -Math.sin(angle));
+    const center = new THREE.Vector3(pose.x, curvedRoad.surfaceY, pose.z);
+    for (const mesh of [cars, shadows]) {
+      mesh.getMatrixAt(index, matrix);
+      assert.ok(point.setFromMatrixPosition(matrix).distanceTo(center) < .001);
+      assert.ok(point.set(1, 0, 0).transformDirection(matrix).distanceTo(forward) < .001);
+    }
+    car.copy(center);
+    for (const side of [0, 1]) {
+      beams.getMatrixAt(index * 2 + side, matrix);
+      assert.ok(point.setFromMatrixPosition(matrix).sub(car).dot(forward) > 23);
+      assert.ok(point.set(1, 0, 0).transformDirection(matrix).distanceTo(forward) < .001);
+      halos.getMatrixAt(index * 4 + side, matrix);
+      assert.ok(point.setFromMatrixPosition(matrix).sub(car).dot(forward) > 23);
+      halos.getMatrixAt(index * 4 + side + 2, matrix);
+      assert.ok(point.setFromMatrixPosition(matrix).sub(car).dot(forward) < -22);
+    }
+  }
   traffic.dispose();
 });
 

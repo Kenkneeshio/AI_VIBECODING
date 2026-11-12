@@ -44,6 +44,8 @@ const CROSS_SECTION = [
 const TERRAIN = '#fff9e9';
 const SAND_TINT = new Color('#e4c797');
 const PALETTE = CROSS_SECTION.map(([, , color]) => new Color(color));
+const DRY_BANK = new Color('#ad9b6e');
+const SAGE_BANK = new Color('#8a9566');
 const CAP_ROW = 17;
 const SECTIONS = 132;
 const ACCESS_COLUMN = 86;
@@ -137,17 +139,26 @@ function shoreRecess(spec, u, height, depth) {
 function weatheredColor(row, u, spec) {
   const color = PALETTE[row].clone();
   const {phase} = spec;
+  const [height, depth] = CROSS_SECTION[row];
   const seam = Math.sin(u * 8.2 + row * .41 + phase) * .055 +
     Math.sin(u * 22.7 - row * .83 + phase) * .041;
-  if (row < CAP_ROW) {
-    const [height, depth] = CROSS_SECTION[row];
-    return color.multiplyScalar(1 + seam - .67 * shoreRecess(spec, u, height, depth));
+  if (depth < .39) return color.multiplyScalar(1 + seam - .67 * shoreRecess(spec, u, height, depth));
+
+  // Recede from the lip through interrupted grass and sandy brush on the
+  // apron. The plant line moves up and down the profile with the runoff ribs.
+  const margin = .50 + .095 * Math.sin(u * 10.3 + phase) + .05 * Math.sin(u * 27.4 - phase);
+  const dryBank = MathUtils.smoothstep(depth, .72, 1.29);
+  const pattern = .5 + .30 * Math.sin(u * 14.3 + depth * 8.4 + phase) +
+    .20 * Math.sin(u * 36.9 - depth * 7.5);
+  const cover = MathUtils.smoothstep(depth, margin - .11, margin + .10) * (1 - dryBank * .64);
+  if (row >= CAP_ROW - 1) {
+    color.lerp(DRY_BANK, (.28 + .48 * dryBank) * pattern);
   }
-  color.lerp(PALETTE[CAP_ROW], .15 + .12 * Math.sin(u * 13 + row));
-  return color.multiplyScalar(1 + seam * 1.7);
+  color.lerp(SAGE_BANK, cover * (.23 + .34 * (1 - pattern)));
+  return color.multiplyScalar(1 + seam * 1.38);
 }
 
-function form(spec, offset, coast, farZ, sampleSand, focusX, u, row) {
+function form(spec, offset, coast, roadEdge, sampleSand, focusX, u, row) {
   const [height, depth] = CROSS_SECTION[row];
   const phase = spec.phase;
   const bay = 1 - MathUtils.smootherstep(Math.abs(u), .09, .58);
@@ -159,7 +170,7 @@ function form(spec, offset, coast, farZ, sampleSand, focusX, u, row) {
   // The brow stays connected around the basin. Its toe wraps around the pocket
   // beach and meets wave-cut ledges on the shoulders at the same water level.
   const toe = coast + 1.5 + 24 * bay + ridge + 18 * (1 - silhouette);
-  const run = MathUtils.clamp(farZ - 25 - toe, 27, 124);
+  const run = MathUtils.clamp(roadEdge - 25 - toe, 27, 124);
   const cave = shoreRecess(spec, u, height, depth) * 21;
   const gully = spec.cuts.reduce((sum, [center, width, amplitude]) =>
     sum + (1 - MathUtils.smoothstep(Math.abs(u - center), width * .28, width)) * amplitude, 0);
@@ -167,7 +178,7 @@ function form(spec, offset, coast, farZ, sampleSand, focusX, u, row) {
   const grain = Math.sin(u * 12.8 + phase) * .016 + Math.sin(u * 39 - phase + row * .73) * .008;
   const taper = Math.min(1, relief * 2.8);
   const apron = MathUtils.smoothstep(depth, .74, 1.34);
-  const end = Math.min(farZ - 16, toe + run * (1.31 + .055 * Math.sin(u * 12 + phase)));
+  const end = Math.min(roadEdge - 16, toe + run * (1.31 + .055 * Math.sin(u * 12 + phase)));
   const landDepth = depth <= .74 ? toe + run * depth :
     MathUtils.lerp(toe + run * .74, end, (depth - .74) / .6);
   const z = landDepth + (cave + erosion + ridge * Math.sin(row * .55) * .69) * taper * (1 - apron);
@@ -302,6 +313,45 @@ function scrub(batch, [x, y, z], size, angle, flowers) {
   }
 }
 
+function duneTuft(batch, [x, y, z], size, phase) {
+  const colors = ['#a4a575', '#c6b37c', '#8a9567'];
+  const front = [0, 1, 3, 0, 3, 2, 1, 4, 3, 2, 3, 5, 3, 4, 5];
+  const back = [6, 9, 7, 6, 8, 9, 7, 9, 10, 8, 11, 9, 9, 11, 10];
+  for (let blade = 0; blade < 3; blade++) {
+    const angle = phase + blade * 2.39;
+    const depth = size * (.33 + blade * .08);
+    const length = size * (1.10 - blade * .13);
+    const width = size * .085;
+    const leaf = new BufferGeometry();
+    const points = [-width, 0, 0, width, 0, 0,
+      -width * .7, length * .54, depth * .22, 0, length * .54, depth * .34,
+      width * .7, length * .54, depth * .22, 0, length, depth];
+    leaf.setAttribute('position', new Float32BufferAttribute([...points, ...points], 3));
+    leaf.setIndex([...front, ...back]);
+    leaf.computeVertexNormals();
+    batch.add(leaf, colors[blade], x + Math.cos(angle) * size * .20, y, z + Math.sin(angle) * size * .20, angle);
+  }
+}
+
+function addBackshorePlants(batch, mesh, spec, roadEdgeAt) {
+  const phase = spec.phase;
+  for (let index = 8; index <= SECTIONS - 8; index += 3) {
+    const cluster = .5 + .33 * Math.sin(index * .35 + phase) + .17 * Math.cos(index * 1.09);
+    if (cluster < .31) continue;
+    const footprint = .5 + .5 * Math.cos(index * 2.37 + phase);
+    const row = footprint < .57 ? 22 : 23;
+    const point = between(mesh[row][index], mesh[row + 1][index], footprint, .05);
+    const [x, , z] = point;
+    const size = 1.9 + 2.9 * cluster;
+    if (z + size + 3 > roadEdgeAt(x)) continue;
+    duneTuft(batch, point, size, index * 2.44);
+    if (cluster > .72) {
+      const center = between(mesh[row - 1][index + 1], mesh[row][index + 1], .75, .08);
+      scrub(batch, center, size * .91, phase + index * 2.53, index % 4 === 0);
+    }
+  }
+}
+
 function profileHeight(profile, z) {
   let highest = -Infinity;
   for (let i = 1; i < profile.length; i++) {
@@ -385,6 +435,7 @@ function addBluffTop(batch, mesh, spec) {
 export function buildLaJollaBluffs(batch, {
   focusX, span, farZ, groundY, shoreZ, sandstone,
   sampleSand = () => ({height:groundY + .55, color:SAND_TINT}),
+  roadEdgeAt = () => farZ,
 }) {
   layeredMaterial(batch, sandstone);
   const mesh = CROSS_SECTION.map(() => []);
@@ -393,12 +444,14 @@ export function buildLaJollaBluffs(batch, {
     const radius = u < 0 ? COVE_BLUFF.west : COVE_BLUFF.east;
     const offset = span * (COVE_BLUFF.center + radius * u);
     const coast = shoreZ(offset);
+    const edge = roadEdgeAt(focusX + offset);
     for (const [row, positions] of mesh.entries()) {
-      positions.push(form(COVE_BLUFF, offset, coast, farZ, sampleSand, focusX, u, row));
+      positions.push(form(COVE_BLUFF, offset, coast, edge, sampleSand, focusX, u, row));
     }
   }
   addTerrain(batch, mesh, sampleSand, focusX);
   const terrain = mesh.map(row => row.map(({point}) => point));
   addBluffTop(batch, terrain, COVE_BLUFF);
+  addBackshorePlants(batch, terrain, COVE_BLUFF, roadEdgeAt);
   addCoveStairs(batch, terrain, sampleSand, focusX);
 }

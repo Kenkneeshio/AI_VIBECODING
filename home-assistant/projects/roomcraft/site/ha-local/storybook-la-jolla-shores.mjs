@@ -123,8 +123,8 @@ function seasideBench(batch, x, y, z, angle = 0) {
   for (const dy of [4.28, 5.38]) box(16.6, .85, .7, tones.wood, 0, dy, 2.2);
 }
 
-function parkLawn(batch, samples, farZ, groundY) {
-  const profile = [0, .18, .36, .58, .77, .91, 1];
+function parkLawn(batch, samples, {focusX, groundY, roadEdgeAt, sampleSand}) {
+  const profile = [0, .18, .36, .58, .72, .83, .93, 1];
   const rows = profile.length;
   const points = [];
   const uv = [];
@@ -132,23 +132,27 @@ function parkLawn(batch, samples, farZ, groundY) {
   const faces = [];
   const edge = new THREE.Color('#a0a367');
   const interior = new THREE.Color('#82a65a');
-  const sand = new THREE.Color('#d8b78a');
+  const sandFallback = {height:groundY + .36, color:new THREE.Color('#d8b78a')};
   const swatch = new THREE.Color();
   for (const [column,[x,pathZ]] of samples.entries()) {
     const t = column / (samples.length - 1);
     const shoreSide = pathZ + 3.3;
-    const inlandSide = Math.max(shoreSide + .8, Math.min(farZ - 2.5 - 5.5 * Math.sin(t * 3 * Math.PI) ** 2,
+    const setback = 3.0 + 4.4 * Math.sin(t * 3 * Math.PI) ** 2 + 1.6 * Math.sin(t * 11 * Math.PI) ** 2;
+    const inlandSide = Math.max(shoreSide + .8, Math.min(roadEdgeAt(x) - setback,
       shoreSide + 9 + 62 * Math.sin(t * Math.PI) ** .72));
-    const ends = THREE.MathUtils.smoothstep(Math.min(t, 1 - t), 0, .068);
-    const parkLevel = THREE.MathUtils.lerp(.36, 4.66, THREE.MathUtils.smoothstep(inlandSide - shoreSide, 1, 8));
+    const ends = THREE.MathUtils.smoothstep(Math.min(t, 1 - t), 0, .083);
+    const berm = THREE.MathUtils.smoothstep(inlandSide - shoreSide, 1, 9) * ends;
     for (const [row, v] of profile.entries()) {
-      const y = THREE.MathUtils.lerp(parkLevel, .36, v) + 1.4 * Math.sin(Math.PI * v) * Math.sin(Math.PI * t);
-      points.push(x, groundY + y, THREE.MathUtils.lerp(shoreSide, inlandSide, v));
+      const z = THREE.MathUtils.lerp(shoreSide, inlandSide, v);
+      const sand = sampleSand?.(x - focusX, z) ?? sandFallback;
+      const lift = (groundY + 4.66 - sand.height) * (1 - v) + 1.4 * Math.sin(Math.PI * v) * Math.sin(Math.PI * t);
+      points.push(x, sand.height + .018 + berm * lift, z);
       uv.push(t, v);
       const grass = Math.sin(v * Math.PI) ** .38;
-      const amount = ends * (1 - THREE.MathUtils.smoothstep(v, .78, 1));
+      const fadeStart = .72 + .06 * Math.sin(t * 17 * Math.PI) * Math.sin(t * 5 * Math.PI);
+      const amount = ends * (1 - THREE.MathUtils.smoothstep(v, fadeStart, 1));
       const variation = .95 + .07 * Math.sin(t * 20.1 + v * 3.6) + .035 * Math.cos(t * 35.6 + v * 7.4);
-      swatch.copy(edge).lerp(interior, grass).lerp(sand, 1 - amount).multiplyScalar(THREE.MathUtils.lerp(.98, variation, amount));
+      swatch.copy(edge).lerp(interior, grass).multiplyScalar(variation).lerp(sand.color, 1 - amount);
       colors.push(swatch.r, swatch.g, swatch.b);
       if (column && row) {
         const a = column * rows + row;
@@ -167,14 +171,17 @@ function parkLawn(batch, samples, farZ, groundY) {
   batch.add(geometry, material ? LAWN_MATERIAL : tones.green, 0, 0, 0);
 }
 
-function promenade(batch, focusX, span, farZ, groundY) {
+function promenade(batch, {focusX, span, farZ, groundY, roadEdgeAt, sampleSand}) {
   const steps = 36;
   const samples = Array.from({length:steps + 1}, (_, index) => {
     const t = index / steps;
+    const x = focusX + span * (.05 + t * .60);
     const phase = 3.2 * Math.PI * (1 - t) - .8;
     const bend = Math.sin(Math.PI * t) ** .74 * (35 + 14 * Math.sin(phase));
-    const approach = 19 * Math.abs(2 * t - 1) ** 12;
-    return [focusX + span * (.05 + t * .60), farZ - 24 - bend + approach];
+    const approach = Math.abs(2 * t - 1) ** 12;
+    const edge = roadEdgeAt(x);
+    const z = THREE.MathUtils.lerp(farZ - 24 - bend, edge - 6, approach);
+    return [x, Math.min(z, edge - THREE.MathUtils.lerp(16, 6, approach))];
   });
   const pathTop = groundY + 4.7;
   const band = (offset, y) => samples.map(([x,z]) => [x, y, z + offset]);
@@ -184,11 +191,17 @@ function promenade(batch, focusX, span, farZ, groundY) {
   ribbon(batch, band(-12, pathTop), band(-14, pathTop + .5), tones.ivory);
   ribbon(batch, band(-14, pathTop + .50), band(-14.75, groundY + 1.45), tones.sandstone);
   ribbon(batch, band(-14.75, groundY + 1.45), band(-15.6, groundY + .70), tones.shadow);
-  parkLawn(batch, samples, farZ, groundY);
+  parkLawn(batch, samples, {focusX, groundY, roadEdgeAt, sampleSand});
   for (const [x,z] of [samples[0], samples.at(-1)]) {
-    const start = z - 7.0;
-    const stop = farZ + .8;
-    batch.box(13.6, .48, stop - start, tones.concrete, x, pathTop - .12, (start + stop) / 2);
+    const inland = [], seaward = [];
+    for (let step = 0; step <= 8; step++) {
+      const spread = step / 4 - 1;
+      const curbX = x + spread * 11.8;
+      const walkX = x + spread * 7.2;
+      inland.push([curbX, groundY + 4.98, roadEdgeAt(curbX) + .55]);
+      seaward.push([walkX, pathTop - .10, Math.min(z - 8.2 + 2.6 * spread * spread, roadEdgeAt(walkX) - 9.5)]);
+    }
+    ribbon(batch, inland, seaward, tones.concrete);
   }
   for (const [i,[x,z]] of samples.entries()) {
     batch.box(.31, .16, 11.15, tones.sandstone, x, pathTop + .04, z - 6.0);
@@ -349,31 +362,40 @@ function parkPlayground(batch, x, y, z) {
 
 /** Landmarks in authored plan coordinates. All parts share scene lighting and the world camera. */
 export function buildLaJollaShores(batch, site) {
-  const {focusX, span, farZ, groundY, shoreZ} = site;
-  promenade(batch, focusX, span, farZ, groundY);
+  const {focusX, span, farZ, groundY, shoreZ, roadEdgeAt = () => farZ, sampleSand} = site;
+  const parkDepth = (x, depth) => Math.min(farZ - depth, roadEdgeAt(x) - 9);
+  promenade(batch, {focusX, span, farZ, groundY, roadEdgeAt, sampleSand});
   scrippsPier(batch, site);
   const stationOffset = .175 * span;
   lifeguardStation(batch, focusX + stationOffset, groundY + .52,
     Math.max(farZ - 93, shoreZ(stationOffset) + 30));
-  parkPlayground(batch, focusX + span * .42, groundY + 3.55, farZ - 27.0);
+  const playgroundX = focusX + span * .42;
+  parkPlayground(batch, playgroundX, groundY + 3.55, Math.min(farZ - 27, roadEdgeAt(playgroundX) - 18));
   for (const [kind, fraction, depth, height, seed] of [
     ['shore-pine', .592, 28, 75, 6195], ['shore-pine', .358, 32, 65, 7204],
     ['shore-pine', .128, 26, 69, 1939], ['cypress', .561, 25, 69, 6204],
     ['cypress', .174, 31, 58, 2345], ['cypress', .104, 18, 53, 6179],
   ]) {
-    addStorybookTree(batch, {kind, x:focusX + fraction * span,
-      z:farZ - depth, groundY:groundY + 2.7, height, seed});
+    const x = focusX + fraction * span;
+    addStorybookTree(batch, {kind, x, z:parkDepth(x, depth), groundY:groundY + 2.7, height, seed});
   }
   for (const [f,z,h,bearing] of [
     [.548, 13.2, 49, .36], [.325, 16.0, 41, 2.06], [.271, 15.6, 43, 1.20],
     [.238, 25.5, 53, 2.30], [.084, 16.0, 39, .45],
-  ]) seashorePalm(batch, focusX + f * span, groundY + 2.7, farZ - z, h, bearing);
+  ]) {
+    const x = focusX + f * span;
+    seashorePalm(batch, x, groundY + 2.7, parkDepth(x, z), h, bearing);
+  }
   for (const [f,z,size,phase] of [
     [.587, 18, 4.2, 2.2], [.548, 25, 3.3, 3.4], [.476, 17, 3.7, .9], [.369, 12, 5.2, 2.7],
     [.322, 20, 4.5, 1.3], [.271, 25, 4.1, 4.7], [.240, 16, 3.1, .4], [.215, 14, 3.1, 2.9],
     [.137, 17, 3.8, 4.2], [.112, 22, 4.2, 2.9], [.089, 16, 3.1, 3.4],
-  ]) lowPlanting(batch, focusX + f * span, groundY + 2.75, farZ - z, size, phase);
+  ]) {
+    const x = focusX + f * span;
+    lowPlanting(batch, x, groundY + 2.75, parkDepth(x, z), size, phase);
+  }
   for (const [f,z,size,phase] of [[.60,16,8.8,.4],[.48,31,7.4,2.0],[.34,27,9.0,4.6],[.25,14,7.7,2.4],[.15,24,8.5,5.3],[.075,15,8.3,1.3]]) {
-    coastalAgave(batch, focusX + f * span, groundY + 2.6, farZ - z, size, phase);
+    const x = focusX + f * span;
+    coastalAgave(batch, x, groundY + 2.6, parkDepth(x, z), size, phase);
   }
 }

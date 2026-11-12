@@ -10,6 +10,25 @@ const BEACH_VIEW_DEPTH = 236;
 const SAND_MATERIAL = '#fffbec';
 const SHORE_LANDMARKS = Object.freeze({point: -.43, cove: -.29, eastShelf: -.145});
 const COVE_OFFSETS = Object.freeze({point: -196, beach: -92, eastShelf: -174});
+const STRAIGHT_STREET = (x, z) => ({x, z, yaw: 0});
+
+function streetProfile(centerX, span) {
+  // A broad bend behind the Cove leads into a shallow reverse bend at Shores.
+  // Keep the verge and all travel lanes on the same profile and tangent.
+  const bends = [[-.36, .275, 33], [.255, .24, -13], [.68, .36, 13]];
+  return (x, baselineZ) => {
+    const u = (x - centerX) / span;
+    let offset = 0;
+    let slope = 0;
+    for (const [center, spread, amplitude] of bends) {
+      const d = (u - center) / spread;
+      const lift = amplitude * Math.exp(-d * d);
+      offset += lift;
+      slope -= 2 * d * lift / (spread * span);
+    }
+    return {x, z: baselineZ + offset, yaw: -Math.atan(slope)};
+  };
+}
 
 export function storybookStreetBounds(plan) {
   const {minZ, maxZ} = plan.houseBounds;
@@ -17,17 +36,43 @@ export function storybookStreetBounds(plan) {
   const path = plan.editableStructure ? Infinity : minZ - 146;
   const nearZ = Math.min(plan.bounds.minZ, shrubs, path) - VERGE_WIDTH;
   const farZ = nearZ - 2 * WALK_WIDTH - ROAD_WIDTH;
-  return {nearZ, farZ, sceneryMinZ: farZ - BEACH_VIEW_DEPTH};
+  const {minX, maxX} = plan.houseBounds;
+  const sample = streetProfile((minX + maxX) / 2, Math.max(940, maxX - minX));
+  return {nearZ, farZ, sceneryMinZ: farZ - BEACH_VIEW_DEPTH, sample};
 }
 
-export function buildStorybookStreet(batch, {nearZ, farZ}, groundY, width, centerX) {
+function streetRibbon(batch, sample, xs, z0, z1, y0, y1, color, reverse = false) {
+  const positions = [], uv = [], indices = [];
+  for (let column = 0; column < xs.length; column++) {
+    const x = xs[column];
+    const z = sample(x, z0).z;
+    positions.push(x, y0, z, x, y1, z + (z1 - z0));
+    uv.push(x / 80, z / 80, x / 80, (z + z1 - z0) / 80);
+    if (column === 0) continue;
+    const i = 2 * (column - 1);
+    if (reverse) indices.push(i, i + 2, i + 1, i + 2, i + 3, i + 1);
+    else indices.push(i, i + 1, i + 2, i + 2, i + 1, i + 3);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  batch.add(geometry, color, 0, 0, 0);
+}
+
+export function buildStorybookStreet(batch, {nearZ, farZ, sample = STRAIGHT_STREET}, groundY, width, centerX) {
   const roadNorth = farZ + WALK_WIDTH;
   const roadSouth = nearZ - WALK_WIDTH;
   const roadCenter = (roadNorth + roadSouth) / 2;
   const left = centerX - width / 2;
   const right = centerX + width / 2;
-  const strip = (start, end, height, color) =>
-    batch.box(width, height, end - start, color, centerX, groundY + height / 2, (start + end) / 2);
+  const sections = Math.ceil(width / 9);
+  const xs = Array.from({length: sections + 1}, (_, i) => left + i * width / sections);
+  const strip = (start, end, height, color, columns = xs) =>
+    streetRibbon(batch, sample, columns, start, end, groundY + height, groundY + height, color);
+  const wall = (at, bottom, top, color, reverse) =>
+    streetRibbon(batch, sample, xs, at, at, groundY + bottom, groundY + top, color, reverse);
 
   strip(roadNorth, roadSouth, 1.2, '#73767c');
   strip(roadNorth, roadNorth + 3.4, 1.4, '#656b71');
@@ -37,18 +82,23 @@ export function buildStorybookStreet(batch, {nearZ, farZ}, groundY, width, cente
     [farZ, roadNorth, roadNorth - CURB_WIDTH, farZ],
     [roadSouth, nearZ, roadSouth, roadSouth + CURB_WIDTH],
   ]) {
-    strip(start, end, 5, '#c0b6a7');
-    strip(curbStart, curbStart + CURB_WIDTH, 6.2, '#d0c3b0');
     const pavingWidth = WALK_WIDTH - CURB_WIDTH;
+    strip(pavingStart, pavingStart + pavingWidth, 5, '#c0b6a7');
+    strip(curbStart, curbStart + CURB_WIDTH, 6.2, '#d0c3b0');
+    const isNorth = start === farZ;
+    wall(isNorth ? start : end, 0, 5, '#a99e8e', !isNorth);
+    wall(isNorth ? curbStart : curbStart + CURB_WIDTH, 5, 6.2, '#b1a797', !isNorth);
+    wall(isNorth ? end : start, 1.2, 6.2, '#a99e8e', isNorth);
     for (let x = left + 36; x < right; x += 72) {
-      batch.box(1.15, 0.18, pavingWidth, '#a69c91', x, groundY + 5.04, pavingStart + pavingWidth / 2);
+      strip(pavingStart, pavingStart + pavingWidth, 5.12, '#a69c91', [x - .58, x + .58]);
     }
   }
 
   for (let x = left + 36; x + 17 < right; x += 72) {
-    batch.box(34, 0.2, 2.8, '#e9ce91', x, groundY + 1.24, roadCenter);
+    strip(roadCenter - 1.4, roadCenter + 1.4, 1.34, '#e9ce91',
+      [x - 17, x - 8.5, x, x + 8.5, x + 17]);
   }
-  return {centerX, width, surfaceY: groundY + 1.24,
+  return {centerX, width, sample, surfaceY: groundY + 1.24,
     lanes: [(roadCenter + roadSouth) / 2, (roadNorth + roadCenter) / 2],
     sidewalks: [
       {minZ: roadSouth + CURB_WIDTH, maxZ: nearZ, surfaceY: groundY + 5},
@@ -181,28 +231,45 @@ function addTidalShelves(batch, {focusX, span, sampleSand, shoreZ: coast}) {
 
 const SAND_PROFILE = [
   [-29, .14, 'wet'], [-4, .32, 'wet'], [4, .42, 'damp'], [11, .49, 'damp'],
-  [23, .67, 'dry'], [34, .73, 'dry'], [48, .68, 'dry'], [64, .59, 'dry'], [null, .27, 'backshore'],
+  [23, .67, 'dry'], [34, .73, 'dry'], [48, .68, 'dry'], [64, .59, 'dry'],
+  [.43, .49, 'backshore'], [.78, .35, 'scrub'], [1, .27, 'verge'],
 ];
+const DRY_SAND_END = 7;
 const SAND_TINTS = Object.fromEntries(Object.entries({
-  wet:'#bb9976', damp:'#d8b994', dry:'#f2d7a7', backshore:'#d8b78a',
+  wet:'#bb9976', damp:'#d8b994', dry:'#f2d7a7', backshore:'#d9bd93', scrub:'#c8b48a', verge:'#c5b28d',
 }).map(([name, tint]) => [name, new THREE.Color(tint)]));
+const DUNE_GREEN = new THREE.Color('#a5af79');
+
+function backshoreVariation(x) {
+  return .57 * Math.sin(x * .038) + .31 * Math.cos(x * .016 + 1.9) + .12 * Math.sin(x * .081 - .8);
+}
 
 function sandRowColor(x, row, result = new THREE.Color()) {
   const striation = .97 + .022 * Math.sin(x * .023 + row * .64) + .017 * Math.sin(x * .054 - row);
-  return result.copy(SAND_TINTS[SAND_PROFILE[row][2]]).multiplyScalar(striation);
+  result.copy(SAND_TINTS[SAND_PROFILE[row][2]]);
+  if (row > DRY_SAND_END) {
+    const scrub = THREE.MathUtils.smoothstep(backshoreVariation(x), -.67, .72);
+    const strength = [.18, .67, .88][row - DRY_SAND_END - 1];
+    result.lerp(DUNE_GREEN, strength * scrub);
+  }
+  return result.multiplyScalar(striation);
 }
 
-function sandProfileZ(shore, farZ, offset) {
-  return offset === null ? farZ + .35 : Math.min(farZ - 1, shore + offset);
+function sandProfileZ(x, shore, roadside, row) {
+  const [offset] = SAND_PROFILE[row];
+  if (row <= DRY_SAND_END) return Math.min(roadside - 16, shore + offset);
+  const dryEnd = Math.min(roadside - 16, shore + SAND_PROFILE[DRY_SAND_END][0]);
+  const irregularity = .17 * Math.sin(Math.PI * offset) * backshoreVariation(x);
+  return THREE.MathUtils.lerp(dryEnd, roadside + .35, offset + irregularity);
 }
 
-function sampleSand(x, shore, farZ, depth, groundY) {
+function sampleSand(x, shore, roadside, depth, groundY) {
   for (let row = 1; row < SAND_PROFILE.length; row++) {
-    const [offset, height] = SAND_PROFILE[row];
-    const next = sandProfileZ(shore, farZ, offset);
+    const [, height] = SAND_PROFILE[row];
+    const next = sandProfileZ(x, shore, roadside, row);
     if (depth > next) continue;
-    const [before, base] = SAND_PROFILE[row - 1];
-    const prior = sandProfileZ(shore, farZ, before);
+    const [, base] = SAND_PROFILE[row - 1];
+    const prior = sandProfileZ(x, shore, roadside, row - 1);
     const fraction = THREE.MathUtils.clamp((depth - prior) / Math.max(.001, next - prior), 0, 1);
     return {height:groundY + THREE.MathUtils.lerp(base, height, fraction),
       color:sandRowColor(x, row - 1).lerp(sandRowColor(x, row), fraction)};
@@ -210,12 +277,13 @@ function sampleSand(x, shore, farZ, depth, groundY) {
   return {height:groundY + SAND_PROFILE.at(-1)[1], color:sandRowColor(x, SAND_PROFILE.length - 1)};
 }
 
-function sandSurface(batch, shoreline, farZ, groundY) {
+function sandSurface(batch, shoreline, roadEdgeAt, groundY) {
   const position = [], colors = [], faces = [], uv = [];
   const shade = new THREE.Color();
   for (const [index, {x, z}] of shoreline.entries()) {
-    for (const [row, [offset, y]] of SAND_PROFILE.entries()) {
-      const depth = sandProfileZ(z, farZ, offset);
+    const roadside = roadEdgeAt(x);
+    for (const [row, [, y]] of SAND_PROFILE.entries()) {
+      const depth = sandProfileZ(x, z, roadside, row);
       sandRowColor(x, row, shade);
       position.push(x, groundY + y, depth);
       colors.push(shade.r, shade.g, shade.b);
@@ -264,20 +332,24 @@ function sandSurface(batch, shoreline, farZ, groundY) {
   batch.add(geometry, SAND_MATERIAL, 0, 0, 0);
 }
 
-export function buildStorybookNeighborhood(batch, {farZ}, groundY, {minX, maxX},
+export function buildStorybookNeighborhood(batch, {farZ, sample = STRAIGHT_STREET}, groundY, {minX, maxX},
   groundWidth = 6200, groundCenterX = (minX + maxX) / 2, {sandstone} = {}) {
   const focusX = (minX + maxX) / 2;
   const span = Math.max(940, maxX - minX);
   const segments = Math.ceil(groundWidth / 9);
   const left = groundCenterX - groundWidth / 2;
   const edge = offset => shoreZ(farZ, offset, span);
+  const roadEdgeAt = x => sample(x, farZ).z;
   const shoreline = Array.from({length: segments + 1}, (_, index) => {
     const x = left + groundWidth * index / segments;
     return {x, z: edge(x - focusX)};
   });
-  const sandAt = (offset, z) => sampleSand(focusX + offset, edge(offset), farZ, z, groundY);
-  const coast = {focusX, span, farZ, groundY, shoreZ:edge, sandstone, sampleSand:sandAt};
-  sandSurface(batch, shoreline, farZ, groundY);
+  const sandAt = (offset, z) => {
+    const x = focusX + offset;
+    return sampleSand(x, edge(offset), roadEdgeAt(x), z, groundY);
+  };
+  const coast = {focusX, span, farZ, groundY, shoreZ:edge, roadEdgeAt, sandstone, sampleSand:sandAt};
+  sandSurface(batch, shoreline, roadEdgeAt, groundY);
   buildLaJollaShores(batch, coast);
   buildLaJollaBluffs(batch, coast);
   addTidalShelves(batch, coast);

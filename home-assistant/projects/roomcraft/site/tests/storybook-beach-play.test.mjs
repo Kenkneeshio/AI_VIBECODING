@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
-import {buildStorybookNeighborhood} from '../ha-local/storybook-street.mjs';
+import {buildStorybookNeighborhood, buildStorybookStreet, storybookStreetBounds} from '../ha-local/storybook-street.mjs';
 import {createStorybookBoatRoutes} from '../ha-local/storybook-boats.mjs';
 import {createStorybookBeachPlay, planStorybookBeachPlay, sampleStorybookBeachPlay} from '../ha-local/storybook-beach-play.mjs';
 
@@ -41,7 +41,6 @@ test('La Jolla shares the sculpted shore between the sand, water, and cinematic 
   assert.ok(eastArc.every((z, i) => i === 0 || z < eastArc[i - 1]));
   assert.ok(Math.abs(shoreAt(.36) - shoreAt(.49)) < 10, 'Shores remains a broad gentle beach');
   assert.ok(shoreAt(.46) > Math.max(shoreAt(.05), shoreAt(.88)) + 15, 'the broader bay bows inland at Shores');
-  assert.equal(coast.sand.vertices, coast.water.shoreline.length * 9);
   assert.equal(coast.sand.vertices, coast.sand.coloredVertices);
   assert.ok(coast.sandGrade.every(y => y > -111 && y < coast.water.y));
   assert.ok(coast.water.cove.x < coast.water.focusX);
@@ -53,6 +52,49 @@ test('La Jolla shares the sculpted shore between the sand, water, and cinematic 
   for (let step = 0; step < 12; step++) {
     const {x,z} = sailboat.point(step / 12 * Math.PI * 2);
     assert.ok(shoreAt((x - coast.water.focusX) / (room.maxX - room.minX)) - z > 70);
+  }
+});
+
+test('the authored road bends smoothly and the sidewalk meets the graded beach at every column', () => {
+  const house = {minX:220, maxX:1450, minZ:210, maxZ:820};
+  const curved = storybookStreetBounds({houseBounds:house, bounds:house, editableStructure:true});
+  const points = Array.from({length: 101}, (_, i) => house.minX + i * (house.maxX - house.minX) / 100);
+  const shifts = points.map(x => curved.sample(x, curved.farZ).z);
+  assert.ok(Math.max(...shifts) - Math.min(...shifts) > 35);
+  assert.ok(shifts[25] > Math.max(shifts[0], shifts[50]), 'the coast road bends inward behind the Cove');
+  assert.ok(shifts[75] < Math.min(shifts[50], shifts[100]), 'a broad reverse bend leads past Shores');
+  for (const x of points) {
+    const {z, yaw} = curved.sample(x, curved.farZ);
+    const slope = (curved.sample(x + .01, curved.farZ).z - curved.sample(x - .01, curved.farZ).z) / .02;
+    assert.ok(Math.abs(Math.tan(-yaw) - slope) < 1e-8);
+    assert.ok(Math.abs(slope) < .15, 'no sharp kinks');
+    assert.ok(Math.abs(curved.sample(x, curved.nearZ).z - z - (curved.nearZ - curved.farZ)) < 1e-8);
+  }
+
+  const width = 1800, centerX = 835, ground = -111;
+  const sidewalks = [], geometryByColor = new Map();
+  const batch = {
+    box() {}, ball() {},
+    add(geometry, color) {
+      const position = geometry.attributes.position;
+      if (color === '#c0b6a7') sidewalks.push(position);
+      else if (color === '#fffbec') geometryByColor.set(color, position);
+      geometry.dispose();
+    },
+  };
+  const road = buildStorybookStreet(batch, curved, ground, width, centerX);
+  const {water} = buildStorybookNeighborhood(batch, curved, ground, house, width, centerX);
+  const beach = geometryByColor.get('#fffbec');
+  const walk = sidewalks[0];
+  const rows = beach.count / water.shoreline.length;
+  assert.equal(walk.count / 2, water.shoreline.length);
+  for (const [column, {x}] of water.shoreline.entries()) {
+    const border = walk.getZ(2 * column);
+    const lastSand = (column + 1) * rows - 1;
+    assert.ok(Math.abs(border - road.sample(x, curved.farZ).z) < .001);
+    assert.ok(Math.abs(beach.getZ(lastSand) - border - .35) < .001, 'sand reaches below the paving');
+    assert.ok(Math.abs(water.sandHeight(x, border + .35) - beach.getY(lastSand)) < .001);
+    for (let i = lastSand - rows + 2; i <= lastSand; i++) assert.ok(beach.getZ(i) > beach.getZ(i - 1));
   }
 });
 

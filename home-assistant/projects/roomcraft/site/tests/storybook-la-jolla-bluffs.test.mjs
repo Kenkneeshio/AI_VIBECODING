@@ -13,7 +13,7 @@ const options = {
   sampleSand: (offset, z) => ({height:-110.45 + offset * .001 + z * .003, color:sandColor}),
 };
 
-function captureBluffs() {
+function captureBluffs(overrides = {}) {
   const headlands = [], scrub = [], stairs = [];
   buildLaJollaBluffs({
     add(geometry) {
@@ -28,7 +28,7 @@ function captureBluffs() {
       if (width === 7.4) stairs.push({height, depth, x, y:y + height / 2, z});
     },
     ball(...shape) { scrub.push(shape); },
-  }, options);
+  }, {...options, ...overrides});
   return {headlands, scrub, stairs};
 }
 
@@ -105,4 +105,14 @@ test('the narrow stairs climb from the pocket sand to the continuous bluff trail
   }
   assert.ok(stairs[0].y - options.sampleSand(stairs[0].x - options.focusX, stairs[0].z).height < 5);
   assert.ok(stairs.at(-1).y > options.groundY + 35);
+});
+
+test('the bluff apron follows the curved landward boundary while staying clear of the sidewalk', () => {
+  const roadEdgeAt = x => options.farZ + 15 + 12 * Math.cos((x - options.focusX) * .018);
+  const {headlands} = captureBluffs({roadEdgeAt});
+  const grid = rows(headlands[0].position);
+  const apron = grid.at(-1);
+  assert.ok(apron.some(([, , z]) => z > options.farZ - 14));
+  assert.ok(grid.flat().every(([x, , z]) => z < roadEdgeAt(x) - 14));
+  assert.ok(apron.every(([x, y, z]) => close(options.sampleSand(x - options.focusX, z).height - y, .19)));
 });

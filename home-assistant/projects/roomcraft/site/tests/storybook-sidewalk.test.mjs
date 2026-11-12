@@ -77,6 +77,55 @@ test('evening gives one complete passage at a time, with empty and overnight fra
   sidewalk.dispose();
 });
 
+test('curved sidewalks preserve stripe offsets, turn figures, and keep evening passages aligned', () => {
+  const curvedRoad = {...road, sample(x, baselineZ) {
+    const phase = x * .008;
+    return {x, z:baselineZ + 40 * Math.sin(phase), yaw:-Math.atan(.32 * Math.cos(phase))};
+  }};
+  const straight = compileStorybookSidewalk(road);
+  const curved = compileStorybookSidewalk(curvedRoad);
+  for (const [time, options] of [[11, {}], [54, {night:true}], [315, {night:true}]]) {
+    const before = straight.sample(time, false, options);
+    const after = curved.sample(time, false, options);
+    for (const group of ['walkers', 'cyclists']) {
+      assert.equal(after[group].length, before[group].length);
+      for (const [index, {x, y, z, yaw, gait}] of before[group].entries()) {
+        const {z: shifted, yaw: tangent} = curvedRoad.sample(x, z);
+        assert.deepEqual([after[group][index].x, after[group][index].y, after[group][index].z,
+          after[group][index].yaw, after[group][index].gait], [x, y, shifted, yaw + tangent, gait]);
+      }
+    }
+  }
+  const flatScene = createStorybookSidewalk(road);
+  const curvedScene = createStorybookSidewalk(curvedRoad);
+  const first = straight.sample(11);
+  const next = curved.sample(11);
+  flatScene.update(11, {transientTelemetry:true});
+  curvedScene.update(11, {transientTelemetry:true});
+  const walkerLayer = 'sidewalk-walkers';
+  const flatMatrix = new THREE.Matrix4();
+  const curvedMatrix = new THREE.Matrix4();
+  flatScene.root.getObjectByName(walkerLayer).getMatrixAt(3, flatMatrix);
+  curvedScene.root.getObjectByName(walkerLayer).getMatrixAt(3, curvedMatrix);
+  const start = first.walkers[0], end = next.walkers[0];
+  const from = new THREE.Vector3(start.x, start.y, start.z);
+  const to = new THREE.Vector3(end.x, end.y, end.z);
+  const up = new THREE.Vector3(0, 1, 0);
+  const expectedPart = new THREE.Vector3().setFromMatrixPosition(flatMatrix).sub(from)
+    .applyAxisAngle(up, end.yaw - start.yaw).add(to);
+  assert.ok(new THREE.Vector3().setFromMatrixPosition(curvedMatrix).distanceTo(expectedPart) < .001);
+
+  const rider = next.cyclists[0];
+  const bike = curvedScene.root.children.find(layer => layer.name.startsWith('sidewalk-bicycle-' + rider.style.id));
+  bike.getMatrixAt(0, curvedMatrix);
+  assert.ok(new THREE.Vector3().setFromMatrixPosition(curvedMatrix)
+    .distanceTo(new THREE.Vector3(rider.x, rider.y, rider.z)) < .001);
+  assert.ok(new THREE.Vector3(1, 0, 0).transformDirection(curvedMatrix)
+    .distanceTo(new THREE.Vector3(Math.cos(rider.yaw), 0, -Math.sin(rider.yaw))) < .001);
+  flatScene.dispose();
+  curvedScene.dispose();
+});
+
 function snapshot(sidewalk) {
   const matrix = new THREE.Matrix4();
   return sidewalk.root.children.map(mesh => [

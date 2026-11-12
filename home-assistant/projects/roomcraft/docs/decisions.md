@@ -1,5 +1,9 @@
 # Decision log
 
+## Share one coastal road profile
+
+The beach, street, and its moving actors sample the same deterministic road profile in world space. It supplies a lateral offset and tangent at each longitudinal position so bends cannot pull traffic, headlights, or pedestrians off their surfaces. The beach grading and promenade meet the sampled outside edge. The home layout, coastal landmarks, and route timing keep their existing contracts.
+
 ## Frame La Jolla from the water
 
 Use seaward camera positions to reveal the bluff faces and the pier supports. Each coastal preset fits its own landmark bounds, while Default still frames the house and shoreline together. Build the sand, stone, parks and surf in world coordinates so free orbit and real weather stay consistent. The only new raster in the live scene supplies the sandstone material.

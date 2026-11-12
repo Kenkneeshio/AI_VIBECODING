@@ -219,10 +219,16 @@ export function createStorybookTraffic(road) {
     return model;
   }
 
-  function haloAt(index, slot, direction, lamp, front) {
+  function placeLamp(x, z, lamp, offset, height) {
+    transform.position.set(lamp.x + offset, height, lamp.z).applyQuaternion(transform.quaternion);
+    transform.position.x += x;
+    transform.position.y += road.surfaceY;
+    transform.position.z += z;
+  }
+
+  function haloAt(index, x, z, lamp, front) {
     const size = front ? 12.4 : 8.6;
-    transform.position.set(slot.x + direction * (lamp.x + (front ? 1.1 : -1.0)),
-      road.surfaceY + lamp.y + .8, slot.z + direction * lamp.z);
+    placeLamp(x, z, lamp, front ? 1.1 : -1, lamp.y + .8);
     transform.scale.set(size, size, 1);
     transform.updateMatrix();
     halos.setMatrixAt(index, transform.matrix);
@@ -252,14 +258,15 @@ export function createStorybookTraffic(road) {
     let haloIndex = 0;
     let shadowCount = 0;
     for (const slot of slots) {
+      const {x, z, yaw = 0} = road.sample?.(slot.x, slot.z) ?? slot;
       // Keep a car's silhouette stable across wraps and changes in traffic mode.
       const vehicle = selected ?? neighborhoodVehicle(slot);
       // Include painted shadows, the headlight projection, and camera-facing lamp halos.
       const reach = vehicle.length * .6 + (night ? MAX_HEADLIGHT_LENGTH : 0);
-      if (inView && !inView(slot.x, road.surfaceY, slot.z, Math.hypot(reach, vehicle.width, 45))) continue;
+      if (inView && !inView(x, road.surfaceY, z, Math.hypot(reach, vehicle.width, 45))) continue;
       const model = modelFor(vehicle);
-      transform.position.set(slot.x, road.surfaceY, slot.z);
-      transform.rotation.y = slot.lane ? Math.PI : 0;
+      transform.position.set(x, road.surfaceY, z);
+      transform.rotation.y = yaw + (slot.lane ? Math.PI : 0);
       transform.scale.set(1, 1, 1);
       transform.updateMatrix();
       for (const {mesh} of model.layers) mesh.setMatrixAt(model.count, transform.matrix);
@@ -268,17 +275,17 @@ export function createStorybookTraffic(road) {
       transform.updateMatrix();
       shadows.setMatrixAt(shadowCount++, transform.matrix);
       if (!night) continue;
-      const direction = slot.lane ? -1 : 1;
+      const normalHalf = laneHalf * Math.cos(yaw);
       const length = THREE.MathUtils.clamp(vehicle.length * 1.10, 53, MAX_HEADLIGHT_LENGTH);
       for (const lamp of model.headlamps) {
-        const width = Math.max(5, Math.min(16, laneHalf - Math.abs(lamp.z) - 1));
-        transform.position.set(slot.x + direction * (lamp.x + 1), road.surfaceY, slot.z + direction * lamp.z);
+        const width = Math.max(5, Math.min(16, normalHalf - Math.abs(lamp.z) - 1));
+        placeLamp(x, z, lamp, 1, 0);
         transform.scale.set(length, 1, width);
         transform.updateMatrix();
         beams.setMatrixAt(beamIndex++, transform.matrix);
-        haloAt(haloIndex++, slot, direction, lamp, true);
+        haloAt(haloIndex++, x, z, lamp, true);
       }
-      for (const lamp of model.taillamps) haloAt(haloIndex++, slot, direction, lamp, false);
+      for (const lamp of model.taillamps) haloAt(haloIndex++, x, z, lamp, false);
     }
     if (night) {
       beams.count = beamIndex;

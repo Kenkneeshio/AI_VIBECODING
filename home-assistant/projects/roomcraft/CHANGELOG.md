@@ -1,5 +1,10 @@
 # Changelog
 
+## Soften the coastal landscape transitions
+
+- The coastal road bends behind the Cove and sweeps back toward Shores. Curbs, sidewalk, road markings, vehicles, walkers, and cyclists all follow it.
+- Irregular dune colors, dry scrub, and tapered lawn blend the sand and grass around the bluff and promenade. Both promenade entrances meet the sidewalk.
+
 ## Model the Cove as one crescent
 
 - A continuous sandstone bluff wraps around the Cove's pocket beach, with shallow rock ledges on both shoulders and stairs from the upper trail down to the sand.

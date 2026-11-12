@@ -48,3 +48,11 @@ The live renderer maps the texture onto exposed rock in world coordinates. The s
 - Runtime revision `96a8d20eec9ddbc74e3b105dcfd8a1a5a66aaae6` passed 479 JavaScript and 38 Python tests, TypeScript, lint with existing warnings, and the production build. The verified source manifest was `sha256:af172f42f7119dadd397eba69c6d07d96337b50fff028317d8986eac1c6059c4`.
 - The built renderer reproduced the overhead view and both coastal camera views. Cove also rendered at night, in rain, and with Insane graphics. Signed-in Home Assistant opened Cove, Shores and Default, and the wall tablet cold-opened to the continuous bluff on the left. LAN and Nabu Casa served nine matching assets and the dashboard layout matched the backup.
 - Owner-private Studio version 95 was published from `6323baeaee349379747a829048d4d6d374421e1f` with matching editor and texture bytes. To roll back, reinstall `82213b8e3635dca5fefb55dc4221472f8d2ac54a` and restore private Studio version 94.
+
+## Curved street and natural terrain transitions
+
+On the wall display and in Studio, the road should read as part of the coast. A gentle reverse bend should be visible from above, with vehicles and people following the pavement and with no gap at either promenade entrance. Break up the grass and sand border with pockets of scrub, bare ground, and irregular gradation. The left-hand Cove, the beach crescent, the pier, and the saved home stay in place. No project migration or device changes apply.
+
+`storybook-street.mjs` owns the analytic road sample `(x, baselineZ) → {x, z, yaw}`. Its static ribbons share columns across curbs, lanes, and walks; the beach's vertex colors and height rows follow the same seaside sidewalk edge. The traffic and sidewalk modules use the road tangent and preserve their existing clocks, lane spacing, and straight profile fallback. Shores samples the paving and sand at the apron and park edges. Cove feathers the back slope and plants sparse scrub clear of the sidewalk. No new texture is needed.
+
+![Overhead preview of the curved road, bluff, and promenade.](images/la-jolla-overhead-curved-road.png)
