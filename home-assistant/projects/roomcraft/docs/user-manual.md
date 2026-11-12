@@ -4,7 +4,7 @@ Roomcraft Studio edits the layout used by Roomcraft Home. Use the 3D view to arr
 
 ## Use the live dashboard
 
-Open **Roomcraft Home** in the Home Assistant sidebar for the live view. The bottom bar has **Power**, **Weather**, **Calendar & to-dos**, and **Menu**.
+Open **Roomcraft Home** in the Home Assistant sidebar for the live view. The bottom bar has **Power**, **Weather**, **Calendar & to-dos**, **Controls**, and **Menu**.
 
 Use **On the map** for Object details and Presence tracking, and **View controls** for view presets, rotation, zoom and default view settings. **Manage** opens Layout Studio and popups for Object models, Devices and sensors, Indoor air and System health when configured. The labels from **Object details** show each linked control's name and current state. The toggle is saved in the current browser.
 
@@ -20,7 +20,7 @@ Choose **Menu → Location sharing** to open a map inside Roomcraft Home. Pan or
 
 To add people who already share their location with you on Google, connect the account that receives those shares. [Home Assistant setup for existing Google shares](https://www.home-assistant.io/integrations/google_maps/#note-for-existing-location-sharing-users)
 
-Tap **Calendar & to-dos** on the bottom bar for Home Assistant’s Calendar and To-do lists. On narrower screens, the button reads **Calendar**.
+Tap **Calendar & to-dos** on the bottom bar for Home Assistant’s Calendar and To-do lists. On narrower screens, the button reads **Calendar**. Tap **Controls** for labeled device buttons and readings grouped by room. Controls links back to Live and Studio.
 
 Tap **Weather** for current conditions, the next 12 hours, or the seven-day outlook when supported by the selected Home Assistant provider. Select a **Provider** to use it for both the popup and the scene in this browser. Open **Windy map** for an interactive regional map. Closing Weather unloads the map. [Home Assistant weather integrations](https://www.home-assistant.io/integrations/weather/) · [Windy map embed](https://embed.windy.com/config/map)
 
@@ -44,6 +44,8 @@ Open **Menu → Display** to toggle **FPS display**, **Camera tiles**, or **Redu
 
 Choose **Menu → Display → Display settings → Graphics** to adjust the frame rate limit, render resolution, and shadows. **Camera movement limit** lowers the cap while you reframe the scene. **Limit off-screen scenery** skips traffic, walkers, and cyclists outside the current view. **Tablet performance** sets 20 FPS, 67% render resolution, and turns shadows off. The frame rate is an upper limit and depends on how fast the device can draw. To restore graphics defaults, select 24 FPS, 100%, and High shadows.
 
+**Insane graphics** starts a five-second preview of the higher-quality renderer. Tap **Keep Insane graphics** during the countdown to save it for this browser, or let the countdown restore your previous settings. Turn the toggle off any time to return to your manual graphics settings. The preset raises the frame cap to 60 FPS and uses native screen resolution within browser GPU limits, higher-resolution shadows, finer material details, and richer weather and water effects.
+
 Display settings also controls headlight intensity, heat-map opacity, presence characters, character interactions, and the dock position. Each scenery layer can follow the published layout or use a browser override. **Reset display settings** restores the graphics defaults and clears the other browser overrides.
 
 Choose **Menu → 45-second demo** for a tour of live dashboard features, beach activity, weather and traffic. The weather chapter shows every Home Assistant condition and all eight moon phases. The demo starts muted with captions. Choose **Unmute** to hear the voice track. Select **Stop** or press **Escape** to return early to your previous view and the latest live readings. With **Reduce motion** enabled, the chapters advance with the camera held still.
@@ -64,7 +66,7 @@ Use **Center X**, **Center Y**, and **Rotation** for precise placement. The dini
 
 ### Match Home or preview an appearance
 
-Open **Main menu → Scene settings** in Studio or **Menu → Manage → Scene settings** in Home. The visual layer switches and the bottom dock position are saved with the layout. Select **Export to dashboard** to apply them to Home.
+Open **Main menu → Scene settings** in Studio or **Menu → Manage → Scene settings** in Home. The visual layer switches and the bottom dock position are saved with the layout. Select **Save** to apply them to Home.
 
 **Match dashboard** shows the same weather, lighting, and device appearance in Home Assistant Studio. The private web editor uses the last available dashboard import. Choose **Preview weather** to test any condition, day, dusk or night, a moon phase, and wind speed or direction. **Animate preview** affects the current Studio tab. Camera frames in Studio are edit handles. Home uses the camera settings and displays the authenticated feed or latest event.
 
@@ -82,9 +84,9 @@ Each browser has its own **Show Google shared locations on this screen** prefere
 
 ## Align the vacuum’s LiDAR map
 
-Choose **Home → Menu → On the map → Align LiDAR map**, or **Main menu → Align LiDAR map** in Studio. You can also select the vacuum and open the tool from its Inspector. Home Assistant Studio loads the linked vacuum map. Match three or more landmarks spread across the scan and the plan. Pick fixed corners that the vacuum could see. Use **Undo last pair** to correct a point.
+Choose **Home → Menu → On the map → Align robot to LiDAR map**, or open the alignment tool from Studio’s main menu. Home Assistant Studio loads the linked vacuum map. Tap a fixed corner on the scan, then the same corner on the plan. Each pair records automatically. Match three corners spread across the condo. A fourth helps check scale in both directions.
 
-Compare the distance between the first two landmarks in metres. Enter a tape measurement if available. Check the independent error and turn the preview overlay on and off before selecting **Apply to draft**. **Undo alignment** restores the previous draft alignment. **Export to dashboard** publishes the new calibration. The **LiDAR map overlay** under **Home → Menu → On the map** shows the current saved alignment without moving the vacuum.
+Review the measured distance and corner error, then select **Use this alignment**. **Undo alignment** restores the previous draft fit. Close the survey and select **Save** to use the fit for the robot and LiDAR overlay on Home. For a straight-line distance on the scan, choose **Home → Menu → On the map → Measure LiDAR distances**, then tap two points. The ruler displays metres and feet.
 
 The television shows the title, app or input that its Home Assistant entity reports. Its screen is white while the TV is on and black while it is off. An unavailable TV stays dark.
 
@@ -94,7 +96,7 @@ Open **Menu → On the map → Presence tracking** in Roomcraft Home to see the 
 
 An administrator enables detailed reporting for the compatible switch in Home Assistant. In Home Assistant Studio, select its presence switch object and set **Radar targets entity** to the device's **Radar target count** sensor. The original red and green dot shows dimmer power. The second dot is blue when a target is on the map, amber when there is a detection without a mapped position, gray when clear and hollow gray when unavailable. Open **Presence tracking** to see the count and recent zones.
 
-From Home, choose **Menu → On the map → Presence tracking → Tracking range correction**. In Studio, choose **Main menu → Tracking range correction** or select the presence switch directly. If you have several switches, choose which one to adjust. Use **Forward scale** for depth, **Lateral scale** for width, **Rotation offset** for direction, and **Skew** or **Flip radar left and right** to align the axes. Use **Apply alignment** to keep the fitted origin or **Use switch position** to reset the origin to the placed switch. **Export to dashboard** publishes the draft. The advanced transform field accepts six affine coefficients.
+From Home, choose **Menu → On the map → Presence tracking → Tracking range correction**. In Studio, choose **Main menu → Tracking range correction** or select the presence switch directly. If you have several switches, choose which one to adjust. Use **Forward scale** for depth, **Lateral scale** for width, **Rotation offset** for direction, and **Skew** or **Flip radar left and right** to align the axes. Use **Apply alignment** to keep the fitted origin or **Use switch position** to reset the origin to the placed switch. **Save** publishes the draft. The advanced transform field accepts six affine coefficients.
 
 Characters walk around furniture and walls on the second-floor condo, upper landing and authored stair treads. The floor ring stays at the measured radar point as the character takes a clear path. Three seconds of fresh, steady readings near a reachable object can start a pose such as sitting, reading, cooking, watching fish or playing on a mat. These are illustrated guesses based on position. Use **Menu → Display → Display settings → Allow character interactions** to turn them off on this screen. **Reduce motion** keeps each pose still.
 
@@ -102,7 +104,7 @@ While the linked occupancy sensor is on, a character remains at the last usable 
 
 Open **Menu → On the map → Radar heat map** to see recorded position density over 15 minutes, 1 hour, 24 hours, or 7 days. Pair it with **Detection zone** to compare observations with the configured or nominal footprint. Empty cells show no recorded hits in the selected period. Use a controlled walk or sit test to assess coverage there. Native occupancy can remain on when the radar stops sending fresh coordinates. [Inovelli stationary presence and stay zones](https://help.inovelli.com/en/articles/12773613-blue-series-mmwave-presence-dimmer-switch-advanced-mmwave-configuration)
 
-In Home Assistant Studio, select the presence switch and choose **Calibrate from measured points**. Pick at least four real floor spots spread across the radar view. Use distinct kitchen, dining, and sofa-side points. Have one person stand on each spot while the dialog collects three fresh readings. Enter a taped distance between the first two spots to compare physical scale. Review fit error, the independent check, and the fitted sensor origin before applying the result. If the independent error approaches half the separation between the kitchen and dining test points, check point placement and repeat the survey. **Apply to draft** previews the new calibration. **Export to dashboard** publishes it.
+In Home Assistant Studio, select the presence switch and choose **Calibrate from measured points**. Pick at least four real floor spots spread across the radar view. Use distinct kitchen, dining, and sofa-side points. Have one person stand on each spot while the dialog collects three fresh readings. Enter a taped distance between the first two spots to compare physical scale. Review fit error, the independent check, and the fitted sensor origin before applying the result. If the independent error approaches half the separation between the kitchen and dining test points, check point placement and repeat the survey. **Apply to draft** previews the new calibration. **Save** publishes it.
 
 Use **Forward scale** to align near and far positions on the floor plan. To change where the Inovelli VZM32-SN physically detects people, adjust its detection depth and width in the Home Assistant Zigbee device settings. Export the Roomcraft alignment when the live position, heat map and detection outline agree at your reference spots. The heat-map legend counts recorded bins outside any authored configured bounds for troubleshooting. [Inovelli physical range settings](https://help.inovelli.com/en/articles/11657832-blue-series-mmwave-presence-dimmer-switch-basic-configuration-guide)
 
@@ -114,21 +116,13 @@ Choose **Free view** to orbit. Drag across the scene to rotate and tilt. Pinch o
 
 In Studio, choose a 3D preset to select and drag objects. **Free view** dedicates the canvas to camera movement. Picking a catalog object returns to your last 3D preset for placement. The Inspector controls size, rotation, finish and device binding. Camera and interface items have labeled placeholders in editing views. Choose **2D plan** for the illustrated view. Room, wall and reference tools also switch to that view.
 
-**Dashboard look** in Studio uses the lighting and device appearance from the latest dashboard import. Turn it off for daylight while editing. The dashboard reloads the saved layout after **Export to dashboard**. In Home Assistant, **Dashboard** returns to the live view inside the same signed-in app or tab.
-
-![Roomcraft Studio in the default overhead 3D view, with view presets, rotation, zoom, object palette and Inspector](images/editor-camera-views.png)
-
-This public demonstration uses the furnished starter layout and no live household media. On your HA instance, Studio loads your published layout and shows camera and interface positions as editable labels.
-
-![Current Home Assistant Layout Studio showing the illustrated plan, Objects, Floors, Rooms and Walls tabs, Inspector, and dashboard import and export buttons](images/editor-overview.png)
-
-The older 2D plan view is shown above. The left palette chooses objects, floor finishes, rooms, or walls; the center canvas edits the plan; the right Inspector edits the selection. **Import from dashboard** and **Export to dashboard** are at the bottom of the palette. The [legacy screenshot archive](legacy/README.md) keeps previous editor captures.
+Studio opens the same 3D scene as Home from directly above. The palette chooses objects, floor finishes, rooms, or walls. The Inspector edits the selection. **Save** publishes the draft, and **Return to live dashboard** opens Home from the adjacent button. **Import from dashboard** remains in the palette for refreshing a draft.
 
 ## The plan and its perspective
 
 ![Bundled corrected furnished plan used as the visual reference](../site/public/assets/floorplan.png)
 
-The canvas is a top-down plan with lightly raised walls and furniture. The balcony and stair are outdoors at left. The stair begins at the lower-left landing and descends toward the top-left. The house, balcony, and lower-left stair landing are on the second floor. The detached garage sits on the first-floor ground plane. Choose **From west** to see the height difference clearly. Doorways between upstairs rooms remain on one floor level. Bedroom, study, baths, and living spaces have different finishes. The editor uses this image as a reference and separate illustrated assets to redraw edited geometry; an edited scene can differ from individual pixels in the reference PNG.
+The canvas is a top-down plan with lightly raised walls and furniture. The balcony and stair are outdoors at left. The stair begins at the lower-left landing and descends toward the top-left. The house, balcony, and lower-left stair landing are on the second floor. The detached garage sits on the first-floor ground plane. Choose **From west** to see the height difference clearly. Doorways between upstairs rooms remain on one floor level. Bedroom, study, baths, and living spaces have different finishes. The illustration documents the starting layout. Studio renders the current authored scene.
 
 In the 3D views, look across the street for sand dunes, beach umbrellas and a curved shoreline with boats. Paths from the far sidewalk lead through the dunes to the beach. The beach appears above the house in **Top down** and moves with the rest of the scene when you rotate or zoom.
 
@@ -138,13 +132,13 @@ Place a table lamp, plant, or humidifier over a compatible tabletop and Studio s
 
 The plan export keeps every original column, x0–1536, and uses project y80–944 for a 1536 × 864 image. The editable 1536 × 1024 project still holds the house, stair, balcony, rooms and furnishings. Export stores the image and matching control placement with the project. On the tablet, Roomcraft Home projects the controls over the 3D scene.
 
-The original reference is a single PNG, but Design mode reconstructs its removable contents as scene items. Rugs, original windows, cabinetry, bath fixtures, furniture, lights, controls, and newly placed catalog objects can all be selected, moved, resized, rotated, or removed independently. Floors, walls, railings, and stairs also come from editable layout records. Check **Design** against **Reference** after a large move to compare the editable reconstruction with the source image.
+Rugs, windows, cabinetry, bath fixtures, furniture, lights, controls, and newly placed catalog objects can be selected, moved, resized, rotated, or removed independently. Floors, walls, railings, and stairs also come from editable layout records.
 
 ![Public-safe Roomcraft plan capture with recessed windows, corrected sofa, movable room lighting, ceiling fan, and a camera placeholder without private media](images/published-plan.png)
 
 This public-safe PNG shows the corrected sofa orientation, recessed blue windows, distinct floor textures, movable light fixtures, the five-blade ceiling fan, and a drawn camera placeholder on the left. The newer office desk lamp, second camera frame, and live device treatments are not shown in this older static graphic. Live camera media remains a separate authenticated Home Assistant overlay. The upstairs rooms remain on one level. The photo-inspired baby play area sits in front of the sofa. The [legacy screenshot archive](legacy/README.md) retains earlier flat-window captures for comparison.
 
-## 1. Open the editor and choose a view
+## 1. Open the editor
 
 In Roomcraft Home, open **Menu → Manage → Layout Studio**. On the home network, you can also open `http://<HA-LAN-IP>:8123/roomcraft-home/studio` and sign in. An administrator account can publish a layout. Studio loads the current saved project on opening and offers **Recover previous browser draft** when a different local draft exists. The local draft remains available during a Home Assistant outage.
 
@@ -156,7 +150,7 @@ This manual describes the HA-hosted Studio and owner-private cloud editor. Both 
 
 If Chrome leaves the embedded editor blank, use **Open editor in a new tab** inside Layout Studio. Keep the Studio tab open while editing in the new tab: it supplies the authenticated dashboard connection through the opener. A direct visit to `/local/roomcraft/editor.html` has no such connection and cannot import or export to the dashboard.
 
-Use **Design** to edit. Use **Reference** to compare against the original furnished image. **Focus canvas** hides editing panels for a larger view. **Fit**, the zoom buttons, and the percentage button control scale; wheel or trackpad scrolling zooms, and **Pan** or Space-drag moves the view.
+Studio stays directly overhead during edits. **Focus canvas** hides editing panels for a larger view. Use **Fit**, the zoom buttons, or the wheel to change magnification. Use **Pan** or Space-drag to move around the plan.
 
 ## 2. Work with furniture and objects
 
@@ -172,7 +166,7 @@ Place a bed, then use **Style** to compare constructions and **Size** to choose 
 
 Windows and wall-mounted objects snap near walls. If the editor asks you to click closer to a wall, move the pointer to the intended wall segment and try again. After placing a window, zoom to 100% and check that its long edge, frame depth, and shadow follow that wall. Drag it along the wall if it needs repositioning. Use **Select** to drag an item. Use **Erase** or the Inspector's remove action to delete it.
 
-**Remove all objects** clears furniture, rugs, windows, fixtures, lights, and interface objects while keeping room boundaries, floor finishes, and walls. The confirmation dialog shows the exact object count, and the editor returns to **Design** so the furnished read-only Reference image cannot be mistaken for the cleared result. **Restore reference layout** adds every missing reference object through the same engine, returns to Design, and preserves extra objects and structural edits. After a deletion is saved, reopening the editor does not recreate it automatically; restoration is always explicit.
+**Remove all objects** clears furniture, rugs, windows, fixtures, lights, and interface objects while keeping room boundaries, floor finishes, and walls. The confirmation shows the object count. The overhead view stays in place. Use Undo to restore the objects in the current draft.
 
 The dining ceiling fan and its center light are separate objects even though they occupy one physical fixture. Select the small center light to move or configure the light switch; select a blade or outer fan area for the motor. Each object's own Home Assistant switch alone controls its status dot and animation. The exterior garage is also an editable detached-garage object; its cover state animates only the paneled door.
 
@@ -260,14 +254,14 @@ The [control and compact-menu guide](ha-controls-and-menu.md) maps the known fix
 
 Edits save in the current browser automatically. For a portable backup, use **Export → Editable layout JSON**. On another browser, choose **Import layout JSON**. Keep this JSON private if it contains real entity IDs or room details.
 
-Use the two buttons at the lower-left of either editor to work with the live dashboard:
+Use **Import from dashboard** in the palette and **Save** in the header to work with the live dashboard.
 
 1. **Import from dashboard** loads its saved editable project and current controls. Save your current draft as JSON first if you want to retain it.
 2. Edit rooms, walls, floors, objects, and markers.
-3. **Export to dashboard** renders a detailed PNG, uploads it to Home Assistant, and saves the editable project with the dashboard. Reload the dashboard to see the result.
+3. **Save** renders a detailed PNG, uploads it to Home Assistant, and saves the editable project with the dashboard. Reload the dashboard to see the result.
 4. Import once more to verify that the same project opens for the next editing session. If you switch between the HA-hosted and cloud editors, import in the second editor before editing.
 
-Select **← Dashboard** in the editor header to return to Roomcraft Home. The HA-hosted editor uses the same-origin dashboard route. The owner-private Site uses the dashboard address supplied by its authenticated connection. If you have unpublished edits, the editor asks before leaving and keeps a browser draft. Choose **Cancel** to remain in Studio or **Export to dashboard** when you want the edits visible on the wall panel. During an import or export, the control asks you to wait. If the dashboard link is unavailable or the unpublished draft cannot be saved, Studio displays a message. Export editable JSON for recovery if browser storage is full.
+Select **Return to live dashboard** next to **Save** in the header to return to Roomcraft Home. The HA-hosted editor uses the same-origin dashboard route. The owner-private Site uses the dashboard address supplied by its authenticated connection. If you have unpublished edits, the editor asks before leaving and keeps a browser draft. Choose **Cancel** to remain in Studio or **Save** when you want the edits visible on the wall panel. During an import or export, the control asks you to wait. If the dashboard link is unavailable or the unpublished draft cannot be saved, Studio displays a message. Export editable JSON for recovery if browser storage is full.
 
 The editor checks the dashboard revision before exporting. If another change happened, import the newest dashboard version and review your draft before retrying. This protects a teammate's more recent dashboard edit.
 

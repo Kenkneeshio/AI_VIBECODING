@@ -4,6 +4,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { makeStorybookHabitat } from './storybook-habitats.mjs';
 import { attachStorybookTelevision } from './storybook-television.mjs';
 import '../public/inventory.js';
+import '../public/model-library.js';
 import { makeCatalogPlay } from './storybook-catalog-play.mjs';
 import { drawStorybookSpecialty } from './storybook-catalog-specialty.mjs';
 
@@ -32,7 +33,7 @@ const woods = new Set([color.oak, color.oakLight, color.walnut]);
 const textiles = new Set([color.sage, color.moss, color.linen, color.lilac, color.lilacLight,
   color.blush, color.peach, color.oatmeal, color.upholsteryShadow, color.denim]);
 
-function furnitureMaterial(tint, grainDirection) {
+function furnitureMaterial(tint, grainDirection, surfaceDetail) {
   const detail = woods.has(tint) ? 1 : textiles.has(tint) ? 2 : 0;
   const glass = tint === color.glass || tint === color.darkGlass || tint === color.blueWater;
   const brass = tint === color.brass;
@@ -46,6 +47,7 @@ function furnitureMaterial(tint, grainDirection) {
   material.onBeforeCompile = shader => {
     shader.uniforms.furnitureDetail = { value: detail };
     shader.uniforms.furnitureGrainDirection = { value: grainDirection };
+    shader.uniforms.furnitureSurfaceDetail = surfaceDetail;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 furnitureSurfacePosition;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nfurnitureSurfacePosition = position;');
@@ -53,6 +55,7 @@ function furnitureMaterial(tint, grainDirection) {
       .replace('#include <common>', `#include <common>
         varying vec3 furnitureSurfacePosition;
         uniform float furnitureDetail;
+        uniform float furnitureSurfaceDetail;
         uniform float furnitureGrainDirection;`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         vec3 localPoint = furnitureSurfacePosition;
@@ -68,21 +71,32 @@ function furnitureMaterial(tint, grainDirection) {
           float weave = sin(localPoint.x*2.4) * sin((localPoint.z + localPoint.y)*2.4);
           grain = .035 * weave * (1.0-smoothstep(.5, 1.8, pixelSize));
         }
+        if (furnitureSurfaceDetail > .5) {
+          if (furnitureDetail < 1.5) {
+            float flow = .34*sin(lengthwise*.18) + .11*sin(lengthwise*.48);
+            grain += .018*sin((crosswise + flow)*5.6) * (1.0-smoothstep(.20, .65, pixelSize));
+          } else {
+            vec3 threads = cos(localPoint*5.7);
+            float stitches = threads.x*threads.y + threads.y*threads.z + threads.z*threads.x;
+            grain += .016*stitches * (1.0-smoothstep(.16, .48, length(fwidth(localPoint))));
+          }
+        }
         diffuseColor.rgb *= 1.0 + grain;`);
   };
   return material;
 }
 
 class Miniature {
-  constructor(width, depth) {
+  constructor(width, depth, surfaceDetail = {value:0}) {
     this.root = new THREE.Group();
     this.materials = new Map();
     this.grainDirection = depth > width ? 1 : 0;
+    this.surfaceDetail = surfaceDetail;
   }
 
   part(geometry, tint, x, y, z, angle = 0) {
     if (!this.materials.has(tint)) {
-      this.materials.set(tint, furnitureMaterial(tint, this.grainDirection));
+      this.materials.set(tint, furnitureMaterial(tint, this.grainDirection, this.surfaceDetail));
     }
     const mesh = new THREE.Mesh(geometry, this.materials.get(tint));
     mesh.position.set(x, y, z);
@@ -442,12 +456,12 @@ function rug(p, w, d, style) {
   return 5;
 }
 
-function sinkCountertop(p, w, d, top) {
+function sinkCountertop(p, w, d, top, opening) {
   // The reference kitchen counter has two wells aligned with its long side.
   // Four stone sections leave a real opening rather than a sink painted on top.
-  const width = w * .58;
-  const depth = d * .28;
-  const z = -d * .04;
+  const width = w * opening.widthRatio;
+  const depth = d * opening.depthRatio;
+  const z = d * opening.offsetRatio;
   const start = z - depth / 2;
   const end = z + depth / 2;
   const sideWidth = (w - width) / 2;
@@ -470,12 +484,15 @@ function sinkCountertop(p, w, d, top) {
   p.box(tapX + lip, top + lip * 2.5, z, lip * 2.8, lip * .7, lip, color.steel, .6);
 }
 
-function counter(p, w, d, type, hasSink = false) {
+function counter(p, w, d, item) {
+  const {type} = item;
+  const host = typeof window === 'undefined' ? globalThis : window;
+  const opening = host.RoomcraftModels.kitchenTopOpening(item);
   const height = type === 'doubleVanity' ? 32 : 35;
   const appliance = type === 'kitchenWorktop';
   const double = type === 'doubleVanity';
   p.box(0, 1, 0, w * .91, height - 4, d * .93, double ? color.sage : color.walnut, 2.3);
-  if (hasSink) sinkCountertop(p, w, d, height + 2);
+  if (type === 'counter' && opening) sinkCountertop(p, w, d, height + 2, opening);
   else p.box(0, height - 3, 0, w, 5, d, color.linen, 1.8);
   const long = d > w;
   for (const edge of [-1, 1]) for (let i = -1; i <= 1; i++) {
@@ -487,7 +504,7 @@ function counter(p, w, d, type, hasSink = false) {
     p.box(x, height * .63, z, long ? 3.2 : w * .08, 2.6, long ? d * .05 : 3.2, color.honey, .7);
   }
   if (appliance) {
-    p.box(0, height + 2, 0, w * .84, 2.5, d * .72, color.darkGlass, .8);
+    p.box(0, height + 2, d * opening.offsetRatio, w * opening.widthRatio, 2.5, d * opening.depthRatio, color.darkGlass, .8);
     for (const x of [-.20, .20]) for (const z of [-.19, .19]) {
       const r = Math.min(w, d) * (x < 0 ? .12 : .092);
       p.ring(w * x, height + 4.8, d * z, r, r, 1, color.glass);
@@ -637,7 +654,7 @@ export function makeStorybookFurniture(item, context = {}) {
   if (type.startsWith('pets-')) return makeStorybookHabitat(type, w, d);
   const tint = finishes[type.split('-').at(-1)];
   const template = (typeof window === 'undefined' ? globalThis : window).RoomcraftInventory?.byType?.[type] ?? {type};
-  const p = new Miniature(w, d);
+  const p = new Miniature(w, d, context.surfaceDetail);
   let top = drawStorybookSpecialty(p, w, d, template, context);
   if (top === undefined && !['plush', 'photoBunnyPlush'].includes(template.form)) top = makeCatalogPlay(p, w, d, template);
   if (top !== undefined) return p.finish(top);
@@ -674,7 +691,7 @@ export function makeStorybookFurniture(item, context = {}) {
   } else if (type === 'rug') {
     top = rug(p, w, d, item.rugStyle);
   } else if (type === 'counter' || type === 'kitchenWorktop' || type === 'doubleVanity') {
-    top = counter(p, w, d, type, type === 'counter' && item.id === 'i7');
+    top = counter(p, w, d, item);
   } else if (type === 'tub' || type === 'toilet' || type === 'bathFixtures') {
     top = bath(p, w, d, type);
   } else if (type === 'plant' || type === 'floorPlant') {

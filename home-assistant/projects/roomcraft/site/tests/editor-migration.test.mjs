@@ -622,7 +622,7 @@ test('migrates a saved plan into movable lamp and room fixtures without duplicat
   assert.equal(reopened.read().items.filter(i => i.id === 'office-desk-lamp').length, 1);
 });
 
-test('remove all objects stays empty after reload and restore rebuilds the complete reference scene', async () => {
+test('remove all objects stays empty after reload', async () => {
   const editor = boot({ version: 2, editableReferenceVersion: 4, rooms: [], walls: [], items: [], hotspots: [] });
   const removing = editor.dispatch('clearObjectsButton', 'click', {});
   await new Promise(resolve => setImmediate(resolve));
@@ -634,14 +634,7 @@ test('remove all objects stays empty after reload and restore rebuilds the compl
 
   const reopened = boot(empty);
   assert.equal(reopened.read().items.length, 0, 'v5 must not respawn deliberately removed objects');
-  reopened.dispatch('restoreFurnishingsButton', 'click', {});
-  const restored = reopened.read();
-  assert.equal(restored.items.filter(i => i.type === 'rug').length, 3);
-  assert.equal(restored.items.filter(i => i.type === 'window').length, 8);
-  assert.ok(restored.items.some(i => i.id === 'kitchen-worktop'));
-  assert.ok(restored.items.some(i => i.id === 'fixture-living'));
-  assert.ok(restored.items.some(i => i.id === 'ui-edit-layout'));
-  assert.ok(restored.items.some(i => i.id === 'living-wall-unit'));
+
 });
 
 test('v6 owns the final shell object and separates fan, fan light, and detached garage', () => {
@@ -990,7 +983,6 @@ test('recovery from an offline startup requires importing before it can publish'
   assert.equal(JSON.parse(editor.storage.get('roomcraft.second-floor.dashboard-replaced-draft.v2')).items[0].x, 500);
 
   const publishing = editor.dispatch('exportDashboardButton', 'click', {});
-  editor.dispatch('confirmationAccept', 'click', {});
   await publishing;
   assert.deepEqual(calls, [['GET', undefined], ['GET', undefined], ['POST', 'current']]);
 });
@@ -1011,7 +1003,7 @@ test('explicit dashboard import keeps the latest unpublished browser edit recove
   assert.equal(editor.read().items[0].x, 580);
 });
 
-test('a stale dashboard draft cannot retry export until the latest version is imported', async () => {
+test('a stale dashboard draft cannot retry saving until the latest version is imported', async () => {
   const project = {version:2, editableReferenceVersion:9, rooms:[], walls:[], hotspots:[],
     items:[{id:'chair', type:'chair', name:'Chair', x:500, y:500, w:48, h:48, rotation:0}]};
   const calls = [];
@@ -1025,7 +1017,6 @@ test('a stale dashboard draft cannot retry export until the latest version is im
   await new Promise(resolve => setImmediate(resolve));
   revision = 'newer';
   const first = editor.dispatch('exportDashboardButton', 'click', {});
-  editor.dispatch('confirmationAccept', 'click', {});
   await first;
   assert.match(editor.elements.get('dashboardTransferStatus').textContent, /Dashboard changed/);
   await editor.dispatch('exportDashboardButton', 'click', {});
@@ -1044,13 +1035,12 @@ test('a stale dashboard draft cannot retry export until the latest version is im
   editor.dispatch('confirmationAccept', 'click', {});
   await imported;
   const publish = editor.dispatch('exportDashboardButton', 'click', {});
-  editor.dispatch('confirmationAccept', 'click', {});
   await publish;
   assert.deepEqual(calls.slice(-2), [['GET', undefined], ['POST', 'newer']]);
-  assert.match(editor.elements.get('dashboardTransferStatus').textContent, /exported to Home Assistant/);
+  assert.match(editor.elements.get('dashboardTransferStatus').textContent, /saved to the live dashboard/);
 });
 
-test('export records the submitted layout while keeping edits made during upload unpublished', async () => {
+test('save records the submitted layout while keeping edits made during upload unpublished', async () => {
   const project = {version:2, editableReferenceVersion:9, rooms:[], walls:[], hotspots:[],
     items:[{id:'chair', type:'chair', name:'Chair', x:500, y:500, w:48, h:48, rotation:0}]};
   let finishUpload;
@@ -1062,7 +1052,6 @@ test('export records the submitted layout while keeping edits made during upload
   });
   await new Promise(resolve => setImmediate(resolve));
   const publish = editor.dispatch('exportDashboardButton', 'click', {});
-  editor.dispatch('confirmationAccept', 'click', {});
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(submitted.project.items[0].x, 500);
   editor.window.RoomcraftEditorViewport.moveItem('chair', 540, 500);

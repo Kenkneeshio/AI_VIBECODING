@@ -38,12 +38,16 @@ class InstallResourceTests(unittest.TestCase):
             {"type": "custom:roomcraft-storybook-card", "dashboard": "second-floor"},
         ]}]}
         result = install.update_roomcraft_home(home, "abc", legacy)
-        self.assertEqual([view["path"] for view in result["views"]], ["home", "studio"])
+        self.assertEqual([view["path"] for view in result["views"]], ["home", "studio", "controls"])
         self.assertEqual(result["roomcraft_layout"], layout)
         self.assertEqual(result["roomcraft_plan"], plan)
         self.assertEqual(result["roomcraft_health"], health)
-        self.assertEqual([view["cards"][0]["dashboard"] for view in result["views"]], ["roomcraft-home"] * 2)
+        self.assertEqual([view["cards"][0]["dashboard"] for view in result["views"]], ["roomcraft-home"] * 3)
+        self.assertEqual(result["views"][2]["cards"][0]["type"], "custom:roomcraft-controls-card")
         self.assertEqual(install.update_roomcraft_home(result, "abc"), result)
+        result["views"][2]["cards"] = [{"type": "entities", "entities": []}]
+        with self.assertRaisesRegex(RuntimeError, "controls path"):
+            install.update_roomcraft_home(result, "abc")
         self.assertNotIn("roomcraft_layout", home)
 
     def test_storybook_preserves_plan_data_and_is_idempotent(self):

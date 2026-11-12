@@ -1,5 +1,5 @@
 import {drawSurveyFloor} from './storybook-calibration-panel.mjs';
-import {applyVacuumAlignment, composeVacuumAlignment, fitVacuumAlignment, invertVacuumAlignment,
+import {applyVacuumAlignment, composeVacuumAlignment, fitBestVacuumAlignment, invertVacuumAlignment,
   vacuumAlignmentDistance} from './storybook-vacuum-alignment.mjs';
 
 const MAX_PAIRS = 12;
@@ -64,7 +64,7 @@ function drawMap(canvas, source, pairs, current) {
   if (current) show(current, '#8a622e', '+');
 }
 
-function drawPlan(canvas, project, source, pairs, current, transform, showOverlay) {
+function drawPlan(canvas, project, source, pairs, current, transform, showOverlay, suggested) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
   ctx.save();
@@ -93,6 +93,16 @@ function drawPlan(canvas, project, source, pairs, current, transform, showOverla
     }
     marker(ctx, plan, '#315d55', String(index + 1));
   });
+  if (suggested) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(suggested.x, suggested.y, 27, 0, 2 * Math.PI);
+    ctx.strokeStyle = '#286c58';
+    ctx.lineWidth = 5;
+    ctx.setLineDash([8, 6]);
+    ctx.stroke();
+    ctx.restore();
+  }
   if (current) marker(ctx, current, '#8a622e', '+');
   ctx.restore();
 }
@@ -104,13 +114,6 @@ function coversTwoDirections(points) {
   const furthestSquared = Math.max(...vectors.map(({x, y}) => x * x + y * y));
   return furthestSquared > 0 && vectors.some((a, index) => vectors.slice(index + 1)
     .some(b => Math.abs(a.x * b.y - a.y * b.x) > furthestSquared * 0.03));
-}
-
-function bestFit(pairs, mapUnitsPerMetre, spread) {
-  const standard = fitVacuumAlignment(pairs, {mapUnitsPerMetre});
-  if (!spread) return standard;
-  const mirrored = fitVacuumAlignment(pairs, {flipY: true, mapUnitsPerMetre});
-  return mirrored && (!standard || mirrored.rmse < standard.rmse) ? mirrored : standard;
 }
 
 export function mountVacuumAlignment(document, host, {api, bridge}) {
@@ -133,11 +136,15 @@ export function mountVacuumAlignment(document, host, {api, bridge}) {
   const apply = field('apply');
   const points = field('points');
   const status = field('status');
+  const step = field('step');
+  const count = field('count');
+  const advanced = field('advanced');
   const quality = field('quality');
   let project, vacuum, source, fit, applied, appliedKey, trigger;
   let pairs = [];
   let generation = 0;
   let busy = false;
+  let previewed = false;
 
   function readPoint(xInput, yInput, withinPlan = false) {
     const x = xInput.valueAsNumber;
@@ -152,10 +159,17 @@ export function mountVacuumAlignment(document, host, {api, bridge}) {
     const plan = readPoint(planX, planY, true);
     const mapUnitsPerMetre = units.valueAsNumber > 0 ? units.valueAsNumber : null;
     const spread = coversTwoDirections(pairs.map(pair => pair.map)) && coversTwoDirections(pairs.map(pair => pair.plan));
-    fit = bestFit(pairs, mapUnitsPerMetre, spread);
-    load.disabled = busy || !!source || !bridge?.request || !CAMERA.test(vacuum?.vacuumMapEntityId ?? '');
+    fit = fitBestVacuumAlignment(pairs, {mapUnitsPerMetre});
+    if (!previewed && spread && fit) {
+      previewed = true;
+      overlay.checked = true;
+    }
+    load.hidden = busy || !!source || !bridge?.request || !CAMERA.test(vacuum?.vacuumMapEntityId ?? '');
+    load.disabled = load.hidden;
     add.disabled = busy || !map || !plan || pairs.length >= MAX_PAIRS;
-    undoPoint.disabled = busy || !pairs.length;
+    const pending = Boolean(map || plan);
+    undoPoint.disabled = busy || !pairs.length && !pending;
+    undoPoint.textContent = pending ? 'Clear selected point' : 'Undo last pair';
     undoAlignment.disabled = busy || !applied;
     const fitKey = fit?.transform.join(',');
     apply.disabled = busy || !spread || !fit || fitKey === appliedKey;
@@ -166,30 +180,50 @@ export function mountVacuumAlignment(document, host, {api, bridge}) {
       return row;
     });
     points.replaceChildren(...rows);
-    const info = [];
-    if (fit) {
-      info.push(Number.isFinite(fit.pixelsPerMetre) ? `${fit.pixelsPerMetre.toFixed(1)} plan px/m` :
-        `${fit.scale.toFixed(4)} plan px per map unit`);
-      if (spread) {
-        info.push(`${fit.rmse.toFixed(1)} px fit error`);
-        if (Number.isFinite(fit.leaveOneOutError)) info.push(`${fit.leaveOneOutError.toFixed(1)} px independent check`);
-      }
-      const firstPair = vacuumAlignmentDistance(pairs[0], pairs[1], fit.transform, mapUnitsPerMetre);
-      if (Number.isFinite(firstPair?.mapMetres)) {
-        info.push(`Points 1–2 measure ${firstPair.mapMetres.toFixed(2)} m on LiDAR and ${firstPair.planMetres.toFixed(2)} m on the scaled plan.`);
-        if (distance.valueAsNumber > 0) {
-          const difference = Math.abs(firstPair.mapMetres - distance.valueAsNumber);
-          info.push(`${Math.round(difference * 100)} cm from tape reading`);
-        }
-      }
-    }
-    if (!spread) info.push('Add three matching points spread in two directions.');
-    else if (!fit) info.push('These points are too close together. Choose more widely spaced locations.');
-    quality.textContent = info.join(' · ');
-    drawMap(mapCanvas, source, pairs, map);
+    count.textContent = `${pairs.length} matched ${pairs.length === 1 ? 'corner' : 'corners'}`;
     const stored = vacuum.vacuumMapId === undefined || vacuum.vacuumMapId === source?.mapId
       ? vacuum.vacuumPositionTransform : undefined;
-    drawPlan(planCanvas, project, source, pairs, plan, (spread ? fit?.transform : undefined) ?? stored, overlay.checked);
+    const reviewFit = spread ? fit : undefined;
+    const estimate = map && source && applyVacuumAlignment(reviewFit?.transform ??
+      (source.mapId !== undefined && vacuum.vacuumMapId === source.mapId ? stored : undefined), map);
+    const suggested = estimate && estimate.x >= 0 && estimate.y >= 0 &&
+      estimate.x <= planCanvas.width && estimate.y <= planCanvas.height ? estimate : undefined;
+    step.textContent = busy ? 'Loading the LiDAR scan…' : !source ? 'Use Advanced to enter matching coordinates.' :
+      map ? (suggested ? 'Choose the matching corner on the plan. The dashed circle marks the current estimate.' :
+        'Choose the same corner on the plan.') :
+        pairs.length >= MAX_PAIRS ? 'Review the overlay and use this alignment.' :
+          pairs.length === 3 && reviewFit ? 'Choose a fourth corner to check scale in both directions.' :
+            pairs.length >= 4 && reviewFit ? 'Check the overlay or pick another corner on the scan.' :
+              'Choose a corner on the LiDAR scan.';
+    mapCanvas.parentElement.toggleAttribute('data-active', Boolean(source && !map && pairs.length < MAX_PAIRS));
+    planCanvas.parentElement.toggleAttribute('data-active', Boolean(source && map && pairs.length < MAX_PAIRS));
+    const info = [];
+    if (fit) {
+      const firstPair = vacuumAlignmentDistance(pairs[0], pairs[1], fit.transform, mapUnitsPerMetre);
+      if (Number.isFinite(firstPair?.mapMetres)) {
+        const comparison = reviewFit && Number.isFinite(firstPair.planMetres) ?
+          ` and ${firstPair.planMetres.toFixed(2)} m on the aligned plan` : '';
+        info.push(`Corners 1–2 measure ${firstPair.mapMetres.toFixed(2)} m on LiDAR${comparison}.`);
+        if (distance.valueAsNumber > 0) {
+          const difference = Math.abs(firstPair.mapMetres - distance.valueAsNumber);
+          info.push(`The tape reading differs by ${Math.round(difference * 100)} cm.`);
+        }
+      }
+      if (reviewFit) {
+        const scale = mapUnitsPerMetre && fit.scale * mapUnitsPerMetre;
+        const error = value => scale ? `${Math.round(value / scale * 100)} cm` : `${value.toFixed(1)} plan pixels`;
+        if (Number.isFinite(fit.leaveOneOutError)) {
+          info.push(`The independent corner check differs by up to ${error(fit.leaveOneOutError)}.`);
+        } else {
+          info.push(`The matched corners differ by ${error(fit.rmse)} on average.`);
+        }
+        if (fit.scaleRange) info.push('The fit adjusts scale separately along each direction.');
+      }
+    }
+    if (!spread || !fit) info.push('Match at least three corners spread in two directions.');
+    quality.textContent = info.join(' ');
+    drawMap(mapCanvas, source, pairs, map);
+    drawPlan(planCanvas, project, source, pairs, plan, reviewFit?.transform ?? stored, overlay.checked, suggested);
   }
 
   async function loadMap() {
@@ -211,10 +245,11 @@ export function mountVacuumAlignment(document, host, {api, bridge}) {
         units.value = String(mapUnitsPerMetre);
         units.readOnly = true;
       }
-      status.textContent = 'LiDAR map loaded. Choose the same location on both maps.';
+      status.textContent = 'LiDAR scan loaded.';
     } catch {
       if (started !== generation || !dialog.open) return;
-      status.textContent = 'The selected camera did not return a calibrated map. Retry or enter map coordinates directly.';
+      status.textContent = 'The camera did not return a calibrated scan. Retry or enter coordinates in Advanced.';
+      advanced.open = true;
     }
     busy = false;
     update();
@@ -232,12 +267,15 @@ export function mountVacuumAlignment(document, host, {api, bridge}) {
     pairs = [];
     source = fit = applied = appliedKey = undefined;
     busy = false;
+    previewed = false;
     for (const input of [mapX, mapY, planX, planY, units, distance]) input.value = '';
     units.readOnly = false;
-    overlay.checked = true;
-    status.textContent = bridge?.request && !CAMERA.test(vacuum.vacuumMapEntityId ?? '')
-      ? 'Link the vacuum map camera in the Inspector or enter known map coordinates.' :
-      'Enter known coordinates here, or open Home Assistant Studio to load the linked map.';
+    overlay.checked = false;
+    const canLoad = bridge?.request && CAMERA.test(vacuum.vacuumMapEntityId ?? '');
+    advanced.open = !canLoad;
+    status.textContent = canLoad ? '' : bridge?.request ?
+      'Link a vacuum map camera in the Inspector to load the scan.' :
+      'Use Home Assistant Studio to load the linked scan.';
     dialog.showModal();
     update();
     if (!load.disabled) void loadMap();
@@ -256,33 +294,50 @@ export function mountVacuumAlignment(document, host, {api, bridge}) {
     const map = applyVacuumAlignment(source.pixelToMap, pixel);
     mapX.value = String(Math.round(map.x * 10) / 10);
     mapY.value = String(Math.round(map.y * 10) / 10);
+    planX.value = planY.value = '';
+    status.textContent = '';
     update();
+    if (host.matchMedia?.('(max-width:560px)').matches) planCanvas.scrollIntoView({block:'nearest'});
   });
   planCanvas.addEventListener('click', event => {
-    if (busy) return;
+    if (busy || pairs.length >= MAX_PAIRS) return;
+    if (!readPoint(mapX, mapY)) {
+      status.textContent = 'Choose the corner on the LiDAR scan first.';
+      return;
+    }
     const point = pointer(planCanvas, event);
     planX.value = String(Math.round(point.x));
     planY.value = String(Math.round(point.y));
-    update();
+    if (recordPair() && !previewed && host.matchMedia?.('(max-width:560px)').matches) {
+      mapCanvas.scrollIntoView({block:'nearest'});
+    }
   });
-  add.addEventListener('click', () => {
-    if (add.disabled) return;
+  function recordPair() {
     const map = readPoint(mapX, mapY);
     const plan = readPoint(planX, planY, true);
+    if (busy || !map || !plan || pairs.length >= MAX_PAIRS) return false;
     if (pairs.some(pair => Math.hypot(pair.map.x - map.x, pair.map.y - map.y) < 1 ||
         Math.hypot(pair.plan.x - plan.x, pair.plan.y - plan.y) < 1)) {
-      status.textContent = 'Choose a different location on each map.';
-      return;
+      status.textContent = 'That corner is already matched. Choose a different corner.';
+      update();
+      return false;
     }
     pairs.push({map, plan});
     for (const input of [mapX, mapY, planX, planY]) input.value = '';
-    status.textContent = `Pair ${pairs.length} added.`;
+    status.textContent = '';
     update();
-  });
+    return true;
+  }
+  add.addEventListener('click', recordPair);
   undoPoint.addEventListener('click', () => {
     if (undoPoint.disabled) return;
-    pairs.pop();
-    status.textContent = 'Removed the last matching pair.';
+    if (readPoint(mapX, mapY) || readPoint(planX, planY, true)) {
+      for (const input of [mapX, mapY, planX, planY]) input.value = '';
+      status.textContent = 'Cleared the selected point.';
+    } else {
+      pairs.pop();
+      status.textContent = 'Removed the last matching pair.';
+    }
     update();
   });
   apply.addEventListener('click', () => {
@@ -292,7 +347,9 @@ export function mountVacuumAlignment(document, host, {api, bridge}) {
     if (result) {
       appliedKey = fit.transform.join(',');
       if (result.changed) applied = result;
-      status.textContent = result.changed ? 'Applied to the draft. Export to dashboard when ready.' : 'This alignment is already applied.';
+      status.textContent = result.changed ?
+        'Alignment ready. Close this panel and choose Save to update the live dashboard.' :
+        'This alignment is already in the layout.';
     } else status.textContent = 'The vacuum binding changed or the alignment is out of range. Reopen this survey.';
     update();
   });

@@ -1,6 +1,5 @@
 import {compileStorybookPlan, createStorybookScene} from './storybook-scene.mjs';
-import {CAMERA_PRESETS, enterFreeView, populateCameraOptions, resolveDefaultCameraView, storybookCameraTileSize, studioCameraPreferences} from './storybook-camera.mjs';
-import {bindFreeViewGestures} from './storybook-orbit.mjs';
+import {normalizeCameraView, storybookCameraTileSize} from './storybook-camera.mjs';
 import {placeStorybookTargets} from './storybook-state.mjs';
 import {createPersonPresence, personSource, readDetectionZones, readPersonTracks} from './storybook-tracking.mjs';
 import {mountStorybookStudioLook} from './storybook-studio-look.mjs';
@@ -8,7 +7,6 @@ import {mountRadarCalibration} from './storybook-calibration-panel.mjs';
 import {mountVacuumAlignment} from './storybook-vacuum-alignment-panel.mjs';
 
 const SELECT_RADIUS = 22;
-const MIN_DRAG = 5;
 const AMBIENT_FRAME_INTERVAL = 1000 / 12;
 const TRACK_INTERVAL_MS = 1000;
 const TRACK_SOURCE_LIMIT = 12;
@@ -66,38 +64,15 @@ export function mountStorybookEditor(document, host) {
   const api = host.RoomcraftEditorViewport;
   const canvas = document.getElementById('sceneCanvas');
   const viewport = document.getElementById('viewport');
-  const choice = document.getElementById('sceneView');
-  if (!api || !canvas || !viewport || !choice) return null;
-  populateCameraOptions(choice, true);
-  const buttons = {
-    left: document.getElementById('sceneRotateLeft'),
-    right: document.getElementById('sceneRotateRight'),
-    out: document.getElementById('sceneZoomOut'),
-    in: document.getElementById('sceneZoomIn'),
-  };
-  const cameraOptions = document.getElementById('sceneCameraOptions');
-  const resetButton = document.getElementById('sceneReset');
-  const saveDefaultButton = document.getElementById('sceneSaveDefault');
-  const clearDefaultButton = document.getElementById('sceneClearDefault');
-  const defaultStatus = document.getElementById('sceneDefaultStatus');
-  const preferences = studioCameraPreferences(host);
+  if (!api || !canvas || !viewport) return null;
   const motionPreference = host.matchMedia?.('(prefers-reduced-motion: reduce)');
   const trackingBridge = host.location?.pathname?.startsWith('/local/roomcraft/')
     ? host.RoomcraftDashboardBridge : null;
   const calibrator = mountRadarCalibration(document, host, {api, bridge: trackingBridge});
   const vacuumAlignment = mountVacuumAlignment(document, host, {api, bridge: trackingBridge});
-  const look = mountStorybookStudioLook(document, host, {api, viewport, bridge: trackingBridge, onChange: () => {
-    draw(drag?.item && drag.position ? {[drag.item.id]: {position: drag.position}} : undefined);
-  }});
-  const outline = document.createElement('div');
-  outline.className = 'scene-selection';
-  outline.setAttribute('aria-hidden', 'true');
-  Object.assign(outline.style, {
-    position: 'absolute', width: '32px', height: '32px', border: '2px solid #35756b',
-    borderRadius: '50%', transform: 'translate(-50%,-50%)', pointerEvents: 'none',
-    boxShadow: '0 0 0 2px #fff6de', zIndex: '2', display: 'none',
+  const look = mountStorybookStudioLook(document, host, {
+    api, viewport, bridge: trackingBridge, onChange: () => draw(),
   });
-  viewport.append(outline);
   const markerLayer = document.createElement('div');
   markerLayer.className = 'scene-placeholders';
   Object.assign(markerLayer.style, {position: 'absolute', inset: '0', pointerEvents: 'none', zIndex: '1'});
@@ -108,26 +83,20 @@ export function mountStorybookEditor(document, host) {
   Object.assign(leaders.style, {position: 'absolute', inset: '0', width: '100%', height: '100%', pointerEvents: 'none'});
   viewport.insertBefore(leaders, markerLayer);
   const markers = new Map();
-  const miniHelp = document.getElementById('miniHelp');
-  const planHelp = miniHelp?.textContent;
-  const editorCanvasLabel = canvas.getAttribute('aria-label') ?? 'Editable three-dimensional home view';
-
   let scene;
   let project;
   let fingerprint;
-  let view = resolveDefaultCameraView(null);
-  let mode = choice.value;
-  let lastEditableMode = 'default';
-  let drag;
+  let view = normalizeCameraView('top');
+  let focus;
+  let active = true;
+  let guideProjection;
+  let draftPositions;
   let resizeFrame;
   let ambientFrame;
   let lastAmbientFrame = -Infinity;
   let ambientSeconds = 0;
   let renderInputs;
   let disposed = false;
-  let cameraChanged = false;
-  let savedStartupView = null;
-  let defaultBusy = false;
   let trackingItems = [];
   let trackingIds = [];
   let trackingKey = '';
@@ -139,8 +108,7 @@ export function mountStorybookEditor(document, host) {
   let displayedPeople = {key: '', scene: null, reduceMotion: false};
   let displayedCoverage = {id: null, scene: null};
 
-  const is3D = () => mode !== 'plan';
-  const isFree = () => mode === 'free';
+  const is3D = () => active;
   const reducedMotion = () => motionPreference?.matches === true || !look.motionEnabled();
   const currentSize = () => canvas.getBoundingClientRect();
   const pointerPoint = event => {
@@ -243,12 +211,57 @@ export function mountStorybookEditor(document, host) {
     syncTracking();
   }
 
-  function draw(dragPreview) {
+  function center() {
+    const {width, height} = currentSize();
+    return scene?.projectToPlan(width / 2, height / 2);
+  }
+  function updateCamera() {
+    scene?.setView(view, focus ? {focus: {x: focus.x, y: 0, z: focus.y}} : undefined);
+  }
+  function fit() {
+    view = normalizeCameraView('top');
+    focus = undefined;
+    updateCamera();
+    draw();
+  }
+  function pan(from, dx, dy) {
+    if (!from || !guideProjection) return;
+    const {scale} = guideProjection;
+    focus = {x: from.x - dx / scale, y: from.y - dy / scale};
+    updateCamera();
+    draw();
+  }
+  function zoomAt(factor, x, y) {
+    const before = scene?.projectToPlan(x, y);
+    if (!before) return;
+    const next = normalizeCameraView({preset: 'top', zoom: view.zoom * factor});
+    if (next.zoom === view.zoom) return;
+    view = next;
+    updateCamera();
+    const after = scene.projectToPlan(x, y);
+    const middle = center();
+    if (after && middle) focus = {x: middle.x + before.x - after.x, y: middle.y + before.y - after.y};
+    updateCamera();
+    draw();
+  }
+  function syncGuides(width) {
+    // At the north-up orthographic pose, one planar affine transform applies
+    // to the scene, edit handles, and pointer coordinates at every elevation.
+    const origin = scene.projectToPlan(0, 0);
+    const right = scene.projectToPlan(width, 0);
+    if (!origin || !right || right.x <= origin.x) return;
+    const next = {left: origin.x, top: origin.y, scale: width / (right.x - origin.x), zoom: view.zoom};
+    if (Object.entries(next).every(([key, value]) => guideProjection?.[key] === value)) return;
+    guideProjection = next;
+    api.setOverheadView({...next, fit, pan, zoomAt, center});
+  }
+  function draw() {
     syncAmbientAnimation();
     if (!scene || !is3D()) return;
     const {width, height} = currentSize();
-    if (!width || !height) return;
+    if (width < 1 || height < 1) return;
     scene.resize(width, height);
+    syncGuides(width);
     const selected = api.getSelection();
     const selectedId = selected?.kind === 'item' ? selected.id : null;
     if (displayedCoverage.scene !== scene || displayedCoverage.id !== selectedId) {
@@ -264,9 +277,8 @@ export function mountStorybookEditor(document, host) {
       if (state && state.entityId === item.entityId) states[item.id] = state;
     }
     renderInputs = [states, {...appearance.environment, reduceMotion},
-      {showTelemetryPosition: false, draftPositions: dragPreview}];
+      {showTelemetryPosition: false, draftPositions}];
     scene.render(ambientSeconds, ...renderInputs);
-    if (isFree()) return;
     const targets = [];
     for (const [id, marker] of markers) {
       const anchor = scene.anchor(id);
@@ -295,109 +307,21 @@ export function mountStorybookEditor(document, host) {
     }
     for (const [id, marker] of markers) marker.hidden = !shown.has(id);
     leaders.replaceChildren(...lines);
-    const anchor = selected?.kind === 'item' ? scene.anchor(selected.id) : null;
-    outline.style.display = anchor ? 'block' : 'none';
-    if (anchor) {
-      outline.style.left = `${anchor.x * width}px`;
-      outline.style.top = `${anchor.y * height}px`;
-    }
-  }
-  function restoreDrag() {
-    if (!drag) return;
-    const before = drag;
-    drag = undefined;
-    try { canvas.releasePointerCapture(before.pointerId); } catch { /* Capture can already be cancelled. */ }
-    if (before.item) draw({[before.item.id]: {position: {x: before.item.x, y: before.item.y}}});
-  }
-  function updateButtons() {
-    if (cameraOptions) cameraOptions.hidden = !is3D();
-    for (const button of Object.values(buttons)) if (button) button.disabled = !is3D();
-    if (saveDefaultButton) {
-      saveDefaultButton.hidden = !scene || !isFree();
-      saveDefaultButton.disabled = defaultBusy;
-    }
-    if (clearDefaultButton) {
-      clearDefaultButton.hidden = !scene || !is3D() || !savedStartupView;
-      clearDefaultButton.disabled = defaultBusy;
-    }
-  }
-  function setDefaultStatus(text) {
-    if (defaultStatus) defaultStatus.textContent = text;
-  }
-  function markCameraChanged() {
-    cameraChanged = true;
-    setDefaultStatus('');
-  }
-  function updateCanvasInteraction() {
-    canvas.tabIndex = isFree() ? 0 : -1;
-    canvas.style.cursor = isFree() ? 'grab' : '';
-    canvas.setAttribute('aria-label', isFree()
-      ? 'Free view. Use arrow keys to orbit and plus or minus to zoom.'
-      : editorCanvasLabel);
-  }
-  function choose(next, {initial = false} = {}) {
-    if (!initial) {
-      markCameraChanged();
-      if (next === 'default') cameraChanged = false;
-    }
-    orbit.cancel();
-    restoreDrag();
-    const previousView = scene?.getView() ?? view;
-    const nextMode = Object.hasOwn(CAMERA_PRESETS, next) ? next : 'plan';
-    if (nextMode !== 'plan') api.useSelectTool?.();
-    mode = nextMode;
-    if (is3D() && !isFree()) lastEditableMode = mode;
-    choice.value = mode;
-    canvas.hidden = !is3D();
-    updateCanvasInteraction();
-    const showMarkers = is3D() && !isFree();
-    markerLayer.style.display = showMarkers ? 'block' : 'none';
-    leaders.style.display = showMarkers ? 'block' : 'none';
-    if (!showMarkers) outline.style.display = 'none';
-    if (miniHelp) {
-      if (isFree()) miniHelp.textContent = 'Drag or swipe to orbit. Pinch or scroll to zoom.';
-      else miniHelp.textContent = is3D()
-        ? 'Drag objects to move them. Scroll to zoom; use the view controls to rotate.'
-        : planHelp;
-    }
-    viewport.classList.toggle('scene-3d', is3D());
-    updateButtons();
-    if (!is3D()) {
-      refresh();
-      syncAmbientAnimation();
-      look.sync(false, api.getProject().sceneSettings);
-      setStatus('Plan view · edit rooms, walls, floors and objects');
-      return;
-    }
-    const nextView = mode === 'default'
-      ? resolveDefaultCameraView(savedStartupView)
-      : isFree() ? enterFreeView(previousView) : {preset: mode};
-    view = scene ? scene.setView(nextView) : nextView;
-    refresh();
-    if (!scene) return;
-    setStatus(isFree()
-      ? 'Free view · choose an editable view to move objects'
-      : '3D view · select and drag objects, or place an object from the catalog');
   }
   function fail() {
-    orbit.cancel();
+    active = false;
     scene?.dispose();
     scene = undefined;
-    fingerprint = undefined;
-    mode = 'plan';
+    guideProjection = undefined;
     syncAmbientAnimation();
-    choice.value = mode;
     canvas.hidden = true;
     look.sync(false, api.getProject().sceneSettings);
-    updateCanvasInteraction();
     markerLayer.style.display = 'none';
     leaders.style.display = 'none';
-    if (miniHelp) miniHelp.textContent = planHelp;
     viewport.classList.remove('scene-3d');
-    outline.style.display = 'none';
-    updateButtons();
+    api.setOverheadView(null);
     updatePeople(false);
-    setStatus('3D view is unavailable on this screen. Plan view is ready.');
+    setStatus('3D view is unavailable. You can edit in the overhead plan.');
   }
   function refresh() {
     if (disposed) return;
@@ -411,13 +335,11 @@ export function mountStorybookEditor(document, host) {
     const nextFingerprint = JSON.stringify(nextProject);
     try {
       if (!scene || nextFingerprint !== fingerprint) {
-        restoreDrag();
-        if (scene) view = scene.getView();
         scene?.dispose();
         scene = undefined;
         project = nextProject;
         scene = createStorybookScene(canvas, project);
-        scene.setView(view);
+        updateCamera();
         fingerprint = nextFingerprint;
         markers.clear();
         markerLayer.replaceChildren();
@@ -435,7 +357,7 @@ export function mountStorybookEditor(document, host) {
           });
           marker.addEventListener('pointerdown', event => onPointerDown(event, item.id));
           marker.addEventListener('click', event => {
-            if (!isFree() && event.detail === 0) {
+            if (event.detail === 0) {
               api.selectItem(item.id);
               draw();
             }
@@ -444,240 +366,94 @@ export function mountStorybookEditor(document, host) {
           markerLayer.append(marker);
         }
       }
-      updateButtons();
       updatePeople(false);
       draw();
     } catch { fail(); }
   }
-  function changeCamera(edit) {
-    if (!scene || !is3D()) return;
-    markCameraChanged();
-    restoreDrag();
-    scene.setView(edit(scene.getView()));
-    view = scene.getView();
-    draw();
-  }
-  const onChange = () => refresh();
-  const onTool = () => {
-    const tool = api.getTool();
-    if (is3D() && tool !== 'select') choose('plan');
-    else if (isFree() && api.hasPlacement()) choose(lastEditableMode);
-    else if (is3D()) draw();
+  const onChange = () => {
+    draftPositions = undefined;
+    refresh();
   };
-  const onChoice = () => choose(choice.value);
+  const onDraft = event => {
+    draftPositions = event.detail;
+    draw();
+  };
   const onResize = () => {
     host.cancelAnimationFrame(resizeFrame);
     resizeFrame = host.requestAnimationFrame(() => draw());
   };
-  const orbit = bindFreeViewGestures(canvas, {
-    getView: () => isFree() ? scene?.getView() : null,
-    onChange: next => {
-      if (!scene || !isFree()) return;
-      markCameraChanged();
-      view = scene.setView(next);
-      onResize();
-    },
-  });
   const onPointerDown = (event, forcedId = null) => {
-    if (!is3D() || isFree() || !scene || event.button !== 0 || drag) return;
-    event.preventDefault();
-    event.stopPropagation();
+    if (!is3D() || !scene) return;
     const screen = pointerPoint(event);
-    if (api.hasPlacement()) {
-      const point = scene.projectToPlan(screen.x, screen.y, api.getPlacementType(), {preferTabletop: true});
-      if (point) api.placeAt(point.x, point.y);
-      refresh();
-      return;
+    const tool = api.getTool();
+    const placementPoint = api.hasPlacement()
+      ? scene.projectToPlan(screen.x, screen.y, api.getPlacementType(), {preferTabletop: true}) : null;
+    let itemId = forcedId;
+    if (!itemId && !placementPoint && (tool === 'select' || tool === 'erase')) {
+      itemId = scene.pickGarage(screen.x, screen.y);
+      if (!itemId) {
+        const {width, height} = currentSize();
+        const anchors = new Map(project.items.map(item => [item.id, scene.anchor(item.id)]));
+        itemId = pickEditorItem(project.items, screen, scene.projectToPlan(screen.x, screen.y), anchors, width, height)?.id;
+      }
     }
-    const {width, height} = currentSize();
-    const anchors = new Map(project.items.map(item => [item.id, scene.anchor(item.id)]));
-    const hitId = forcedId ?? scene.pickGarage(screen.x, screen.y);
-    const item = hitId ? project.items.find(item => item.id === hitId) :
-      pickEditorItem(project.items, screen, scene.projectToPlan(screen.x, screen.y), anchors, width, height);
-    api.selectItem(item?.id ?? null);
-    if (!item) {
-      draw();
-      return;
-    }
-    const startPlan = scene.projectToPlan(screen.x, screen.y, item.type);
-    if (!startPlan) return;
-    drag = {item: {...item}, startScreen: screen, startPlan, pointerId: event.pointerId};
-    canvas.setPointerCapture(event.pointerId);
-    draw();
-  };
-  const onPointerMove = event => {
-    if (!is3D() || isFree()) return;
-    event.stopPropagation();
-    if (!drag || drag.pointerId !== event.pointerId || !scene) return;
-    const screen = pointerPoint(event);
-    if (!drag.moved && Math.hypot(screen.x - drag.startScreen.x, screen.y - drag.startScreen.y) < MIN_DRAG) return;
-    const p = scene.projectToPlan(screen.x, screen.y, drag.item.type);
-    if (!p) return;
-    drag.moved = true;
-    const position = {x: drag.item.x + p.x - drag.startPlan.x, y: drag.item.y + p.y - drag.startPlan.y};
-    const warning = api.moveItemWarning?.(drag.item.id, position.x, position.y);
-    if (warning) {
-      if (warning !== drag.warning) setStatus(warning);
-      drag.warning = warning;
-      return;
-    }
-    if (drag.warning) setStatus(`Moving ${drag.item.name || 'object'}`);
-    drag.warning = undefined;
-    drag.position = position;
-    draw({[drag.item.id]: {position: drag.position}});
-  };
-  const onPointerUp = event => {
-    if (!is3D() || isFree()) return;
-    event.stopPropagation();
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    const finished = drag;
-    drag = undefined;
-    try { canvas.releasePointerCapture(event.pointerId); } catch { /* Browser released capture. */ }
-    if (finished.moved && finished.position) {
-      api.moveItem(finished.item.id, finished.position.x, finished.position.y);
-      refresh();
-    } else draw();
-  };
-  const onPointerCancel = event => {
-    if (isFree()) return;
-    if (drag?.pointerId === event.pointerId) restoreDrag();
-    event.stopPropagation();
-  };
-  const onWheel = event => {
-    if (!is3D() || isFree()) return;
-    event.preventDefault();
-    event.stopPropagation();
-    changeCamera(current => ({...current, zoom: current.zoom * (event.deltaY < 0 ? 1.1 : 1 / 1.1)}));
-  };
-  const onKey = event => {
-    if (isFree() && event.target === canvas && (event.key === 'Delete' || event.key === 'Backspace')) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-    }
-    if (event.key === 'Escape' && drag) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      restoreDrag();
-    }
+    api.pointerDown(event, {itemId, placementPoint, captureTarget: canvas});
   };
   const onContextLost = event => {
     event.preventDefault();
     fail();
   };
-  const rotateLeft = () => changeCamera(current => ({...current, azimuth: current.azimuth - 15}));
-  const rotateRight = () => changeCamera(current => ({...current, azimuth: current.azimuth + 15}));
-  const zoomOut = () => changeCamera(current => ({...current, zoom: current.zoom / 1.2}));
-  const zoomIn = () => changeCamera(current => ({...current, zoom: current.zoom * 1.2}));
-  const resetView = () => choose('top');
   const onMotionPreference = () => { updatePeople(false); draw(); };
   const onVisibility = () => { syncTracking(); updatePeople(); syncAmbientAnimation(); };
   document.addEventListener('visibilitychange', onVisibility);
   motionPreference?.addEventListener('change', onMotionPreference);
-  async function loadStartupView() {
-    defaultBusy = true;
-    updateButtons();
-    try {
-      savedStartupView = await preferences.read();
-      if (!disposed && !cameraChanged) choose('default', {initial: true});
-    } catch {
-      if (!disposed) setDefaultStatus('Saved view unavailable');
-    } finally {
-      defaultBusy = false;
-      if (!disposed) updateButtons();
-    }
-  }
-  async function writeStartupView(viewToSave) {
-    if (!scene || !is3D() || defaultBusy) return;
-    defaultBusy = true;
-    setDefaultStatus('Saving view…');
-    updateButtons();
-    try {
-      await preferences.write(viewToSave);
-      if (disposed) return;
-      savedStartupView = viewToSave;
-      if (!viewToSave) choose('default');
-      setDefaultStatus(viewToSave ? 'Default view saved' : 'Top down is the default');
-    } catch {
-      if (!disposed) setDefaultStatus('Could not save default view');
-    } finally {
-      defaultBusy = false;
-      if (!disposed) updateButtons();
-    }
-  }
-  const saveStartupView = () => {
-    if (isFree() && scene) writeStartupView(scene.getView());
-  };
-  const clearStartupView = () => writeStartupView(null);
-  buttons.left?.addEventListener('click', rotateLeft);
-  buttons.right?.addEventListener('click', rotateRight);
-  buttons.out?.addEventListener('click', zoomOut);
-  buttons.in?.addEventListener('click', zoomIn);
-  resetButton?.addEventListener('click', resetView);
-  saveDefaultButton?.addEventListener('click', saveStartupView);
-  clearDefaultButton?.addEventListener('click', clearStartupView);
-  choice.addEventListener('change', onChoice);
   canvas.addEventListener('pointerdown', onPointerDown);
-  canvas.addEventListener('pointermove', onPointerMove);
-  canvas.addEventListener('pointerup', onPointerUp);
-  canvas.addEventListener('pointercancel', onPointerCancel);
-  canvas.addEventListener('lostpointercapture', onPointerCancel);
-  canvas.addEventListener('wheel', onWheel, {passive: false});
+  canvas.addEventListener('pointermove', api.pointerMove);
+  canvas.addEventListener('pointerup', api.pointerUp);
+  canvas.addEventListener('pointercancel', api.pointerCancel);
+  canvas.addEventListener('lostpointercapture', api.pointerCancel);
   canvas.addEventListener('webglcontextlost', onContextLost);
-  host.addEventListener('keydown', onKey, true);
   host.addEventListener('roomcraft-editor-change', onChange);
-  host.addEventListener('roomcraft-editor-tool', onTool);
+  host.addEventListener('roomcraft-editor-preview', onDraft);
   const observer = new host.ResizeObserver(onResize);
   observer.observe(viewport);
-  choose(mode, {initial: true});
+  canvas.hidden = false;
+  viewport.classList.add('scene-3d');
+  refresh();
   try {
     if (host.location.hash === '#scene-settings' || trackingBridge && host.parent.location.hash === '#scene-settings') {
       look.open();
     }
   } catch { /* Studio can be embedded by a different origin. */ }
-  loadStartupView();
-
   return {
     getView: () => scene?.getView() ?? {...view},
-    setView: choose,
     dispose() {
       disposed = true;
+      active = false;
       syncAmbientAnimation();
       syncTracking();
       document.removeEventListener('visibilitychange', onVisibility);
       motionPreference?.removeEventListener('change', onMotionPreference);
-      restoreDrag();
-      orbit.dispose();
-      mode = 'plan';
-      updateCanvasInteraction();
       observer.disconnect();
       host.cancelAnimationFrame(resizeFrame);
       scene?.dispose();
       scene = undefined;
-      outline.remove();
       markerLayer.remove();
       leaders.remove();
       look.dispose();
       calibrator?.dispose();
       vacuumAlignment?.dispose();
-      if (miniHelp) miniHelp.textContent = planHelp;
-      buttons.left?.removeEventListener('click', rotateLeft);
-      buttons.right?.removeEventListener('click', rotateRight);
-      buttons.out?.removeEventListener('click', zoomOut);
-      buttons.in?.removeEventListener('click', zoomIn);
-      resetButton?.removeEventListener('click', resetView);
-      saveDefaultButton?.removeEventListener('click', saveStartupView);
-      clearDefaultButton?.removeEventListener('click', clearStartupView);
-      choice.removeEventListener('change', onChoice);
+      canvas.hidden = true;
+      viewport.classList.remove('scene-3d');
+      api.setOverheadView(null);
       canvas.removeEventListener('pointerdown', onPointerDown);
-      canvas.removeEventListener('pointermove', onPointerMove);
-      canvas.removeEventListener('pointerup', onPointerUp);
-      canvas.removeEventListener('pointercancel', onPointerCancel);
-      canvas.removeEventListener('lostpointercapture', onPointerCancel);
-      canvas.removeEventListener('wheel', onWheel);
+      canvas.removeEventListener('pointermove', api.pointerMove);
+      canvas.removeEventListener('pointerup', api.pointerUp);
+      canvas.removeEventListener('pointercancel', api.pointerCancel);
+      canvas.removeEventListener('lostpointercapture', api.pointerCancel);
       canvas.removeEventListener('webglcontextlost', onContextLost);
-      host.removeEventListener('keydown', onKey, true);
       host.removeEventListener('roomcraft-editor-change', onChange);
-      host.removeEventListener('roomcraft-editor-tool', onTool);
+      host.removeEventListener('roomcraft-editor-preview', onDraft);
     },
   };
 }

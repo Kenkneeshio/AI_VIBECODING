@@ -9,6 +9,35 @@ const {water} = buildStorybookNeighborhood({box() {}, ball() {}, add(geometry) {
   street, -111, {minX:350, maxX:1430}, 6200, 780);
 const layout = planStorybookBeachPlay(water, street);
 
+test('La Jolla keeps the Cove sheltered and Scripps Pier visibly raised across the animated surf', () => {
+  const room = {minX:350, maxX:1430};
+  const capture = () => {
+    const boxes = [], cliffs = [];
+    const {water} = buildStorybookNeighborhood({
+      box(...args) { boxes.push(args); },
+      ball() {},
+      add(geometry, shade, x, y, z) {
+        if (shade === '#d6b98f') cliffs.push({x, y, z, vertices:geometry.attributes.position.count});
+        geometry.dispose();
+      },
+    }, street, -111, room, 6200, 780);
+    return {boxes, cliffs, water};
+  };
+  const coast = capture();
+  assert.deepEqual(capture(), coast);
+  const shoreAt = fraction => coast.water.shoreline.reduce((nearest, point) => {
+    const x = coast.water.focusX + fraction * (room.maxX - room.minX);
+    return Math.abs(point.x - x) < Math.abs(nearest.x - x) ? point : nearest;
+  }).z;
+  assert.ok(shoreAt(.29) > shoreAt(.145) + 50, 'the pocket retreats from Point La Jolla');
+  assert.ok(shoreAt(.29) > shoreAt(.43) + 50, 'sandstone headlands enclose the pocket');
+  assert.ok(Math.abs(shoreAt(-.36) - shoreAt(-.49)) < 10, 'Shores remains a broad gentle beach');
+  assert.ok(coast.cliffs.length >= 7 && coast.cliffs.every(cliff => cliff.vertices > 20));
+  const deck = coast.boxes.find(([width, height, , shade]) => width === 12.5 && height === 1.8 && shade === '#b9b4a6');
+  assert.ok(deck[5] > coast.water.y && deck[6] - deck[2] / 2 < shoreAt(-.30) - 55);
+  assert.equal(coast.boxes.filter(([width, height, , shade]) => width === 1.5 && height === 15.4 && shade === '#989a92').length, 20);
+});
+
 test('the authored shoreline gives the volleyball and sandcastle groups distinct dry-sand patches', () => {
   assert.ok(layout.court && layout.castle);
   assert.ok(layout.court.x + layout.court.halfWidth < layout.castle.x - layout.castle.halfWidth);

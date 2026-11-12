@@ -1,5 +1,19 @@
 # Decision log
 
+## Keep Studio overhead and put physical measurements on the scan
+
+Use the shared live scene from directly above for Studio editing. Keep authoring gestures in that view and retain the existing dashboard revision check in Save. Generate the room controls from the published dashboard and Home Assistant's current state.
+
+The vacuum survey uses a held-out corner check to choose whether a directional scale improves the fit. Measurements on the authored plan convert both endpoints with the full inverse transform. The Home ruler measures directly in the scan coordinate system. An automated wall fit was rejected after its held-out error increased, so the saved calibration remains the starting point for a user survey.
+
+## Preview maximum graphics on the current display
+
+Keep the manual graphics preferences under the opt-in renderer preset. Apply the preview only in memory and persist it on confirmation. Restore the manual values when the preview expires. Bound the drawing buffer and shadow map to browser GPU limits, and retain the existing animation state and art layers when graphics quality changes.
+
+## Build La Jolla's coast in world geometry
+
+Combine the long sandy Shores beach and adjacent park with the Cove's smaller sandstone pocket beach. Use the shared 3D scene, shoreline and water path so the land, surf, and reflections stay registered as the camera moves. Treat the landmarks as a stylized composition for the dashboard. [La Jolla Shores](https://www.sandiego.gov/lifeguards/beaches/shores), [Kellogg Park](https://www.sandiego.gov/park-and-recreation/parks/regional/shoreline/kelloggpark), [La Jolla Cove](https://www.sandiego.gov/lifeguards/beaches/cove).
+
 ## Give Weather and Power room to show their data
 
 Use large panels for Weather and Power and keep the Calendar and To-do links on their own dock button. Pause the main 3D draw loop while a large data panel covers the dashboard. Weather reads authenticated Home Assistant forecasts for the selected browser-local provider. Windy opens on request with a rounded regional map center and unloads when closed. Power animation follows the signed whole-home reading and honors reduced motion.

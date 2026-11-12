@@ -18,9 +18,11 @@ import {readStorybookUtilities, utilityReading} from './storybook-utilities.mjs'
 import {bindStorybookPower, POWER_PANEL_MARKUP, POWER_PANEL_STYLE} from './storybook-power-panel.mjs';
 import {bindStorybookLightPanel, STORYBOOK_LIGHT_PANEL, STORYBOOK_LIGHT_PANEL_STYLES} from './storybook-light-panel.mjs';
 import {bindVacuumMapOverlay, VACUUM_MAP_TOGGLE} from './storybook-vacuum-map.mjs';
+import {bindLidarRuler, LIDAR_RULER_BUTTON, LIDAR_RULER_MARKUP, LIDAR_RULER_STYLE} from './storybook-lidar-ruler.mjs';
 import {bindStorybookCommutes, COMMUTE_DIALOG_MARKUP, COMMUTE_DIALOG_STYLE} from './storybook-commutes.mjs';
 import {createStorybookLocation, STORYBOOK_LOCATION_MARKUP, STORYBOOK_LOCATION_STYLE} from './storybook-location.mjs';
 import {bindStorybookHeatMap, HEAT_MAP_LEGEND, HEAT_MAP_STYLE, HEAT_MAP_TOGGLE} from './storybook-heatmap-panel.mjs';
+import './storybook-controls-view.mjs';
 
 const TAG = 'roomcraft-storybook-card';
 const CONTROL_TAG = 'roomcraft-object-control';
@@ -91,6 +93,8 @@ class RoomcraftStorybookCard extends HTMLElement {
         .bar .main-menu .close-main-menu{width:auto;background:#fffaf1;border:1px solid #d8c7ae;padding-inline:14px}
         .planner-glyph{width:15px;height:14px;box-sizing:border-box;border:1.5px solid currentColor;border-radius:3px;
           background:linear-gradient(to bottom,transparent 3px,currentColor 3px 4px,transparent 4px)}
+        .controls-glyph{width:5px;height:5px;margin:0 6px 5px 0;border-radius:1px;background:currentColor;
+          box-shadow:6px 0 currentColor,0 6px currentColor,6px 6px currentColor}
         .planner-short-label{display:none}
         @media(max-width:920px){.main-menu{width:calc(100vw - 24px);grid-template-columns:repeat(2,minmax(0,1fr))}}
         @media(max-width:610px){
@@ -221,7 +225,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         .device:focus-within{z-index:3}
         .status{position:absolute;inset:0;display:grid;place-items:center;padding:20px;
           background:#e7eadb;text-align:center}
-        .status[hidden],.recovery[hidden],.bar button[hidden],.device[hidden],.camera[hidden]{display:none}
+        .status[hidden],.recovery[hidden],.bar :is(button,a)[hidden],.device[hidden],.camera[hidden]{display:none}
         .status-inner{max-width:27em}
         .recovery{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:12px}
         .recovery button,.recovery a{box-sizing:border-box;border-radius:9px;background:#53455e;color:#fff4e9;
@@ -230,6 +234,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         @media(max-width:540px){.bar nav{gap:5px}.bar a,.bar button{padding-inline:7px}}
         ${storybookWeatherStyles}
         ${STORYBOOK_WEATHER_PANEL_STYLE}
+        ${LIDAR_RULER_STYLE}
         ${COASTAL_SKY_STYLE}
         ${DISPLAY_SETTINGS_STYLE}
         ${POWER_PANEL_STYLE}
@@ -283,6 +288,9 @@ class RoomcraftStorybookCard extends HTMLElement {
               <span class="planner-glyph" aria-hidden="true"></span>
               <span class="planner-long-label">Calendar &amp; to-dos</span><span class="planner-short-label">Calendar</span>
             </button>
+            <a class="dock-button" data-controls-link href="/roomcraft-home/controls">
+              <span class="controls-glyph" aria-hidden="true"></span> Controls
+            </a>
             <span class="default-status" role="status" aria-live="polite"></span>
             <div class="main-menu-wrap">
               <button type="button" class="dock-button main-menu-button" aria-label="Main menu" aria-expanded="false" aria-controls="storybook-main-menu"><span class="menu-glyph" aria-hidden="true"></span> Menu</button>
@@ -297,7 +305,8 @@ class RoomcraftStorybookCard extends HTMLElement {
                 </section>
                 <section class="menu-group" aria-label="On the map">
                   <p class="menu-heading" aria-hidden="true">On the map</p>
-                  <a class="menu-primary" href="/roomcraft-home/studio#lidar-alignment" data-lidar-alignment-link>Align LiDAR map</a>
+                  <a class="menu-primary" href="/roomcraft-home/studio#lidar-alignment" data-lidar-alignment-link>Align robot to LiDAR map</a>
+                  ${LIDAR_RULER_BUTTON}
                   ${VACUUM_MAP_TOGGLE}
                   <button type="button" class="map-toggle toggle-object-details" aria-pressed="false">Object details <span class="menu-toggle" aria-hidden="true"></span></button>
                   <button type="button" class="open-tracking" hidden>Presence tracking</button>
@@ -369,6 +378,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       </dialog>
       ${COMMUTE_DIALOG_MARKUP}
       ${STORYBOOK_WEATHER_PANEL_MARKUP}
+      ${LIDAR_RULER_MARKUP}
       ${SNAPSHOT_DIALOG_MARKUP}
       ${DISPLAY_SETTINGS_MARKUP}
       ${STORYBOOK_LIGHT_PANEL}
@@ -385,6 +395,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.overlay = this.shadowRoot.querySelector('.overlay');
     this.lightPanel = bindStorybookLightPanel(this);
     this.vacuumMapOverlay = bindVacuumMapOverlay(this);
+    this.lidarRuler = bindLidarRuler(this);
     this.overlay.addEventListener('hass-more-info', event => {
       if (this.lightPanel.open(event.detail?.entityId)) event.stopPropagation();
     });
@@ -396,7 +407,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.weatherPanel = createStorybookWeatherPanel(this.weatherDialog, {
       onProviderChange: () => this.refresh(),
     });
-    for (const dialog of [this.weatherDialog, this.powerDialog]) {
+    for (const dialog of [this.weatherDialog, this.powerDialog, this.lidarRuler.dialog]) {
       dialog.addEventListener('close', () => this.schedule());
     }
     this.status = this.shadowRoot.querySelector('.status');
@@ -593,6 +604,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.canvas.addEventListener('webglcontextlost', event => {
       event.preventDefault();
       if (!this.isConnected) return;
+      this.displaySettings.cancelGraphicsPreview?.();
       this.graphicsInterrupted = true;
       this.fail('The 3D view lost its graphics connection.');
     });
@@ -623,13 +635,14 @@ class RoomcraftStorybookCard extends HTMLElement {
     for (const link of this.shadowRoot.querySelectorAll('[data-studio-link]')) link.href = this.studioPath;
     this.shadowRoot.querySelector('[data-scene-settings-link]').href = this.studioPath + '#scene-settings';
     this.shadowRoot.querySelector('[data-lidar-alignment-link]').href = this.studioPath + '#lidar-alignment';
+    this.shadowRoot.querySelector('[data-controls-link]').hidden = dashboard !== 'roomcraft-home';
     this.shadowRoot.querySelector('.tracking-calibration').href = this.studioPath + '#tracking-range-correction';
     this.load();
   }
 
   get studioPath() { return `/${this.dashboard || 'roomcraft-home'}/studio`; }
   get weatherEntityId() { return this.weatherPanel.effectiveEntityId ?? this.model?.weather.weather_entity; }
-  get largePanelOpen() { return this.weatherDialog.open || this.powerDialog.open; }
+  get largePanelOpen() { return this.weatherDialog.open || this.powerDialog.open || this.lidarRuler.open; }
 
   set hass(value) {
     const previous = this.session;
@@ -643,6 +656,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.refreshUtility(previous);
     this.lightPanel.refresh();
     this.vacuumMapOverlay.sync();
+    this.lidarRuler.sync();
     this.power.refresh(previous);
     this.locationPanel.update(value);
     this.updateDefaultViewButtons();
@@ -882,9 +896,11 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.locationPanel.configure(config?.roomcraft_location);
       this.locationPanel.update(this.session);
       this.prepareUtilities(config);
-      this.scene = createStorybookScene(this.canvas, this.model.layout);
-      this.vacuumMapOverlay.configure(this.model.layout.items.find(item =>
-        item.entityId?.startsWith('vacuum.') && item.vacuumMapEntityId));
+      this.scene = createStorybookScene(this.canvas, this.model.layout,
+        {insaneGraphics: this.displaySettings.value.insaneGraphics});
+      const vacuum = this.model.layout.items.find(item => item.entityId?.startsWith('vacuum.') && item.vacuumMapEntityId);
+      this.vacuumMapOverlay.configure(vacuum);
+      this.lidarRuler.configure(vacuum);
       this.scene.setView(this.cameraView);
       this.applyDisplaySettings(this.displaySettings.value);
       this.detectionZones = readDetectionZones(this.model.layout.items);
@@ -1371,6 +1387,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.heatMap.configure();
     this.weatherPanel.close();
     this.vacuumMapOverlay.configure(null);
+    this.lidarRuler.configure(null);
     this.lightPanel.close();
     this.stopDemo(false);
     this.freeViewGestures?.cancel();

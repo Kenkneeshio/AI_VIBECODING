@@ -49,6 +49,7 @@ function solidFoot(root) {
 // footprint come from the authored mesh within that band.
 function surfaceBand(item, object) {
   const {type} = item;
+  if (type === 'counter' || type === 'kitchenWorktop') return [36.75, 37.15];
   if (type === 'desk' || type.includes('-desk-')) return [43.65, 44.4];
   if (type === 'table' || type === 'diningTable') return [44.65, 46.45];
   if (type.includes('dining-set') || type.includes('dining-table-')) return [40.65, 42.35];

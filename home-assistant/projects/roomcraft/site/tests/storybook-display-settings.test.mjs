@@ -14,7 +14,7 @@ test('display settings allow only known browser overrides and preserve the autho
   assert.deepEqual(settings, {features:{sky:false, boats:true}, dockAlignment:'center',
     headlightBrightness:1.6, heatMapOpacity:.25, showAvatars:false, seatedPoses:true,
     frameRate:24, cameraFrameRate:null, renderScale:1, shadowQuality:'high', showFps:false,
-    limitOffscreenScenery:false});
+    limitOffscreenScenery:false, insaneGraphics:false});
   assert.deepEqual(storybookDisplaySceneSettings(base, settings),
     {boats:true, wind:false, sky:false, dockAlignment:'center'});
   assert.deepEqual(base, {boats:false, wind:false, dockAlignment:'left'});
@@ -25,28 +25,44 @@ class Control extends EventTarget {
   constructor() { super(); this.value = ''; this.checked = false; }
   get valueAsNumber() { return this.value === '' ? NaN : Number(this.value); }
   emit(type) { this.dispatchEvent(new Event(type)); }
+  focus() {}
 }
 
-test('the display dialog restores preferences, saves edits locally, and resets without a device request', () => {
+function bindFixture(preferences) {
   const host = new EventTarget();
-  const local = new Map([[DISPLAY_SETTINGS_KEY, JSON.stringify({features:{sky:false}, seatedPoses:false})]]);
+  const local = new Map([[DISPLAY_SETTINGS_KEY, JSON.stringify(preferences)]]);
+  const timers = new Map();
+  let now = 0;
+  let nextTimer = 0;
+  const setTimer = (fn, delay) => {
+    timers.set(++nextTimer, {fn, at:now + delay});
+    return nextTimer;
+  };
+  host.setTimeout = setTimer;
+  host.clearTimeout = timer => timers.delete(timer);
+  host.setInterval = setTimer;
+  host.clearInterval = host.clearTimeout;
+  host.performance = {now: () => now};
+  host.document = Object.assign(new EventTarget(), {hidden:false});
   host.localStorage = {
     getItem: key => local.get(key) ?? null,
     setItem: (key, value) => local.set(key, value),
     removeItem: key => local.delete(key),
   };
   const controls = Object.fromEntries(['dock','avatars','seats','headlight','heat','headlight-value','heat-value','close','reset',
-    'frame-rate','camera-frame-rate','render-scale','shadow-quality','limit-offscreen','tablet-performance','graphics-status']
+    'frame-rate','camera-frame-rate','render-scale','shadow-quality','limit-offscreen','tablet-performance','graphics-status',
+    'insane','keep','revert','countdown','preview-actions']
     .map(key => [key, new Control()]));
   const toggle = new Control();
   const sky = Object.assign(new Control(), {dataset:{displayFeature:'sky'}});
-  const dialog = {
+  const dialog = Object.assign(new EventTarget(), {
     open:false,
     querySelectorAll: () => [sky],
     querySelector: selector => controls[selector.slice('[data-display-'.length,-1)],
+    toggleAttribute() {},
     showModal() { this.open = true; },
-    close() { this.open = false; },
-  };
+    close() { this.open = false; this.dispatchEvent(new Event('close')); },
+  });
   const changes = [];
   const card = {
     shadowRoot: {querySelector: selector => selector === '.display-settings-dialog' ? dialog : toggle},
@@ -55,6 +71,22 @@ test('the display dialog restores preferences, saves edits locally, and resets w
   const settings = bindStorybookDisplaySettings(card, value => changes.push(value), host);
   settings.connect();
   toggle.emit('click');
+  return {host, local, controls, sky, dialog, changes, settings, toggle,
+    advance(ms, dispatch = true) {
+      now += ms;
+      if (!dispatch) return;
+      for (const [id, {fn, at}] of timers) {
+        if (at > now) continue;
+        timers.delete(id);
+        fn();
+      }
+    },
+  };
+}
+
+test('the display dialog restores preferences, saves edits locally, and resets without a device request', () => {
+  const {host, local, controls, sky, dialog, changes, settings} =
+    bindFixture({features:{sky:false}, seatedPoses:false});
   assert.equal(dialog.open, true);
   assert.equal(sky.value, 'hide');
   assert.equal(controls.seats.checked, false);
@@ -98,7 +130,7 @@ test('the display dialog restores preferences, saves edits locally, and resets w
   assert.deepEqual(saved, changes.at(-1));
   assert.deepEqual(saved, {features:{sky:true}, headlightBrightness:1.25, heatMapOpacity:.5,
     showAvatars:false, seatedPoses:false, dockAlignment:'left', frameRate:12, cameraFrameRate:12,
-    renderScale:.67, shadowQuality:'low', showFps:true, limitOffscreenScenery:true});
+    renderScale:.67, shadowQuality:'low', showFps:true, limitOffscreenScenery:true, insaneGraphics:false});
   controls['camera-frame-rate'].value = '';
   controls['camera-frame-rate'].emit('change');
   assert.equal(JSON.parse(local.get(DISPLAY_SETTINGS_KEY)).cameraFrameRate, null);
@@ -119,4 +151,70 @@ test('the display dialog restores preferences, saves edits locally, and resets w
   assert.equal(settings.value.showFps, true);
   settings.disconnect();
   assert.equal(dialog.open, false);
+});
+
+test('Insane graphics previews once for five seconds, then restores every preference without writing', () => {
+  const {local, controls, settings, changes, advance} = bindFixture({
+    frameRate:20, cameraFrameRate:12, renderScale:.67, shadowQuality:'low',
+    limitOffscreenScenery:true, features:{clouds:false}, showFps:true,
+  });
+  const stored = local.get(DISPLAY_SETTINGS_KEY);
+  const normal = settings.value;
+  controls.insane.emit('click');
+  assert.equal(settings.graphicsPreviewActive, true);
+  assert.deepEqual(changes.at(-1), {...normal, insaneGraphics:true,
+    frameRate:60, cameraFrameRate:60, renderScale:1, shadowQuality:'ultra', limitOffscreenScenery:false});
+  assert.equal(local.get(DISPLAY_SETTINGS_KEY), stored);
+  advance(4999);
+  assert.equal(settings.graphicsPreviewActive, true);
+  advance(1);
+  assert.equal(settings.graphicsPreviewActive, false);
+  assert.deepEqual(changes.at(-1), normal);
+  assert.equal(local.get(DISPLAY_SETTINGS_KEY), stored);
+  assert.equal(controls['preview-actions'].hidden, true);
+
+  controls.insane.emit('click');
+  advance(5000, false);
+  controls.keep.emit('click');
+  assert.deepEqual(settings.value, normal);
+  assert.equal(local.get(DISPLAY_SETTINGS_KEY), stored);
+  settings.disconnect();
+});
+
+test('confirmation keeps only the graphics override, closing and hiding cancel previews, and Tablet exits the mode', () => {
+  const {host, local, controls, dialog, settings, toggle, advance} = bindFixture({
+    frameRate:30, renderScale:.8, shadowQuality:'low', features:{trees:false}, showFps:true,
+  });
+  const normal = settings.value;
+  controls.insane.emit('click');
+  dialog.close();
+  assert.deepEqual(settings.value, normal);
+  toggle.emit('click');
+  controls.insane.emit('click');
+  host.document.hidden = true;
+  host.document.dispatchEvent(new Event('visibilitychange'));
+  assert.deepEqual(settings.value, normal);
+  host.document.hidden = false;
+  controls.insane.emit('click');
+  assert.equal(settings.cancelGraphicsPreview(), true);
+  assert.deepEqual(settings.value, normal);
+
+  controls.insane.emit('click');
+  advance(2500);
+  controls.keep.emit('click');
+  assert.equal(settings.graphicsPreviewActive, false);
+  assert.equal(settings.value.insaneGraphics, true);
+  assert.equal(settings.value.shadowQuality, 'ultra');
+  assert.deepEqual(JSON.parse(local.get(DISPLAY_SETTINGS_KEY)), {...normal, insaneGraphics:true});
+  advance(5000);
+  controls.insane.emit('click');
+  assert.deepEqual(settings.value, normal);
+
+  controls.insane.emit('click');
+  controls.keep.emit('click');
+  controls['tablet-performance'].emit('click');
+  assert.deepEqual(settings.value, {...normal, frameRate:20, renderScale:.67, shadowQuality:'off'});
+  controls.insane.emit('click');
+  settings.disconnect();
+  assert.equal(settings.graphicsPreviewActive, false);
 });

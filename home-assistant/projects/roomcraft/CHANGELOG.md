@@ -1,5 +1,14 @@
 # Changelog
 
+## Overhead Studio, room controls, and a La Jolla coastline
+
+- Studio edits the same 3D scene as Home from directly above. **Save** publishes the draft, and **Return to live dashboard** sits next to it.
+- Placement supports the dry kitchen worktop. Dragging, drawing walls, and deleting keep the overhead camera in place.
+- The LiDAR survey pairs matching corners in two taps. Home's LiDAR ruler measures directly on the vacuum scan in metres and feet.
+- The **Controls** view groups labeled device buttons and readings by room in a phone-friendly layout.
+- **Insane graphics** previews higher-quality rendering on the current display. It restores the previous settings after five seconds unless confirmed.
+- The animated coastline draws on the sand and boardwalk at La Jolla Shores and the sandstone pocket beach at La Jolla Cove.
+
 ## Expand Weather, Power and dashboard menus
 
 - The centered menu uses more of the screen. **Calendar & to-dos** has a dedicated dashboard button.

@@ -92,11 +92,11 @@ def update_dashboard(config: dict, version: str, storybook: bool = False) -> dic
 
 
 def update_roomcraft_home(home: dict, version: str, legacy: dict | None = None) -> dict:
-    """Keep one published layout and projection behind two Roomcraft views."""
+    """Keep one published layout and projection behind the Roomcraft views."""
     next_config = deepcopy(home)
     views = next_config.get("views", [])
     if not isinstance(views, list) or any(not isinstance(view, dict) or
-                                         view.get("path") not in ("home", "studio") for view in views):
+                                         view.get("path") not in ("home", "studio", "controls") for view in views):
         raise RuntimeError("Roomcraft Home contains an unexpected view")
     if len({view["path"] for view in views}) != len(views):
         raise RuntimeError("Roomcraft Home contains an unexpected view")
@@ -126,9 +126,17 @@ def update_roomcraft_home(home: dict, version: str, legacy: dict | None = None) 
     studio["type"] = "panel"
     studio["cards"] = [{"type": "custom:roomcraft-editor-card",
                         "dashboard": HOME_DASHBOARD_PATH, "asset_version": version}]
+    controls = next((view for view in views if view.get("path") == "controls"), None)
+    if controls is None:
+        controls = {"title": "Controls", "path": "controls", "icon": "mdi:home-switch"}
+    elif (len(controls.get("cards", [])) != 1 or
+          controls["cards"][0].get("type") != "custom:roomcraft-controls-card"):
+        raise RuntimeError("The controls path already contains a different view")
+    controls["type"] = "panel"
+    controls["cards"] = [{"type": "custom:roomcraft-controls-card", "dashboard": HOME_DASHBOARD_PATH}]
     live["title"] = "Home"
     live["cards"][0]["dashboard"] = HOME_DASHBOARD_PATH
-    next_config["views"] = [live, studio]
+    next_config["views"] = [live, studio, controls]
     return next_config
 
 
@@ -242,6 +250,8 @@ def main() -> int:
     if args.storybook:
         live_view = "home" if use_home else "storybook"
         print(f"Roomcraft live view: http://{args.host}:8123/{dashboard_path}/{live_view}")
+        if use_home:
+            print(f"Roomcraft controls: http://{args.host}:8123/{dashboard_path}/controls")
     print("HA dashboard and card/weather resources read-back verified.")
     return 0
 

@@ -63,6 +63,7 @@ const fragmentShader = `
   varying vec2 coastPoint;
   varying vec3 surfacePoint;
   uniform float waterTime;
+  uniform bool waterHighDetail;
   uniform float rain;
   uniform float fog;
   uniform float reflectedWind;
@@ -106,10 +107,19 @@ const fragmentShader = `
     vec3 toCamera = normalize(cameraPosition - surfacePoint);
     float slant = 1.0 - clamp(toCamera.y, 0.0, 1.0);
     float waveLight = smoothstep(0.37, 0.99, rippleA) * smoothstep(-0.69, 0.85, swell + rippleB * 0.48);
+    float caustic = 0.0;
+    if (waterHighDetail) {
+      vec2 fold = vec2(coastPoint.x * .11 + offshore * .17, coastPoint.x * .09 - offshore * .20);
+      fold += vec2(swell * 1.4, crossSwell * 1.2) + waterTime * vec2(-.87, .74);
+      vec2 ripples = sin(fold + .48 * sin(fold.yx));
+      float visibleDetail = 1.0 - smoothstep(.6, 2.3, max(fwidth(fold.x), fwidth(fold.y)));
+      caustic = smoothstep(.71, 1.55, abs(ripples.x + ripples.y)) * visibleDetail;
+    }
     float depth = smoothstep(8.0, 278.0, offshore + rippleB * 3.2);
     vec3 color = mix(shallowTint, deepTint, depth);
     color = mix(color, shoreTint, 1.0 - smoothstep(0.0, 21.0, offshore));
     color = mix(color, foamTint, waveLight * mix(0.14, 0.044, depth));
+    color = mix(color, foamTint, caustic * (1.0 - smoothstep(8.0, 112.0, offshore)) * .084);
     color = mix(color, cloudTint, slant * slant * 0.13);
 
     // The artistically reflected sky follows the water and shifts as the camera orbits.
@@ -159,6 +169,7 @@ const fragmentShader = `
           float facet = sin(towardShore * 0.51 + pathX * 0.048 + rippleB * 0.86 - waterTime * 1.48);
           float streak = path * smoothstep(0.29, 0.97, facet) * smoothstep(-0.7, 0.54, rippleA + swell * 0.29);
           float glints = path * smoothstep(0.79, 0.99, rippleB) * smoothstep(0.25, 0.95, facet);
+          glints += path * caustic * smoothstep(.28, .97, facet) * .52;
           float amount = (core * 0.82 + glow * 0.25 + streak * 0.63) * bodyVisibility;
           color = mix(color, bodyTint, min(amount, 0.93));
           color = mix(color, mix(bodyTint, vec3(1.0), 0.70), (streak * 0.18 + glints * 0.35) * bodyVisibility);
@@ -191,6 +202,7 @@ export function createStorybookOcean({y, farZ, shoreline, focusX}) {
   const uniforms = {
     ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog),
     waterTime: {value: 0},
+    waterHighDetail: {value: false},
     rain: {value: 0},
     fog: {value: 0},
     reflectedWind: {value: 0},
@@ -262,5 +274,5 @@ export function createStorybookOcean({y, farZ, shoreline, focusX}) {
     }
   }
 
-  return {mesh, update};
+  return {mesh, update, setHighDetail(value) { uniforms.waterHighDetail.value = value; }};
 }

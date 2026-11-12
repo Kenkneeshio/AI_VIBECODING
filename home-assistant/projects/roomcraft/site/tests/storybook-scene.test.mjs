@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { compileStorybookPlan } from '../ha-local/storybook-scene.mjs';
+import { compileStorybookPlan, storybookDrawingPixelRatio } from '../ha-local/storybook-scene.mjs';
 import { makeStorybookDevice } from '../ha-local/storybook-devices.mjs';
 
 function covers(polygons, x, z) {
@@ -32,6 +32,15 @@ function sample() {
     ],
   };
 }
+
+test('native graphics use device DPR while respecting WebGL dimensions and a framebuffer budget', () => {
+  assert.equal(storybookDrawingPixelRatio(1280, 800, 2, {insaneGraphics:true}), 2);
+  assert.equal(storybookDrawingPixelRatio(1280, 800, 2, {renderScale:.67}), 1.5 * .67);
+  assert.equal(storybookDrawingPixelRatio(1200, 700, 3, {insaneGraphics:true, maxWidth:3072, maxHeight:2048}), 2.56);
+  const huge = storybookDrawingPixelRatio(7680, 4320, 2, {insaneGraphics:true});
+  assert.ok(7680 * 4320 * huge ** 2 <= 12_000_001);
+  assert.ok(huge < 1);
+});
 
 test('v2 projection is deterministic and preserves the authored scene', () => {
   const source = sample();

@@ -42,10 +42,6 @@
   const ctx = canvas.getContext('2d');
   const viewport = document.getElementById('viewport');
   const stage = document.getElementById('canvasStage');
-  const assetUrl = window.RoomcraftAssetUrl || (path => path);
-  const reference = new Image();
-  reference.src = assetUrl('assets/floorplan.png');
-  reference.addEventListener('load', () => draw());
 
   const surfaces = [
     { id: 'oak', name: 'Warm oak', note: 'Open living · long planks', color: '#dca46c', accent: '#b77d4d' },
@@ -179,14 +175,6 @@
   const REFERENCE_SCENE_ITEMS_V6 = [
     item('living-wall-unit','wallUnit','Living wall-mounted unit',598.5,190.5,139,43)
   ];
-  const COMPLETE_REFERENCE_ITEMS = [
-    ...STARTER.items,
-    ...DEFAULT_ROOM_FIXTURES,
-    ...DEFAULT_INTERFACE_ITEMS,
-    ...REFERENCE_FURNITURE_V4,
-    ...REFERENCE_SCENE_ITEMS_V5,
-    ...REFERENCE_SCENE_ITEMS_V6
-  ];
   const interfaceTypes = new Set(DEFAULT_INTERFACE_ITEMS.map(o=>o.type));
   const REFERENCE_MIGRATIONS = [
     {id:'reference-v1-movable-bedside-lamp',from:0,to:1,apply(state){
@@ -312,7 +300,6 @@
   let selected = null;
   let tool = 'select';
   let snapWallEnds = true;
-  let viewMode = 'design';
   let pendingTemplate = null;
   let pendingEntityId = '';
   let modelLibrary;
@@ -326,6 +313,9 @@
   let saveTimer = null, toastTimer = null;
   let pendingDraft = null;
   let currentView = { scale: 1, tx: 0, ty: 0 };
+  let overheadView = null;
+  const displayView = () => overheadView ?? currentView;
+  const viewScale = () => displayView().scale;
   let currentPointer = point(0,0);
   let focusCanvas = false;
   let dashboardRevision = null;
@@ -396,7 +386,7 @@
       if(journalCommandCount>=70){editorJournal=createEditorJournal(project);journalCommandCount=0;journalCheckpointCount++;}
       else{editorJournal.dispatch('scene.replace',{project,reason:message||'editor change'});journalCommandCount++;}
     }
-    projectChangeSerial++;sceneOrderCache=null;saveSoon();draw();renderInspector();renderRoomList();renderStructureList();renderHotspotList();updateRestoreButton();updateRecoveryButton();updateHistoryButtons();if(message)setStatus(message);
+    projectChangeSerial++;sceneOrderCache=null;saveSoon();draw();renderInspector();renderRoomList();renderStructureList();renderHotspotList();updateClearObjectsButton();updateRecoveryButton();updateHistoryButtons();if(message)setStatus(message);
     window.dispatchEvent?.(new CustomEvent('roomcraft-editor-change'));
   }
   function setStatus(message) { document.getElementById('statusText').textContent = message; }
@@ -502,7 +492,7 @@
     c.save();c.strokeStyle='#ed6b51';c.fillStyle='#fffdf4';c.lineWidth=3;c.setLineDash([8,6]);
     if(selected.kind==='item'){
       const o=project.items.find(o=>o.id===selected.id);if(!o){c.restore();return;}
-      c.translate(o.x,o.y);c.rotate(o.rotation*Math.PI/180);c.strokeRect(-o.w/2-7,-o.h/2-7,o.w+14,o.h+14);c.setLineDash([]);for(const [dx,dy] of [[-1,-1],[1,-1],[1,1],[-1,1]]){c.beginPath();c.arc(dx*(o.w/2+7),dy*(o.h/2+7),Math.min(12,Math.max(6,7/currentView.scale)),0,Math.PI*2);c.fill();c.stroke();}
+      c.translate(o.x,o.y);c.rotate(o.rotation*Math.PI/180);c.strokeRect(-o.w/2-7,-o.h/2-7,o.w+14,o.h+14);c.setLineDash([]);for(const [dx,dy] of [[-1,-1],[1,-1],[1,1],[-1,1]]){c.beginPath();c.arc(dx*(o.w/2+7),dy*(o.h/2+7),Math.min(12,Math.max(6,7/viewScale())),0,Math.PI*2);c.fill();c.stroke();}
     }else if(selected.kind==='hotspot'){
       const h=project.hotspots.find(h=>h.id===selected.id);if(h){const p=hotspotPoint(h);c.setLineDash([]);c.lineWidth=3;c.beginPath();c.arc(p.x,p.y,29,0,Math.PI*2);c.stroke();}
     }else if(selected.kind==='wall'){
@@ -592,21 +582,18 @@
     }
   }
 
-  function draw(target=ctx,clean=false,forcedMode=null) {
-    const c=target; const mode=forcedMode||viewMode;
+  function draw(target=ctx,clean=false) {
+    const c=target;
+    const overheadGuides=!clean&&overheadView;
     c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
-    c.clearRect(0,0,VIEW_W,VIEW_H);
+    c.clearRect(0,0,overheadGuides?W:VIEW_W,overheadGuides?H:VIEW_H);
     c.save();
-    c.translate(-CROP_X,-CROP_Y);
-    if(mode==='reference'){
-      if(reference.complete&&reference.naturalWidth){c.drawImage(reference,0,0,W,H);}
-      else{c.fillStyle='#e6ecda';c.fillRect(0,0,W,H);}
-      if(!clean){drawHotspots(c);drawSelection(c);}
-    }else{
+    if(!overheadGuides)c.translate(-CROP_X,-CROP_Y);
+    if(clean || !overheadView){
       const raster=window.RoomcraftRasterRenderer;
       const drawDynamicObject=o=>{
         // HA renders bound fans and robots as live stateful objects. Keep their
-        // art in Design mode, but omit a fixed fan/robot from the exported PNG
+        // art in the editor, but omit a fixed fan/robot from the exported PNG
         // so motion and map tracking never create a second frozen copy.
         if(clean&&interfaceTypes.has(o.type))return;
         if(clean&&validEntityId(o.entityId)&&(isFixtureControl(o)||
@@ -624,28 +611,29 @@
         for(const w of project.walls)drawWall(c,w);
         for(const o of layers.windowItems)drawDynamicObject(o);
       }
-      if(!clean){
-        drawPersonPreview(c);
-        drawControlZones(c);drawHotspots(c);drawSelection(c);
-        drawStructureGuides(c);
-        if(pendingTemplate&&currentPointer){
-          const t=templateByType[pendingTemplate],wallMounted=t.type==='window'||t.mount==='wall';
-          const mount=wallMounted?nearestWallPlacement(currentPointer):null;
-          if(!wallMounted||mount){
-            const ghost=item('ghost',t.type,t.label,mount?.x??currentPointer.x,mount?.y??currentPointer.y,t.w,t.h,mount?.rotation??0);
-            c.save();c.globalAlpha=.58;
-            if(t.type==='controlZone'){
-              c.strokeStyle='#237a8a';c.lineWidth=2;c.setLineDash([8,5]);
-              c.strokeRect(ghost.x-ghost.w/2,ghost.y-ghost.h/2,ghost.w,ghost.h);c.setLineDash([]);
-            }else if(raster)raster.drawItem(c,ghost,()=>drawObject(c,ghost));
-            else drawObject(c,ghost);
-            if(placementBlock(ghost)){
-              c.translate(ghost.x,ghost.y);c.rotate(ghost.rotation*Math.PI/180);
-              c.strokeStyle='#b83548';c.lineWidth=4;
-              c.strokeRect(-ghost.w/2,-ghost.h/2,ghost.w,ghost.h);
-            }
-            c.restore();
+    }
+    if(!clean){
+      const raster=window.RoomcraftRasterRenderer;
+      drawPersonPreview(c);
+      drawControlZones(c);drawHotspots(c);drawSelection(c);
+      drawStructureGuides(c);
+      if(pendingTemplate&&currentPointer){
+        const t=templateByType[pendingTemplate],wallMounted=t.type==='window'||t.mount==='wall';
+        const mount=wallMounted?nearestWallPlacement(currentPointer):null;
+        if(!wallMounted||mount){
+          const ghost=item('ghost',t.type,t.label,mount?.x??currentPointer.x,mount?.y??currentPointer.y,t.w,t.h,mount?.rotation??0);
+          c.save();c.globalAlpha=.58;
+          if(overheadView||t.type==='controlZone'){
+            c.strokeStyle='#237a8a';c.lineWidth=2;c.setLineDash([8,5]);
+            c.strokeRect(ghost.x-ghost.w/2,ghost.y-ghost.h/2,ghost.w,ghost.h);c.setLineDash([]);
+          }else if(raster)raster.drawItem(c,ghost,()=>drawObject(c,ghost));
+          else drawObject(c,ghost);
+          if(placementBlock(ghost)){
+            c.translate(ghost.x,ghost.y);c.rotate(ghost.rotation*Math.PI/180);
+            c.strokeStyle='#b83548';c.lineWidth=4;
+            c.strokeRect(-ghost.w/2,-ghost.h/2,ghost.w,ghost.h);
           }
+          c.restore();
         }
       }
     }
@@ -661,10 +649,11 @@
     button.setAttribute('aria-pressed',String(next));
     button.textContent=next?'Exit focus':'Focus canvas';
     button.title=next?'Show the editing panels again':'Expand the artwork for a closer look';
-    setStatus(next?'Canvas expanded · click the zoom percentage for actual size':'Editing panels restored');
+    setStatus(next?'Canvas expanded · click the zoom percentage to reset the view':'Editing panels restored');
     requestAnimationFrame(fitView);
   }
   function fitView() {
+    if(overheadView){overheadView.fit();return;}
     const rect=viewport.getBoundingClientRect();
     currentView.scale=Math.min((rect.width-28)/VIEW_W,(rect.height-28)/VIEW_H);
     currentView.scale=Math.max(.18,currentView.scale);
@@ -672,10 +661,38 @@
     currentView.ty=(rect.height-VIEW_H*currentView.scale)/2;
     applyView();
   }
-  function applyView(){stage.style.transform=`translate(${currentView.tx}px,${currentView.ty}px) scale(${currentView.scale})`;document.getElementById('zoomValue').textContent=`${Math.round(currentView.scale*100)}%`;}
-  function zoomAt(factor,x,y){const old=currentView.scale;const next=Math.max(.2,Math.min(3.5,old*factor));const wx=(x-currentView.tx)/old,wy=(y-currentView.ty)/old;currentView.scale=next;currentView.tx=x-wx*next;currentView.ty=y-wy*next;applyView();}
+  function applyView(){
+    const {tx,ty,scale,zoom=scale}=displayView();
+    stage.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')';
+    document.getElementById('zoomValue').textContent=Math.round(zoom*100)+'%';
+  }
+  function setOverheadView(projection){
+    const guidesChanged=Boolean(overheadView)!==Boolean(projection);
+    overheadView=projection ? {...projection,
+      tx:-projection.left*projection.scale,
+      ty:-projection.top*projection.scale,
+    } : null;
+    if(guidesChanged){
+      canvas.width=overheadView?W:VIEW_W;
+      canvas.height=overheadView?H:VIEW_H;
+      canvas.tabIndex=overheadView?-1:0;
+      canvas.setAttribute('aria-hidden',String(Boolean(overheadView)));
+    }
+    if(overheadView)applyView();else fitView();
+    draw();
+  }
+  function zoomAt(factor,x,y){
+    if(overheadView){overheadView.zoomAt(factor,x,y);return;}
+    const old=currentView.scale,next=Math.max(.2,Math.min(3.5,old*factor));
+    const wx=(x-currentView.tx)/old,wy=(y-currentView.ty)/old;
+    currentView={scale:next,tx:x-wx*next,ty:y-wy*next};
+    applyView();
+  }
   function screenPoint(e){const r=viewport.getBoundingClientRect();return point(e.clientX-r.left,e.clientY-r.top);}
-  function worldPoint(e){const p=screenPoint(e);return point((p.x-currentView.tx)/currentView.scale+CROP_X,(p.y-currentView.ty)/currentView.scale+CROP_Y);}
+  function worldPoint(e){
+    const p=screenPoint(e),{tx,ty,scale}=displayView();
+    return point((p.x-tx)/scale+(overheadView?0:CROP_X),(p.y-ty)/scale+(overheadView?0:CROP_Y));
+  }
   const snap = n => Math.round(n/10)*10;
   const drawSegmentTool = () => tool === 'wall' || tool === 'fence';
   const segmentLabel = segment => segment?.kind === 'fence' ? 'fence' : 'wall';
@@ -701,7 +718,6 @@
     const joinedWalls=new Map(results.flatMap(result=>result.walls).map(wall=>[wall.id,wall]));
     snapshot();
     project.walls=project.walls.map(wall=>joinedWalls.get(wall.id)??wall);
-    setViewMode('design');
     setTool('structure');
     const message=`Joined ${joined} segment end${joined===1?'':'s'}`;
     afterChange(message);
@@ -717,16 +733,16 @@
     const hitOrder=[...layers.floorItems,...Models.orderMountedObjects(layers.regularItems),...layers.ceilingItems,...layers.windowItems];
     for(const expanded of includeTouchTarget?[false,true]:[false])for(let i=hitOrder.length-1;i>=0;i--){
       const o=hitOrder[i],q=itemLocalPoint(p,o);
-      const halfW=expanded?Math.max(o.w/2+5,22/currentView.scale):o.w/2+4;
-      const halfH=expanded?Math.max(o.h/2+5,22/currentView.scale):o.h/2+4;
+      const halfW=expanded?Math.max(o.w/2+5,22/viewScale()):o.w/2+4;
+      const halfH=expanded?Math.max(o.h/2+5,22/viewScale()):o.h/2+4;
       if(Math.abs(q.x)<=halfW&&Math.abs(q.y)<=halfH)return o;
     }
     return null;
   }
-  function hitSelectedItemHandle(p){if(selected?.kind!=='item')return null;const o=project.items.find(i=>i.id===selected.id);if(!o)return null;const q=itemLocalPoint(p,o),reach=Math.max(11,11/currentView.scale);for(const [sx,sy] of [[-1,-1],[1,-1],[1,1],[-1,1]])if(Math.hypot(q.x-sx*(o.w/2+7),q.y-sy*(o.h/2+7))<=reach)return {item:o,sx,sy};return null;}
-  function hitHotspot(p){const linkedEntities=new Set(project.items.map(o=>o.entityId).filter(Boolean));for(let i=project.hotspots.length-1;i>=0;i--){const h=project.hotspots[i];if(linkedEntities.has(h.entity))continue;const q=hotspotPoint(h);if(Math.hypot(p.x-q.x,p.y-q.y)<=Math.max(25,12/currentView.scale))return h;}return null;}
+  function hitSelectedItemHandle(p){if(selected?.kind!=='item')return null;const o=project.items.find(i=>i.id===selected.id);if(!o)return null;const q=itemLocalPoint(p,o),reach=Math.max(11,11/viewScale());for(const [sx,sy] of [[-1,-1],[1,-1],[1,1],[-1,1]])if(Math.hypot(q.x-sx*(o.w/2+7),q.y-sy*(o.h/2+7))<=reach)return {item:o,sx,sy};return null;}
+  function hitHotspot(p){const linkedEntities=new Set(project.items.map(o=>o.entityId).filter(Boolean));for(let i=project.hotspots.length-1;i>=0;i--){const h=project.hotspots[i];if(linkedEntities.has(h.entity))continue;const q=hotspotPoint(h);if(Math.hypot(p.x-q.x,p.y-q.y)<=Math.max(25,12/viewScale()))return h;}return null;}
   function segmentDistance(p,w){const vx=w.x2-w.x1,vy=w.y2-w.y1;const len=vx*vx+vy*vy;const t=len?Math.max(0,Math.min(1,((p.x-w.x1)*vx+(p.y-w.y1)*vy)/len)):0;return Math.hypot(p.x-(w.x1+t*vx),p.y-(w.y1+t*vy));}
-  function hitWall(p){let found=null,dist=14/currentView.scale;for(const w of project.walls){const d=segmentDistance(p,w);if(d<dist){dist=d;found=w;}}return found;}
+  function hitWall(p){let found=null,dist=14/viewScale();for(const w of project.walls){const d=segmentDistance(p,w);if(d<dist){dist=d;found=w;}}return found;}
   function nearestWallPlacement(p){
     let nearest=null;
     for(const w of project.walls){
@@ -748,14 +764,11 @@
     }
     return nearest&&nearest.distance<=75?nearest:null;
   }
-  function hitRoomVertex(p){if(selected?.kind!=='room')return null;const r=project.rooms.find(r=>r.id===selected.id);if(!r)return null;return r.points.findIndex(q=>Math.hypot(q.x-p.x,q.y-p.y)<12/currentView.scale);}
-  function hitWallEndpoint(p,w){if(Math.hypot(p.x-w.x1,p.y-w.y1)<14/currentView.scale)return 1;if(Math.hypot(p.x-w.x2,p.y-w.y2)<14/currentView.scale)return 2;return 0;}
+  function hitRoomVertex(p){if(selected?.kind!=='room')return null;const r=project.rooms.find(r=>r.id===selected.id);if(!r)return null;return r.points.findIndex(q=>Math.hypot(q.x-p.x,q.y-p.y)<12/viewScale());}
+  function hitWallEndpoint(p,w){if(Math.hypot(p.x-w.x1,p.y-w.y1)<14/viewScale())return 1;if(Math.hypot(p.x-w.x2,p.y-w.y2)<14/viewScale())return 2;return 0;}
   function select(kind,id){selected={kind,id};renderInspector();renderRoomList();renderStructureList();renderHotspotList();draw();window.dispatchEvent?.(new CustomEvent('roomcraft-editor-change'));}
   function clearPlacement(){pendingTemplate=null;pendingEntityId="";pendingSurface=null;pendingWallFinish=null;pendingSegment=null;document.querySelectorAll('.palette-item,.surface-item,.wall-finish-item').forEach(el=>el.classList.remove('placing','active'));viewport.classList.remove('placing');renderSurfacePalette();renderWallPalette();}
 
-  function notifyEditorTool() {
-    window.dispatchEvent?.(new CustomEvent('roomcraft-editor-tool'));
-  }
 
   function placeTemplateAt(p) {
     if (!pendingTemplate || !Number.isFinite(p.x) || !Number.isFinite(p.y)) return false;
@@ -863,17 +876,23 @@
     if (['x','y','w','h','rotation'].every(key => item[key] === candidate[key])) return;
     if (!interaction.snapshot) {snapshot();interaction.snapshot=true;}
     Object.assign(item, candidate);
+    if(overheadView)window.dispatchEvent(new CustomEvent('roomcraft-editor-preview',{
+      detail:{[item.id]:{position:point(item.x,item.y)}},
+    }));
     draw();
   }
-  function onPointerDown(e){
+  function onPointerDown(e, {itemId, placementPoint, captureTarget=e.currentTarget||canvas}={}){
     if(e.button>1||interaction?.pointerId!==undefined)return;
-    if(viewMode==='reference'&&tool!=='pan'&&!spaceHeld&&e.button!==1){showToast('Switch to Design to edit the plan');return;}
-    e.preventDefault();canvas.setPointerCapture(e.pointerId);const p=worldPoint(e),s=screenPoint(e);currentPointer=p;
-    if(tool==='pan'||spaceHeld||e.button===1){interaction={kind:'pan',start:s,tx:currentView.tx,ty:currentView.ty};viewport.classList.add('dragging');return;}
-    if(pendingTemplate){placeTemplateAt(p);return;}
+    e.preventDefault();captureTarget.focus({preventScroll:true});captureTarget.setPointerCapture(e.pointerId);
+    const p=worldPoint(e),s=screenPoint(e);currentPointer=p;
+    if(tool==='pan'||spaceHeld||e.button===1){
+      interaction={kind:'pan',start:s,center:overheadView?.center(),tx:currentView.tx,ty:currentView.ty,pointerId:e.pointerId};
+      viewport.classList.add('dragging');return;
+    }
+    if(pendingTemplate){placeTemplateAt(placementPoint||p);return;}
     if(pendingSurface){const r=hitRoom(p);if(r){select('room',r.id);updateProperty('surface',pendingSurface);}else showToast('Tap inside a floor area to apply the finish');return;}
     if(pendingWallFinish){const w=hitWall(p);if(w){if((w.finish||'graphite')!==pendingWallFinish){snapshot();w.finish=pendingWallFinish;select('wall',w.id);afterChange(`Applied ${wallFinishById[pendingWallFinish].name} ${segmentLabel(w)} finish`);}else select('wall',w.id);}else showToast('Tap a wall or fence to apply the finish');return;}
-    if(tool==='erase'){const h=hitHotspot(p),o=hitItem(p,false),near=hitItem(p),w=hitWall(p);if(o||(!h&&near)){const target=o||near;snapshot();project.items=project.items.filter(q=>q.id!==target.id);selected=null;afterChange(`Removed ${target.name}`);}else if(h){snapshot();project.hotspots=project.hotspots.filter(q=>q.id!==h.id);selected=null;afterChange(`Removed ${h.title} control`);}else if(w){snapshot();project.walls=project.walls.filter(q=>q.id!==w.id);selected=null;afterChange(`Removed ${segmentLabel(w)}`);}else showToast('Tap an object, control, wall, or fence to erase it');return;}
+    if(tool==='erase'){const h=hitHotspot(p),o=project.items.find(item=>item.id===itemId)||hitItem(p,false),near=hitItem(p),w=hitWall(p);if(o||(!h&&near)){const target=o||near;snapshot();project.items=project.items.filter(q=>q.id!==target.id);selected=null;afterChange(`Removed ${target.name}`);}else if(h){snapshot();project.hotspots=project.hotspots.filter(q=>q.id!==h.id);selected=null;afterChange(`Removed ${h.title} control`);}else if(w){snapshot();project.walls=project.walls.filter(q=>q.id!==w.id);selected=null;afterChange(`Removed ${segmentLabel(w)}`);}else showToast('Tap an object, control, wall, or fence to erase it');return;}
     if(drawSegmentTool()){startSegment(p,s,e);return;}
     if(tool==='structure'){
       if(!startStructureMove(p,e.pointerId)){selected=null;renderInspector();renderStructureList();draw();}
@@ -881,7 +900,7 @@
     }
     if(tool==='room'){const vertex=hitRoomVertex(p);if(vertex>=0){interaction={kind:'room-vertex',id:selected.id,index:vertex,snapshot:false};return;}const r=hitRoom(p);if(r){select('room',r.id);setStatus(`Selected ${r.name} · drag a corner to reshape`);}else{selected=null;renderInspector();draw();}return;}
     const handle=hitSelectedItemHandle(p);if(handle){const o=handle.item,a=o.rotation*Math.PI/180,lx=-handle.sx*o.w/2,ly=-handle.sy*o.h/2;interaction={kind:'item-resize',id:o.id,start:p,w:o.w,h:o.h,rotation:o.rotation,initial:{...o},anchor:point(o.x+lx*Math.cos(a)-ly*Math.sin(a),o.y+lx*Math.sin(a)+ly*Math.cos(a)),sx:handle.sx,sy:handle.sy,snapshot:false};setStatus(`Resize ${o.name} · hold Shift to keep its proportions`);return;}
-    const o=hitItem(p,false);if(o){select('item',o.id);interaction={kind:'item-move',id:o.id,start:p,x:o.x,y:o.y,initial:{...o},snapshot:false};setStatus(`Selected ${o.name}`);return;}
+    const o=project.items.find(item=>item.id===itemId)||hitItem(p,false);if(o){select('item',o.id);interaction={kind:'item-move',id:o.id,start:p,x:o.x,y:o.y,initial:{...o},snapshot:false};setStatus(`Selected ${o.name}`);return;}
     const h=hitHotspot(p);if(h){const q=hotspotPoint(h);select('hotspot',h.id);interaction={kind:'hotspot-move',id:h.id,start:p,x:q.x,y:q.y,snapshot:false};setStatus(`Selected ${h.title} control`);return;}
     const near=hitItem(p);if(near){select('item',near.id);interaction={kind:'item-move',id:near.id,start:p,x:near.x,y:near.y,initial:{...near},snapshot:false};setStatus(`Selected ${near.name}`);return;}
     if(startStructureMove(p,e.pointerId))return;
@@ -891,11 +910,16 @@
     if(!interaction){
       if(pendingSegment)updateSegmentGuide(pendingSegment,p,e.shiftKey);
       if(pendingTemplate||pendingSegment)draw();
-      if(tool==='select'&&!pendingTemplate)canvas.style.cursor=hitSelectedItemHandle(p)?'nwse-resize':hitItem(p)?'grab':hitHotspot(p)?'pointer':'';
+      if(tool==='select'&&!pendingTemplate)(e.currentTarget||canvas).style.cursor=hitSelectedItemHandle(p)?'nwse-resize':hitItem(p)?'grab':hitHotspot(p)?'pointer':'';
       return;
     }
     if(interaction.pointerId!==undefined&&e.pointerId!==interaction.pointerId)return;
-    if(interaction.kind==='pan'){currentView.tx=interaction.tx+s.x-interaction.start.x;currentView.ty=interaction.ty+s.y-interaction.start.y;applyView();return;}
+    if(interaction.kind==='pan'){
+      const dx=s.x-interaction.start.x,dy=s.y-interaction.start.y;
+      if(overheadView)overheadView.pan(interaction.center,dx,dy);
+      else{currentView.tx=interaction.tx+dx;currentView.ty=interaction.ty+dy;applyView();}
+      return;
+    }
     if(interaction.kind==='wall-draw'){
       updateSegmentGuide(interaction,p,e.shiftKey);draw();return;
     }
@@ -932,7 +956,7 @@
       const w=project.walls.find(w=>w.id===interaction.id);
       if(!w)return;
       const dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;
-      if(Math.hypot(dx,dy)*currentView.scale>=4&&!interaction.snapshot){snapshot();interaction.snapshot=true;}
+      if(Math.hypot(dx,dy)*viewScale()>=4&&!interaction.snapshot){snapshot();interaction.snapshot=true;}
       if(!interaction.snapshot)return;
       const {initial,endpoint}=interaction;
       if(endpoint){
@@ -1131,6 +1155,7 @@
     });
     viewport.dataset.tool=tool;
     canvas.style.cursor='';
+    document.getElementById('sceneCanvas').style.cursor='';
     if(drawSegmentTool()||tool==='structure')setPanel('walls');
     const instructions={
       select:'Select and drag objects, controls, walls, or rooms',
@@ -1141,9 +1166,8 @@
       structure:'Tap a wall or fence to select it. Drag either end to reshape it.',
       erase:'Tap an object, control, wall, or fence to remove it'
     };
-    draw();notifyEditorTool();setStatus(instructions[tool]);
+    draw();setStatus(instructions[tool]);
   }
-  function setViewMode(mode){viewMode=mode;document.getElementById('designModeButton').classList.toggle('active',mode==='design');document.getElementById('referenceModeButton').classList.toggle('active',mode==='reference');if(mode==='reference'){clearPlacement();setStatus('Starting furnished reference · controls are marked');}else setStatus('Editable design layer · rooms, walls, objects, and controls can be changed');draw();notifyEditorTool();}
   function setPanel(panel){document.querySelectorAll('.panel-tab').forEach(b=>{const active=b.dataset.panel===panel;b.classList.toggle('active',active);b.setAttribute('aria-selected',String(active));});for(const name of ['objects','floors','rooms','walls'])document.getElementById(`${name}Panel`).hidden=name!==panel;}
 
   function updateStructureProperty(segment,key,value) {
@@ -1367,13 +1391,11 @@
   function beginModelPlacement(type, entityId = '') {
     const template = Object.hasOwn(templateByType,type) && templateByType[type];
     if (!template || template.legacy || entityId && !Models.canMap(entityId, template)) return false;
-    setViewMode('design');
     setTool('select');
     pendingTemplate = type;
     pendingEntityId = entityId;
     viewport.classList.add('placing');
     renderPalette();
-    notifyEditorTool();
     showToast(template.mount==='wall'||type==='window'?'Click near a wall to mount it':
       template.form==='gate'?'Click across the stair opening; rotate in the Inspector as needed':
       'Click the plan to place '+template.label);
@@ -1388,14 +1410,12 @@
     const current = project.items.find(entry => entry.id === command.itemId);
     if (command.kind === 'bind') {
       if (!Models.canBind(current, command.entityId, templateByType[current?.type])) return false;
-      setViewMode('design');
       setTool('select');
       select('item', current.id);
       updateProperty('entityId', command.entityId);
       return true;
     }
     if (!current || !['edit','replace'].includes(command.kind)) return false;
-    setViewMode('design');
     setTool('select');
     if (command.kind === 'edit') {
       select('item', current.id);
@@ -1551,19 +1571,22 @@
     updateObjectPose(current,'rotation',current.rotation+90);
   }
   function addRoom(){snapshot();const r=room(uid('r'),'New room','terrazzo',[[570,420],[790,420],[790,580],[570,580]],[580,440]);project.rooms.push(r);setTool('room');select('room',r.id);setPanel('rooms');afterChange('Added editable room');showToast('Drag the corner handles to reshape your room');}
-  function missingReferenceItems(){const present=new Set(project.items.map(i=>i.id));return COMPLETE_REFERENCE_ITEMS.filter(i=>!present.has(i.id));}
-  function updateRestoreButton(){const button=document.getElementById('restoreFurnishingsButton');if(!button)return;const count=missingReferenceItems().length;button.disabled=count===0;button.textContent=count?`↺ Restore ${count} missing reference object${count===1?'':'s'}`:'✓ Complete reference layout is present';button.title=count?'Add every missing reference object while keeping your floors, rooms, and new objects':'Every reference object is already in this design';const clear=document.getElementById('clearObjectsButton');if(clear){clear.disabled=project.items.length===0;clear.textContent=project.items.length?`Remove all objects (${project.items.length})`:'No objects to remove';}}
-  function restoreReferenceItems(){const missing=missingReferenceItems();if(!missing.length){showToast('All reference furniture is present');return;}snapshot();project.items.push(...missing.map(clone));selected=null;clearPlacement();setViewMode('design');afterChange(`Restored ${missing.length} reference object${missing.length===1?'':'s'}`);showToast('Original furnishings restored in Design view; other edits kept');}
+  function updateClearObjectsButton(){
+    const clear=document.getElementById('clearObjectsButton');
+    if(!clear)return;
+    clear.disabled=project.items.length===0;
+    clear.textContent=project.items.length?'Remove all objects ('+project.items.length+')':'No objects to remove';
+  }
   async function clearAllObjects(){
     if(!project.items.length){showToast('There are no objects to remove');return;}
     if(!await askConfirmation('Remove all objects',`Remove all ${project.items.length} objects? Floors, rooms, and walls stay in place.`,'Remove objects'))return;
-    snapshot();project.items=[];selected=null;clearPlacement();setViewMode('design');afterChange('Removed all objects');showToast('All objects removed in Design view; floors, rooms, and walls were kept');
+    snapshot();project.items=[];selected=null;clearPlacement();afterChange('Removed all objects');showToast('All objects removed');
   }
   function download(name,type,content){const blob=content instanceof Blob?content:new Blob([content],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);}
   function exportJson(){download('roomcraft-editable-layout.json','application/json',JSON.stringify(Engine.canonicalize(project),null,2));showToast('Editable layout JSON downloaded');}
   async function renderDetailedPng(){
     await window.RoomcraftObjectArt?.prepareExport?.();
-    const out=document.createElement('canvas');out.width=VIEW_W;out.height=VIEW_H;draw(out.getContext('2d'),true,'design');return out;
+    const out=document.createElement('canvas');out.width=VIEW_W;out.height=VIEW_H;draw(out.getContext('2d'),true);return out;
   }
   async function exportPng(){try{showToast('Preparing detailed artwork…');const out=await renderDetailedPng();out.toBlob(blob=>{if(blob){download('roomcraft-second-floor.png','image/png',blob);showToast('Detailed PNG plan downloaded');}},'image/png');}catch(_){showToast('Could not load a detailed image asset for export');}}
   function dashboardControls(layout){
@@ -1587,7 +1610,11 @@
   function importProject(file){if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(String(reader.result));if(!validProject(parsed))throw new Error('Invalid project format');snapshot();project=normalizeProject(parsed);selected=null;clearPlacement();afterChange('Imported project',{authoritative:true});showToast('Project imported');fitView();}catch(err){showToast('Could not import this project JSON');}};reader.readAsText(file);}
 
   function setDashboardStatus(message,isError=false){const status=document.getElementById('dashboardTransferStatus');status.textContent=message;status.classList.toggle('error',isError);setStatus(message);}
-  function setDashboardBusy(busy){dashboardTransferBusy=busy;document.body.classList.toggle('dashboard-transfer-busy',busy);for(const id of ['importDashboardButton','exportDashboardButton'])document.getElementById(id).disabled=busy;}
+  function setDashboardBusy(busy){
+    dashboardTransferBusy=busy;
+    document.body.classList.toggle('dashboard-transfer-busy',busy);
+    for(const id of ['importDashboardButton','exportDashboardButton','backDashboardButton'])document.getElementById(id).disabled=busy;
+  }
   function rememberDashboardSource(source){
     if(typeof source!=='string')return;
     try{
@@ -1634,7 +1661,7 @@
     }
     if(!dashboardSource){showToast('Dashboard link unavailable. Check the Home Assistant connection.');return;}
     const unpublished=dashboardPublishedProject!==projectFingerprint(project);
-    if(unpublished&&!await askConfirmation('View dashboard','This layout has edits that are saved in this browser but have not been exported to Home Assistant. View the dashboard anyway?','View dashboard'))return;
+    if(unpublished&&!await askConfirmation('Return to live dashboard','Your latest edits are in this browser’s draft. The live dashboard will show the last saved layout.','Return to live dashboard'))return;
     if(!saveDraftNow()&&unpublished){showToast('Browser draft could not be saved. Export layout JSON before leaving.');return;}
     if(window.RoomcraftDashboardBridge?.navigate?.())return;
     try{window.top.location.assign(dashboardSource);}
@@ -1710,7 +1737,7 @@
       }
       try{preserveDisplacedDraft(current);}
       catch(_){throw new Error('Could not save a browser backup. Your layout is still open.');}
-      snapshot();project=current;dashboardDefaultProject=clone(project);dashboardPreview=preview;selected=null;clearPlacement();setViewMode('design');afterChange('Imported from Home Assistant dashboard',{authoritative:true});dashboardPublishedProject=projectFingerprint(project);fitView();
+      snapshot();project=current;dashboardDefaultProject=clone(project);dashboardPreview=preview;selected=null;clearPlacement();afterChange('Imported from Home Assistant dashboard',{authoritative:true});dashboardPublishedProject=projectFingerprint(project);fitView();
       dashboardRevision=data.revision;
       dashboardNeedsImport=false;
       const message=hasEditable?'Editable layout imported from dashboard':'Dashboard controls imported. Its image has no editable Roomcraft data, so the starting furnishings were used.';
@@ -1718,17 +1745,16 @@
     }catch(error){const message=`Import failed: ${error.message||'Home Assistant is unavailable'}`;setDashboardStatus(message,true);showToast(message);}
     finally{setDashboardBusy(false);}
   }
-  async function exportToDashboard(){
+  async function saveToDashboard(){
     if(dashboardTransferBusy)return;
-    const importMessage='Import the current dashboard before exporting this browser draft.';
+    const importMessage='Import the current dashboard before saving this browser draft.';
     if(dashboardNeedsImport||!dashboardRevision){
       setDashboardStatus(importMessage,true);showToast(importMessage);return;
     }
-    setDashboardBusy(true);setDashboardStatus('Checking the Home Assistant dashboard…');
+    setDashboardBusy(true);
+    const saveButton=document.getElementById('exportDashboardButton');
+    saveButton.textContent='Saving…';
     try{
-      if(!await askConfirmation('Export to Home Assistant','Replace the Second Floor plan image and interactive objects with this layout? The editable project is saved with the dashboard for future imports.','Export layout')){
-        setDashboardStatus('Dashboard export canceled');return;
-      }
       const captured=clone(project);
       const before=projectFingerprint(captured);
       const next={...captured,hotspots:dashboardControls(captured)};
@@ -1743,25 +1769,25 @@
       dashboardDefaultProject=captured;
       dashboardPublishedProject=before;
       const message=projectFingerprint(project)===before
-        ? 'Layout, image, and controls exported to Home Assistant'
-        : 'Layout exported. Newer browser edits are still unpublished.';
+        ? 'Layout saved to the live dashboard'
+        : 'Layout saved. Newer browser edits are still unpublished.';
       setDashboardStatus(message);showToast(message);
     }catch(error){
       if(error.status===409)dashboardNeedsImport=true;
-      const message=error.status===409?`Dashboard changed since your last import. ${importMessage}`:`Export failed: ${error.message||'Home Assistant is unavailable'}`;
+      const message=error.status===409?`Dashboard changed since your last import. ${importMessage}`:`Save failed: ${error.message||'Home Assistant is unavailable'}`;
       setDashboardStatus(message,true);showToast(message);
     }
-    finally{setDashboardBusy(false);}
+    finally{saveButton.textContent='Save';setDashboardBusy(false);}
   }
 
   function bindEvents(){
     canvas.addEventListener('pointerdown',onPointerDown);canvas.addEventListener('pointermove',onPointerMove);canvas.addEventListener('pointerup',onPointerUp);canvas.addEventListener('pointercancel',onPointerCancel);
     viewport.addEventListener('wheel',e=>{e.preventDefault();const s=screenPoint(e);zoomAt(e.deltaY<0?1.12:.89,s.x,s.y);},{passive:false});
-    document.querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click',()=>{setViewMode('design');setTool(b.dataset.tool);}));
+    document.querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click',()=>{setTool(b.dataset.tool);}));
     document.querySelectorAll('.panel-tab').forEach(button=>button.addEventListener('click',()=>{
       const panel=button.dataset.panel;
       setPanel(panel);
-      if(panel==='walls'){setViewMode('design');setTool('structure');}
+      if(panel==='walls'){setTool('structure');}
     }));
     for (const button of document.querySelectorAll('[data-open-models]')) {
       button.addEventListener('click', () => {
@@ -1776,21 +1802,20 @@
     });
     document.getElementById('objectSearch').addEventListener('input',()=>{document.getElementById('objectsPanel').scrollTop=0;document.getElementById('inventoryStrip').scrollLeft=0;renderPalette();});
     document.getElementById('objectCategory').addEventListener('change',()=>{document.getElementById('objectsPanel').scrollTop=0;document.getElementById('inventoryStrip').scrollLeft=0;renderPalette();});
-    document.getElementById('restoreFurnishingsButton').addEventListener('click',restoreReferenceItems);
     document.getElementById('clearObjectsButton').addEventListener('click',clearAllObjects);
     document.getElementById('recoverDraftButton').addEventListener('click',recoverPreviousDraft);
     document.getElementById('returnPreRecoveryButton').addEventListener('click',returnPreRecoveryLayout);
-    document.getElementById('hotspotList').addEventListener('click',e=>{const linked=e.target.closest('[data-control-item]');if(linked){setViewMode('design');setTool('select');select('item',linked.dataset.controlItem);setStatus('Drag this linked object or edit its entity in the Inspector');return;}const b=e.target.closest('[data-hotspot]');if(!b)return;setViewMode('design');setTool('select');select('hotspot',b.dataset.hotspot);setStatus('Drag this Home Assistant control or edit it in the Inspector');});
-    document.getElementById('surfacePalette').addEventListener('click',e=>{const b=e.target.closest('[data-surface]');if(!b)return;setViewMode('design');setTool('room');pendingSurface=b.dataset.surface;renderSurfacePalette();showToast(`Click a room to paint ${surfaceById[pendingSurface].name}`);});
-    document.getElementById('wallPalette').addEventListener('click',e=>{const b=e.target.closest('[data-wall-finish]');if(!b)return;setViewMode('design');setTool('structure');pendingWallFinish=b.dataset.wallFinish;renderWallPalette();showToast(`Tap a wall or fence to apply ${wallFinishById[pendingWallFinish].name}`);});
+    document.getElementById('hotspotList').addEventListener('click',e=>{const linked=e.target.closest('[data-control-item]');if(linked){setTool('select');select('item',linked.dataset.controlItem);setStatus('Drag this linked object or edit its entity in the Inspector');return;}const b=e.target.closest('[data-hotspot]');if(!b)return;setTool('select');select('hotspot',b.dataset.hotspot);setStatus('Drag this Home Assistant control or edit it in the Inspector');});
+    document.getElementById('surfacePalette').addEventListener('click',e=>{const b=e.target.closest('[data-surface]');if(!b)return;setTool('room');pendingSurface=b.dataset.surface;renderSurfacePalette();showToast(`Click a room to paint ${surfaceById[pendingSurface].name}`);});
+    document.getElementById('wallPalette').addEventListener('click',e=>{const b=e.target.closest('[data-wall-finish]');if(!b)return;setTool('structure');pendingWallFinish=b.dataset.wallFinish;renderWallPalette();showToast(`Tap a wall or fence to apply ${wallFinishById[pendingWallFinish].name}`);});
     document.getElementById('structureList').addEventListener('change',e=>{
       const id=e.target.value;
       if(!project.walls.some(segment=>segment.id===id))return;
-      setViewMode('design');setTool('structure');select('wall',id);
+      setTool('structure');select('wall',id);
     });
     document.getElementById('snapWallEnds').addEventListener('change',e=>{snapWallEnds=e.target.checked;});
     document.getElementById('joinWallsButton').addEventListener('click',joinNearbyWalls);
-    document.getElementById('roomList').addEventListener('click',e=>{const b=e.target.closest('[data-room]');if(!b)return;setViewMode('design');setTool('room');select('room',b.dataset.room);});
+    document.getElementById('roomList').addEventListener('click',e=>{const b=e.target.closest('[data-room]');if(!b)return;setTool('room');select('room',b.dataset.room);});
     document.getElementById('inspectorContent').addEventListener('change',e=>{
       if (e.target.matches?.('[data-lock-dimensions]')) { lockObjectDimensions = e.target.checked; return; }
       const activeField = e.target === document.activeElement ? e.target.id : '';
@@ -1815,17 +1840,14 @@
     });
     document.getElementById('inspectorContent').addEventListener('click',e=>{const a=e.target.closest('[data-action]');if(a){if(a.dataset.action==='delete')deleteSelected();if(a.dataset.action==='duplicate')duplicateSelected();if(a.dataset.action==='rotate')rotateSelected();if(a.dataset.action==='reset-dimensions')resetObjectDimensions();if(a.dataset.action==='calibrate-presence')calibratePresence(true);if(a.dataset.action==='align-presence')calibratePresence(false);}if(e.target.id==='openHelpButton')document.getElementById('helpDialog').showModal();});
     document.getElementById('newRoomButton').addEventListener('click',addRoom);
-    document.getElementById('designModeButton').addEventListener('click',()=>setViewMode('design'));
-    document.getElementById('referenceModeButton').addEventListener('click',()=>setViewMode('reference'));
     document.getElementById('focusCanvasButton').addEventListener('click',()=>setFocusCanvas(!focusCanvas));
-    document.getElementById('showReferenceButton').addEventListener('click',()=>setViewMode('reference'));
     document.getElementById('zoomInButton').addEventListener('click',()=>{const r=viewport.getBoundingClientRect();zoomAt(1.2,r.width/2,r.height/2);});
     document.getElementById('zoomOutButton').addEventListener('click',()=>{const r=viewport.getBoundingClientRect();zoomAt(1/1.2,r.width/2,r.height/2);});
     document.getElementById('fitButton').addEventListener('click',fitView);
-    document.getElementById('zoomValue').addEventListener('click',()=>{const r=viewport.getBoundingClientRect();zoomAt(1/currentView.scale,r.width/2,r.height/2);});
+    document.getElementById('zoomValue').addEventListener('click',fitView);
     document.getElementById('undoButton').addEventListener('click',undo);document.getElementById('redoButton').addEventListener('click',redo);
     document.getElementById('importDashboardButton').addEventListener('click',importFromDashboard);
-    document.getElementById('exportDashboardButton').addEventListener('click',exportToDashboard);
+    document.getElementById('exportDashboardButton').addEventListener('click',saveToDashboard);
     document.getElementById('backDashboardButton').addEventListener('click',backToDashboard);
     const menu=document.getElementById('exportMenu'),menuButton=document.getElementById('exportButton');
     const trackingRangeDialog = document.getElementById('trackingRangeDialog');
@@ -1853,14 +1875,14 @@
     });
     document.addEventListener('pointerdown',e=>{if(!e.target.closest('.menu-wrap'))showMenu(false);});
     document.getElementById('importButton').addEventListener('click',()=>document.getElementById('importFile').click());document.getElementById('importFile').addEventListener('change',e=>{importProject(e.target.files[0]);e.target.value='';});
-    document.getElementById('resetButton').addEventListener('click',async()=>{if(!await askConfirmation('Reset layout','Load the current Home Assistant layout? Your current browser draft can be exported as JSON first, and this change is undoable in this session.','Load current layout'))return;snapshot();project=normalizeProject(clone(dashboardDefaultProject||STARTER));selected=null;clearPlacement();afterChange(dashboardDefaultProject?'Loaded current Home Assistant layout':'Loaded starting furnished plan',{authoritative:true});fitView();});
+    document.getElementById('resetButton').addEventListener('click',async()=>{if(!await askConfirmation('Reset layout','Load the current Home Assistant layout? Your current browser draft can be exported as JSON first, and this change is undoable in this session.','Load current layout'))return;snapshot();project=normalizeProject(clone(dashboardDefaultProject||STARTER));selected=null;clearPlacement();afterChange(dashboardDefaultProject?'Loaded current Home Assistant layout':'Loaded starter layout',{authoritative:true});fitView();});
     window.addEventListener('keydown',e=>{
       if(modelLibrary?.isOpen || trackingRangeDialog.open || vacuumPickerDialog.open)return;
       if(!menu.hidden){
         if(e.key==='Escape'){e.preventDefault();showMenu(false);menuButton.focus();}
         return;
       }
-      if(dashboardTransferBusy)return;const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo();return;}if(e.key===' '){if(tag==='BUTTON')return;e.preventDefault();spaceHeld=true;return;}if(e.key==='Escape'){const canceled=interaction;interaction=null;viewport.classList.remove('dragging');if(canceled?.snapshot&&history.length){project=history.pop();future=[];afterChange('Canceled drag',{resetIdentity:true});}clearPlacement();selected=null;renderInspector();renderStructureList();updateHistoryButtons();draw();return;}if((e.key==='Delete'||e.key==='Backspace')&&selected){e.preventDefault();deleteSelected();return;}const shortcuts={v:'select',h:'pan',r:'room',w:'wall',f:'fence',e:'erase'};const shortcut=shortcuts[e.key.toLowerCase()];if(shortcut){setViewMode('design');setTool(shortcut);}});
+      if(dashboardTransferBusy)return;const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo();return;}if(e.key===' '){if(tag==='BUTTON')return;e.preventDefault();spaceHeld=true;return;}if(e.key==='Escape'){const canceled=interaction;interaction=null;viewport.classList.remove('dragging');if(canceled?.snapshot&&history.length){project=history.pop();future=[];afterChange('Canceled drag',{resetIdentity:true});}clearPlacement();selected=null;renderInspector();renderStructureList();updateHistoryButtons();draw();return;}if((e.key==='Delete'||e.key==='Backspace')&&selected){e.preventDefault();deleteSelected();return;}const shortcuts={v:'select',h:'pan',r:'room',w:'wall',f:'fence',e:'erase'};const shortcut=shortcuts[e.key.toLowerCase()];if(shortcut){setTool(shortcut);}});
     window.addEventListener('keyup',e=>{if(e.key===' ')spaceHeld=false;});
     window.addEventListener('resize',fitView);
     window.addEventListener('pagehide',flushPendingDraft);
@@ -1877,7 +1899,7 @@
       if (!item || item.presenceTrackEntityId !== entity || !change.valid) return false;
       snapshot();
       item.presenceTrackTransform = change.value;
-      afterChange('Radar calibration applied to the draft. Export to dashboard when ready.');
+      afterChange('Radar calibration applied to the draft. Select Save when ready.');
       return true;
     },
     setVacuumAlignment(id, vacuumEntity, mapEntity, mapId, transform) {
@@ -1894,7 +1916,7 @@
       const previous = history.at(-1);
       item.vacuumPositionTransform = change.value;
       if (mapId !== undefined) item.vacuumMapId = mapId;
-      afterChange('LiDAR alignment applied to the draft. Export to dashboard when ready.');
+      afterChange('LiDAR alignment applied to the draft. Select Save when ready.');
       const revision = projectChangeSerial;
       return {changed: true, undo() {
         if (revision !== projectChangeSerial || history.at(-1) !== previous) return false;
@@ -1918,17 +1940,18 @@
       draw();
     },
     getSelection: () => selected ? {...selected} : null,
-    getTool: () => viewMode === 'reference' ? 'reference' : pendingWallFinish ? 'wall' : tool,
+    getTool: () => pendingWallFinish ? 'wall' : tool,
+    setOverheadView,
+    pointerDown: onPointerDown,
+    pointerMove: onPointerMove,
+    pointerUp: onPointerUp,
+    pointerCancel: onPointerCancel,
     hasPlacement: () => Boolean(pendingTemplate),
     getPlacementType: () => pendingTemplate,
     applyModelCommand,
     showStatus: setStatus,
     useSelectTool() {
-      if (viewMode === 'design' && tool === 'select' && !pendingWallFinish) return;
-      viewMode = 'design';
-      tool = 'select';
-      setViewMode('design');
-      setTool('select');
+      if (tool !== 'select' || pendingWallFinish) setTool('select');
     },
     selectItem(id) {
       if (id && project.items.some(entry => entry.id === id)) select('item', id);
@@ -1982,7 +2005,7 @@
     exportCommandLog:()=>editorJournal.exportLog(),
     renderPlan:()=>Engine.render.partitionSceneItems(project.items,window.RoomcraftInventory?.byType).plan
   });
-  renderCategoryOptions();bindEvents();renderPalette();renderSurfacePalette();renderWallPalette();renderStructureList();renderRoomList();renderHotspotList();renderInspector();updateRestoreButton();updateRecoveryButton();updateHistoryButtons();setTool('select');fitView();draw();
+  renderCategoryOptions();bindEvents();renderPalette();renderSurfacePalette();renderWallPalette();renderStructureList();renderRoomList();renderHotspotList();renderInspector();updateClearObjectsButton();updateRecoveryButton();updateHistoryButtons();setTool('select');fitView();draw();
   const studioReady = new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve, {once:true}));
   Promise.all([loadDashboardDefault(), studioReady]).then(() => {
     const shortcut = studioShortcut();

@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import {storybookSolar} from './storybook-solar.mjs';
 
-const LIGHTS = 3;
+const STANDARD_ACCENTS = 3;
+const ULTRA_ACCENTS = 8;
 const LIGHT_PALETTES = {
   night: ['#a8b8f5', '#5b536e', '#a7b8ed', '#97a5c5', '#343951'],
   clear: ['#f2f5ff', '#998b85', '#fff0d9', '#f4f1d8', '#c0cbb4'],
@@ -16,8 +17,9 @@ const LOW_SUN_COLORS = {
 const HORIZON_COLORS = Object.fromEntries(Object.entries(LOW_SUN_COLORS)
   .map(([kind, colors]) => [kind, colors.map(color => new THREE.Color(color))]));
 const SHADOW_QUALITY = {
-  high: {size: 2048, type: THREE.PCFShadowMap},
-  low: {size: 1024, type: THREE.BasicShadowMap},
+  ultra: {size: 4096, type: THREE.PCFShadowMap, radius: 4.2},
+  high: {size: 2048, type: THREE.PCFShadowMap, radius: 3.4},
+  low: {size: 1024, type: THREE.BasicShadowMap, radius: 3.4},
 };
 const {clamp, lerp, smoothstep} = THREE.MathUtils;
 
@@ -42,9 +44,9 @@ export function createStorybookLighting(renderer, scene, bounds) {
   key.shadow.camera.updateProjectionMatrix();
   key.shadow.normalBias = 1.15;
   key.shadow.bias = -0.00012;
-  key.shadow.radius = 3.4;
-  const accents = Array.from({length: LIGHTS}, () => new THREE.PointLight('#ffd7a5', 0, 145, 2));
-  scene.add(sky, key, key.target, fill, ...accents);
+  const accents = Array.from({length: ULTRA_ACCENTS}, () => new THREE.PointLight('#ffd7a5', 0, 145, 2));
+  const extraAccents = accents.slice(STANDARD_ACCENTS);
+  scene.add(sky, key, key.target, fill, ...accents.slice(0, STANDARD_ACCENTS));
 
   const candidates = [];
   let previousEnvironment;
@@ -62,7 +64,7 @@ export function createStorybookLighting(renderer, scene, bounds) {
   }
 
   function setShadowQuality(value) {
-    const quality = value === 'off' || value === 'low' ? value : 'high';
+    const quality = value === 'off' || Object.hasOwn(SHADOW_QUALITY, value) ? value : 'high';
     if (quality === shadowQuality) return;
     shadowQuality = quality;
     const profile = SHADOW_QUALITY[quality];
@@ -70,9 +72,15 @@ export function createStorybookLighting(renderer, scene, bounds) {
     releaseShadow();
     renderer.shadowMap.needsUpdate = false;
     drawShadow = Boolean(profile);
+    if (quality === 'ultra') scene.add(...extraAccents);
+    else scene.remove(...extraAccents);
+    previousEnvironment = undefined;
+    previousDirection = undefined;
+    previousStates = undefined;
     if (profile) {
       renderer.shadowMap.type = profile.type;
       key.shadow.mapSize.setScalar(Math.min(profile.size, renderer.capabilities.maxTextureSize));
+      key.shadow.radius = profile.radius;
     }
   }
   setShadowQuality('high');
@@ -101,7 +109,8 @@ export function createStorybookLighting(renderer, scene, bounds) {
   function update(environment, states, ground, placementChanged = false) {
     const {elevation, azimuth, rising, daylight, twilight, lowSun, cloud} = environment.solar ?? storybookSolar(environment);
     const dayElevation = clamp(elevation, -12, 35);
-    const profile = `${rising}:${Math.round(dayElevation * 4)}:${Math.round(cloud * 32)}`;
+    const ultra = shadowQuality === 'ultra';
+    const profile = `${rising}:${Math.round(dayElevation * (ultra ? 16 : 4))}:${Math.round(cloud * (ultra ? 96 : 32))}`;
     const direct = smoothstep(elevation, -.85, 9);
     if (profile !== previousEnvironment) {
       const surfaces = [sky.color, sky.groundColor, key.color, ground.color, scene.background];
@@ -121,8 +130,8 @@ export function createStorybookLighting(renderer, scene, bounds) {
     }
     // Quantized direction avoids rebuilding the shadow texture on animation frames
     // where the sun is effectively stationary. Low angles are bounded for the miniature.
-    const bearing = Math.round(azimuth / 2) * 2;
-    const altitude = Math.max(10, Math.round(elevation));
+    const bearing = ultra ? Math.round(azimuth * 2) / 2 : Math.round(azimuth / 2) * 2;
+    const altitude = Math.max(10, ultra ? Math.round(elevation * 4) / 4 : Math.round(elevation));
     const direction = `${bearing}:${altitude}`;
     if (direct > 0 && direction !== previousDirection) {
       const heading = THREE.MathUtils.degToRad(bearing);
@@ -141,7 +150,8 @@ export function createStorybookLighting(renderer, scene, bounds) {
           ? THREE.MathUtils.clamp(entity.attributes.brightness / 255, 0, 1) : 1;
         return power > 0 ? [{object, power, color: entity.attributes?.rgb_color}] : [];
       }).sort((a, b) => b.power - a.power);
-      for (const [index, light] of accents.entries()) {
+      for (let index = 0; index < (ultra ? accents.length : STANDARD_ACCENTS); index++) {
+        const light = accents[index];
         const entry = lit[index];
         if (!entry) {
           light.intensity = 0;

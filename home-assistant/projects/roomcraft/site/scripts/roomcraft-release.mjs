@@ -136,6 +136,8 @@ function runtimeCandidates(siteRoot = SITE_ROOT, projectRoot = PROJECT_ROOT) {
     join(siteRoot, 'ha-local', 'storybook-vacuum-alignment.mjs'),
     join(siteRoot, 'ha-local', 'storybook-vacuum-alignment-panel.mjs'),
     join(siteRoot, 'ha-local', 'storybook-vacuum-map.mjs'),
+    join(siteRoot, 'ha-local', 'storybook-lidar-ruler.mjs'),
+    join(siteRoot, 'ha-local', 'storybook-controls-view.mjs'),
     join(siteRoot, 'ha-local', 'storybook-coverage-history.mjs'),
     join(siteRoot, 'ha-local', 'storybook-heatmap-panel.mjs'),
     join(siteRoot, 'ha-local', 'storybook-radar-heatmap.mjs'),

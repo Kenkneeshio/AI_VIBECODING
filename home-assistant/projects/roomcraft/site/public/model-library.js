@@ -255,7 +255,7 @@
     return resizeFootprint(item, 'w', scale * item.w, true);
   }
 
-  const SUPPORT_TYPES = new Set(['table', 'desk', 'dresser', 'nightstand', 'storageCabinet', 'coffeeTable', 'sideTable']);
+  const SUPPORT_TYPES = new Set(['table', 'desk', 'dresser', 'nightstand', 'storageCabinet', 'coffeeTable', 'sideTable', 'counter', 'kitchenWorktop']);
   const TABLETOP_TYPES = new Set(['lamp', 'tableLamp', 'humidifier', 'plant']);
   const FLOOR_SOLIDS = new Set(['sofa', 'bed', 'armchair', 'bookcase', 'bedroomBench', 'counter', 'kitchenWorktop',
     'bathFixtures', 'doubleVanity', 'tub', 'toilet', 'floorPlant']);
@@ -321,6 +321,34 @@
     return Math.min(item.w, item.h) * ratio;
   }
 
+  function kitchenTopOpening(item) {
+    if (item.type === 'kitchenWorktop') return {widthRatio: .84, depthRatio: .72, offsetRatio: 0};
+    if (item.type === 'counter' && item.id === 'i7') return {widthRatio: .58, depthRatio: .28, offsetRatio: -.04};
+    return null;
+  }
+
+  function kitchenTopSections(item) {
+    const {w, h} = item;
+    const opening = kitchenTopOpening(item);
+    if (!opening) return [[0, 0, w * .95, h * .95]];
+    const edgeX = w * .475;
+    const edgeY = h * .475;
+    const halfWidth = w * opening.widthRatio / 2;
+    const offset = h * opening.offsetRatio;
+    // Leave room for the sink rim or cooktop bevel before considering the foot supported.
+    const rim = item.type === 'counter' ? Math.min(2.6, halfWidth * .2) / 2 : .8;
+    const halfOpeningX = halfWidth + rim;
+    const halfOpeningY = h * opening.depthRatio / 2 + rim;
+    const near = Math.max(-edgeY, offset - halfOpeningY);
+    const far = Math.min(edgeY, offset + halfOpeningY);
+    return [
+      [-(edgeX + halfOpeningX) / 2, 0, edgeX - halfOpeningX, edgeY * 2],
+      [(edgeX + halfOpeningX) / 2, 0, edgeX - halfOpeningX, edgeY * 2],
+      [0, (near - edgeY) / 2, halfOpeningX * 2, near + edgeY],
+      [0, (far + edgeY) / 2, halfOpeningX * 2, edgeY - far],
+    ].filter(([, , width, depth]) => width > 0 && depth > 0);
+  }
+
   function footprintShape(item, surfaceOnly = false) {
     const {type, w, h} = item;
     if (isDiningTable(item)) return [[0, 0, w, h]];
@@ -334,6 +362,7 @@
       return [[0, -.215 * h, w, .57 * h], [-.32 * w, .25 * h, .34 * w, .46 * h]];
     }
     if (surfaceOnly) {
+      if (type === 'counter' || type === 'kitchenWorktop') return kitchenTopSections(item);
       if (type.startsWith('living-round-dining-')) return [[0, 0, .58 * w, .58 * h]];
       if (type === 'table' || /-dining-set-/.test(type)) return [[0, 0, .79 * w, .56 * h]];
       if (type.includes('-desk-')) return [[0, 0, w, .85 * h]];
@@ -654,6 +683,6 @@
   }
 
   root.RoomcraftModels = Object.freeze({catalog, canMap, canBind, canReplace, suggestions, supportsHeight, resizeFootprint, resizeCornerFootprint,
-    splitDiningFurniture, placementRole, specialtyBarrierSections, walkingObstacleBoxes, blockingPlacement,
+    splitDiningFurniture, placementRole, kitchenTopOpening, specialtyBarrierSections, walkingObstacleBoxes, blockingPlacement,
     orderMountedObjects, mount, handoffKey});
 })(typeof window === 'undefined' ? globalThis : window);

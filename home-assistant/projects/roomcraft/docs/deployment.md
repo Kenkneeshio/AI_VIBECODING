@@ -1,6 +1,6 @@
 # Deployment, verification, and rollback
 
-Home Assistant serves Roomcraft at `/roomcraft-home/home` and `/roomcraft-home/studio`. Studio hosts a Roomcraft custom card and the shared editor. The owner-private cloud Site is an optional second transport. Source commits, Site publication, static asset installation and dashboard changes are separate release steps.
+Home Assistant serves Roomcraft at `/roomcraft-home/home`, `/roomcraft-home/studio`, and `/roomcraft-home/controls`. Studio hosts a Roomcraft custom card and the shared editor. The owner-private cloud Site is an optional second transport. Source commits, Site publication, static asset installation and dashboard changes are separate release steps.
 
 For the separately paired Apolosign Calendar wall tablet and phone Codex Remote recovery, use the [tablet and remote access runbook](tablet-access.md). Its ADB pairing and connection ports must be read from the tablet at the time of use.
 
@@ -60,7 +60,7 @@ In **Roomcraft Home → Menu → Manage → Layout snapshots**, check that an ad
 
 When seeding history from an existing installation, use private dashboard backups with compatible version 2 layout and picture-card pairs. Verify that each saved image still serves as an image before including it. Preserve the active layout, plan, views, and health configuration when writing the history field. See the [system audit](system-audit-2026-11-11.md) for scope, acceptance checks, and prior release references.
 
-For the one-time migration from Second Floor, add `--consolidate` to the command. The installer saves a private archive containing both dashboard registrations and configurations, copies the layout into Roomcraft Home and verifies both the archive and the new configuration. The new root `roomcraft_layout` holds the editable project. Root `roomcraft_plan` holds the full projected picture card and its export image. Root `roomcraft_health` holds the existing health configuration when available. The dashboard exposes just `home` and `studio`. The old registration remains available while the new views are verified.
+For the one-time migration from Second Floor, add `--consolidate` to the command. The installer saves a private archive containing both dashboard registrations and configurations, copies the layout into Roomcraft Home and verifies both the archive and the new configuration. The new root `roomcraft_layout` holds the editable project. Root `roomcraft_plan` holds the full projected picture card and its export image. Root `roomcraft_health` holds the existing health configuration when available. The dashboard exposes `home`, `studio`, and `controls`. The old registration remains available while the new views are verified.
 
 Before removing the legacy registration, compare the copied layout and projected card with the private archive. Open Home, use the popups and check camera tiles. Open Studio from Home, import the project, and return to Home. Check the installed tablet and the authenticated Site when used. Then retire only the legacy `second-floor` registration through the Lovelace API and verify that the Home and Studio views still open. Preserve Main Dashboard and the existing user and system defaults.
 

@@ -1,8 +1,12 @@
 # Roomcraft engineering handoff
 
+The [overhead Studio and room controls release](studio-overhead-release.md) records the editor, LiDAR scale and third Home Assistant view. Studio publishes through the existing revision check. Home's LiDAR ruler uses the authenticated scan and the same physical coordinate contract as the alignment panel.
+
 The [wall-tablet performance audit](tablet-performance-audit.md) records foreground and background evidence, rendering options, release checks, and rollback. Home measures scene draws in its scheduler. The traffic and sidewalk layers accept conservative camera-frustum checks. Studio's LiDAR shortcut opens the existing vacuum survey.
 
 `storybook-display-settings.mjs` owns Home's browser graphics choices and tablet preset. The Home card schedules draws at the selected rate. The shared scene scales its drawing buffer independently of camera framing, and `storybook-lighting.mjs` applies the shadow quality. See the [graphics settings release](graphics-settings-release.md) for verification and recovery.
+
+Insane graphics previews the renderer profile for five seconds. `storybook-display-settings.mjs` commits only a confirmed profile and keeps the manual preferences. `storybook-scene.mjs`, `storybook-lighting.mjs`, `storybook-furniture.mjs`, and `storybook-ocean.mjs` apply the higher quality without rebuilding the authored layout. Capability checks cap the render buffer and shadow allocation.
 
 `storybook-person-motion.mjs` filters the displayed target, records three seconds of fresh dwell evidence, and advances the actor along a swept route. `storybook-person-navigation.mjs` caches floor and furniture route checks by body size and geometry revision. `storybook-person-interactions.mjs` owns catalog-based approaches, poses and held props. `storybook-people.mjs` integrates these with the raw marker and supported seats. See the [character movement release](character-interactions-release.md) for verification and recovery.
 

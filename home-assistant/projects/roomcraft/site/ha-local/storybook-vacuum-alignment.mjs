@@ -153,6 +153,70 @@ export function fitVacuumAlignment(samples, {flipY = false, mapUnitsPerMetre = 1
   };
 }
 
+function solveDirectional(samples, units) {
+  const map = centroid(samples, 'map');
+  const plan = centroid(samples, 'plan');
+  let xx = 0, xy = 0, yy = 0, xu = 0, yu = 0, xv = 0, yv = 0;
+  for (const anchor of samples) {
+    const x = anchor.map.x - map.x;
+    const y = anchor.map.y - map.y;
+    const u = anchor.plan.x - plan.x;
+    const v = anchor.plan.y - plan.y;
+    xx += x * x;
+    xy += x * y;
+    yy += y * y;
+    xu += x * u;
+    yu += y * u;
+    xv += x * v;
+    yv += y * v;
+  }
+  const determinant = xx * yy - xy * xy;
+  if (xx + yy < samples.length * (units ? units * .05 : 1e-6) ** 2 ||
+      determinant <= .018 * (xx + yy) ** 2) return undefined;
+  const a = (yy * xu - xy * yu) / determinant;
+  const b = (xx * yu - xy * xu) / determinant;
+  const d = (yy * xv - xy * yv) / determinant;
+  const e = (xx * yv - xy * xv) / determinant;
+  const transform = [a,b,plan.x-a*map.x-b*map.y,d,e,plan.y-d*map.x-e*map.y];
+  const area = Math.abs(a * e - b * d);
+  const norm = a*a + b*b + d*d + e*e;
+  const maxScale = Math.sqrt((norm + Math.sqrt(Math.max(0,norm*norm - 4*area*area))) / 2);
+  const minScale = area / maxScale;
+  if (!(minScale > 0) || maxScale / minScale > 1.5 ||
+      !transform.every(value => Number.isFinite(value) && Math.abs(value) <= TRANSFORM_LIMIT)) return undefined;
+  return {transform, scale:Math.sqrt(area), scaleRange:[minScale,maxScale],
+    rotationDegrees:Math.atan2(d,a) * 180 / Math.PI};
+}
+
+/** Use directional correction only when held-out landmarks corroborate it. */
+export function fitBestVacuumAlignment(samples, {mapUnitsPerMetre = 1000} = {}) {
+  const straight = fitVacuumAlignment(samples, {mapUnitsPerMetre});
+  const mirrored = fitVacuumAlignment(samples, {mapUnitsPerMetre, flipY:true});
+  const best = !straight || mirrored?.rmse < straight.rmse ? mirrored : straight;
+  if (!best || samples.length < 4 || !Number.isFinite(best.leaveOneOutError)) return best;
+  const directional = solveDirectional(samples, mapUnitsPerMetre);
+  if (!directional) return best;
+  const validation = samples.map((anchor, index) => {
+    const fit = solveDirectional(samples.filter((_, other) => index !== other), mapUnitsPerMetre);
+    return fit ? pointError(fit.transform, anchor) : Infinity;
+  });
+  const leaveOneOutError = Math.max(...validation);
+  if (!(leaveOneOutError + 2 < best.leaveOneOutError * .7)) return best;
+  const errors = samples.map(anchor => pointError(directional.transform, anchor));
+  return {...directional, errors, leaveOneOutError, maxError:Math.max(...errors),
+    rmse:Math.sqrt(errors.reduce((sum, error) => sum + error * error, 0) / errors.length)};
+}
+
+/** Convert two image or plan points into physical LiDAR coordinates before measuring. */
+export function vacuumMetricDistance(first, second, pointToMap, mapUnitsPerMetre) {
+  if (!Number.isFinite(mapUnitsPerMetre) || mapUnitsPerMetre <= 0) return undefined;
+  const from = applyVacuumAlignment(pointToMap, first);
+  const to = applyVacuumAlignment(pointToMap, second);
+  if (!from || !to) return undefined;
+  const metres = Math.hypot(to.x - from.x, to.y - from.y) / mapUnitsPerMetre;
+  return Number.isFinite(metres) ? metres : undefined;
+}
+
 /** Compare a surveyed baseline on the two maps at the fitted physical scale. */
 export function vacuumAlignmentDistance(first, second, transform, mapUnitsPerMetre = 1000) {
   if (!validAnchor(first) || !validAnchor(second) || !validUnits(mapUnitsPerMetre)) return undefined;
@@ -164,7 +228,7 @@ export function vacuumAlignmentDistance(first, second, transform, mapUnitsPerMet
   const projectedDistance = Math.hypot(secondProjected.x - firstProjected.x, secondProjected.y - firstProjected.y);
   if (!mapDistance || !projectedDistance) return undefined;
   const mapMetres = mapUnitsPerMetre === null ? undefined : mapDistance / mapUnitsPerMetre;
-  const planMetres = mapMetres === undefined ? undefined : planDistance * mapMetres / projectedDistance;
+  const planMetres = vacuumMetricDistance(first.plan, second.plan, invertVacuumAlignment(transform), mapUnitsPerMetre);
   return {mapDistance, planDistance, mapMetres, planMetres,
     deltaMetres:planMetres === undefined ? undefined : planMetres - mapMetres};
 }

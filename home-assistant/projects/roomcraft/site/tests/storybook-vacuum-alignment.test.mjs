@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {applyVacuumAlignment, composeVacuumAlignment, fitVacuumAlignment, invertVacuumAlignment,
-  vacuumAlignmentDistance, vacuumMapMetadata} from '../ha-local/storybook-vacuum-alignment.mjs';
+import {applyVacuumAlignment, composeVacuumAlignment, fitBestVacuumAlignment, fitVacuumAlignment, invertVacuumAlignment,
+  vacuumAlignmentDistance, vacuumMapMetadata, vacuumMetricDistance} from '../ha-local/storybook-vacuum-alignment.mjs';
 
 const near = (actual, expected, tolerance = 1e-8) => assert.ok(Math.abs(actual - expected) < tolerance,
   `Expected ${actual} to be within ${tolerance} of ${expected}`);
@@ -53,6 +53,22 @@ test('a mismatched anchor produces independent check error without mutating the 
   assert.ok(Math.abs(baseline.deltaMetres) > .03);
 });
 
+test('held-out landmarks can verify a directional correction without changing layout coordinates', () => {
+  const transform = [.102, .018, 730, .012, -.086, 510];
+  const anchors = anchorsFor(transform);
+  assert.equal(fitBestVacuumAlignment(anchors.slice(0,3)).scaleRange, undefined);
+  const fit = fitBestVacuumAlignment(anchors);
+  fit.transform.forEach((value, index) => near(value, transform[index]));
+  assert.ok(fit.scaleRange[0] < fit.scaleRange[1]);
+  near(fit.leaveOneOutError, 0);
+  const planToMap = invertVacuumAlignment(fit.transform);
+  const x = applyVacuumAlignment(transform, {x:5000,y:0});
+  const y = applyVacuumAlignment(transform, {x:0,y:5000});
+  const start = {x:transform[2], y:transform[5]};
+  near(vacuumMetricDistance(start,x,planToMap,1000),5);
+  near(vacuumMetricDistance(start,y,planToMap,1000),5);
+});
+
 test('rejects malformed points, clustered map anchors and near-zero plan baselines', () => {
   const anchor = {map:{x:0,y:0}, plan:{x:300,y:300}};
   assert.equal(fitVacuumAlignment([anchor, anchor]), undefined);
@@ -88,6 +104,7 @@ test('converts the rendered map raster and composes it with a plan fit', () => {
   const reconstructed = applyVacuumAlignment(invertVacuumAlignment(metadata.pixelToMap), vacuumPoint);
   near(reconstructed.x, imagePoint.x);
   near(reconstructed.y, imagePoint.y);
+  near(vacuumMetricDistance({x:-25,y:50}, {x:55,y:110}, metadata.pixelToMap, 1000), 1);
   const calibration = [.12,0,600,0,-.12,510];
   const mapped = applyVacuumAlignment(composeVacuumAlignment(calibration, metadata.pixelToMap), imagePoint);
   near(mapped.x, 648);

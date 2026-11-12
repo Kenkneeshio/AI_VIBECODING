@@ -58,6 +58,7 @@ const WALL_LOOKS = {
 };
 const WET = new Set(['lightning-rainy', 'pouring', 'rainy', 'snowy-rainy']);
 const SNOW = new Set(['snowy', 'snowy-rainy']);
+const INSANE_DRAW_PIXELS = 12_000_000;
 const MOUNT_HEIGHT = { presenceSwitch: 39, wallSconce: 40, wallUnit: 48, thermostat: 42, artwork: 38, mirror: 39 };
 
 // Snapshot the projection so a new zoom or orbit invalidates the sidewalk's cached pose.
@@ -797,7 +798,9 @@ function buildPrecipitation(scene, plan, sceneryMinZ) {
     !plan.rooms.some(room => (!plan.editableStructure || !isOutdoorRoom(room)) && roomContains(room, x, z));
   const north = Math.min(bounds.minZ, sceneryMinZ) - 70;
   const rainDepth = bounds.maxZ + 70 - north;
-  for (let i = 0; i < 210; i++) {
+  let standardCount;
+  for (let i = 0; i < 520; i++) {
+    if (i === 210) standardCount = rainLocations.length;
     const x = bounds.minX - 70 + (bounds.maxX - bounds.minX + 140) * rand();
     const z = north + rainDepth * rand();
     const phase = rand() * 180;
@@ -822,24 +825,48 @@ function buildPrecipitation(scene, plan, sceneryMinZ) {
     new THREE.PointsMaterial({color: '#c9edf6', size: 2.6, transparent: true, opacity: .83}));
   rain.frustumCulled = snow.frustumCulled = hail.frustumCulled = false;
   scene.add(rain, snow, hail);
-  return (time, {condition, windSpeed, windBearing}) => {
+  let drawCount = 0;
+  return (time, {condition, windSpeed, windBearing}, detail) => {
     rain.visible = WET.has(condition);
     const heavy = condition === 'pouring' || condition === 'lightning-rainy';
     rain.material.opacity = heavy ? .50 : .34;
     snow.visible = SNOW.has(condition);
     hail.visible = condition === 'hail';
     if (rain.visible || snow.visible || hail.visible) {
+      const count = detail ? rainLocations.length : standardCount;
+      if (count !== drawCount) {
+        rainGeometry.setDrawRange(0, count * 2);
+        snowGeometry.setDrawRange(0, count);
+        hailGeometry.setDrawRange(0, count);
+        drawCount = count;
+      }
       const upwind = Number.isFinite(windBearing) ? windBearing * DEG : 285 * DEG;
       const slant = THREE.MathUtils.clamp(windSpeed ?? 6, 0, 22) * .028;
-      for (const [index, drop] of rainLocations.entries()) {
-        const y = 65 - (drop.phase + time * drop.speed * (heavy ? 1.3 : 1)) % 170;
-        const flakeY = 65 - (drop.phase + time * 20) % 170;
-        const hailY = 65 - (drop.phase + time * drop.speed * 1.55) % 170;
-        const i = index * 6;
-        rainPositions.set([drop.x, y, drop.z, drop.x + drop.length * slant * Math.sin(upwind),
-          y + drop.length, drop.z - drop.length * slant * Math.cos(upwind)], i);
-        snowPositions.set([drop.x + Math.sin(time + index) * 6, flakeY, drop.z], index * 3);
-        hailPositions.set([drop.x, hailY, drop.z], index * 3);
+      const driftX = slant * Math.sin(upwind);
+      const driftZ = -slant * Math.cos(upwind);
+      for (let index = 0; index < count; index++) {
+        const {x, z, phase, speed, length} = rainLocations[index];
+        const i = index * 3;
+        if (rain.visible) {
+          const y = 65 - (phase + time * speed * (heavy ? 1.3 : 1)) % 170;
+          const j = i * 2;
+          rainPositions[j] = x;
+          rainPositions[j + 1] = y;
+          rainPositions[j + 2] = z;
+          rainPositions[j + 3] = x + length * driftX;
+          rainPositions[j + 4] = y + length;
+          rainPositions[j + 5] = z + length * driftZ;
+        }
+        if (snow.visible) {
+          snowPositions[i] = x + Math.sin(time + index) * 6;
+          snowPositions[i + 1] = 65 - (phase + time * 20) % 170;
+          snowPositions[i + 2] = z;
+        }
+        if (hail.visible) {
+          hailPositions[i] = x;
+          hailPositions[i + 1] = 65 - (phase + time * speed * 1.55) % 170;
+          hailPositions[i + 2] = z;
+        }
       }
       rainGeometry.attributes.position.needsUpdate = rain.visible;
       snowGeometry.attributes.position.needsUpdate = snow.visible;
@@ -977,9 +1004,20 @@ export function storybookMotionSurfaces(plan) {
   };
 }
 
-export function createStorybookScene(canvas, layout) {
+export function storybookDrawingPixelRatio(width, height, deviceRatio, {
+  insaneGraphics = false, renderScale = 1, maxWidth = Infinity, maxHeight = Infinity,
+} = {}) {
+  const pixelLimit = insaneGraphics ? INSANE_DRAW_PIXELS : 2_700_000;
+  const ratio = Math.min(deviceRatio, insaneGraphics ? Infinity : 1.5, maxWidth / width, maxHeight / height,
+    Math.sqrt(pixelLimit / (width * height)));
+  return Math.max(1 / Math.min(width, height), ratio * (insaneGraphics ? 1 : renderScale));
+}
+
+export function createStorybookScene(canvas, layout, {insaneGraphics = false} = {}) {
   const plan = compileStorybookPlan(layout);
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'low-power' });
+  const renderer = new THREE.WebGLRenderer({
+    canvas, antialias: true, alpha: false, powerPreference: insaneGraphics ? 'high-performance' : 'low-power',
+  });
   try {
     renderer.resetState();
     return buildStorybookScene(canvas, layout, plan, renderer);
@@ -1034,6 +1072,10 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
   buildYard(batch, plan, street, treeWind);
   buildReferenceLanding(batch, plan);
   buildFloors(scene, batch, plan, canvas.ownerDocument);
+  const surfaceAnisotropy = new Map(scene.children.flatMap(node => {
+    const texture = node.material?.map;
+    return texture ? [[texture, texture.anisotropy]] : [];
+  }));
   buildWalls(batch, plan);
   buildFences(batch, plan.fences);
   batch.finish();
@@ -1108,6 +1150,7 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
   trackingOverlay.add(trackingFill, trackingKey);
   const anchors = new Map();
   const roots = new Map();
+  const surfaceDetail = {value:0};
   const staticGraphics = new Set(plan.placements.filter(({item}) => item.visualKind === 'none').map(({item}) => item.id));
   const garages = new Map();
   const stairsById = new Map(plan.stairs.map(stair => [stair.item.id, stair]));
@@ -1116,7 +1159,8 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
     const drawItem = item.type === 'window' && window ? window : item;
     const stair = stairsById.get(item.id);
     const object = stair ? makeStorybookStairs(stair) :
-      makeStorybookDevice(drawItem, {window: isBlind ? window : undefined, mountY}) ?? makeStorybookFurniture(drawItem, {mountY});
+      makeStorybookDevice(drawItem, {window: isBlind ? window : undefined, mountY}) ??
+      makeStorybookFurniture(drawItem, {mountY, surfaceDetail});
     if (object) {
       const heightOffset = applyModelHeight(item, object.root);
       object.root.position.set(x, baseY + heightOffset, z);
@@ -1184,6 +1228,14 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
   let currentWidth = 0;
   let currentHeight = 0;
   let renderScale = 1;
+  let insaneGraphics = false;
+  let pixelRatio;
+  const gl = renderer.getContext();
+  const [viewportWidth, viewportHeight] = gl.getParameter(gl.MAX_VIEWPORT_DIMS);
+  const maxRenderbuffer = gl.getParameter(gl.MAX_RENDERBUFFER_SIZE);
+  const maxWidth = Math.min(maxRenderbuffer, viewportWidth);
+  const maxHeight = Math.min(maxRenderbuffer, viewportHeight);
+  const maxAnisotropy = renderer.capabilities.getMaxAnisotropy();
   let limitOffscreenScenery = false;
   let inSceneryView;
   let cameraView = normalizeCameraView();
@@ -1209,18 +1261,28 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
   }
   function resizeDrawingBuffer() {
     const deviceRatio = canvas.ownerDocument.defaultView?.devicePixelRatio || 1;
-    const nativeRatio = Math.min(deviceRatio, 1.5, Math.sqrt(2700000 / (currentWidth * currentHeight)));
-    const pixelRatio = Math.max(1 / Math.min(currentWidth, currentHeight), nativeRatio * renderScale);
+    pixelRatio = storybookDrawingPixelRatio(currentWidth, currentHeight, deviceRatio, {
+      renderScale, insaneGraphics, maxWidth, maxHeight,
+    });
     renderer.setDrawingBufferSize(currentWidth, currentHeight, pixelRatio);
   }
   function resize(width, height) {
-    if (disposed || width < 1 || height < 1 || (width === currentWidth && height === currentHeight)) return;
+    if (disposed || width < 1 || height < 1) return;
+    if (width === currentWidth && height === currentHeight) {
+      const deviceRatio = canvas.ownerDocument.defaultView?.devicePixelRatio || 1;
+      if (pixelRatio !== storybookDrawingPixelRatio(width, height, deviceRatio, {
+        renderScale, insaneGraphics, maxWidth, maxHeight,
+      })) resizeDrawingBuffer();
+      return;
+    }
     currentWidth = width;
     currentHeight = height;
     resizeDrawingBuffer();
     updateCamera();
   }
-  function setGraphicsSettings({renderScale: nextScale, shadowQuality, limitOffscreenScenery: limitScenery} = {}) {
+  function setGraphicsSettings({
+    renderScale: nextScale, shadowQuality, limitOffscreenScenery: limitScenery, insaneGraphics: nextDetail = false,
+  } = {}) {
     if (disposed) return;
     lighting.setShadowQuality(shadowQuality);
     if ((limitScenery === true) !== limitOffscreenScenery) {
@@ -1228,7 +1290,18 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
       updateSceneryView();
     }
     const scale = Number.isFinite(nextScale) ? THREE.MathUtils.clamp(nextScale, .5, 1) : 1;
-    if (scale === renderScale) return;
+    if (scale === renderScale && nextDetail === insaneGraphics) return;
+    if (nextDetail !== insaneGraphics) {
+      insaneGraphics = nextDetail;
+      surfaceDetail.value = Number(insaneGraphics);
+      ocean.setHighDetail(insaneGraphics);
+      for (const [texture, standard] of surfaceAnisotropy) {
+        const anisotropy = insaneGraphics ? Math.max(standard, maxAnisotropy) : standard;
+        if (anisotropy === texture.anisotropy) continue;
+        texture.anisotropy = anisotropy;
+        texture.needsUpdate = true;
+      }
+    }
     renderScale = scale;
     if (currentWidth > 0 && currentHeight > 0) resizeDrawingBuffer();
   }
@@ -1349,7 +1422,7 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
         headlightBrightness: transientTelemetry ? 1 : displaySettings.headlightBrightness});
     }
     updatePrecipitation(telemetryTime, transientTelemetry || sceneFeatureEnabled(sceneSettings, 'precipitation')
-      ? environment : {});
+      ? environment : {}, insaneGraphics);
     updateWaterfront(timeSeconds, environment, transientTelemetry);
     const placementChanged = lastDraftPositions !== draftPositions;
     if (placementChanged) {

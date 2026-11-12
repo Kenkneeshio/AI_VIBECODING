@@ -106,3 +106,25 @@ test('oblique placement uses the visible tabletop for small objects without chan
   const side = new Raycaster(new Vector3(40, 16, 100), new Vector3(1, 0, 0));
   assert.equal(supports.projectTabletop('plant', side), null);
 });
+
+
+test('kitchen counters support additions and drags while sink wells and burners remain blocked', () => {
+  const counters = [
+    {id: 'i7', type: 'counter', x: 120, y: 230, w: 56, h: 234},
+    {id: 'island', type: 'counter', x: 260, y: 230, w: 59, h: 235},
+    {id: 'stove', type: 'kitchenWorktop', x: 420, y: 230, w: 106, h: 127},
+  ];
+  const lamp = {id: 'lamp', type: 'lamp', x: 120, y: 293, w: 42, h: 48};
+  const {supports} = mount([...counters, lamp]);
+  assert.equal(supports.resolve().get(lamp.id).supportId, 'i7');
+  near(supports.resolve().get(lamp.id).y + 14, 37);
+  assert.equal(supports.resolve({lamp: {position: {x: 260, y: 230}}}).get(lamp.id).supportId, 'island');
+  const ray = (x, z) => new Raycaster(new Vector3(x, 150, z), new Vector3(0, -1, 0));
+  assert.ok(supports.projectTabletop('lamp', ray(120, 293)));
+  assert.equal(supports.projectTabletop('lamp', ray(120, 222)), null);
+  assert.equal(supports.projectTabletop('lamp', ray(420, 230)), null);
+  const {blockingPlacement} = globalThis.RoomcraftModels;
+  assert.equal(blockingPlacement(lamp, counters), undefined);
+  assert.equal(blockingPlacement({...lamp, y: 222}, counters)?.id, 'i7');
+  assert.equal(blockingPlacement({...lamp, x: 420, y: 230}, counters)?.id, 'stove');
+});

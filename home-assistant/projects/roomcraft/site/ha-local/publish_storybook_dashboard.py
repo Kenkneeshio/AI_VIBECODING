@@ -53,7 +53,8 @@ def publish(api, backup_dir: Path, make_default: bool) -> Path:
             if not (isinstance(projection, dict) and projection.get("type") == "picture-elements" and
                     isinstance(projection.get("elements"), list) and
                     isinstance(layout, dict) and layout.get("version") == 2 and
-                    [view.get("path") for view in original.get("views", [])] == ["home", "studio"]):
+                    [view.get("path") for view in original.get("views", [])] in
+                    (["home", "studio"], ["home", "studio", "controls"])):
                 raise RuntimeError("The dashboard has custom edits; review them before replacing it")
             target = original
     elif make_default:
