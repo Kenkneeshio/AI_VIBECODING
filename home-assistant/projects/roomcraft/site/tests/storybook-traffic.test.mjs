@@ -128,16 +128,16 @@ test('instanced cars sit on the rendered road and disappear when a feed is unava
   traffic.dispose();
 });
 
-test('the everyday mix has predictable cars and occasional vans and motorcycles', () => {
+test('the everyday mix has predictable cars and occasional semis and motorcycles', () => {
   const traffic = createStorybookTraffic(road);
   const visibleModels = () => traffic.root.children.filter(child => child.isGroup && child.visible);
   const modelCounts = () => Object.fromEntries(visibleModels().map(({name, children}) => [name, children[0].count]));
   traffic.update(0, profile('ambient'));
   const initial = modelCounts();
   assert.deepEqual(initial, {
-    'vehicle-seafoam-sedan': 3, 'vehicle-butter-compact': 2, 'vehicle-pine-suv': 2,
+    'vehicle-seafoam-sedan': 1, 'vehicle-butter-compact': 2, 'vehicle-pine-suv': 2,
     'vehicle-sand-pickup': 1, 'vehicle-lavender-delivery': 1, 'vehicle-blue-wagon': 2,
-    'vehicle-indigo-motorcycle': 1,
+    'vehicle-indigo-motorcycle': 1, 'vehicle-ruby-motorcycle': 1, 'vehicle-teal-semi': 1,
   });
   for (let time = .25; time <= 80; time += .25) traffic.update(time, profile('ambient'));
   assert.deepEqual(modelCounts(), initial);

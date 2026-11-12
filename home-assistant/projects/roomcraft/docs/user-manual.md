@@ -26,7 +26,9 @@ Choose **Menu → Commute traffic** for **All routes** or an individual route’
 
 While travel times are unavailable, the road preview shows a vehicle passing about every three seconds, alternating directions. Use **Vehicle style** to pick a design or keep **Mixed vehicles**. The current browser remembers your choice. **Reduce motion** holds the vehicles still.
 
-The sidewalks have cyclists and families. Beachgoers play with a ball and build a sandcastle, and small boats leave wakes offshore. Use **Menu → 45-second demo** to see them up close or **Reduce motion** to hold the scenery still.
+The mixed fleet includes semis and motorcycles. Choose **Waterfront** under **View controls → Camera view** in Home or **View** in 3D Studio to see jet skis near shore and a cruise ship farther out.
+
+Surfers come out from sunrise (5 a.m. at the earliest) until 11 a.m. The beach has games during the day and bonfires from sunset to 11 p.m. The beach and sidewalks empty overnight. Clear night skies show constellations and occasional shooting stars. In 3D Studio, open **Scene settings**, choose **Preview weather** under **Appearance**, and change **Time of day**. **Reduce motion** holds the scenery still and keeps the stars visible.
 
 ### Restore a previous layout
 

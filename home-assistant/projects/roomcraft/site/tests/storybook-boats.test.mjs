@@ -30,14 +30,20 @@ function snapshot(scene) {
 
 test('the sailboat and cabin launch stay in the visible near-water band on opposite sides', () => {
   const routes = createStorybookBoatRoutes(water);
-  assert.deepEqual(routes.map(({id}) => id), ['sailboat', 'cabin', 'fishing']);
+  assert.deepEqual(routes.map(({id}) => id), ['sailboat', 'cabin', 'fishing', 'jet-ski', 'cruise-ship']);
   for (const [index, route] of routes.entries()) {
     for (let frame = 0; frame < 100; frame++) {
       const sample = sampleStorybookBoat(route, frame * route.period / 100);
       const offshore = shoreAt(sample.x) - sample.z;
       if (index < 2) assert.ok(offshore >= 48 - 1e-9 && offshore <= 60 + 1e-9);
-      assert.ok(index === 0 ? sample.x < water.focusX - 150 :
-        index === 1 ? sample.x > water.focusX + 150 : offshore > 90);
+      if (route.id === 'jet-ski') {
+        assert.ok(offshore >= 66 - 1e-9 && offshore <= 78 + 1e-9);
+        assert.ok(sample.x > water.focusX + 450);
+      }
+      if (route.id === 'cruise-ship') assert.ok(offshore > 260 && offshore < 311);
+      if (index === 0) assert.ok(sample.x < water.focusX - 150);
+      if (index === 1) assert.ok(sample.x > water.focusX + 150);
+      if (route.id === 'fishing') assert.ok(offshore > 90);
       for (const localX of [-route.length / 2, route.length / 2]) {
         for (const lateral of [-route.beam / 2, route.beam / 2]) {
           const hullX = sample.x + localX * Math.cos(sample.yaw) + lateral * Math.sin(sample.yaw);
@@ -89,9 +95,9 @@ test('models are geometrically distinct, wake foam stays offshore, and dispose r
   const scene = createStorybookBoats(water);
   const boats = boatsIn(scene);
   const wakes = scene.root.children.filter(child => child.isMesh);
-  assert.equal(boats.length, 3);
-  assert.equal(wakes.length, 3);
-  assert.equal(new Set(boats.map(boat => boat.children[0].geometry.getAttribute('position').count)).size, 3);
+  assert.equal(boats.length, 5);
+  assert.equal(wakes.length, 5);
+  assert.equal(new Set(boats.map(boat => boat.children[0].geometry.getAttribute('position').count)).size, 5);
   for (let frame = 0; frame < 210; frame++) {
     scene.update(frame * .43, {transientTelemetry: true});
     for (const wake of wakes) {
@@ -122,4 +128,25 @@ test('models are geometrically distinct, wake foam stays offshore, and dispose r
   scene.update(400);
   assert.deepEqual(disposed, resources);
   assert.equal(scene.root.children.length, 0);
+});
+
+test('the personal watercraft has a seated rider and clears the water at the overnight stage', () => {
+  const scene = createStorybookBoats(water);
+  const jet = scene.root.getObjectByName('Lagoon jet ski');
+  const wake = scene.root.getObjectByName('Lagoon jet ski wake');
+  const cruise = scene.root.getObjectByName('Pearl cruise ship');
+  for (const hull of [jet, cruise]) hull.children[0].geometry.computeBoundingBox();
+  const jetBounds = jet.children[0].geometry.boundingBox;
+  const cruiseBounds = cruise.children[0].geometry.boundingBox;
+  assert.ok(jetBounds.max.y > 16 && jetBounds.max.y < 19);
+  assert.ok(cruiseBounds.max.y > 34);
+  assert.ok(cruiseBounds.max.x - cruiseBounds.min.x > 4 * (jetBounds.max.x - jetBounds.min.x));
+  scene.update(12, {activity:'overnight', night:true, transientTelemetry:true});
+  assert.equal(jet.visible, false);
+  assert.equal(wake.visible, false);
+  assert.ok(boatsIn(scene).filter(boat => boat !== jet).every(boat => boat.visible));
+  scene.update(12, {activity:'morning', transientTelemetry:true});
+  assert.equal(jet.visible, true);
+  assert.equal(wake.visible, true);
+  scene.dispose();
 });

@@ -9,6 +9,7 @@ const geometryHash = ({geometry}) => createHash('sha256').update(
   Buffer.from(geometry.getAttribute('position').array.buffer)).digest('hex');
 const triangleCount = layers => layers.reduce((count, {geometry}) => count + geometry.attributes.position.count / 3, 0);
 const motorcycleIds = new Set(['apricot-scooter', 'ruby-motorcycle', 'moss-motorcycle', 'indigo-motorcycle']);
+const semiIds = new Set(['teal-semi', 'coral-reefer']);
 
 test('vehicle options have unique geometry, aligned front and rear lights, and a bounded draw budget', () => {
   const silhouettes = new Set();
@@ -30,7 +31,8 @@ test('vehicle options have unique geometry, aligned front and rear lights, and a
     assert.ok(taillights.geometry.boundingBox.max.x < -lightMount, id);
     assert.equal(body.material.vertexColors, true);
     assert.ok(headlights.material.emissiveIntensity > 0 && taillights.material.emissiveIntensity > 0);
-    assert.ok(triangleCount(layers) <= (motorcycle ? 1150 : 800), id);
+    const triangleBudget = motorcycle ? 1150 : semiIds.has(id) ? 900 : 800;
+    assert.ok(triangleCount(layers) <= triangleBudget, id);
     if (motorcycle) assert.ok(bounds.max.y >= 26 && bounds.max.y <= 32, id);
     silhouettes.add(geometryHash(body));
     for (const {geometry, material} of layers) {
@@ -41,6 +43,7 @@ test('vehicle options have unique geometry, aligned front and rear lights, and a
   assert.equal(silhouettes.size, ids.size);
   assert.ok(ids.size >= 12);
   for (const id of motorcycleIds) assert.ok(ids.has(id));
+  for (const id of semiIds) assert.ok(ids.has(id));
 });
 
 test('sidewalk bicycles fit their lane with a full rider silhouette and separate running lights', () => {

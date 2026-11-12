@@ -12,9 +12,9 @@ const DENSITY_CYCLE = 12;
 const TRANSITION_SECONDS = .38;
 const VEHICLES = new Map(STORYBOOK_VEHICLES.map(vehicle => [vehicle.id, vehicle]));
 const NEIGHBORHOOD_FLEET = [
-  'seafoam-sedan', 'blue-wagon', 'butter-compact', 'seafoam-sedan',
+  'seafoam-sedan', 'blue-wagon', 'butter-compact', 'ruby-motorcycle',
   'pine-suv', 'blue-wagon', 'sand-pickup', 'butter-compact',
-  'lavender-delivery', 'pine-suv', 'seafoam-sedan', 'indigo-motorcycle',
+  'lavender-delivery', 'pine-suv', 'teal-semi', 'indigo-motorcycle',
 ].map(id => VEHICLES.get(id));
 
 function neighborhoodVehicle({index, lane}) {

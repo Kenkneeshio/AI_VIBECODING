@@ -706,7 +706,8 @@ class RoomcraftEditorCard extends HTMLElement {
 
   _readLook(config) {
     if (!config) return null;
-    return customElements.get('roomcraft-storybook-card')?.preview?.(config, this._hass?.states, Date.now()) ?? null;
+    return customElements.get('roomcraft-storybook-card')?.preview?.(
+      config, this._hass?.states, Date.now(), this._hass?.config?.time_zone) ?? null;
   }
 
   async _uploadPng(bytes) {

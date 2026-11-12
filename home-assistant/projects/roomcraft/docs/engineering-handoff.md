@@ -1,5 +1,9 @@
 # Roomcraft engineering handoff
 
+`storybook-state.mjs` derives the beach period from live sun and the Home Assistant time zone. Native Studio and the private Site call the same preview contract. `storybook-scene.mjs` passes the period and motion preference to the beach, sidewalk and boat layers. `storybook-coastal-sky.mjs` owns the illustrated stars, constellations and meteor timing. `storybook-vehicles.mjs` owns the road catalog and `storybook-traffic.mjs` places the mixed fleet in existing lanes. These changes require no layout migration or new Home Assistant entities.
+
+For a software rollback, rebuild and reinstall the preceding Roomcraft source at `d58ccd156598b549a401f98d82ae0104b3d70b5f` or restore private Studio version 78. Use the [deployment recovery guide](deployment.md) for resource and dashboard backup recovery.
+
 The dining conversion is reference revision 10 in the Studio migration registry and uses `RoomcraftModels.splitDiningFurniture`. The 2D and 3D model tests cover physical tabletop and seat footprints, finish variants, and independent editing. The `scene-settings.js` engine module validates optional authored display options. `storybook-studio-look.mjs` drives the preview dialog and polls `LOOK_GET` through the same-origin authenticated Studio bridge. The private Site uses the appearance snapshot from its dashboard import.
 
 **Read this first when taking over Roomcraft work.** The linked guides hold the detailed contracts and history.

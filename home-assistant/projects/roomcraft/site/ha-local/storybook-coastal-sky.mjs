@@ -1,8 +1,43 @@
 import {storybookWeather} from './storybook-weather.mjs';
 
+const CONSTELLATIONS = [
+  ['dipper', [[7, 9], [27, 15], [46, 22], [63, 28], [93, 23], [89, 42], [65, 43]],
+    'M7 9L27 15 46 22 63 28 93 23 89 42 65 43 63 28'],
+  ['cassiopeia', [[8, 35], [28, 17], [47, 31], [67, 10], [91, 24]],
+    'M8 35L28 17 47 31 67 10 91 24'],
+  ['orion', [[30, 6], [68, 8], [44, 25], [50, 28], [56, 31], [29, 46], [67, 47]],
+    'M30 6L44 25 50 28 56 31 68 8M44 25L29 46M56 31L67 47'],
+];
+const CONSTELLATION_MARKUP = CONSTELLATIONS.map(([name, points, path]) => `
+  <svg class="coastal-constellation coastal-${name}" viewBox="0 0 100 52" focusable="false">
+    <path d="${path}"/>
+    ${points.map(([x, y], index) =>
+      `<circle cx="${x}" cy="${y}" r="${index % 3 === 0 ? 2.15 : 1.55}"/>`).join('')}
+  </svg>`).join('');
+
+// Generate a fixed, gently varied field once. Percentage positions preserve spacing
+// across tablet and phone widths, while dot sizes stay in physical CSS pixels.
+const STAR_PALETTE = ['#c2d7ed', '#e4edff', '#fff0d2'];
+function starlightGradients(count, luminous) {
+  let seed = luminous ? 11939 : 30391;
+  const spread = () => (seed = seed * 48271 % 2147483647) / 2147483647;
+  return Array.from({length: count}, (_, index) => {
+    const x = 1 + (index + spread()) * 98 / count;
+    const y = 5 + spread() * 79;
+    const size = luminous ? .85 + (index % 3) * .18 : .48 + (index % 4) * .12;
+    return `radial-gradient(circle at ${x.toFixed(1)}% ${y.toFixed(1)}%,${STAR_PALETTE[index % 3]} 0 ${size.toFixed(2)}px,transparent ${(size + .6).toFixed(2)}px)`;
+  }).join(',');
+}
+
 export const COASTAL_SKY_MARKUP = `
   <div class="coastal-sky" data-sky="unknown" data-effect="unknown" data-cloud="none" data-moon="" aria-hidden="true">
-    <span class="coastal-stars"></span>
+    <div class="coastal-stars">
+      <span class="coastal-star-field"></span>
+      <span class="coastal-star-sparkle"></span>
+      ${CONSTELLATION_MARKUP}
+      <span class="coastal-meteor coastal-meteor-first"></span>
+      <span class="coastal-meteor coastal-meteor-second"></span>
+    </div>
     <span class="coastal-orb coastal-sun"></span>
     <span class="coastal-orb coastal-moon"></span>
     <span class="coastal-cloud coastal-cloud-high"></span>
@@ -37,6 +72,23 @@ function moonOutline(side, terminator) {
 }
 
 const MOON_OUTLINES = new Map([...PHASES].map(([phase, values]) => [phase, moonOutline(...values)]));
+const NIGHT_VISIBILITY = new Map([['clear', 1], ['wind', .9], ['partial', .66], ['wind-clouds', .43]]);
+
+function starlightFrame(sky, twilight, effect, cloudCoverage, clock, progress, reduceMotion) {
+  const visibility = sky === 'night' && !twilight ? NIGHT_VISIBILITY.get(effect) ?? 0 : 0;
+  const starOpacity = visibility * clamp(1 - (cloudCoverage ?? 0) / 80, 0, 1);
+  if (reduceMotion || starOpacity < .55 || (effect !== 'clear' && effect !== 'wind')) {
+    return {starOpacity, meteor: 'off', meteorProgress: 0, meteorOpacity: 0};
+  }
+  if (clock === undefined && progress === undefined) {
+    return {starOpacity, meteor: 'live', meteorProgress: 0, meteorOpacity: 0};
+  }
+  // The showcase traverses the meteor once during its moon phase sweep.
+  const phase = progress === undefined ? (clock % 58 - 12) / 1.4 : (progress - .36) / .29;
+  const meteorProgress = clamp(phase, 0, 1);
+  const meteorOpacity = Math.min(1, meteorProgress * 5, (1 - meteorProgress) * 2) * .9;
+  return {starOpacity, meteor: 'sample', meteorProgress, meteorOpacity};
+}
 
 /** Pure presentation sample. Supplied celestial bearings always win over illustrative arcs. */
 export function coastalSkyFrame(environment = {}, offline = false) {
@@ -70,14 +122,17 @@ export function coastalSkyFrame(environment = {}, offline = false) {
   const cloudOpacity = cloudCoverage === undefined ? 1 : clamp(cloudCoverage / 52, 0, 1);
   return {sky, effect, cloud, moon, light: twilight ? 'twilight' : 'regular', clock, reduceMotion,
     moonMotion, sunX, sunY: dayHeight(sunAltitude), moonX, moonY,
-    moonOutline: MOON_OUTLINES.get(moon) || 'circle(50%)', windX, windY, cloudSpeed, cloudOpacity};
+    moonOutline: MOON_OUTLINES.get(moon) || 'circle(50%)', windX, windY, cloudSpeed, cloudOpacity,
+    ...starlightFrame(sky, twilight, effect, cloudCoverage, clock, progress, reduceMotion)};
 }
 
 export function updateCoastalSky(element, environment, offline = false) {
   const frame = coastalSkyFrame(environment, offline);
-  const {sky, effect, cloud, moon, light, moonMotion, clock, reduceMotion, cloudSpeed, cloudOpacity} = frame;
+  const {sky, effect, cloud, moon, light, moonMotion, clock, reduceMotion, cloudSpeed, cloudOpacity,
+    starOpacity, meteor, meteorProgress, meteorOpacity} = frame;
   const flags = {sky, effect, cloud, moon, light, moonMotion, skyClock: clock === undefined ? 'live' : 'sample',
-    windCalm: String(cloudSpeed === 0), skyReduced: String(reduceMotion)};
+    windCalm: String(cloudSpeed === 0), skyReduced: String(reduceMotion),
+    stars: starOpacity > 0 ? 'visible' : 'hidden', meteor};
   for (const [key, value] of Object.entries(flags)) {
     if (element.dataset[key] !== value) element.dataset[key] = value;
   }
@@ -92,6 +147,9 @@ export function updateCoastalSky(element, environment, offline = false) {
     '--coastal-wind-speed': String(cloudSpeed || 1),
     '--coastal-cloud-cover': String(cloudOpacity),
     '--coastal-clock': `${(clock ?? 0).toFixed(3)}s`,
+    '--coastal-star-opacity': starOpacity.toFixed(3),
+    '--coastal-meteor-progress': meteorProgress.toFixed(3),
+    '--coastal-meteor-opacity': meteorOpacity.toFixed(3),
   };
   for (const [key, value] of Object.entries(styles)) {
     if (element.style.getPropertyValue(key) !== value) element.style.setProperty(key, value);
@@ -143,19 +201,61 @@ export const COASTAL_SKY_STYLE = `
     --coastal-seam:#9aabb5; --coastal-cloud-top:#97a9bb; --coastal-cloud-bottom:#546880;
   }
   .coastal-stars {
-    display:none; position:absolute; inset:0; opacity:.68;
-    background:
-      radial-gradient(circle at 7% 31%,#dce8ef 0 .6px,transparent 1.4px),
-      radial-gradient(circle at 14% 17%,#fff0cc 0 1px,transparent 1.6px),
-      radial-gradient(circle at 24% 38%,#dce8ef 0 .6px,transparent 1.3px),
-      radial-gradient(circle at 34% 15%,#fff0cc 0 .7px,transparent 1.4px),
-      radial-gradient(circle at 44% 51%,#dce8ef 0 .6px,transparent 1.3px),
-      radial-gradient(circle at 49% 19%,#fff0cc 0 1px,transparent 1.6px),
-      radial-gradient(circle at 74% 24%,#dce8ef 0 .6px,transparent 1.4px),
-      radial-gradient(circle at 87% 36%,#fff0cc 0 .7px,transparent 1.4px),
-      radial-gradient(circle at 94% 16%,#dce8ef 0 .75px,transparent 1.4px);
+    display:none; position:absolute; inset:0; opacity:var(--coastal-star-opacity,0);
+    transition:opacity 1.2s ease;
   }
-  .coastal-sky[data-sky=night]:not([data-light=twilight]) .coastal-stars {display:block}
+  .coastal-sky[data-stars=visible] .coastal-stars {display:block}
+  .coastal-star-field, .coastal-star-sparkle {position:absolute;inset:0}
+  .coastal-star-field {
+    opacity:.67;
+    background:${starlightGradients(39, false)},
+      radial-gradient(ellipse 31% 97% at 34% 0%,#b0c3f522,transparent 100%);
+  }
+  .coastal-star-sparkle {
+    opacity:.85;
+    background:${starlightGradients(13, true)};
+    animation:coastal-twinkle 7.6s ease-in-out infinite alternate;
+  }
+  @keyframes coastal-twinkle {from{opacity:.65} 40%{opacity:.93} to{opacity:.76}}
+  .coastal-constellation {
+    position:absolute;top:14%;height:78%;width:clamp(68px,10vw,154px);translate:-50% 0;
+    fill:#fff2d5;overflow:visible;
+  }
+  .coastal-constellation path {
+    fill:none;stroke:#a4bddf;stroke-width:1;stroke-opacity:.58;
+    stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;
+  }
+  .coastal-constellation circle {filter:drop-shadow(0 0 2px #b7d3ffac)}
+  .coastal-dipper {left:18%}
+  .coastal-cassiopeia {left:43%;top:4%;height:70%}
+  .coastal-orion {left:81%;top:11%;height:84%}
+  .coastal-meteor {
+    display:none;position:absolute;left:52%;top:20%;opacity:0;rotate:10deg;
+    width:clamp(29px,5.5vw,88px);height:2px;border-radius:50%;
+    --meteor-distance:clamp(44px,10vw,146px);--meteor-x:var(--meteor-distance);
+    --meteor-y:clamp(8px,2dvh,23px);--meteor-delay:12s;
+    background:linear-gradient(90deg,transparent,#a3d7ff60 55%,#e5f8ff 95%);
+  }
+  .coastal-meteor::after {
+    content:"";position:absolute;right:0;top:-.5px;width:3px;height:3px;border-radius:50%;
+    background:#fff3d6;box-shadow:0 0 6px 1px #c1e7ff9e;
+  }
+  .coastal-meteor-second {
+    left:76%;top:11%;rotate:169deg;--meteor-x:calc(-1 * var(--meteor-distance));--meteor-delay:39s;
+  }
+  .coastal-sky[data-meteor=live] .coastal-meteor {
+    display:block;animation:coastal-shooting-star 58s var(--meteor-delay) linear infinite;
+  }
+  .coastal-sky[data-meteor=sample] .coastal-meteor-first {
+    display:block;opacity:var(--coastal-meteor-opacity,0);
+    translate:calc(var(--coastal-meteor-progress,0) * var(--meteor-x))
+      calc(var(--coastal-meteor-progress,0) * var(--meteor-y));
+  }
+  @keyframes coastal-shooting-star {
+    0% {opacity:0;translate:0 0}
+    .45% {opacity:.9}
+    2.5%,100% {opacity:0;translate:var(--meteor-x) var(--meteor-y)}
+  }
   .coastal-orb {
     display:none; position:absolute; border-radius:50%;
     width:var(--coastal-orb-size); aspect-ratio:1; translate:-50% -50%;
@@ -261,16 +361,22 @@ export const COASTAL_SKY_STYLE = `
   }
   .coastal-sky[data-sky-clock=sample] .coastal-orb {transition:none}
   .coastal-sky[data-sky-clock=sample] .coastal-lightning {animation:none;opacity:.85}
+  .coastal-sky:is([data-sky-clock=sample],[data-meteor=sample]) .coastal-star-sparkle {animation:none}
   .coastal-sky[data-wind-calm=true] .coastal-cloud {animation:none}
   @keyframes coastal-drift ${DRIFT_FRAMES}
   @keyframes coastal-sampled-drift ${DRIFT_FRAMES}
   @keyframes coastal-distant-lightning {0%,74%,87%,100%{opacity:0}80%{opacity:.69}}
-  .world[data-reduced-motion]:not([data-reduced-motion=false]) .coastal-sky :is(.coastal-cloud,.coastal-orb,.coastal-lightning),
-  .coastal-sky[data-sky-reduced=true] :is(.coastal-cloud,.coastal-orb,.coastal-lightning) {animation:none;transition:none}
+  .world[data-reduced-motion]:not([data-reduced-motion=false]) .coastal-sky
+    :is(.coastal-cloud,.coastal-orb,.coastal-lightning,.coastal-stars,.coastal-star-sparkle),
+  .coastal-sky[data-sky-reduced=true]
+    :is(.coastal-cloud,.coastal-orb,.coastal-lightning,.coastal-stars,.coastal-star-sparkle) {animation:none;transition:none}
+  .world[data-reduced-motion]:not([data-reduced-motion=false]) .coastal-sky .coastal-meteor,
+  .coastal-sky[data-sky-reduced=true] .coastal-meteor {display:none}
   .world[data-reduced-motion]:not([data-reduced-motion=false]) .coastal-lightning,
   .coastal-sky[data-sky-reduced=true] .coastal-lightning {opacity:.66}
   @media (prefers-reduced-motion:reduce) {
-    .coastal-sky :is(.coastal-cloud,.coastal-orb,.coastal-lightning) {animation:none;transition:none}
+    .coastal-sky :is(.coastal-cloud,.coastal-orb,.coastal-lightning,.coastal-stars,.coastal-star-sparkle) {animation:none;transition:none}
+    .coastal-sky[data-meteor] .coastal-meteor {display:none}
     .coastal-lightning {opacity:.66}
   }
   @media (max-height:600px) and (orientation:landscape) {

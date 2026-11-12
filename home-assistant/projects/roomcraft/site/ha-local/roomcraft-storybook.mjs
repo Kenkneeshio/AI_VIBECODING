@@ -502,7 +502,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         this.freeViewGestures?.cancel();
         cancelAnimationFrame(this.animationFrame);
         this.animationFrame = undefined;
-      } else this.schedule();
+      } else this.refresh();
     };
     this.weather.addEventListener('click', () => {
       const entityId = this.model?.weather.weather_entity;
@@ -565,7 +565,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.load();
       return;
     }
-    if (value?.connected !== previous?.connected ||
+    if (value?.connected !== previous?.connected || value?.config?.time_zone !== previous?.config?.time_zone ||
         [...this.model.watch].some(id => value?.states?.[id] !== previous?.states?.[id])) this.refresh();
   }
 
@@ -683,8 +683,8 @@ class RoomcraftStorybookCard extends HTMLElement {
     return trackingSnapshots(states, ids);
   }
 
-  static preview(config, states, now) {
-    return storybookPreview(config, states, now);
+  static preview(config, states, now, timeZone) {
+    return storybookPreview(config, states, now, timeZone);
   }
 
   watchPublishedLayout() {
@@ -1050,7 +1050,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     const offline = this.session?.connected === false;
     const states = offline ? {} : this.session.states;
     const now = Date.now();
-    this.frame = storybookFrame(this.model, states, now);
+    this.frame = storybookFrame(this.model, states, now, this.session?.config?.time_zone);
     const commute = this.commutes.update(offline ? undefined : states, now);
     this.frame.environment.traffic = {...(commute.profile ?? AMBIENT_TRAFFIC),
       vehicleStyle: this.commutes.vehicleStyle()};

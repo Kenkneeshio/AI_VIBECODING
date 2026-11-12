@@ -26,6 +26,24 @@ test('the default camera is directly overhead with authored north at the top', (
   assert.ok(north.y > south.y);
 });
 
+test('the Waterfront preset frames the shore and offshore lanes independently of Default', () => {
+  const camera = makeCamera();
+  const scene = {...bounds, waterfront: {minX: 280, maxX: 1200, minZ: -640, maxZ: -200}};
+  for (const [width, height] of [[1920, 900], [390, 680]]) {
+    fitStorybookCamera(camera, scene, width, height, 'waterfront');
+    for (const x of [scene.waterfront.minX, scene.waterfront.maxX]) {
+      for (const z of [scene.waterfront.minZ, scene.waterfront.maxZ]) {
+        const point = new THREE.Vector3(x, -106, z).project(camera);
+        assert.ok(Math.abs(point.x) < 1 && Math.abs(point.y) < 1);
+      }
+    }
+    fitStorybookCamera(camera, scene, width, height, 'default');
+    const projectedWithWaterfront = new THREE.Vector3(100, 0, 400).project(camera);
+    fitStorybookCamera(camera, bounds, width, height, 'default');
+    assert.deepEqual(new THREE.Vector3(100, 0, 400).project(camera), projectedWithWaterfront);
+  }
+});
+
 test('camera preferences normalize without modifying caller data or the presets', () => {
   const input = {preset: 'corner', azimuth: -15, tilt: 80, zoom: 9};
   assert.deepEqual(normalizeCameraView(input), {preset: 'corner', azimuth: 345, tilt: 65, zoom: 2.5});

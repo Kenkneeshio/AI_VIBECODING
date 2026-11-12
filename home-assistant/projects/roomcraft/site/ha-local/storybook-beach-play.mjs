@@ -205,25 +205,45 @@ function makeBall() {
 
 function paintActor(actor, part) {
   const {skin, hair, shirt, shorts, trim, style} = PEOPLE[actor.style];
-  const crouching = actor.kind === 'builder';
-  const torso = crouching ? 7.8 : 12.2;
-  const face = crouching ? 13.6 : 18.3;
-  const forward = crouching ? actor.reach * 1.15 + .65 : 0;
-  part(shirt, 0, torso, forward * .43, 3.72, 4.1, 2.85, crouching ? .24 : 0);
+  const seated = actor.kind === 'beachgoer';
+  const surfer = actor.kind === 'surfer';
+  const crouching = actor.kind === 'builder' || seated;
+  const torso = seated ? 9.25 : crouching ? 7.8 : surfer ? 10.7 : 12.2;
+  const face = torso + (seated ? 5.9 : crouching ? 5.8 : 6.1);
+  const forward = surfer ? actor.swing * .95 : crouching ? actor.reach * 1.15 + .65 : 0;
+  const lean = surfer ? actor.swing * .22 : seated ? .11 : crouching ? .24 : 0;
+  part(shirt, 0, torso, forward * .43, 3.72, 4.1, 2.85, lean);
   part(shorts, 0, torso - 3.4, 0, 3.34, 1.65, 2.8);
   part(trim, 0, torso - 1.95, 2.45, 3.03, .48, .59);
   for (const side of [-1, 1]) {
-    const stride = crouching ? .8 : side * actor.swing;
-    part(shorts, side * 1.65, crouching ? 3.5 : 6.4, stride, 1.55, 2.3, 1.49, crouching ? .8 : 0);
-    part(skin, side * 1.68, crouching ? 1.72 : 3.1, crouching ? 2.08 : stride, 1.16, 2.13, 1.16);
-    part(skin, side * 1.75, 1.02, .88 + stride, 1.28, .76, 2.08);
-    const armY = crouching ? torso + .45 : torso + 1.5 + actor.reach * 2.1;
-    const armZ = crouching ? 2.4 + actor.reach * 1.72 : actor.reach * .8;
-    const armAngle = crouching ? -.78 - actor.reach * .27 : .12 + actor.reach * .62;
-    part(skin, side * (4.13 - actor.reach * .46), armY, armZ, 1.04, 3.7, 1.05,
-      armAngle, side * (crouching ? .1 : .24 + actor.reach * .55));
-    part(skin, side * (4.1 - actor.reach * .53), armY + (crouching ? -1.65 : actor.reach * 5.55 - 2.92),
-      armZ + (crouching ? 2.7 : actor.reach * 1.9), 1.14, 1.15, 1.13);
+    if (surfer) {
+      part(shorts, side * 2.45, 5.35, 1.26, 1.58, 2.66, 1.49, .67, side * .40);
+      part(skin, side * 3.76, 2.93, .86, 1.25, 2.45, 1.16, -.31, side * .17);
+      part(skin, side * 4.13, 1.01, .50, 1.64, .73, 1.27, 0, side * .07);
+      const armY = torso + 1.2 + side * actor.swing * 1.65;
+      part(skin, side * 5.26, armY, -.1, 1.05, 3.35, 1.06, .22, -side * (1.08 + side * actor.swing * .28));
+      part(skin, side * 8.07, armY + .43, .29, 1.36, .96, 1.02);
+    } else if (seated) {
+      const gesture = side < 0 ? actor.reach : .23;
+      part(shorts, side * 1.72, 5.0, 2.2, 1.55, 2.7, 1.48, 1.27);
+      part(skin, side * 1.82, 2.75, 4.13, 1.17, 2.57, 1.14, -.16);
+      part(trim, side * 1.93, .92, 5.06, 1.25, .72, 1.74);
+      part(skin, side * 3.98, torso - .3 + gesture, 1.15, 1.02, 2.45, 1.05, -.62 - gesture * .37);
+      part(skin, side * 3.5, torso - 1.2 + gesture * 1.8, 3.17, 1.11, 1.14, 1.13);
+      if (side < 0) part('#e7c8a1', -3.5, torso - .18 + gesture * 1.8, 3.82, .86, 1.19, .86);
+    } else {
+      const stride = crouching ? .8 : side * actor.swing;
+      part(shorts, side * 1.65, crouching ? 3.5 : 6.4, stride, 1.55, 2.3, 1.49, crouching ? .8 : 0);
+      part(skin, side * 1.68, crouching ? 1.72 : 3.1, crouching ? 2.08 : stride, 1.16, 2.13, 1.16);
+      part(skin, side * 1.75, 1.02, .88 + stride, 1.28, .76, 2.08);
+      const armY = crouching ? torso + .45 : torso + 1.5 + actor.reach * 2.1;
+      const armZ = crouching ? 2.4 + actor.reach * 1.72 : actor.reach * .8;
+      const armAngle = crouching ? -.78 - actor.reach * .27 : .12 + actor.reach * .62;
+      part(skin, side * (4.13 - actor.reach * .46), armY, armZ, 1.04, 3.7, 1.05,
+        armAngle, side * (crouching ? .1 : .24 + actor.reach * .55));
+      part(skin, side * (4.1 - actor.reach * .53), armY + (crouching ? -1.65 : actor.reach * 5.55 - 2.92),
+        armZ + (crouching ? 2.7 : actor.reach * 1.9), 1.14, 1.15, 1.13);
+    }
     part(skin, side * 3.48, face, forward + .4, .84, .99, .78);
     part('#493a41', side * 1.46, face + .38, forward + 3.41, .43, .47, .34);
     part('#c98878', side * 2.22, face - .45, forward + 3.05, .54, .27, .26);
@@ -242,65 +262,43 @@ function paintActor(actor, part) {
   }
 }
 
-export function createStorybookBeachPlay(water, street) {
-  const root = new THREE.Group();
-  root.name = 'beach-play';
-  const plan = planStorybookBeachPlay(water, street);
-  if (!plan) return {root, update() {}, dispose: () => root.removeFromParent()};
-  const court = plan.court ? volleyballCourt(plan.court) : null;
-  const castle = plan.castle ? sandcastle(plan.castle) : null;
-  const ball = court ? makeBall() : null;
-  if (court) root.add(court, ball);
-  if (castle) root.add(castle);
-
-  const initial = sampleStorybookBeachPlay(plan);
+function actorLayer(group, actors, name, shadowName, hasBall = false) {
   let partCount = 0;
-  for (const actor of initial.actors) paintActor(actor, () => partCount++);
+  for (const actor of actors) paintActor(actor, () => partCount++);
   const people = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 7),
     new THREE.MeshStandardMaterial({color:'#fff', roughness:.76}), partCount);
-  people.name = 'beach-recreation-figures';
+  people.name = name;
   people.frustumCulled = false;
   people.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  const shadows = new THREE.InstancedMesh(new THREE.CircleGeometry(1, 20).rotateX(-Math.PI / 2),
+  group.add(people);
+  const shadows = shadowName ? new THREE.InstancedMesh(new THREE.CircleGeometry(1, 20).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({color:'#634f55', opacity:.23, transparent:true, depthWrite:false}),
-    initial.actors.length + Number(Boolean(ball)));
-  shadows.name = 'beach-play-contact-shadows';
-  shadows.frustumCulled = false;
-  root.add(people, shadows);
+    actors.length + Number(hasBall)) : null;
+  if (shadows) {
+    shadows.name = shadowName;
+    shadows.frustumCulled = false;
+    shadows.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    group.add(shadows);
+  }
   let colorIndex = 0;
   const shades = new Map();
-  for (const actor of initial.actors) paintActor(actor, shade => {
+  for (const actor of actors) paintActor(actor, shade => {
     if (!shades.has(shade)) shades.set(shade, new THREE.Color(shade));
     people.setColorAt(colorIndex++, shades.get(shade));
   });
-
   const transform = new THREE.Object3D();
-  let previousTime;
-  let liveSeconds = 0;
-  let lastTime;
-  let lastReduced;
-  function update(seconds, {reduceMotion = false, transientTelemetry = false} = {}) {
-    if (!transientTelemetry) {
-      const dt = Number.isFinite(previousTime) && Number.isFinite(seconds)
-        ? THREE.MathUtils.clamp(seconds - previousTime, 0, .25) : 0;
-      if (!reduceMotion) liveSeconds += dt;
-      previousTime = seconds;
-    }
-    const time = reduceMotion ? .96 : transientTelemetry ? seconds : liveSeconds;
-    if (time === lastTime && reduceMotion === lastReduced) return;
-    lastTime = time;
-    lastReduced = reduceMotion;
-    const frame = sampleStorybookBeachPlay(plan, time, reduceMotion);
+  return function drawActors(frame, ball) {
     let index = 0;
     let shadowIndex = 0;
     const shadow = (x, y, z, width, depth) => {
+      if (!shadows) return;
       transform.position.set(x, y + .16, z);
       transform.rotation.set(0, 0, 0);
       transform.scale.set(width, 1, depth);
       transform.updateMatrix();
       shadows.setMatrixAt(shadowIndex++, transform.matrix);
     };
-    for (const actor of frame.actors) {
+    for (const actor of frame) {
       const {scale, yaw} = actor;
       const cos = Math.cos(yaw);
       const sin = Math.sin(yaw);
@@ -316,14 +314,241 @@ export function createStorybookBeachPlay(water, street) {
       });
       shadow(actor.x, actor.ground, actor.z, 5.25 * scale, 4.47 * scale);
     }
-    if (frame.ball) {
-      const {x, y, z, rotation, ground} = frame.ball;
-      ball.position.set(x, y, z);
-      ball.rotation.set(.25, rotation * .59, rotation);
-      shadow(x, ground, z, 2.82, 2.52);
-    }
+    if (ball) shadow(ball.x, ball.ground, ball.z, 2.82, 2.52);
     people.instanceMatrix.needsUpdate = true;
-    shadows.instanceMatrix.needsUpdate = true;
+    if (shadows) shadows.instanceMatrix.needsUpdate = true;
+  };
+}
+
+function dayActivity(plan) {
+  const group = new THREE.Group();
+  group.name = 'beach-day-activities';
+  const court = plan.court ? volleyballCourt(plan.court) : null;
+  const castle = plan.castle ? sandcastle(plan.castle) : null;
+  const ball = court ? makeBall() : null;
+  if (court) group.add(court, ball);
+  if (castle) group.add(castle);
+  const drawActors = actorLayer(group, sampleStorybookBeachPlay(plan).actors,
+    'beach-recreation-figures', 'beach-play-contact-shadows', Boolean(ball));
+  return {group, render(time, reduceMotion) {
+    const frame = sampleStorybookBeachPlay(plan, time, reduceMotion);
+    drawActors(frame.actors, frame.ball);
+    if (!ball) return;
+    const {x, y, z, rotation} = frame.ball;
+    ball.position.set(x, y, z);
+    ball.rotation.set(.25, rotation * .59, rotation);
+  }};
+}
+
+function surfboard(index) {
+  const group = new THREE.Group();
+  group.name = `beach-surfboard-${index + 1}`;
+  const shell = index ? '#e5ac55' : '#d57565';
+  const stripe = index ? '#4d8f92' : '#f3e5be';
+  scenery(group, ({add}) => {
+    const oval = (x, y, z, w, h, d, color) =>
+      add(new THREE.SphereGeometry(1, 16, 8).scale(w, h, d), color, x, y, z);
+    oval(0, .22, 0, 12.9, .78, 3.61, '#e9dfc8');
+    oval(.26, .63, 0, 12.68, .69, 3.38, shell);
+    oval(.45, 1.23, 0, 10.08, .125, .91, stripe);
+    oval(-4.51, 1.17, 0, 2.67, .14, 2.47, index ? '#e8dfbe' : '#759f9d');
+    for (let wave = 0; wave < 5; wave++) {
+      const slide = wave / 4;
+      oval(-9.8 - slide * 15.1, -.39, (wave % 2 ? -1 : 1) * (2.6 - slide * 1.58),
+        2.86 - slide * 1.1, .095, .92 - slide * .50, wave % 2 ? '#a4d7cc' : '#e5f3de');
+    }
+    oval(-17.4, -.44, .24, 6.5, .082, .38, '#c4e5d8');
+  });
+  return group;
+}
+
+function morningActivity(water) {
+  const group = new THREE.Group();
+  group.name = 'beach-morning-surfers';
+  const {shoreline, focusX, y, farZ} = water;
+  const paths = [
+    {offset:-82, radius:37, depth:49, drift:13, period:20, phase:.55, style:0, scale:.9},
+    {offset:75, radius:34, depth:58, drift:14, period:22, phase:2.17, style:1, scale:.91},
+  ].filter(({offset, radius, depth, drift}) => {
+    const x = focusX + offset;
+    const low = x - radius - 26;
+    const high = x + radius + 26;
+    return low >= shoreline[0].x && high <= shoreline.at(-1).x &&
+      Math.min(shoreAt(shoreline, low), shoreAt(shoreline, high),
+        ...shoreline.filter(point => point.x > low && point.x < high).map(point => point.z)) -
+        depth - drift - 26 > farZ;
+  });
+  if (!paths.length) return {group, render() {}};
+  const boards = paths.map((_, index) => surfboard(index));
+  group.add(...boards);
+  function sample(time) {
+    return paths.map(({offset, radius, depth, drift, period, phase, style, scale}) => {
+      const angle = (time % period) / period * TAU + phase;
+      const x = focusX + offset + radius * Math.sin(angle);
+      const z = shoreAt(shoreline, x) - depth + drift * Math.cos(angle);
+      const yaw = Math.atan2(drift * Math.sin(angle), radius * Math.cos(angle));
+      const swell = Math.sin(angle * 2 + phase);
+      return {kind:'surfer', style, scale, yaw, x, z, y:y + 1.7 + swell * .30,
+        swing:Math.cos(angle * 2 + phase) * .50, swell};
+    });
+  }
+  const drawActors = actorLayer(group, sample(0), 'beach-surfers');
+  return {group, render(time) {
+    const actors = sample(time);
+    for (const [index, {x, y:deckY, z, yaw, swell}] of actors.entries()) {
+      boards[index].position.set(x, deckY - 1.24, z);
+      boards[index].rotation.set(0, yaw, 0);
+      boards[index].rotateX(swell * .075);
+      boards[index].rotateZ(-swell * .027);
+    }
+    drawActors(actors);
+  }};
+}
+
+const FIRE_COLORS = ['#e7713c','#ef9251','#e97e44','#f2a954','#f7b35d','#ffcf79',
+  '#ffde91','#ffb34e','#fbc86e','#ffd281','#ffbd72'];
+
+function firepit(camp, index) {
+  const group = new THREE.Group();
+  group.name = `beach-firepit-${index + 1}`;
+  group.position.set(camp.x, camp.y, camp.z);
+  scenery(group, ({add, box}) => {
+    add(new THREE.SphereGeometry(1, 14, 6).scale(7.15, .51, 6.72), '#80605a', 0, .14, 0);
+    for (let stone = 0; stone < 11; stone++) {
+      const angle = stone * TAU / 11;
+      const color = ['#ab8b78','#a39288','#bb9c84'][stone % 3];
+      add(new THREE.DodecahedronGeometry(1).scale(1.91, 1.25, 1.57).rotateY(angle), color,
+        Math.cos(angle) * 6.82, 1.05, Math.sin(angle) * 6.19);
+    }
+    for (const [angle, y, shade] of [[.43,1.33,'#9b6147'],[1.42,2.1,'#79473c'],[-.89,2.58,'#a36a4a']]) {
+      add(new THREE.CylinderGeometry(1.15, 1.38, 9.1, 7).rotateZ(Math.PI / 2).rotateY(angle),
+        shade, 0, y, 0);
+    }
+    for (const [side, z] of [[-1,1.25],[1,-1.25]]) {
+      add(new THREE.CylinderGeometry(2.2, 2.61, 13.9, 8).rotateX(Math.PI / 2), '#a67e60', side * 16.5, 2.48, z);
+      add(new THREE.CylinderGeometry(1.61, 1.77, .15, 8).rotateX(Math.PI / 2), '#dab18b',
+        side * 16.5, 2.48, z + 7.01);
+      box(4.84, .83, 5.8, index ? '#c98673' : '#7ea8a1', side * 16.23, 4.68, z);
+    }
+  });
+  return group;
+}
+
+function eveningActivity(plan) {
+  const group = new THREE.Group();
+  group.name = 'beach-evening-bonfires';
+  const camps = [plan.court, plan.castle].filter(Boolean);
+  group.add(...camps.map(firepit));
+  function sample(time) {
+    return camps.flatMap(({x, y, z}, index) => [-1, 1].map(side => ({
+      kind:'beachgoer', style:index * 2 + Number(side > 0), scale:side > 0 && index === 1 ? .82 : .95,
+      yaw:-side * Math.PI / 2, x:x + side * 16.23, y, ground:y, z:z - side * 1.25,
+      reach:.36 + Math.sin(time * 1.42 + index * 1.78 + side * 1.35) * .27,
+    })));
+  }
+  const drawActors = actorLayer(group, sample(0), 'beach-bonfire-figures', 'beach-bonfire-contact-shadows');
+  const flames = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 9, 7),
+    new THREE.MeshBasicMaterial({toneMapped:false}), camps.length * FIRE_COLORS.length);
+  flames.name = 'beach-bonfire-flames';
+  flames.frustumCulled = false;
+  flames.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  for (let index = 0; index < flames.count; index++) {
+    flames.setColorAt(index, new THREE.Color(FIRE_COLORS[index % FIRE_COLORS.length]));
+  }
+  const glowMaterial = new THREE.ShaderMaterial({
+    uniforms:{warmth:{value:.86}, tint:{value:new THREE.Color('#ffad5f')}},
+    vertexShader:`
+      varying vec2 glowPoint;
+      void main() {
+        glowPoint = uv * 2.0 - 1.0;
+        gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader:`
+      uniform vec3 tint;
+      uniform float warmth;
+      varying vec2 glowPoint;
+      void main() {
+        float softEdge = 1.0 - smoothstep(0.02, 1.0, length(glowPoint));
+        gl_FragColor = vec4(tint, softEdge * softEdge * warmth * 0.63);
+        #include <colorspace_fragment>
+      }`,
+    transparent:true, depthWrite:false,
+  });
+  const glows = new THREE.InstancedMesh(new THREE.CircleGeometry(1, 28).rotateX(-Math.PI / 2),
+    glowMaterial, camps.length);
+  glows.name = 'beach-bonfire-sand-glow';
+  glows.frustumCulled = false;
+  const transform = new THREE.Object3D();
+  for (const [index, {x, y, z, halfDepth}] of camps.entries()) {
+    transform.position.set(x, y + .19, z);
+    transform.scale.set(23, 1, Math.min(19, halfDepth + 1));
+    transform.updateMatrix();
+    glows.setMatrixAt(index, transform.matrix);
+  }
+  glows.instanceMatrix.needsUpdate = true;
+  group.add(glows, flames);
+  return {group, render(time) {
+    drawActors(sample(time));
+    for (const [index, {x, y, z}] of camps.entries()) {
+      const offset = index * 1.71;
+      for (let part = 0; part < FIRE_COLORS.length; part++) {
+        const phase = time * 4.5 + part * 2.39 + offset;
+        const flicker = Math.sin(phase) * .5 + .5;
+        const angle = part * 2.39 + offset;
+        if (part < 7) {
+          const spread = part < 5 ? 2.05 : .78;
+          const height = part < 5 ? 3.18 + flicker * 1.58 : 2.78 + flicker * 1.09;
+          transform.position.set(x + Math.cos(angle) * spread, y + height + 1.05, z + Math.sin(angle) * spread);
+          transform.rotation.set(Math.sin(angle) * .20, angle, Math.cos(angle) * .24);
+          transform.scale.set(1.21 + flicker * .54, height, 1.18 + flicker * .46);
+        } else {
+          const progress = (time * (.32 + part * .019) + part * .234 + offset) % 1;
+          const radius = .79 * (1 - progress) + .13;
+          transform.position.set(x + Math.cos(angle + progress) * (2.45 + progress * 6.2),
+            y + 8.8 + progress * 15, z + Math.sin(angle + progress) * (1.74 + progress * 4.4));
+          transform.rotation.set(0, 0, .2);
+          transform.scale.set(radius, radius * 1.33, radius);
+        }
+        transform.updateMatrix();
+        flames.setMatrixAt(index * FIRE_COLORS.length + part, transform.matrix);
+      }
+    }
+    flames.instanceMatrix.needsUpdate = true;
+    glowMaterial.uniforms.warmth.value = .83 + Math.sin(time * 5.25) * .11;
+  }};
+}
+
+export function createStorybookBeachPlay(water, street) {
+  const root = new THREE.Group();
+  root.name = 'beach-play';
+  const plan = planStorybookBeachPlay(water, street);
+  if (!plan) return {root, update() {}, dispose: () => root.removeFromParent()};
+  const stages = {morning:morningActivity(water), day:dayActivity(plan), evening:eveningActivity(plan)};
+  root.add(...Object.values(stages).map(({group}) => group));
+  let previousTime;
+  let liveSeconds = 0;
+  let lastTime;
+  let lastReduced;
+  let lastActivity;
+  function update(seconds, {reduceMotion = false, transientTelemetry = false, activity = 'day'} = {}) {
+    const selected = Object.hasOwn(stages, activity) || activity === 'overnight' ? activity : 'day';
+    if (!transientTelemetry) {
+      const dt = Number.isFinite(previousTime) && Number.isFinite(seconds)
+        ? THREE.MathUtils.clamp(seconds - previousTime, 0, .25) : 0;
+      if (!reduceMotion) liveSeconds += dt;
+      previousTime = seconds;
+    }
+    const time = reduceMotion ? .96 : transientTelemetry
+      ? Number.isFinite(seconds) ? Math.max(0, seconds) : 0
+      : liveSeconds;
+    if (time === lastTime && reduceMotion === lastReduced && selected === lastActivity) return;
+    lastTime = time;
+    lastReduced = reduceMotion;
+    if (selected !== lastActivity) {
+      for (const [name, {group}] of Object.entries(stages)) group.visible = selected === name;
+      lastActivity = selected;
+    }
+    stages[selected]?.render(time, reduceMotion);
   }
   update(0);
 

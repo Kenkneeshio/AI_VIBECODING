@@ -985,7 +985,10 @@ export function createStorybookScene(canvas, layout) {
   const restingSupports = placementSupport.resolve();
   let resolvedSupports = restingSupports;
   let lastDraftPositions;
-  const cameraBounds = {...plan.bounds, sceneryMinZ: street.sceneryMinZ};
+  const cameraBounds = {...plan.bounds, sceneryMinZ: street.sceneryMinZ, waterfront: {
+    minX: water.focusX - 475, maxX: water.focusX + 605,
+    minZ: shoreCenter.z - 352, maxZ: shoreCenter.z + 88,
+  }};
   for (const placement of plan.placements) {
     const object = roots.get(placement.item.id);
     if (!object) continue;
@@ -1080,9 +1083,11 @@ export function createStorybookScene(canvas, layout) {
     }
   }
   function updateWaterfront(timeSeconds, environment, transientTelemetry = false) {
+    const activity = environment.beachActivity ?? (environment.night ? 'overnight' : 'day');
     const options = {reduceMotion: environment.reduceMotion === true, night: environment.night === true,
-      condition: environment.condition, transientTelemetry};
-    sidewalk.root.visible = transientTelemetry || sceneFeatureEnabled(sceneSettings, 'sidewalk');
+      condition: environment.condition, transientTelemetry, activity};
+    sidewalk.root.visible = activity !== 'overnight' &&
+      (transientTelemetry || sceneFeatureEnabled(sceneSettings, 'sidewalk'));
     boats.root.visible = transientTelemetry || sceneFeatureEnabled(sceneSettings, 'boats');
     beachPlay.root.visible = transientTelemetry || sceneFeatureEnabled(sceneSettings, 'beachPlay');
     if (sidewalk.root.visible) sidewalk.update(timeSeconds, options);

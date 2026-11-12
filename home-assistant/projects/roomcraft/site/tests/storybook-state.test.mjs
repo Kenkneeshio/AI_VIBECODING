@@ -37,6 +37,29 @@ const config = {
 };
 const model = readStorybookConfig(config);
 
+test('waterfront activity uses the Home Assistant time zone and live daylight', () => {
+  const timeZone = 'America/Los_Angeles';
+  for (const [now, sun, expected] of [
+    ['2026-11-11T13:45:00Z', 'below_horizon', 'overnight'],
+    ['2026-11-11T16:00:00Z', 'above_horizon', 'morning'],
+    ['2026-11-11T19:00:00Z', 'above_horizon', 'day'],
+    ['2026-11-12T04:00:00Z', 'below_horizon', 'evening'],
+    ['2026-11-12T07:00:00Z', 'below_horizon', 'overnight'],
+    ['2026-11-12T08:30:00Z', 'below_horizon', 'overnight'],
+    ['2026-06-20T12:45:00Z', 'above_horizon', 'morning'],
+  ]) {
+    const snapshot = {'sun.sun': {state: sun}};
+    assert.equal(storybookFrame(model, snapshot, Date.parse(now), timeZone).environment.beachActivity, expected, now);
+    assert.equal(storybookPreview(config, snapshot, Date.parse(now), timeZone).environment.beachActivity, expected, now);
+  }
+  const snapshot = {'sun.sun': {state: 'below_horizon'}};
+  const justBeforeClosure = Date.parse('2026-11-12T06:59:59.840Z');
+  const frame = storybookFrame(model, snapshot, justBeforeClosure, timeZone);
+  assert.equal(frame.environment.beachActivity, 'evening');
+  assert.equal(frame.nextRefreshAt, justBeforeClosure + 160);
+  assert.equal(storybookFrame(model, snapshot, justBeforeClosure, 'Unknown/Zone').environment.beachActivity, 'overnight');
+});
+
 test('validated live sun altitude reaches the sky and Studio weather preview', () => {
   const snapshot = {'sun.sun': {state: 'above_horizon', attributes: {elevation: 6.5, azimuth: 84, rising: true}},
     'weather.example': {state: 'windy', attributes: {wind_speed: 36, wind_speed_unit: 'km/h', wind_bearing: 'WNW'}}};

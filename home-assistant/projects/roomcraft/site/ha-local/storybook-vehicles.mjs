@@ -41,6 +41,13 @@ const RECIPES = [
     cabin: [-.458, -.448, .397, .455], body: '#75a99d', roof: '#d8e2bd', detail: 'city', windows: 5},
 ];
 const RECIPES_BY_ID = new Map(RECIPES.map(recipe => [recipe.id, recipe]));
+const SEMIS = [
+  {id: 'teal-semi', label: 'Teal semi with box trailer', length: 119, width: 29,
+    paint: '#61978e', roof: '#9bc0a8', trailer: '#eadcbd', stripe: '#83a89c'},
+  {id: 'coral-reefer', label: 'Coral semi with refrigerated trailer', length: 122, width: 29,
+    paint: '#b97c76', roof: '#e2ad95', trailer: '#e4e5d8', stripe: '#7298a7', refrigerated: true},
+];
+const SEMIS_BY_ID = new Map(SEMIS.map(recipe => [recipe.id, recipe]));
 
 const MOTORCYCLES = [
   {id: 'apricot-scooter', label: 'Apricot scooter', length: 40, width: 14, style: 'scooter',
@@ -67,7 +74,7 @@ const BICYCLE_BY_ID = new Map(BICYCLES.map(recipe => [recipe.id, recipe]));
 const catalogEntry = ({id, label, length, width, detail}) =>
   Object.freeze({id, label, length, width: detail === 'food' ? width + 2 : width});
 
-export const STORYBOOK_VEHICLES = Object.freeze([...RECIPES, ...MOTORCYCLES].map(catalogEntry));
+export const STORYBOOK_VEHICLES = Object.freeze([...RECIPES, ...SEMIS, ...MOTORCYCLES].map(catalogEntry));
 export const STORYBOOK_BICYCLES = Object.freeze(BICYCLES.map(catalogEntry));
 
 function quad(points) {
@@ -317,6 +324,50 @@ function vehicleLayers(bodyParts, headlamp, taillamp) {
   ];
 }
 
+function semiArt({length, width, paint, roof, trailer, stripe, refrigerated}) {
+  const parts = [];
+  const add = (geometry, shade) => parts.push([geometry, shade]);
+  const box = (x, y, z, w, h, d, shade) => add(new THREE.BoxGeometry(w, h, d).translate(x, y, z), shade);
+  const rear = -length / 2 + 1.3;
+  const nose = length / 2 - 1.3;
+  const cargoEnd = 14;
+  const rail = width / 2 - 1.15;
+  const cabWidth = rail - .7;
+  add(vehicleShell([[rear, rail - 1.2, 32], [rear + 2, rail, 34],
+    [cargoEnd - 2, rail, 34], [cargoEnd, rail - 1, 32]], 10.2), trailer);
+  add(vehicleShell([[17, cabWidth - 1, 18], [21, cabWidth, 22], [45, cabWidth, 22],
+    [nose - 4, cabWidth - 1, 16], [nose, cabWidth - 2, 14]], 7), paint);
+  add(vehicleShell([[27, cabWidth - 1, 28], [31, cabWidth - .7, 32], [42, cabWidth - .7, 31],
+    [47, cabWidth - 1.6, 26]], 16), roof);
+  box(48, 23.6, 0, .9, 6.8, cabWidth * 1.5, DETAILS.window);
+  box(48.55, 25.8, 0, .22, .8, cabWidth * 1.4, DETAILS.glassGlow);
+  box(nose + .27, 11, 0, .56, 5.9, 9, DETAILS.grille);
+  box(nose + .61, 8.6, 0, .55, 1.12, cabWidth * 1.55, DETAILS.rim);
+  box(rear - .32, 10.6, 0, .62, 1.2, 2 * rail - 3, DETAILS.bumper);
+  box(cargoEnd + 2.8, 9.1, 0, 10, 1.5, 12, DETAILS.bumper);
+  for (const side of [-1, 1]) {
+    box((rear + cargoEnd) / 2, 15, side * rail, cargoEnd - rear - 5, 2.1, .39, stripe);
+    box((rear + cargoEnd) / 2, 26, side * (rail + .06), cargoEnd - rear - 10, .32, .3, '#f6edd3');
+    box(40, 25, side * (cabWidth - .5), 7.8, 5.25, .32, DETAILS.window);
+    box(47, 21, side * (cabWidth + .2), 2.1, 2.1, 1.5, paint);
+    box(35, 9.5, side * (cabWidth + .25), 7.2, .85, 1.12, DETAILS.rim);
+    box(rear - .1, 22, side * rail * .41, .48, 13.2, .51, DETAILS.rim);
+    for (const x of [rear + 9, rear + 19, 23, 32, nose - 8.2]) {
+      const z = side * (rail - 1.42);
+      add(new THREE.CylinderGeometry(4.35, 4.35, 2.8, 8).rotateX(Math.PI / 2).translate(x, 4.35, z), DETAILS.tire);
+      add(new THREE.CircleGeometry(2.47, 6).rotateY(side < 0 ? Math.PI : 0)
+        .translate(x, 4.35, z + side * 1.41), DETAILS.hub);
+    }
+  }
+  if (refrigerated) {
+    box(cargoEnd + 1.2, 27, 0, 2.6, 7.9, 8.8, '#eee5ce');
+    box(cargoEnd + 2.55, 27.8, 0, .2, 3.9, 6.4, stripe);
+  }
+  const lamps = (x, y) => paintedLayer([-1, 1].map(side =>
+    [new THREE.BoxGeometry(.42, 1.3, 3.1).translate(x, y, side * (rail - 3.7)), '#ffffff']));
+  return vehicleLayers(parts, lamps(nose + .38, 12.25), lamps(rear - .54, 12.4));
+}
+
 function cycleArt(recipe, motor) {
   const {style, length, paint, trim, jacket, helmet} = recipe;
   const parts = [];
@@ -465,6 +516,8 @@ function cycleArt(recipe, motor) {
 export function buildStorybookVehicle(id) {
   const motorcycle = MOTORCYCLE_BY_ID.get(id);
   if (motorcycle) return cycleArt(motorcycle, true);
+  const semi = SEMIS_BY_ID.get(id);
+  if (semi) return semiArt(semi);
   const recipe = RECIPES_BY_ID.get(id);
   if (!recipe) return null;
   const art = createArt(recipe);

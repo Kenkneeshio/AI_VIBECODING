@@ -4,6 +4,7 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 const TAU = Math.PI * 2;
 const {clamp, lerp} = THREE.MathUtils;
 const CHOPPY = new Set(['rainy', 'pouring', 'lightning-rainy', 'windy', 'windy-variant']);
+const HULL_SECTIONS = [[-.49, .67], [-.34, .94], [-.10, 1], [.20, .84], [.39, .48], [.51, .045]];
 const RECIPES = [
   {id: 'sailboat', name: 'Ivory sailboat', length: 59, beam: 21, paint: '#558e94', deck: '#e1bb86',
     center: -298, radius: 122, offshore: 54, drift: 6, period: 74, start: 1.03, wake: .63},
@@ -11,6 +12,10 @@ const RECIPES = [
     center: 270, radius: 118, offshore: 54, drift: 5, period: 48, start: -1.32, wake: 1},
   {id: 'fishing', name: 'Juniper fishing boat', length: 52, beam: 20, paint: '#689483', deck: '#d4b083',
     center: 31, radius: 78, offshore: 103, drift: 8, period: 87, start: 2.16, wake: .7},
+  {id: 'jet-ski', name: 'Lagoon jet ski', length: 30, beam: 12.2, paint: '#438e90', deck: '#e7b768',
+    center: 514, radius: 46, offshore: 72, drift: 6, period: 16, start: .47, wake: .96, wakeSeconds: 3.7},
+  {id: 'cruise-ship', name: 'Pearl cruise ship', length: 149, beam: 41, paint: '#436b84', deck: '#e9c79d',
+    center: 76, radius: 201, offshore: 286, drift: 23, period: 148, start: 1.53, wake: .56, wakeSeconds: 8},
 ];
 
 function shoreAt(shoreline, x) {
@@ -65,7 +70,8 @@ export function sampleStorybookBoat(route, time, {condition} = {}) {
   const angle = route.start + seconds * TAU / route.period;
   const {x, z} = route.point(angle);
   const water = seconds * 1.24 + route.start * 3;
-  const chop = CHOPPY.has(condition) ? 1.55 : 1;
+  const response = route.id === 'jet-ski' ? 1.9 : route.id === 'cruise-ship' ? .55 : 1;
+  const chop = (CHOPPY.has(condition) ? 1.55 : 1) * response;
   return {x, z, angle, yaw: heading(route, angle),
     heave: Math.sin(water) * .55 * chop,
     pitch: Math.cos(water * .89) * .017 * chop,
@@ -85,8 +91,7 @@ function flat(vertices) {
 }
 
 function shell(length, beam, top, bottom, scale = 1) {
-  const sections = [[-.49, .67], [-.34, .94], [-.10, 1], [.20, .84], [.39, .48], [.51, .045]];
-  const vertices = sections.flatMap(([fraction, taper]) => {
+  const vertices = HULL_SECTIONS.flatMap(([fraction, taper]) => {
     const x = fraction * length;
     const z = beam * taper * scale / 2;
     return [[x,bottom,-z*.58],[x,bottom,z*.58],[x,top-.9,z],[x,top,z*.88],
@@ -94,7 +99,7 @@ function shell(length, beam, top, bottom, scale = 1) {
   });
   const indices = [];
   const sides = 6;
-  const end = (sections.length - 1) * sides;
+  const end = (HULL_SECTIONS.length - 1) * sides;
   for (let ring = 0; ring < end; ring += sides) {
     for (let side = 0; side < sides; side++) {
       const next = (side + 1) % sides;
@@ -126,6 +131,11 @@ function painted(parts) {
 
 function block(w, h, d, x, y, z) {
   return new THREE.BoxGeometry(w, h, d).translate(x, y, z);
+}
+
+function oval(w, h, d, x, y, z, lean = 0) {
+  return new THREE.SphereGeometry(1, 12, 7).scale(w / 2, h / 2, d / 2)
+    .rotateZ(lean).translate(x, y, z);
 }
 
 function spar(start, end, radius) {
@@ -203,15 +213,109 @@ function rigFishing(parts) {
   }
 }
 
+function rigJetSki(parts) {
+  parts.push(
+    [oval(15.9, 5.4, 9.0, 4.7, 3.1, 0, -.07), '#52a7a6'],
+    [oval(11.3, 4.9, 5.1, 4.4, 4.6, 0, -.33), '#e5ae68'],
+    [oval(5.1, 2.4, 3.15, 8.7, 6.02, 0, -.43), '#f5d591'],
+    [oval(3.4, 2.5, 3.26, 3.25, 6.15, 0, -.30), '#426575'],
+    [oval(12.8, 3.45, 5.9, -4.45, 4.76, 0, .11), '#40535c'],
+    [block(5.8, .54, 5.4, -11.3, 2.88, 0), '#7bb3a7'],
+    [spar([2.9, 5.7, 0], [1.9, 9.7, 0], .52), '#69685d'],
+    [spar([2.16, 9.57, -3.35], [2.16, 9.57, 3.35], .40), '#53616a'],
+    [oval(5.6, 3.4, 5.7, -3.8, 6.35, 0), '#5c738b'],
+    [oval(6.06, 7.3, 5.45, -1.34, 10.1, 0, -.48), '#db7e59'],
+    [oval(4.85, 5.4, 4.54, .02, 11.1, 0, -.48), '#efb36c'],
+    [oval(4.84, 5.2, 4.82, 1.37, 15.38, 0, -.15), '#f5dfaf'],
+    [oval(2.34, 2.04, 4.67, 2.55, 15.37, 0, -.12), '#4f637a'],
+    [oval(.81, 1.36, 3.45, 3.48, 15.63, 0, -.14), '#8eafb5'],
+  );
+  for (const side of [-1, 1]) {
+    const z = side * 3.01;
+    parts.push(
+      [oval(13.7, .75, 1.52, -4.45, 3.18, side * 4.19), '#59646b'],
+      [oval(6.2, 2.32, 1.64, -3.75, 6.18, z, -.33), '#627a92'],
+      [oval(4.25, 1.52, 1.44, -5.88, 4.5, side * 3.78, .86), '#51657a'],
+      [oval(3.45, 1.11, 1.48, -5.58, 3.43, side * 4.05), '#334951'],
+      [spar([-.87, 11.64, side * 2.02], [1.79, 9.65, z], .79), '#d68868'],
+      [oval(1.51, 1.36, 1.34, 1.92, 9.7, side * 3.21), '#c98161'],
+    );
+  }
+}
+
+function rigCruise(parts, {length, beam}) {
+  const ivory = '#f2e9d8';
+  const white = '#fff3dc';
+  const glass = '#557788';
+  const chrome = '#9fbdbe';
+  parts.push(
+    [block(109, 6.6, 29.1, -4, 10.27, 0), ivory],
+    [block(110.2, 1.15, 31.3, -4, 13.75, 0), white],
+    [block(92, 5.1, 26.2, -3.5, 16.7, 0), ivory],
+    [block(94.7, 1.02, 28.1, -3.8, 19.42, 0), white],
+    [block(66.2, 4.5, 21.8, 2.8, 21.9, 0), ivory],
+    [block(69.7, .91, 24.7, 2.9, 24.44, 0), white],
+    [shell(29, 24, 26.77, 20.72, .86).translate(31, 0, 0), ivory],
+    [shell(30.3, 25, 25.6, 23.86, .92).translate(31, 0, 0), glass],
+    [shell(28.9, 23, 27.12, 26.39, .9).translate(31, 0, 0), white],
+    [block(23.6, .76, 15.3, -24.9, 25.0, 0), '#d6b18d'],
+    [block(19.4, .49, 11.1, -24.9, 25.51, 0), '#81b9b5'],
+    [block(15.1, .16, 8.7, -25.8, 25.82, 0), '#62a9b4'],
+    [block(12, .14, 1.05, -24.6, 25.9, 2.82), '#a7d6cc'],
+    [oval(12, 2.13, 8.2, 15.4, 25.76, 0), '#dfe6d8'],
+    [spar([27, 27, 0], [26.5, 35.4, 0], .58), '#e5e4d8'],
+    [spar([24.1, 33, -3.6], [24.1, 33, 3.6], .41), '#e5e4d8'],
+    [oval(4.21, 3.29, 3.84, 13.4, 27.8, 0), '#e9e9d9'],
+    [oval(3.57, 2.86, 3.35, 9.6, 27.12, 5.6), '#dedfce'],
+  );
+  for (const z of [-5.9, 5.9]) {
+    parts.push(
+      [spar([1, 24.8, z], [-1.47, 34, z], 2.51), '#dfa179'],
+      [spar([-.94, 32, z], [-1.62, 34.62, z], 2.55), '#9d5c54'],
+      [oval(4.4, .46, 4.62, -1.65, 34.66, z), '#514e59'],
+    );
+  }
+  for (const side of [-1, 1]) {
+    for (const [length, y, z, pitch] of [[101,10.86,14.67,6.4],[89,17.18,13.17,6.2],[61,22.1,10.97,5.9]]) {
+      for (let x = -length / 2; x <= length / 2; x += pitch) {
+        parts.push([block(3.61, 2.05, .26, x, y, side * z), glass],
+          [block(3.6, .33, .30, x, y + .61, side * z), chrome]);
+      }
+    }
+    for (const x of [-42, -29, -16, -3, 10, 23]) {
+      parts.push([block(9.3, .88, 2.81, x, 13.1, side * 14.61), '#b5af9e'],
+        [oval(10.53, 2.75, 3.83, x, 13.37, side * 15.49), '#dc9164'],
+        [oval(9.12, 1.04, 3.0, x, 14.33, side * 15.49), '#f0c285']);
+    }
+    for (const x of [-56, -43, -30, -17, -4, 9, 22, 35, 48, 57]) {
+      const fraction = x / length;
+      const index = HULL_SECTIONS.findIndex(([at]) => at >= fraction);
+      const [fromX, fromWidth] = HULL_SECTIONS[index - 1];
+      const [toX, toWidth] = HULL_SECTIONS[index];
+      const sideWidth = lerp(fromWidth, toWidth, (fraction - fromX) / (toX - fromX)) * beam / 2;
+      parts.push([oval(2.1, 1.74, .62, x, 5.0, side * (sideWidth - .08)), '#78969e']);
+    }
+    parts.push(
+      [spar([-46, 19.95, side * 13.74], [42, 19.95, side * 13.74], .40), chrome],
+      [spar([-27, 24.95, side * 11.67], [26, 24.95, side * 11.67], .34), chrome],
+      [spar([49, 8.13, side * 15.2], [67, 8.13, side * 5.1], .43), white],
+    );
+  }
+}
+
 function boatArt(route, material) {
   const {id, length, beam, paint, deck} = route;
   const hull = new THREE.Group();
   hull.name = route.name;
-  const parts = [[shell(length, beam, 3.7, -2.5), paint],
-    [shell(length, beam, 4.52, 3.55, 1.018), '#f4e4c9'],
-    [shell(length * .92, beam, 4.75, 4.44, .83), deck]];
+  const top = id === 'jet-ski' ? 1.76 : id === 'cruise-ship' ? 6.1 : 3.7;
+  const bottom = id === 'jet-ski' ? -1.32 : id === 'cruise-ship' ? -4.92 : -2.5;
+  const parts = [[shell(length, beam, top, bottom), paint],
+    [shell(length, beam, top + .82, top - .15, 1.018), '#f4e4c9'],
+    [shell(length * .92, beam, top + 1.05, top + .74, .83), deck]];
   if (id === 'sailboat') rigSailboat(parts);
   else if (id === 'cabin') rigCabin(parts);
+  else if (id === 'jet-ski') rigJetSki(parts);
+  else if (id === 'cruise-ship') rigCruise(parts, route);
   else rigFishing(parts);
   hull.add(new THREE.Mesh(painted(parts), material));
   return hull;
@@ -249,7 +353,7 @@ function wakeArt(route, waterY) {
   mesh.frustumCulled = false;
 
   function update({angle}, night) {
-    const duration = route.id === 'cabin' ? 4.1 : 6;
+    const duration = route.wakeSeconds ?? (route.id === 'cabin' ? 4.1 : 6);
     const previousArc = duration * TAU / route.period;
     for (let step = 0; step < WAKE_STEPS; step++) {
       const t = step / (WAKE_STEPS - 1);
@@ -293,7 +397,7 @@ export function createStorybookBoats(water) {
   let lastTime;
   let disposed = false;
 
-  function update(timeSeconds, {reduceMotion = false, night = false, condition, transientTelemetry = false} = {}) {
+  function update(timeSeconds, {reduceMotion = false, night = false, condition, transientTelemetry = false, activity} = {}) {
     if (disposed) return;
     const now = Number.isFinite(timeSeconds) ? timeSeconds : undefined;
     if (!transientTelemetry && !reduceMotion && now !== undefined && lastTime !== undefined) {
@@ -302,6 +406,10 @@ export function createStorybookBoats(water) {
     lastTime = transientTelemetry ? undefined : now;
     const time = transientTelemetry ? (reduceMotion ? 0 : now ?? 0) : liveTime;
     for (const {route, hull, wake} of boats) {
+      const visible = route.id !== 'jet-ski' || activity !== 'overnight';
+      hull.visible = visible;
+      wake.mesh.visible = visible;
+      if (!visible) continue;
       const sample = sampleStorybookBoat(route, time, {condition});
       hull.position.set(sample.x, water.y + sample.heave, sample.z);
       hull.rotation.set(sample.roll, sample.yaw, sample.pitch, 'YXZ');

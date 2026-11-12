@@ -8,13 +8,16 @@ const DEFAULT_ENVIRONMENT = Object.freeze({
   condition: 'sunny', daylightKnown: true, night: false, sunElevation: 40, sunAzimuth: 160,
   traffic: Object.freeze({severity: 'ambient'}),
 });
-const DAYLIGHT = {day: [40, 160], dusk: [5, 265], night: [-16, 290]};
+const DAYLIGHT = {morning: [14, 95], day: [40, 160], dusk: [5, 265], night: [-16, 290], overnight: [-30, 290]};
 const title = id => id.replaceAll('_', ' ').replace(/^./, character => character.toUpperCase());
 
 export function studioWeatherPreview({condition, daylight, moonPhase, windSpeed, windBearing}) {
-  const night = condition === 'clear-night' || daylight === 'night';
-  const [sunElevation, sunAzimuth] = DAYLIGHT[night ? 'night' : daylight] ?? DAYLIGHT.day;
-  return {...DEFAULT_ENVIRONMENT, condition, night, sunElevation, sunAzimuth, moonPhase, windSpeed, windBearing};
+  const night = condition === 'clear-night' || daylight === 'night' || daylight === 'overnight';
+  const skyPeriod = daylight === 'overnight' ? daylight : night ? 'night' : daylight;
+  const [sunElevation, sunAzimuth] = DAYLIGHT[skyPeriod] ?? DAYLIGHT.day;
+  const beachActivity = skyPeriod === 'night' ? 'evening' : skyPeriod === 'dusk' ? 'day' : skyPeriod;
+  return {...DEFAULT_ENVIRONMENT, condition, night, sunElevation, sunAzimuth, moonPhase, windSpeed, windBearing,
+    beachActivity};
 }
 
 export function mountStorybookStudioLook(document, host, {api, viewport, bridge, onChange}) {
@@ -68,7 +71,9 @@ export function mountStorybookStudioLook(document, host, {api, viewport, bridge,
     return addField(label, input);
   }
   const condition = select('Weather', storybookWeatherChoices.map(({id, label}) => [id, label]), 'sunny');
-  const daylight = select('Time of day', [['day', 'Day'], ['dusk', 'Dusk'], ['night', 'Night']], 'day');
+  const daylight = select('Time of day', [
+    ['morning', 'Morning'], ['day', 'Day'], ['dusk', 'Dusk'], ['night', 'Evening'], ['overnight', 'Overnight'],
+  ], 'day');
   const moonPhase = select('Moon phase', storybookMoonChoices.map(id => [id, title(id)]), 'full_moon');
   const speed = number('Wind speed (m/s)', 0, 30, 1, 4);
   const bearing = number('Wind from (degrees)', 0, 360, 1, 270);

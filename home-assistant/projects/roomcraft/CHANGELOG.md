@@ -1,5 +1,11 @@
 # Changelog
 
+## A beach that changes through the day
+
+- Morning surfers ride the breakers. Daytime keeps beach play and evening brings glowing bonfires. The beach and sidewalks clear at 11 p.m., and surfers return after sunrise and 5 a.m. Home and 3D Studio share the schedule.
+- Clear night skies show stars, the Big Dipper, Cassiopeia, Orion and occasional shooting stars. Clouds mute the stars. Reduced motion keeps the sky still.
+- Semi trucks and more motorcycles appear in the mixed road fleet. The **Waterfront** camera view shows jet skis near shore and a cruise ship farther out.
+
 ## Editable dining furniture and matching Studio previews
 
 - The dining table and its chairs are independent pieces in 2D and 3D. Legacy sets convert to a tabletop and four or six chairs while preserving the table’s center, rotation, finish and identity.

@@ -9,6 +9,32 @@ const VACUUM_POSITION_MAX_AGE_MS = 20 * 60 * 1000;
 const SPEED_FACTORS = new Map([['m/s', 1], ['km/h', 1 / 3.6], ['mph', .44704], ['kn', .514444], ['ft/s', .3048]]);
 const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
   'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+const BEACH_CLOCKS = new Map();
+
+function beachClock(now, timeZone, night) {
+  if (typeof timeZone !== 'string' || !timeZone || !Number.isFinite(now)) {
+    return {activity: night ? 'overnight' : 'day'};
+  }
+  if (!BEACH_CLOCKS.has(timeZone)) {
+    let clock;
+    try {
+      clock = new Intl.DateTimeFormat('en-US', {
+        timeZone, hour: 'numeric', minute: 'numeric', second: 'numeric', hourCycle: 'h23',
+      });
+    } catch (error) {
+      if (!(error instanceof RangeError)) throw error;
+    }
+    BEACH_CLOCKS.set(timeZone, clock);
+  }
+  const clock = BEACH_CLOCKS.get(timeZone);
+  if (!clock) return {activity: night ? 'overnight' : 'day'};
+  const {hour, minute, second} = Object.fromEntries(clock.formatToParts(now)
+    .filter(part => part.type !== 'literal').map(({type, value}) => [type, Number(value)]));
+  const nextHour = Math.floor(now / 1000) * 1000 + ((60 - minute) * 60 - second) * 1000;
+  if (hour < 5 || hour >= 23 || (night && hour < 11)) return {activity: 'overnight', nextHour};
+  if (night) return {activity: 'evening', nextHour};
+  return {activity: hour < 11 ? 'morning' : 'day', nextHour};
+}
 
 function bearing(value) {
   if (Number.isFinite(value) && value >= 0 && value <= 360) return value % 360;
@@ -74,7 +100,7 @@ function vacuumPosition(element, snapshot, state, active, now) {
 }
 
 /** A render input only. The snapshot and clock never enter the saved project. */
-export function storybookFrame(model, snapshot = {}, now = 0) {
+export function storybookFrame(model, snapshot = {}, now = 0, timeZone) {
   const states = Object.create(null);
   const weather = snapshot[model.weather.weather_entity];
   const sun = snapshot[model.weather.sun_entity || 'sun.sun'];
@@ -92,6 +118,8 @@ export function storybookFrame(model, snapshot = {}, now = 0) {
     windSpeed: windSpeed(weatherAttributes.wind_speed, weatherAttributes.wind_speed_unit),
     windBearing: bearing(weatherAttributes.wind_bearing),
   };
+  const {activity, nextHour} = beachClock(now, timeZone, environment.night);
+  environment.beachActivity = activity;
   if (environment.daylightKnown) {
     if (Number.isFinite(elevation) && Math.abs(elevation) <= 90) environment.sunElevation = elevation;
     if (Number.isFinite(azimuth)) environment.sunAzimuth = bearing(azimuth);
@@ -102,7 +130,7 @@ export function storybookFrame(model, snapshot = {}, now = 0) {
     environment.moonElevation = moon.attributes.elevation;
   }
   let moving = MOTION_WEATHER.has(environment.condition) || environment.windSpeed > 0;
-  let nextRefreshAt;
+  let nextRefreshAt = nextHour;
   for (const element of model.controls) {
     if (element.type !== CONTROL) continue;
     const entity = snapshot[element.entity];
@@ -125,14 +153,14 @@ export function storybookFrame(model, snapshot = {}, now = 0) {
 }
 
 /** Render-only dashboard appearance for Studio. Send only attributes used by the miniature. */
-export function storybookPreview(config, snapshot, now = 0) {
+export function storybookPreview(config, snapshot, now = 0, timeZone) {
   let model;
   try {
     model = readStorybookConfig(config);
   } catch {
     return null;
   }
-  const frame = storybookFrame(model, snapshot, now);
+  const frame = storybookFrame(model, snapshot, now, timeZone);
   const states = Object.create(null);
   for (const [id, state] of Object.entries(frame.states)) {
     const attributes = {};

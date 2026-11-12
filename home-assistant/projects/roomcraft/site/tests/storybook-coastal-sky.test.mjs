@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {coastalSkyFrame, updateCoastalSky} from '../ha-local/storybook-coastal-sky.mjs';
+import {COASTAL_SKY_MARKUP, coastalSkyFrame, updateCoastalSky} from '../ha-local/storybook-coastal-sky.mjs';
 import {storybookWeather} from '../ha-local/storybook-weather.mjs';
 
 const daytime = {condition: 'sunny', daylightKnown: true, night: false};
@@ -70,6 +70,43 @@ test('cloud direction follows the received wind from bearing and pace tracks win
   assert.equal(storybookWeather({...daytime, windSpeed: 0}).windReading, 'Calm wind');
 });
 
+test('constellations and stars follow known dark skies and cloud cover', () => {
+  const clear = coastalSkyFrame(nighttime);
+  const partial = coastalSkyFrame({...nighttime, condition: 'partlycloudy'});
+  assert.ok(clear.starOpacity > partial.starOpacity && partial.starOpacity > 0);
+  assert.equal(clear.meteor, 'live');
+  assert.equal(partial.meteor, 'off');
+  assert.ok(coastalSkyFrame({...nighttime, cloudCoverage: 30}).starOpacity < clear.starOpacity);
+  for (const frame of [coastalSkyFrame(daytime), coastalSkyFrame({...nighttime, sunElevation: -3}),
+    coastalSkyFrame({...nighttime, cloudCoverage: 100}), coastalSkyFrame(nighttime, true),
+    ...['cloudy', 'fog', 'rainy', 'lightning-rainy', 'snowy', 'unavailable']
+      .map(condition => coastalSkyFrame({...nighttime, condition}))]) {
+    assert.equal(frame.starOpacity, 0);
+    assert.equal(frame.meteor, 'off');
+  }
+  for (const name of ['dipper', 'cassiopeia', 'orion']) {
+    assert.match(COASTAL_SKY_MARKUP, new RegExp(`<svg class="coastal-constellation coastal-${name}"`));
+  }
+});
+
+test('showcase shooting star follows a single deterministic path and freezes with reduced motion', () => {
+  const before = sample(.2, nighttime);
+  const early = sample(.43, nighttime);
+  const late = sample(.55, nighttime);
+  const after = sample(.8, nighttime);
+  assert.equal(early.meteor, 'sample');
+  assert.ok(early.meteorProgress > before.meteorProgress && late.meteorProgress > early.meteorProgress);
+  assert.ok(early.meteorOpacity > 0 && late.meteorOpacity > 0);
+  assert.equal(before.meteorOpacity, 0);
+  assert.equal(after.meteorOpacity, 0);
+  assert.deepEqual(early, sample(.43, nighttime));
+  assert.ok(coastalSkyFrame({...nighttime, skyTimeSeconds: 12.5}).meteorOpacity > 0);
+  const reduced = sample(.43, {...nighttime, reduceMotion: true});
+  assert.equal(reduced.starOpacity, early.starOpacity);
+  assert.equal(reduced.meteor, 'off');
+  assert.equal(reduced.meteorOpacity, 0);
+});
+
 test('reduced motion freezes demo positions, and offline clears visible telemetry', () => {
   const environment = {...nighttime, moonPhase: 'full_moon', windSpeed: 3, windBearing: 80, reduceMotion: true};
   assert.deepEqual(sample(0, environment), sample(1, environment));
@@ -79,12 +116,17 @@ test('reduced motion freezes demo positions, and offline clears visible telemetr
   updateCoastalSky(element, {...environment, reduceMotion: false, skyTimeSeconds: 5.2});
   assert.equal(element.dataset.skyClock, 'sample');
   assert.equal(element.dataset.moon, 'full_moon');
+  assert.equal(element.dataset.stars, 'visible');
+  assert.equal(element.dataset.meteor, 'sample');
   assert.equal(properties.get('--coastal-clock'), '5.200s');
   updateCoastalSky(element, environment);
   assert.equal(element.dataset.skyReduced, 'true');
   assert.equal(element.dataset.skyClock, 'live');
+  assert.equal(element.dataset.stars, 'visible');
+  assert.equal(element.dataset.meteor, 'off');
   updateCoastalSky(element, environment, true);
   assert.equal(element.dataset.sky, 'unknown');
   assert.equal(element.dataset.cloud, 'none');
   assert.equal(element.dataset.moon, '');
+  assert.equal(element.dataset.stars, 'hidden');
 });

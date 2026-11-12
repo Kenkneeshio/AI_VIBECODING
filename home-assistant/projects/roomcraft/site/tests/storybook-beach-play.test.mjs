@@ -77,13 +77,85 @@ test('a complete activity uses five meshes and disposes its assets', () => {
   scene.add(beach.root);
   const meshes = [];
   beach.root.traverse(node => { if (node.isMesh) meshes.push(node); });
-  assert.equal(meshes.length, 5);
+  let active = 0;
+  beach.root.traverseVisible(node => { if (node.isMesh) active++; });
+  assert.equal(active, 5);
   let disposed = 0;
   for (const mesh of meshes) {
     mesh.material.addEventListener('dispose', () => disposed++);
     mesh.geometry.addEventListener('dispose', () => disposed++);
   }
   beach.dispose();
-  assert.equal(disposed, 10);
+  assert.equal(disposed, meshes.length * 2);
   assert.equal(scene.children.length, 0);
+});
+
+test('a stage change swaps the activities at the same time and clears the beach overnight', () => {
+  const beach = createStorybookBeachPlay(water, street);
+  const names = () => beach.root.children.filter(group => group.visible).map(group => group.name);
+  assert.deepEqual(names(), ['beach-day-activities']);
+  beach.update(0, {activity:'morning'});
+  assert.deepEqual(names(), ['beach-morning-surfers']);
+  assert.ok(beach.root.getObjectByName('beach-surfers').count > 0);
+  beach.update(0, {activity:'evening'});
+  assert.deepEqual(names(), ['beach-evening-bonfires']);
+  assert.equal(beach.root.getObjectByName('beach-bonfire-sand-glow').count, 2);
+  beach.update(0, {activity:'overnight'});
+  assert.deepEqual(names(), []);
+  beach.update(0, {activity:'day'});
+  assert.deepEqual(names(), ['beach-day-activities']);
+  beach.dispose();
+});
+
+test('the surfboards stay in the breakers and their paths replay without overlap', () => {
+  const beach = createStorybookBeachPlay(water, street);
+  const boards = [1, 2].map(index => beach.root.getObjectByName(`beach-surfboard-${index}`));
+  const sample = (time, reduceMotion = false) => {
+    beach.update(time, {activity:'morning', transientTelemetry:true, reduceMotion});
+    return boards.map(({position, rotation}) => [position.toArray(), rotation.toArray()]);
+  };
+  const initial = sample(0);
+  for (let second = 1; second <= 44; second++) {
+    const frame = sample(second);
+    for (const [[x, y, z]] of frame) {
+      const shore = water.shoreline.findIndex(point => point.x > x);
+      const left = water.shoreline[shore - 1];
+      const right = water.shoreline[shore];
+      const shoreZ = THREE.MathUtils.lerp(left.z, right.z, (x - left.x) / (right.x - left.x));
+      assert.ok(shoreZ - z > 27 && shoreZ - z < 77);
+      assert.ok(Math.abs(y - water.y) < .9);
+    }
+    assert.ok(frame[1][0][0] - frame[0][0][0] > 50);
+  }
+  assert.notDeepEqual(sample(4), initial);
+  assert.deepEqual(sample(0), initial);
+  assert.deepEqual(sample(2, true), sample(28, true));
+  beach.dispose();
+});
+
+test('bonfire sparks and seated figures animate deterministically on dry sand', () => {
+  const beach = createStorybookBeachPlay(water, street);
+  const flames = beach.root.getObjectByName('beach-bonfire-flames');
+  const camp = beach.root.getObjectByName('beach-firepit-1');
+  const people = beach.root.getObjectByName('beach-bonfire-figures');
+  const glows = beach.root.getObjectByName('beach-bonfire-sand-glow');
+  assert.deepEqual(camp.position.toArray(), [layout.court.x, layout.court.y, layout.court.z]);
+  const matrix = new THREE.Matrix4();
+  function sample(time, reduceMotion = false) {
+    beach.update(time, {activity:'evening', transientTelemetry:true, reduceMotion});
+    const result = [glows.material.uniforms.warmth.value];
+    for (const mesh of [flames, people]) {
+      for (let index = 0; index < mesh.count; index++) {
+        mesh.getMatrixAt(index, matrix);
+        assert.ok(matrix.elements.every(Number.isFinite));
+        result.push(...matrix.elements);
+      }
+    }
+    return result;
+  }
+  const initial = sample(0);
+  assert.notDeepEqual(sample(1), initial);
+  assert.deepEqual(sample(0), initial);
+  assert.deepEqual(sample(1, true), sample(300, true));
+  beach.dispose();
 });

@@ -171,12 +171,14 @@ export function sampleDemoWeather(time) {
     const [condition, weatherCaption, windSpeed, windBearing] = WEATHER_CONDITIONS[Math.floor(elapsed / CONDITION_MS)];
     const skyProgress = Math.min(1, elapsed / 2400);
     return {...DAY, condition, weatherCaption, windSpeed, windBearing, skyProgress,
+      beachActivity: elapsed < CONDITION_MS ? 'morning' : 'day',
       skyTimeSeconds: elapsed / 1000, sunElevation: 9 + 44 * Math.sin(skyProgress * Math.PI)};
   }
   const nightTime = elapsed - MOON_START_MS;
   const index = Math.min(MOON_PHASES.length - 1, Math.floor(nightTime / PHASE_MS));
   const [moonPhase, weatherCaption] = MOON_PHASES[index];
   return {...MOON, moonPhase, weatherCaption, skyTimeSeconds: elapsed / 1000,
+    beachActivity: index < 3 ? 'evening' : 'overnight',
     skyProgress: Math.min(1, nightTime / (PHASE_MS * MOON_PHASES.length))};
 }
 

@@ -1,5 +1,9 @@
 # Decision log
 
+## Set waterfront activity by the home's local time
+
+Use Home Assistant's configured time zone and sun state to choose the beach activity. Morning runs from sunrise or 5 a.m., whichever is later, to 11 a.m. Evening starts at sunset and runs until 11 p.m. Keep the overnight beach empty. Home and Studio use the same scene renderer, and Studio can preview each period. The animated traffic and waterfront figures are scenery. Keep their timing, positions, and the illustrated star patterns outside the saved layout.
+
 ## Make the dining set editable and share appearance between Home and Studio
 
 Convert composite dining furniture in reference revision 10. Derive chair positions and separate footprints from the legacy rendered geometry and retain the table ID and authored transform. Allow chairs to tuck under their matching tables within the shared placement rules. The reference illustration informs relative proportions. Physical distances require a measured plan or known dimensions.

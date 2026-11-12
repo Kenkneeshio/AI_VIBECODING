@@ -12,6 +12,7 @@ export const CAMERA_PRESETS = Object.freeze({
   east: cameraPreset('From east', 90, 42),
   south: cameraPreset('From south', 0, 42),
   west: cameraPreset('From west', 270, 42),
+  waterfront: cameraPreset('Waterfront', 0, 15),
   free: cameraPreset('Free view', 0, 25),
 });
 
@@ -91,11 +92,12 @@ export function studioCameraPreferences(host) {
 
 /** Fit one authored bounding box at an explicit viewport and orthographic pose. */
 export function fitStorybookCamera(camera, bounds, width, height, view = 'top', {focus, demoZoom} = {}) {
+  const normalized = normalizeCameraView(view);
+  if (normalized.preset === 'waterfront' && bounds?.waterfront) bounds = bounds.waterfront;
   if (![bounds?.minX, bounds?.maxX, bounds?.minZ, bounds?.maxZ, width, height].every(Number.isFinite) ||
       width <= 0 || height <= 0 || bounds.maxX < bounds.minX || bounds.maxZ < bounds.minZ) {
     throw new Error('A finite scene bounding box and viewport are required.');
   }
-  const normalized = normalizeCameraView(view);
   const azimuth = THREE.MathUtils.degToRad(normalized.azimuth);
   const tilt = THREE.MathUtils.degToRad(normalized.tilt);
   const center = new THREE.Vector3((bounds.minX + bounds.maxX) / 2, -5,

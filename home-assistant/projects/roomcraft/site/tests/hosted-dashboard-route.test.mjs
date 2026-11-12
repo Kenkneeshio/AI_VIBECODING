@@ -49,6 +49,7 @@ function harness(records, {onUpload, readError, dropOn} = {}) {
         return;
       }
       if (type === 'get_states') this.emit({id, success: true, result: []});
+      if (type === 'get_config') this.emit({id, success: true, result: {time_zone: 'America/Los_Angeles'}});
       if (type === 'lovelace/config/save') {
         dashboards[path] = command.config;
         this.emit({id, success: true});

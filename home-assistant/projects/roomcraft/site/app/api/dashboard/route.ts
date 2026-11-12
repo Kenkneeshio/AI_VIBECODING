@@ -370,7 +370,10 @@ export async function GET(request: Request): Promise<Response> {
     socket = new HomeAssistantSocket(config.haOrigin, config.token);
     const { dashboardPath, config: dashboard } = await getConfig(socket);
     const card = findCard(dashboard);
-    const states = await socket.call("get_states");
+    const [states, homeConfig] = await Promise.all([
+      socket.call("get_states"), socket.call("get_config").catch(() => null),
+    ]);
+    const timeZone = isObject(homeConfig) && typeof homeConfig.time_zone === "string" ? homeConfig.time_zone : undefined;
     const records = Array.isArray(states) ? states.filter((item) => isObject(item) &&
       typeof item.entity_id === "string" && /^[a-z_]+\.[a-z0-9_]+$/.test(item.entity_id))
       : [];
@@ -386,7 +389,8 @@ export async function GET(request: Request): Promise<Response> {
       imageUrl: absoluteImageUrl(config.haOrigin, card.image),
       hotspots: editableDashboardHotspots(card.elements, card.roomcraft_scene),
       entityOptions,
-      storybookPreview: storybookPreview(dashboard, Object.fromEntries(records.map(item => [item.entity_id, item])), Date.now()),
+      storybookPreview: storybookPreview(dashboard,
+        Object.fromEntries(records.map(item => [item.entity_id, item])), Date.now(), timeZone),
       source: dashboardSource(config.haOrigin, dashboardPath),
       revision: await revisionOf(dashboard),
     });
