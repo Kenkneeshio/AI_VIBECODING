@@ -36,3 +36,9 @@ The live renderer maps the texture onto exposed rock in world coordinates. The s
 - The Android wall tablet rendered the Cove and Shores at live nighttime conditions. The final tablet check verified the Shores with home controls hidden, then cold-opened the full Default view. No device commands were sent for these checks.
 - Owner-private Studio version 93 was published from `a3ce5afc953f440bce35fdbf83a79c8d6d7213fb`. The packaged editor bundle and texture matched the Home Assistant build.
 - For rollback, reinstall runtime source `a6d36a086202789ea78c59b3ff9cccfb6a8e8faa` and restore private Studio version 91. The pre-art dashboard backup stays in the protected backup directory. See [deployment recovery](deployment.md).
+
+## Shoreline correction verification and rollback
+
+- Runtime revision `82213b8e3635dca5fefb55dc4221472f8d2ac54a` passed 478 JavaScript and 38 Python tests, TypeScript, lint with existing warnings, and the production build. The exact source manifest was `sha256:e7d57338349535b8b2f1f5a4006b1c093aaa3a09f6192441766a90c446b3c191`.
+- The renderer reproduced the corrected overhead view and both coastal camera views. The shore also rendered in simulated nighttime, rain, and Insane graphics. Signed-in Home Assistant confirmed the left-hand Cove and both camera options. LAN and Nabu Casa served nine matching release assets and the published layout matched the backup. The wall tablet cold-opened the corrected Default view.
+- Owner-private Studio version 94 was published from `b07e8dc0a52d64f2137ee74be997a1e65de32e75` with matching editor and texture bytes. To roll back this correction, reinstall `1ddfbca03023821b3bd46479a4a4d8169d3ee98f` and restore private Studio version 93.
