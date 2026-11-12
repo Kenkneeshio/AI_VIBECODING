@@ -91,15 +91,27 @@ test('the authored road bends smoothly and the sidewalk meets the graded beach a
   const beach = geometryByColor.get('#fffbec');
   const walk = sidewalks[0];
   const rows = beach.count / water.shoreline.length;
+  const duneCrests = [];
   assert.equal(walk.count / 2, water.shoreline.length);
   for (const [column, {x}] of water.shoreline.entries()) {
     const border = walk.getZ(2 * column);
     const lastSand = (column + 1) * rows - 1;
     assert.ok(Math.abs(border - road.sample(x, curved.farZ).z) < .001);
     assert.ok(Math.abs(beach.getZ(lastSand) - border - .35) < .001, 'sand reaches below the paving');
-    assert.ok(Math.abs(water.sandHeight(x, border + .35) - beach.getY(lastSand)) < .001);
-    for (let i = lastSand - rows + 2; i <= lastSand; i++) assert.ok(beach.getZ(i) > beach.getZ(i - 1));
+    const firstSand = column * rows;
+    let crest = ground;
+    for (let i = firstSand; i <= lastSand; i++) {
+      const depth = beach.getZ(i);
+      const y = beach.getY(i);
+      assert.ok(Math.abs(water.sandHeight(x, depth) - y) < .001);
+      if (i > firstSand) assert.ok(depth > beach.getZ(i - 1));
+      if (depth < water.shoreline[column].z + 60) assert.ok(y < water.y);
+      crest = Math.max(crest, y);
+    }
+    duneCrests.push(crest - ground);
   }
+  assert.ok(Math.max(...duneCrests) > 10, 'the backshore has discernible relief');
+  assert.ok(Math.min(...duneCrests) < 2, 'the dunes fade into the surrounding flat beach');
 });
 
 test('the authored shoreline gives the volleyball and sandcastle groups distinct dry-sand patches', () => {

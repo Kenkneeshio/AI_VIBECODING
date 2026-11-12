@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {buildLaJollaBluffs} from './storybook-la-jolla-bluffs.mjs';
 import {buildLaJollaShores} from './storybook-la-jolla-shores.mjs';
+import {addCoastalPlanting} from './storybook-coastal-planting.mjs';
 
 const WALK_WIDTH = 26;
 const ROAD_WIDTH = 92;
@@ -153,17 +154,17 @@ function beachChair(batch, x, z, groundY, fabric, rotation) {
   batch.add(back, fabric, px, groundY + 4.4, pz, rotation);
 }
 
-function placeBeachSets(batch, centerX, farZ, span, groundY) {
+function placeBeachSets(batch, centerX, farZ, span, sandHeight) {
   for (const [fraction, offsetZ, shade, trim, rotation] of [
     [.49, -89, '#b46350', '#f6e5bc', .17],
     [.108, -91, '#548e8f', '#e8dfbf', -.19],
   ]) {
     const x = centerX + fraction * span;
     const z = farZ + offsetZ;
-    beachUmbrella(batch, x, z, groundY, shade, trim, rotation);
-    beachChair(batch, x - 13, z - 15, groundY, trim, rotation - .17);
-    beachChair(batch, x + 14, z - 14, groundY, shade, rotation + .12);
-    batch.box(8.6, .22, 15, '#e9cda5', x + 23, groundY + .99, z + 7, rotation * 2);
+    beachUmbrella(batch, x, z, sandHeight(x, z), shade, trim, rotation);
+    beachChair(batch, x - 13, z - 15, sandHeight(x - 13, z - 15), trim, rotation - .17);
+    beachChair(batch, x + 14, z - 14, sandHeight(x + 14, z - 14), shade, rotation + .12);
+    batch.box(8.6, .22, 15, '#e9cda5', x + 23, sandHeight(x + 23, z + 7) + .15, z + 7, rotation * 2);
   }
 }
 
@@ -235,9 +236,18 @@ function addTidalShelves(batch, {focusX, span, sampleSand, shoreZ: coast}) {
 const SAND_PROFILE = [
   [-29, .14, 'wet'], [-4, .32, 'wet'], [4, .42, 'damp'], [11, .49, 'damp'],
   [23, .67, 'dry'], [34, .73, 'dry'], [48, .68, 'dry'], [64, .59, 'dry'],
-  [.43, .49, 'backshore'], [.78, .35, 'scrub'], [1, .27, 'verge'],
+  [.19, .60, 'backshore'], [.39, .66, 'backshore'], [.58, .88, 'scrub'],
+  [.75, 1.15, 'scrub'], [.9, 1.46, 'verge'], [1, 1.65, 'verge'],
 ];
 const DRY_SAND_END = 7;
+const DUNE_RISES = [
+  {along: -.91, spread: .104, height: 15, crest: .46},
+  {along: -.72, spread: .12, height: 17, crest: .57},
+  {along: -.57, spread: .065, height: 10, crest: .66},
+  {along: .77, spread: .074, height: 9, crest: .62},
+  {along: .92, spread: .12, height: 17, crest: .45},
+  {along: 1.09, spread: .09, height: 12, crest: .63},
+];
 const SAND_TINTS = Object.fromEntries(Object.entries({
   wet:'#bb9976', damp:'#d8b994', dry:'#f2d7a7', backshore:'#d9bd93', scrub:'#c8b48a', verge:'#c5b28d',
 }).map(([name, tint]) => [name, new THREE.Color(tint)]));
@@ -247,13 +257,27 @@ function backshoreVariation(x) {
   return .57 * Math.sin(x * .038) + .31 * Math.cos(x * .016 + 1.9) + .12 * Math.sin(x * .081 - .8);
 }
 
-function sandRowColor(x, row, result = new THREE.Color()) {
+function sandRowHeight(x, along, row) {
+  const [cross, height] = SAND_PROFILE[row];
+  if (row <= DRY_SAND_END || cross === 1) return height;
+  let rise = 0;
+  for (const dune of DUNE_RISES) {
+    const lateral = (along - dune.along) / dune.spread;
+    const crest = dune.crest + backshoreVariation(x) * .09;
+    const fromCrest = (cross - crest) / .32;
+    rise += dune.height * Math.exp(-lateral * lateral - fromCrest * fromCrest);
+  }
+  return height + rise * Math.sin(Math.PI * cross) ** 1.7;
+}
+
+function sandRowColor(x, row, height, result = new THREE.Color()) {
   const striation = .97 + .022 * Math.sin(x * .023 + row * .64) + .017 * Math.sin(x * .054 - row);
   result.copy(SAND_TINTS[SAND_PROFILE[row][2]]);
   if (row > DRY_SAND_END) {
     const scrub = THREE.MathUtils.smoothstep(backshoreVariation(x), -.67, .72);
-    const strength = [.18, .67, .88][row - DRY_SAND_END - 1];
-    result.lerp(DUNE_GREEN, strength * scrub);
+    const [cross] = SAND_PROFILE[row];
+    const rootCover = THREE.MathUtils.smoothstep(height, 2, 11);
+    result.lerp(DUNE_GREEN, Math.min(.9, cross * .76 * scrub + rootCover * (.28 + scrub * .38)));
   }
   return result.multiplyScalar(striation);
 }
@@ -266,28 +290,31 @@ function sandProfileZ(x, shore, roadside, row) {
   return THREE.MathUtils.lerp(dryEnd, roadside + .35, offset + irregularity);
 }
 
-function sampleSand(x, shore, roadside, depth, groundY) {
+function sampleSand(x, along, shore, roadside, depth, groundY) {
   for (let row = 1; row < SAND_PROFILE.length; row++) {
-    const [, height] = SAND_PROFILE[row];
     const next = sandProfileZ(x, shore, roadside, row);
     if (depth > next) continue;
-    const [, base] = SAND_PROFILE[row - 1];
     const prior = sandProfileZ(x, shore, roadside, row - 1);
+    const base = sandRowHeight(x, along, row - 1);
+    const height = sandRowHeight(x, along, row);
     const fraction = THREE.MathUtils.clamp((depth - prior) / Math.max(.001, next - prior), 0, 1);
     return {height:groundY + THREE.MathUtils.lerp(base, height, fraction),
-      color:sandRowColor(x, row - 1).lerp(sandRowColor(x, row), fraction)};
+      color:sandRowColor(x, row - 1, base).lerp(sandRowColor(x, row, height), fraction)};
   }
-  return {height:groundY + SAND_PROFILE.at(-1)[1], color:sandRowColor(x, SAND_PROFILE.length - 1)};
+  const last = SAND_PROFILE.length - 1;
+  const height = sandRowHeight(x, along, last);
+  return {height:groundY + height, color:sandRowColor(x, last, height)};
 }
 
-function sandSurface(batch, shoreline, roadEdgeAt, groundY) {
+function sandSurface(batch, shoreline, roadEdgeAt, groundY, focusX, span) {
   const position = [], colors = [], faces = [], uv = [];
   const shade = new THREE.Color();
   for (const [index, {x, z}] of shoreline.entries()) {
     const roadside = roadEdgeAt(x);
-    for (const [row, [, y]] of SAND_PROFILE.entries()) {
+    for (const [row] of SAND_PROFILE.entries()) {
       const depth = sandProfileZ(x, z, roadside, row);
-      sandRowColor(x, row, shade);
+      const y = sandRowHeight(x, (x - focusX) / span, row);
+      sandRowColor(x, row, y, shade);
       position.push(x, groundY + y, depth);
       colors.push(shade.r, shade.g, shade.b);
       uv.push(x / 80, depth / 80);
@@ -335,6 +362,30 @@ function sandSurface(batch, shoreline, roadEdgeAt, groundY) {
   batch.add(geometry, SAND_MATERIAL, 0, 0, 0);
 }
 
+function buildDunePlantings(batch, {focusX, span, shoreZ: edge, roadEdgeAt, sampleSand: sandAt}) {
+  const plantingSites = [
+    [-.95, .53, 8], [-.83, .7, 6], [-.735, .49, 9], [-.64, .69, 7], [-.57, .52, 6],
+    [-.80, .37, 7], [-.70, .62, 8], [-.605, .49, 6],
+    [.785, .68, 6], [.885, .46, 9], [.987, .64, 7], [1.11, .5, 8],
+    [.84, .48, 7], [.945, .67, 8], [1.02, .41, 7],
+  ];
+  const kinds = ['sage', 'grass', 'stone', 'iceplant', 'grass', 'sage', 'yucca', 'iceplant', 'stone'];
+  for (const [site, [along, crest, count]] of plantingSites.entries()) {
+    for (let i = 0; i < count; i++) {
+      const phase = site * 1.19 + i * 2.399963;
+      const spread = Math.sqrt(i / count);
+      const offset = along * span + Math.cos(phase) * spread * 40;
+      const x = focusX + offset;
+      const curb = roadEdgeAt(x);
+      const dry = Math.min(curb - 16, edge(offset) + SAND_PROFILE[DRY_SAND_END][0]);
+      const z = THREE.MathUtils.lerp(dry, curb, crest + Math.sin(phase) * spread * .20);
+      const size = 6 + (1 + Math.cos(phase * 2.61)) * 6.6;
+      if (z + size + 4 > curb || z - size < dry + 2) continue;
+      addCoastalPlanting(batch, kinds[i], x, sandAt(offset, z).height, z, size, phase);
+    }
+  }
+}
+
 export function buildStorybookNeighborhood(batch, {farZ, sample = STRAIGHT_STREET}, groundY, {minX, maxX},
   groundWidth = 6200, groundCenterX = (minX + maxX) / 2, {sandstone} = {}) {
   const focusX = (minX + maxX) / 2;
@@ -349,14 +400,16 @@ export function buildStorybookNeighborhood(batch, {farZ, sample = STRAIGHT_STREE
   });
   const sandAt = (offset, z) => {
     const x = focusX + offset;
-    return sampleSand(x, edge(offset), roadEdgeAt(x), z, groundY);
+    return sampleSand(x, offset / span, edge(offset), roadEdgeAt(x), z, groundY);
   };
+  const sandHeight = (x, z) => sandAt(x - focusX, z).height;
   const coast = {focusX, span, farZ, groundY, shoreZ:edge, roadEdgeAt, sandstone, sampleSand:sandAt};
-  sandSurface(batch, shoreline, roadEdgeAt, groundY);
+  sandSurface(batch, shoreline, roadEdgeAt, groundY, focusX, span);
   buildLaJollaShores(batch, coast);
   buildLaJollaBluffs(batch, coast);
   addTidalShelves(batch, coast);
-  placeBeachSets(batch, focusX, farZ, span, groundY + .7);
+  buildDunePlantings(batch, coast);
+  placeBeachSets(batch, focusX, farZ, span, sandHeight);
   return {
     water: {
       y: groundY + 1.05, farZ: farZ - 1850, shoreline, focusX,
@@ -364,7 +417,7 @@ export function buildStorybookNeighborhood(batch, {farZ, sample = STRAIGHT_STREE
       cove: {x: focusX + span * SHORE_LANDMARKS.cove, z: edge(span * SHORE_LANDMARKS.cove)},
       boatCenters: {cabin: span * .58},
       boatOffshore: {sailboat: 82},
-      sandHeight: (x, z) => sandAt(x - focusX, z).height,
+      sandHeight,
     },
     coastalFrames: {
       waterfront: {

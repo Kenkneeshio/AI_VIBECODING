@@ -108,6 +108,8 @@ function runtimeCandidates(siteRoot = SITE_ROOT, projectRoot = PROJECT_ROOT) {
     join(siteRoot, 'ha-local', 'storybook-coastal-sky.mjs'),
     join(siteRoot, 'ha-local', 'storybook-ocean.mjs'),
     join(siteRoot, 'ha-local', 'storybook-street.mjs'),
+    join(siteRoot, 'ha-local', 'storybook-coastal-planting.mjs'),
+    join(siteRoot, 'ha-local', 'storybook-meadow.mjs'),
     join(siteRoot, 'ha-local', 'storybook-la-jolla-bluffs.mjs'),
     join(siteRoot, 'ha-local', 'storybook-la-jolla-shores.mjs'),
     join(siteRoot, 'ha-local', 'storybook-sidewalk.mjs'),

@@ -116,3 +116,21 @@ test('the bluff apron follows the curved landward boundary while staying clear o
   assert.ok(grid.flat().every(([x, , z]) => z < roadEdgeAt(x) - 14));
   assert.ok(apron.every(([x, y, z]) => close(options.sampleSand(x - options.focusX, z).height - y, .19)));
 });
+
+test('the bluff grades gently into the wet sand before the first rock ledge', () => {
+  const {headlands} = captureBluffs();
+  const grid = rows(headlands[0].position);
+  const [toe] = grid;
+  for (const fraction of [-.43, -.29, -.145]) {
+    const target = options.focusX + fraction * options.span;
+    const col = toe.findIndex(([x]) => x >= target);
+    const transition = grid.slice(0, 4).map(row => row[col]);
+    for (let i = 1; i < transition.length; i++) {
+      const [, y0, z0] = transition[i - 1];
+      const [, y1, z1] = transition[i];
+      assert.ok(z1 > z0);
+      assert.ok(y1 - y0 < 2.1);
+      assert.ok((y1 - y0) / (z1 - z0) < .72);
+    }
+  }
+});

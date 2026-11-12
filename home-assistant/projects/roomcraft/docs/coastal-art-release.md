@@ -61,3 +61,11 @@ On the wall display and in Studio, the road should read as part of the coast. A 
 - Chromium rendered Default, Cove, and Shores, plus Cove at night, in rain, and at Insane quality. Signed-in Home Assistant opened both coastal presets and returned to Default. Studio loaded the saved project and returned to Home. The release assets matched on LAN and Nabu Casa, and the saved layout and control projection matched the pre-release backup.
 - The initial live tablet check caught the curve encroaching on the garage. The corrected scene leaves 19 plan units between the saved garage footprint and the sidewalk. The wall tablet reopened to the corrected Default view after a cold launch.
 - Private Studio version 97 was published from `6df6b8c0406a74c1993a6ed0c071d3bcb02cc23f`. The packaged editor HTML, renderer and texture match the verified Home Assistant release. This supersedes version 96, which predates the garage clearance correction. To roll back the coastal transitions, reinstall `96a8d20eec9ddbc74e3b105dcfd8a1a5a66aaae6` and restore private Studio version 95. The pre-release backup is retained in protected storage; see [deployment recovery](deployment.md).
+
+## Coastal elevation and planting
+
+The overhead wall display should read as a planted coastal landscape around the home, and the angled views should reveal gradual elevation changes where dunes, sandstone, and paths meet sand. Keep the beach activity areas, built surfaces, and road actors grounded. This is shared scenery in Home and Studio. Layout migrations and new raster assets do not apply.
+
+The meadow mesh uses bounded relief and vertex colors. Its height query interpolates the same triangles used for rendering, and a flat buffer protects the sidewalk, garage, stairs, and house. The sand profile keeps the same grades near the surf, then adds the shallow dune crests farther inland. The bluff toe eases down into the wet sand. The promenade uses the sampled terrain at its beach edge, and both the park and dune plants are placed on their respective grade. All landforms and placements are deterministic static geometry.
+
+![Updated coastal dunes, bluff slopes, and inland planting around the house.](images/la-jolla-coastal-relief.png)

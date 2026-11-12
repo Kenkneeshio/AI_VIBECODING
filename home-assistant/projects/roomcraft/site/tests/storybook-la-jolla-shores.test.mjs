@@ -80,11 +80,17 @@ test('the promenade meets the real sidewalk edge at both ends and the lawn grade
     assert.equal(join.length, 9);
     assert.ok(join.every(([x,,z]) => Math.abs(z - roadEdgeAt(x) - .55) < 1e-4));
   }
-  const lawn = meshes.find(({colored}) => colored);
+  const [lawn, foredune] = meshes.filter(({colored}) => colored);
   assert.ok(lawn.upward && lawn.points.every(([x,,z]) => z < roadEdgeAt(x) - 1.8));
   for (const [x,y,z,red] of lawn.points.filter((_, i) => i % 8 === 7)) {
     const sand = sampleSand(x - site.focusX, z);
     assert.ok(Math.abs(y - sand.height - .018) < 1e-4);
+    assert.ok(Math.abs(red - sand.color.r) < 1e-5);
+  }
+  assert.ok(foredune.upward && foredune.max[1] - foredune.min[1] > 2);
+  for (const [x,y,z,red] of foredune.points.filter((_, i) => i % 6 === 5)) {
+    const sand = sampleSand(x - site.focusX, z);
+    assert.ok(Math.abs(y - sand.height - .021) < 1e-4);
     assert.ok(Math.abs(red - sand.color.r) < 1e-5);
   }
 });

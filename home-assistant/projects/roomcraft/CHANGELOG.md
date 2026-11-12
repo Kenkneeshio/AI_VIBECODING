@@ -1,5 +1,10 @@
 # Changelog
 
+## Grade and plant the coastal landscape
+
+- Low dunes, grass rises, and clusters of coastal sage, grasses, succulents, and sandstone fill the outer stretches of the scene.
+- The Cove ledges taper into wet sand. The Shores promenade steps and grades into the beach, with a trail to the pier, planted shoulders, and picnic tables.
+
 ## Soften the coastal landscape transitions
 
 - The coastal road bends behind the Cove and sweeps back toward Shores. Curbs, sidewalk, road markings, vehicles, walkers, and cyclists all follow it.

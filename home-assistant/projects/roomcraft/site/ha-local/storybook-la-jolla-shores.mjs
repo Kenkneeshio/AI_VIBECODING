@@ -8,6 +8,8 @@ const tones = {
   coral:'#ce765e', canvas:'#e9cba3',
 };
 const LAWN_MATERIAL = '#fcfaf2';
+const SAND_COLOR = new THREE.Color('#d8b78a');
+const BEACH_ACCESSES = [6, 18, 30];
 
 function strut(batch, start, end, width, depth, color) {
   const a = new THREE.Vector3(...start);
@@ -109,6 +111,7 @@ function scrippsPier(batch, {focusX, span, groundY, shoreZ}) {
   box(1.0, 8.8, 1.15, tones.gold, 8.8, deckY + 5.65, end + 10);
   box(5.4, .9, 1.2, tones.gold, 10.65, deckY + 9.75, end + 10);
   box(.3, 3.7, .3, tones.slate, 13.1, deckY + 7.55, end + 10);
+  return project(0, 0, 26.1);
 }
 
 function seasideBench(batch, x, y, z, angle = 0) {
@@ -123,18 +126,36 @@ function seasideBench(batch, x, y, z, angle = 0) {
   for (const dy of [4.28, 5.38]) box(16.6, .85, .7, tones.wood, 0, dy, 2.2);
 }
 
-function parkLawn(batch, samples, {focusX, groundY, roadEdgeAt, sampleSand}) {
+function paintedGround(batch, positions, colors, rows, towardSea, fallback) {
+  const columns = positions.length / (rows * 3);
+  const uv = [], faces = [];
+  for (let column = 0; column < columns; column++) for (let row = 0; row < rows; row++) {
+    uv.push(column / (columns - 1), row / (rows - 1));
+    if (!column || !row) continue;
+    const a = column * rows + row;
+    const before = a - rows - 1, across = a - rows, below = a - 1;
+    if (towardSea) faces.push(before, below, across, below, a, across);
+    else faces.push(before, across, below, below, across, a);
+  }
+  const material = batch.material?.(LAWN_MATERIAL);
+  if (material) material.vertexColors = true;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setIndex(faces);
+  geometry.computeVertexNormals();
+  batch.add(geometry, material ? LAWN_MATERIAL : fallback, 0, 0, 0);
+}
+
+function parkLawn(batch, samples, {focusX, roadEdgeAt, sampleSand}) {
   const profile = [0, .18, .36, .58, .72, .83, .93, 1];
-  const rows = profile.length;
   const points = [];
-  const uv = [];
   const colors = [];
-  const faces = [];
   const edge = new THREE.Color('#a0a367');
   const interior = new THREE.Color('#82a65a');
-  const sandFallback = {height:groundY + .36, color:new THREE.Color('#d8b78a')};
   const swatch = new THREE.Color();
-  for (const [column,[x,pathZ]] of samples.entries()) {
+  for (const [column,[x,pathZ,pathY]] of samples.entries()) {
     const t = column / (samples.length - 1);
     const shoreSide = pathZ + 3.3;
     const setback = 3.0 + 4.4 * Math.sin(t * 3 * Math.PI) ** 2 + 1.6 * Math.sin(t * 11 * Math.PI) ** 2;
@@ -142,33 +163,63 @@ function parkLawn(batch, samples, {focusX, groundY, roadEdgeAt, sampleSand}) {
       shoreSide + 9 + 62 * Math.sin(t * Math.PI) ** .72));
     const ends = THREE.MathUtils.smoothstep(Math.min(t, 1 - t), 0, .083);
     const berm = THREE.MathUtils.smoothstep(inlandSide - shoreSide, 1, 9) * ends;
-    for (const [row, v] of profile.entries()) {
+    for (const v of profile) {
       const z = THREE.MathUtils.lerp(shoreSide, inlandSide, v);
-      const sand = sampleSand?.(x - focusX, z) ?? sandFallback;
-      const lift = (groundY + 4.66 - sand.height) * (1 - v) + 1.4 * Math.sin(Math.PI * v) * Math.sin(Math.PI * t);
+      const sand = sampleSand(x - focusX, z);
+      const rise = Math.max(0, pathY - .045 - sand.height);
+      const lift = rise * (1 - v) ** 1.22 + 1.08 * Math.sin(Math.PI * v) * Math.sin(Math.PI * t);
       points.push(x, sand.height + .018 + berm * lift, z);
-      uv.push(t, v);
       const grass = Math.sin(v * Math.PI) ** .38;
       const fadeStart = .72 + .06 * Math.sin(t * 17 * Math.PI) * Math.sin(t * 5 * Math.PI);
       const amount = ends * (1 - THREE.MathUtils.smoothstep(v, fadeStart, 1));
       const variation = .95 + .07 * Math.sin(t * 20.1 + v * 3.6) + .035 * Math.cos(t * 35.6 + v * 7.4);
       swatch.copy(edge).lerp(interior, grass).multiplyScalar(variation).lerp(sand.color, 1 - amount);
       colors.push(swatch.r, swatch.g, swatch.b);
-      if (column && row) {
-        const a = column * rows + row;
-        faces.push(a - rows - 1, a - rows, a - 1, a - 1, a - rows, a);
-      }
     }
   }
-  const material = batch.material?.(LAWN_MATERIAL);
-  if (material) material.vertexColors = true;
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  geometry.setIndex(faces);
-  geometry.computeVertexNormals();
-  batch.add(geometry, material ? LAWN_MATERIAL : tones.green, 0, 0, 0);
+  paintedGround(batch, points, colors, profile.length, false, tones.green);
+  const firstX = samples[0][0];
+  const stepX = samples[1][0] - firstX;
+  return (x,z) => {
+    const column = THREE.MathUtils.clamp((x - firstX) / stepX, 0, samples.length - 1);
+    const lower = Math.min(samples.length - 2, Math.floor(column));
+    const atColumn = index => {
+      const from = index * profile.length * 3;
+      const last = from + (profile.length - 1) * 3;
+      if (z < points[from + 2] || z > points[last + 2]) return sampleSand(x - focusX, z).height;
+      for (let j = from + 3; j <= last; j += 3) {
+        if (z > points[j + 2]) continue;
+        const t = (z - points[j - 1]) / (points[j + 2] - points[j - 1]);
+        return THREE.MathUtils.lerp(points[j - 2], points[j + 1], t);
+      }
+      return points[last + 1];
+    };
+    return THREE.MathUtils.lerp(atColumn(lower), atColumn(lower + 1), column - lower);
+  };
+}
+
+function foredune(batch, samples, {focusX, sampleSand}) {
+  const profile = [0,.13,.31,.53,.77,1];
+  const points = [], colors = [];
+  const plantedSand = new THREE.Color('#bdb287');
+  const swatch = new THREE.Color();
+  for (const [column,[x,pathZ,pathY]] of samples.entries()) {
+    const span = samples.length - 1;
+    const t = column / span;
+    const notch = Math.min(...BEACH_ACCESSES.map(start => Math.abs(column - start - 1)));
+    const dune = THREE.MathUtils.smoothstep(notch, .0, 2.6);
+    const reach = 9 + (8 + 5 * Math.sin(4.5 * Math.PI * t) ** 2) * dune;
+    const planting = (.08 + .21 * Math.sin(17 * Math.PI * t + .38) ** 6) * dune;
+    for (const v of profile) {
+      const z = pathZ - 13.65 - v * reach;
+      const sand = sampleSand(x - focusX, z);
+      const lift = Math.max(0, pathY - .19 - sand.height) * (1 - v) ** 2.05;
+      points.push(x, sand.height + .021 + lift * THREE.MathUtils.lerp(.42, 1, dune), z);
+      swatch.copy(sand.color).lerp(plantedSand, planting * Math.sin(Math.PI * v) ** .7);
+      colors.push(swatch.r, swatch.g, swatch.b);
+    }
+  }
+  paintedGround(batch, points, colors, profile.length, true, tones.sandstone);
 }
 
 function promenade(batch, {focusX, span, farZ, groundY, roadEdgeAt, sampleSand}) {
@@ -180,58 +231,83 @@ function promenade(batch, {focusX, span, farZ, groundY, roadEdgeAt, sampleSand})
     const bend = Math.sin(Math.PI * t) ** .74 * (35 + 14 * Math.sin(phase));
     const approach = Math.abs(2 * t - 1) ** 12;
     const edge = roadEdgeAt(x);
-    const z = THREE.MathUtils.lerp(farZ - 24 - bend, edge - 6, approach);
-    return [x, Math.min(z, edge - THREE.MathUtils.lerp(16, 6, approach))];
+    const center = THREE.MathUtils.lerp(farZ - 24 - bend, edge - 6, approach);
+    const z = Math.min(center, edge - THREE.MathUtils.lerp(16, 6, approach));
+    const land = sampleSand(x - focusX, z - 5.5).height;
+    const y = THREE.MathUtils.lerp(land + 2.62 + .62 * Math.sin(3.1 * Math.PI * t + .3), groundY + 4.7, approach);
+    return [x,z,y];
   });
-  const pathTop = groundY + 4.7;
-  const band = (offset, y) => samples.map(([x,z]) => [x, y, z + offset]);
+  const band = (offset, lift) => samples.map(([x,z,y]) => [x, y + lift, z + offset]);
   // Broad lawn rises from sand to a public walk that meets the street sidewalk.
-  ribbon(batch, band(0, pathTop - .12), band(-12, pathTop), tones.concrete);
-  ribbon(batch, band(3.3, pathTop), band(0, pathTop + .07), tones.canvas);
-  ribbon(batch, band(-12, pathTop), band(-14, pathTop + .5), tones.ivory);
-  ribbon(batch, band(-14, pathTop + .50), band(-14.75, groundY + 1.45), tones.sandstone);
-  ribbon(batch, band(-14.75, groundY + 1.45), band(-15.6, groundY + .70), tones.shadow);
-  parkLawn(batch, samples, {focusX, groundY, roadEdgeAt, sampleSand});
-  for (const [x,z] of [samples[0], samples.at(-1)]) {
+  ribbon(batch, band(0, -.08), band(-12, 0), tones.concrete);
+  ribbon(batch, band(3.3, -.02), band(0, .04), tones.canvas);
+  ribbon(batch, band(-12, 0), band(-14, .25), tones.ivory);
+  ribbon(batch, band(-14, .25), band(-14.43, -.17), tones.sandstone);
+  const lawnHeight = parkLawn(batch, samples, {focusX, roadEdgeAt, sampleSand});
+  foredune(batch, samples, {focusX, sampleSand});
+  for (const [x,z,y] of [samples[0], samples.at(-1)]) {
     const inland = [], seaward = [];
     for (let step = 0; step <= 8; step++) {
       const spread = step / 4 - 1;
       const curbX = x + spread * 11.8;
       const walkX = x + spread * 7.2;
       inland.push([curbX, groundY + 4.98, roadEdgeAt(curbX) + .55]);
-      seaward.push([walkX, pathTop - .10, Math.min(z - 8.2 + 2.6 * spread * spread, roadEdgeAt(walkX) - 9.5)]);
+      seaward.push([walkX, y - .10, Math.min(z - 8.2 + 2.6 * spread * spread, roadEdgeAt(walkX) - 9.5)]);
     }
     ribbon(batch, inland, seaward, tones.concrete);
   }
-  for (const [i,[x,z]] of samples.entries()) {
-    batch.box(.31, .16, 11.15, tones.sandstone, x, pathTop + .04, z - 6.0);
+  for (const [i,[x,z,y]] of samples.entries()) {
+    batch.box(.31, .13, 11.15, tones.sandstone, x, y + .035, z - 6.0);
     if (i % 2 || i === steps) continue;
-    const [nextX,nextZ] = samples[i + 2];
-    // Low rail leaves two open beach accesses between its continuous runs.
-    if (i === 6 || i === 30) {
-      const stairX = (x + nextX) / 2;
-      for (let step = 0; step < 3; step++) {
-        const height = 4.2 - step * 1.1;
-        batch.box(15, height, 2.3, tones.concrete, stairX, groundY + height / 2, z - 16.6 - step * 2.2);
+    const [nextX,nextZ,nextY] = samples[i + 2];
+    if (BEACH_ACCESSES.includes(i)) {
+      const [stairX,stairZ,stairY] = samples[i + 1];
+      const endY = sampleSand(stairX - focusX, stairZ - 24.7).height + .10;
+      for (let step = 0; step < 4; step++) {
+        const depth = stairZ - 14.5 - step * 2.90;
+        const floor = sampleSand(stairX - focusX, depth).height - .10;
+        const top = THREE.MathUtils.lerp(stairY + .04, endY, (step + 1) / 4);
+        batch.box(15.0 + .75 * step, Math.max(.23, top - floor), 3.05, tones.concrete,
+          stairX, (Math.max(floor + .23, top) + floor) / 2, depth);
       }
       continue;
     }
-    const lowerRail = [x, pathTop + 2.2, z - 12.55];
-    const upperRail = [x, pathTop + 4.5, z - 12.55];
-    batch.box(.8, 4.5, .82, tones.teal, x, pathTop + 2.25, z - 12.55);
-    strut(batch, lowerRail, [nextX, lowerRail[1], nextZ - 12.55], .47, .50, tones.seaGlass);
-    strut(batch, upperRail, [nextX, upperRail[1], nextZ - 12.55], .56, .63, tones.teal);
+    batch.box(.8, 4.5, .82, tones.teal, x, y + 2.25, z - 12.55);
+    strut(batch, [x,y + 2.2,z - 12.55], [nextX,nextY + 2.2,nextZ - 12.55], .47, .50, tones.seaGlass);
+    strut(batch, [x,y + 4.5,z - 12.55], [nextX,nextY + 4.5,nextZ - 12.55], .56, .63, tones.teal);
   }
   for (const sample of [2, 13, 24, 31]) {
-    const [x,z] = samples[sample];
-    seasideBench(batch, x, pathTop + .08, z - 1.3, (sample - steps / 2) / 145);
+    const [x,z,y] = samples[sample];
+    seasideBench(batch, x, y + .08, z - 1.3, (sample - steps / 2) / 145);
   }
   for (const sample of [7, 19, 29]) {
-    const [x,z] = samples[sample];
-    batch.box(1.14, 13.4, 1.12, tones.teal, x, pathTop + 6.7, z - 1.45);
-    batch.ball(1.69, 1.82, 1.69, tones.ivory, x, pathTop + 13.45, z - 1.45);
-    roof(batch, 4.15, .85, 4.15, tones.slate, x, pathTop + 15.0, z - 1.45);
+    const [x,z,y] = samples[sample];
+    batch.box(1.14, 13.4, 1.12, tones.teal, x, y + 6.7, z - 1.45);
+    batch.ball(1.69, 1.82, 1.69, tones.ivory, x, y + 13.45, z - 1.45);
+    roof(batch, 4.15, .85, 4.15, tones.slate, x, y + 15.0, z - 1.45);
   }
+  return {samples,lawnHeight};
+}
+
+function pierTrail(batch, {focusX, sampleSand}, [startX,startZ], [endX,,endZ]) {
+  const points = [], colors = [];
+  const rows = [-1,-.58,0,.58,1];
+  const tint = new THREE.Color();
+  if (endZ >= startZ - 2) return;
+  for (let i = 0; i <= 13; i++) {
+    const t = i / 13;
+    const centerX = THREE.MathUtils.lerp(startX, endX, t) + 3.4 * Math.sin(Math.PI * t);
+    const z = THREE.MathUtils.lerp(startZ, endZ, t);
+    for (const u of rows) {
+      const x = centerX + u * (8.8 + 1.6 * Math.sin(t * 7.2));
+      const sand = sampleSand(x - focusX, z);
+      const worn = (1 - u * u) * Math.sin(Math.PI * t) ** .4;
+      tint.copy(sand.color).multiplyScalar(1 - .09 * worn);
+      points.push(x, sand.height + .022, z);
+      colors.push(tint.r, tint.g, tint.b);
+    }
+  }
+  paintedGround(batch, points, colors, rows.length, false, tones.canvas);
 }
 
 function lifeguardStation(batch, x, y, z) {
@@ -333,6 +409,60 @@ function coastalAgave(batch, x, y, z, scale, bearing) {
   }
 }
 
+function duneTussock(batch, x, y, z, size, phase) {
+  for (const [shadeIndex,shade] of [tones.sage, tones.green].entries()) {
+    const positions = [], uv = [], faces = [];
+    for (let i = 0; i < 6; i++) {
+      const bearing = phase + (i * 2 + shadeIndex) * 2.3999;
+      const dx = Math.cos(bearing), dz = Math.sin(bearing);
+      const width = size * (.037 + .016 * Math.sin(i + phase) ** 2);
+      const reach = size * (.27 + .31 * Math.sin(i * 2.8 + phase) ** 2);
+      const height = size * (.54 + .42 * Math.sin(i * .63 + phase) ** 2);
+      const root = size * (.14 + i * .028);
+      const index = positions.length / 3;
+      for (const [depth,rise,halfWidth] of [[root,0,width],[root + reach * .44,height * .65,width * .58]]) {
+        positions.push(dx * depth + dz * halfWidth, rise, dz * depth - dx * halfWidth,
+          dx * depth - dz * halfWidth, rise, dz * depth + dx * halfWidth);
+      }
+      positions.push(dx * (root + reach), height, dz * (root + reach));
+      uv.push(0,0,1,0,0,.66,1,.66,.5,1);
+      faces.push(index,index + 1,index + 2,index + 1,index + 3,index + 2,index + 2,index + 3,index + 4);
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    geometry.setIndex(faces);
+    geometry.computeVertexNormals();
+    batch.add(geometry, shade, x, y, z);
+  }
+}
+
+function picnicTable(batch, x, y, z) {
+  for (const dx of [-5.3, 5.3]) {
+    for (const side of [-1, 1]) {
+      strut(batch, [x + dx,y,z + side * 4.0], [x + dx,y + 3.9,z + side * 2.0], .86, .76, tones.wood);
+    }
+    batch.box(.9, .69, 10.6, tones.sandstone, x + dx, y + 1.90, z);
+  }
+  for (const dz of [-2.3,-.75,.75,2.3]) batch.box(15.4, .62, 1.43, tones.wood, x, y + 3.94, z + dz);
+  for (const side of [-1, 1]) batch.box(15.2, .63, 2.0, tones.concrete, x, y + 2.31, z + side * 4.56);
+}
+
+function shorePlantings(batch, samples, {focusX, shoreZ, sampleSand}) {
+  for (const [sample,side,scale] of [[3,-1,4.8],[10,1,6.9],[14,-1,5.7],[23,1,6.3],[27,-1,5.9],[33,1,5.2]]) {
+    const [x,walkZ] = samples[sample];
+    const z = Math.max(shoreZ(x - focusX) + 38, walkZ - 37);
+    for (const [i,[dx,dz,ratio]] of [[-5,1.2,.68],[1,-.2,1],[6,2.8,.74],[-3,-4.4,.59]].entries()) {
+      const px = x + dx * side, pz = z + dz;
+      const sand = sampleSand(px - focusX, pz).height;
+      duneTussock(batch, px, sand, pz, scale * ratio, sample * .61 + i);
+    }
+    const base = sampleSand(x - focusX, z).height;
+    batch.ball(scale * .78, scale * .19, scale * .49, tones.sandstone, x, base, z + 3.3);
+    batch.ball(scale * .39, scale * .13, scale * .31, tones.concrete, x + side * 5.7, base, z + 4.6);
+  }
+}
+
 function parkPlayground(batch, x, y, z) {
   batch.ball(35, .8, 12.8, tones.canvas, x, y - .22, z);
   const landing = 6.9;
@@ -362,29 +492,40 @@ function parkPlayground(batch, x, y, z) {
 
 /** Landmarks in authored plan coordinates. All parts share scene lighting and the world camera. */
 export function buildLaJollaShores(batch, site) {
-  const {focusX, span, farZ, groundY, shoreZ, roadEdgeAt = () => farZ, sampleSand} = site;
+  const {focusX, span, farZ, groundY, shoreZ, roadEdgeAt = () => farZ,
+    sampleSand = () => ({height:groundY + .36, color:SAND_COLOR})} = site;
   const parkDepth = (x, depth) => Math.min(farZ - depth, roadEdgeAt(x) - 9);
-  promenade(batch, {focusX, span, farZ, groundY, roadEdgeAt, sampleSand});
-  scrippsPier(batch, site);
+  const {samples,lawnHeight} = promenade(batch, {focusX, span, farZ, groundY, roadEdgeAt, sampleSand});
+  const pierStairs = scrippsPier(batch, site);
+  pierTrail(batch, {focusX, sampleSand}, [samples[19][0],samples[19][1] - 26], pierStairs);
+  shorePlantings(batch, samples, {focusX, shoreZ, sampleSand});
   const stationOffset = .175 * span;
-  lifeguardStation(batch, focusX + stationOffset, groundY + .52,
-    Math.max(farZ - 93, shoreZ(stationOffset) + 30));
+  const stationZ = Math.max(farZ - 93, shoreZ(stationOffset) + 30);
+  lifeguardStation(batch, focusX + stationOffset, sampleSand(stationOffset, stationZ).height - .06, stationZ);
   const playgroundX = focusX + span * .42;
-  parkPlayground(batch, playgroundX, groundY + 3.55, Math.min(farZ - 27, roadEdgeAt(playgroundX) - 18));
+  const playgroundZ = Math.min(farZ - 27, roadEdgeAt(playgroundX) - 18);
+  parkPlayground(batch, playgroundX, lawnHeight(playgroundX, playgroundZ) + .16, playgroundZ);
+  for (const index of [10, 27]) {
+    const [x,z] = samples[index];
+    const picnicZ = Math.min(z + 13.2, roadEdgeAt(x) - 13);
+    picnicTable(batch, x, lawnHeight(x, picnicZ) - .08, picnicZ);
+  }
   for (const [kind, fraction, depth, height, seed] of [
     ['shore-pine', .592, 28, 75, 6195], ['shore-pine', .358, 32, 65, 7204],
     ['shore-pine', .128, 26, 69, 1939], ['cypress', .561, 25, 69, 6204],
     ['cypress', .174, 31, 58, 2345], ['cypress', .104, 18, 53, 6179],
   ]) {
     const x = focusX + fraction * span;
-    addStorybookTree(batch, {kind, x, z:parkDepth(x, depth), groundY:groundY + 2.7, height, seed});
+    const z = parkDepth(x, depth);
+    addStorybookTree(batch, {kind, x, z, groundY:lawnHeight(x, z) - .14, height, seed});
   }
   for (const [f,z,h,bearing] of [
     [.548, 13.2, 49, .36], [.325, 16.0, 41, 2.06], [.271, 15.6, 43, 1.20],
     [.238, 25.5, 53, 2.30], [.084, 16.0, 39, .45],
   ]) {
     const x = focusX + f * span;
-    seashorePalm(batch, x, groundY + 2.7, parkDepth(x, z), h, bearing);
+    const depth = parkDepth(x, z);
+    seashorePalm(batch, x, lawnHeight(x, depth) - .09, depth, h, bearing);
   }
   for (const [f,z,size,phase] of [
     [.587, 18, 4.2, 2.2], [.548, 25, 3.3, 3.4], [.476, 17, 3.7, .9], [.369, 12, 5.2, 2.7],
@@ -392,10 +533,12 @@ export function buildLaJollaShores(batch, site) {
     [.137, 17, 3.8, 4.2], [.112, 22, 4.2, 2.9], [.089, 16, 3.1, 3.4],
   ]) {
     const x = focusX + f * span;
-    lowPlanting(batch, x, groundY + 2.75, parkDepth(x, z), size, phase);
+    const depth = parkDepth(x, z);
+    lowPlanting(batch, x, lawnHeight(x, depth), depth, size, phase);
   }
   for (const [f,z,size,phase] of [[.60,16,8.8,.4],[.48,31,7.4,2.0],[.34,27,9.0,4.6],[.25,14,7.7,2.4],[.15,24,8.5,5.3],[.075,15,8.3,1.3]]) {
     const x = focusX + f * span;
-    coastalAgave(batch, x, groundY + 2.6, parkDepth(x, z), size, phase);
+    const depth = parkDepth(x, z);
+    coastalAgave(batch, x, lawnHeight(x, depth) - .04, depth, size, phase);
   }
 }

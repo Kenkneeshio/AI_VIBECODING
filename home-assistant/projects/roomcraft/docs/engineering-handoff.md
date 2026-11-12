@@ -2,6 +2,8 @@
 
 The [La Jolla art release](coastal-art-release.md) covers the world geometry, sandstone texture, surf shader, camera framing, and the curved street profile shared by the coastal terrain, sidewalks, and moving actors. The update is shared by the live dashboard and Studio. Home Assistant's published layout schema and device actions require no migration.
 
+`storybook-meadow.mjs` owns inland relief, flat pads for built objects, and the sampler used to ground plantings on its rendered triangles. `storybook-street.mjs` supplies the dune grades and shared sand sampler. The Cove and Shores recipes use that sampler to join the exposed terrain. The [coastal terrain release](coastal-art-release.md#coastal-elevation-and-planting) records the design and verification.
+
 The [overhead Studio and room controls release](studio-overhead-release.md) records the editor, LiDAR scale and third Home Assistant view. Studio publishes through the existing revision check. Home's LiDAR ruler uses the authenticated scan and the same physical coordinate contract as the alignment panel.
 
 The [wall-tablet performance audit](tablet-performance-audit.md) records foreground and background evidence, rendering options, release checks, and rollback. Home measures scene draws in its scheduler. The traffic and sidewalk layers accept conservative camera-frustum checks. Studio's LiDAR shortcut opens the existing vacuum survey.

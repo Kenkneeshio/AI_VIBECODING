@@ -1,5 +1,9 @@
 # Decision log
 
+## Grade the coast around the built surfaces
+
+Use sampled terrain for planting and beach furniture. Keep the surf and the road as elevation anchors, and leave level pads under authored stairs, buildings, and their foundations. Spend the added geometry on static dunes, meadows, and park slopes so it does not need to be rebuilt for weather or traffic.
+
 ## Share one coastal road profile
 
 The beach, street, and its moving actors sample the same deterministic road profile in world space. It supplies a lateral offset and tangent at each longitudinal position so bends cannot pull traffic, headlights, or pedestrians off their surfaces. The beach grading and promenade meet the sampled outside edge. The home layout, coastal landmarks, and route timing keep their existing contracts.
