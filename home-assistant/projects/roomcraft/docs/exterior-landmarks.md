@@ -1,6 +1,6 @@
 # Editable exterior landmarks
 
-**Status:** source implementation and focused art checks completed; the complete release gate, deployment and customer-surface readback are pending. The verified production baseline remains runtime `4b8870e`, Home Assistant resource `fced00a0d6eff1fa` and owner-private Studio version 105. This record must be updated with exact release evidence before the feature is described as deployed.
+**Status: deployed and verified, 12 November 2026.** Runtime source `4490638e29e831cd21c9723627f5bc44eeab6353`, Home Assistant resource `309de5e7f537f676`, and owner-private Studio version **106**. The exact source passed 634 automated tests and GitHub CI; guarded Studio publication, independent layout readback and a 1920 × 1080 wall-tablet capture verified the customer result. The previous garage release remains the rollback baseline below.
 
 The customer clarified that the front area is a second driveway and the large garden belongs behind the house. The revised recipe incorporates that correction and the verified overhead arrangement: two front concrete bays, a substantial enclosed rear garden, a small shed and an L-shaped rear-roof solar array.
 
@@ -106,10 +106,10 @@ The customer's correction establishes two front driveways and a large rear garde
 | House footprint and art unit checks | Passed the eight focused tests in `scenery-house.test.mjs`, `parked-vehicles.test.mjs` and `photo-object-art.test.mjs` after the driveway/garden correction: exact 130 × 176 dimensions and resized variants, ground support, rear-only raised garden geometry, four opaque layers, geometry budget, deterministic bytes, independent disposal, safe type fallback and Canvas transforms |
 | House source checks | ESLint passed for the house module, its test and `public/object-art.js`; `git diff --check` passed for those files |
 | Synthetic visual check | Real headless Chrome rendered the corrected model from front, three-quarter and overhead views beside its Canvas plan. The inspected final image has two front bays, a large rear garden, roof solar panels clear of the chimney and full model framing |
-| Exterior integration and route checks | Test sources cover catalog/binding rules, bounded dimensions, automatic alignment, invalid imports, road geometry and obstacle behavior. Final run on the complete release revision is pending |
-| Full release gate | Pending the exact source revision, complete canonical commands, build and manifest verification required by the [release standard](release-standard.md) |
-| Customer Studio workflow | Pending an integrated placement, move, resize, Undo, Save and return-to-Home check |
-| Home Assistant / hosted Studio / tablet | Pending deployment, protected backup, exact asset/layout readback and target-screen inspection. No result in this document claims they ran |
+| Exterior integration and route checks | Passed catalog/binding guards, road dimensions and automatic alignment, two driveway endpoints and height overrides, obstacle handling, terrain support/clearance, stable home/street bounds and responsive camera framing |
+| Full release gate | Passed install/locked dependencies, generated editor/stamp verification, architecture check, 531 site tests, 65 HA bridge/weather tests, 30 installer tests, 8 presence tests, TypeScript, lint (0 errors; 17 existing warnings), production build, manifest verification and whitespace validation |
+| Customer Studio workflow | Built-bundle Chrome fixture passed catalog placement beyond the original plan, move/Undo, road resizing, rotation/binding guards, selection, unchanged condo/street coordinates and PNG+layout mock Save. Authenticated HA Studio then authored and saved the actual two items |
+| Home Assistant / hosted Studio / tablet | HA installer backed up first; 11 assets matched source over LAN and Nabu Casa. Home/Studio/Controls and 8 non-view fields were verified before layout Save. The saved layout contains the original 77 objects unchanged plus the two specified decorations. Tablet ADB, Companion cold launch and the full 1920 × 1080 Home screenshot were checked. Site deployment/provenance/audience were verified through Sites; no separate hosted-browser visual check is claimed |
 
 From `site`, the focused art checks are repeatable with:
 
@@ -118,10 +118,28 @@ node --test tests/scenery-house.test.mjs tests/parked-vehicles.test.mjs tests/ph
 node node_modules/eslint/bin/eslint.js ha-local/storybook-scenery-house.mjs tests/scenery-house.test.mjs public/object-art.js
 ```
 
-The complete release must additionally run the standard gate and the exterior/side-road integration tests, regenerate tracked bundles and preserve a clean reproducible manifest. Record the exact runtime commit, root digest, test totals, CI result and each deployed surface here after completion. A source or synthetic model check is not a tablet or production check.
+### Exact artifacts and deployment evidence
+
+| Surface | Verified revision |
+| --- | --- |
+| Canonical runtime | `4490638e29e831cd21c9723627f5bc44eeab6353` |
+| Full source manifest | `sha256:9026897108aa1b641dc78a8829860288b969ed6d087a8cb8341893e1963838e6` — 357 inputs |
+| GitHub gate | [Successful run 43296952976](https://github.com/Kenkneeshio/AI_VIBECODING/actions/runs/43296952976) |
+| HA static resource | `309de5e7f537f676` |
+| Owner-private Site | Version **106**; source `3e636f5a198d2f277218a3b21b6ce9e98be3714e` |
+| Site subset manifest | `sha256:7414ff815f96b23faa8548ae09f3cd9fb93da2ce734aec6e85c1106b2749beb6` — 262 inputs |
+| Site archive | `sha256:c078b05e652046795817c5436cdab87c2d3079dc3e4cc65997e83bb0f6c3e87f` |
+
+The Site subset excludes repository-only documentation and HA management files; its manifest is intentionally different from the canonical repository manifest. The deployment retained owner-only access.
+
+The actual Studio save guard observed one PNG upload and one dashboard save, with zero blocked configuration writes. Device-service attempts were blocked by the QA harness; no physical device was actuated. The first external verifier timed out because it compared the in-editor draft hotspots to the saved publication, which intentionally regenerates linked control hotspots. This was a verifier mismatch, not a failed Save. An independent authenticated readback proved the exact expected layout: all 77 original item records, rooms, walls and hotspots unchanged, plus only the two specified unbound objects, a fresh PNG and unchanged existing control mappings and unrelated dashboard fields. The verifier now captures the outgoing publication payload for future comparisons. No duplicate Save was issued.
+
+Protected installer and pre-layout backups and tablet captures remain in the administrator's documented management backup directory. Household media and layout data are not repository artifacts. The synthetic model illustration above and `scripts/verify-exterior-browser.mjs` provide shareable engineering evidence. The tablet capture shows the west-facing miniature, both front connections and rear garden wholly inside the screen; the condo and previous garage remain intact.
+
+This documentation/evidence update follows the frozen runtime commit and is not a new runtime deployment.
 
 ## Rollback
 
-The last verified production baseline is the [garage correction release](garage-driveway.md#full-roof-correction-release): runtime `4b8870e4432945afb9897e6ed27283846eccafe0`, HA resource `fced00a0d6eff1fa`, owner-private Studio version **105**. Preserve its built assets and the protected pre-change dashboard/layout backup before publishing landmarks.
+The pre-landmark rollback baseline is the [garage correction release](garage-driveway.md#full-roof-correction-release): runtime `4b8870e4432945afb9897e6ed27283846eccafe0`, HA resource `fced00a0d6eff1fa`, owner-private Studio version **105**. Protected installer and pre-layout backups were created and verified before the live writes; restore them together with the prior runtime assets when rolling back.
 
 If integrated validation or a deployment check fails, use the [deployment runbook](deployment.md) to restore that baseline and its matching saved project. Restoring code alone is insufficient if a newer project contains exterior items unknown to the old renderer. Do not put protected backup paths, household project JSON, addresses or credentials in the public rollback record. Ordinary authoring mistakes remain recoverable with **Undo** before Save or the existing saved-layout snapshot workflow afterward.

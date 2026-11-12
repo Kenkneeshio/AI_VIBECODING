@@ -1,11 +1,11 @@
 # Changelog
 
-## Editable exterior house and side street — pending release
+## Editable exterior house and side street — 12 November 2026
 
 - Add a generic, detailed single-story ranch and a perpendicular side road to **Exterior scenery**, with normal position, dimensions, duplication, deletion and Undo workflows. The corrected ranch includes two front driveways, a substantial rear garden, shed and roof solar panels.
 - Derive the side-road junction, curb cuts and two clear driveway approaches from the existing curved street. Keep decorative objects at ground level and separate from condo bounds and Home Assistant device mappings; include their exterior bounds in camera framing.
 - Add matching ranch Canvas art and synthetic front/three-quarter/overhead proof images. The fixed plan PNG still crops exterior items beyond the original design space.
-- Focused art tests and visual checks pass. Complete revision validation, integrated Studio checks, deployment and readback remain pending; verified production is still HA `fced00a0d6eff1fa` and private Studio version 105. See the [exterior landmark contract](docs/exterior-landmarks.md).
+- Verified 634 tests, CI, built Studio editing and Save, exact HA asset/layout readback and the wall tablet. Deployed runtime `4490638e`, HA `309de5e7f537f676` and private Studio version 106. See the [exterior landmark contract](docs/exterior-landmarks.md).
 
 ## Keep the garage roof and home-facing entrance
 
