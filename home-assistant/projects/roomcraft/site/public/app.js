@@ -1139,9 +1139,9 @@
   function updateRecoveryButton(){const b=document.getElementById('recoverDraftButton');if(b)b.hidden=!readPreviousDraft();const back=document.getElementById('returnPreRecoveryButton');if(back)back.hidden=!readPreRecoveryLayout();}
   function recoverPreviousDraft(){const previous=readPreviousDraft();if(!previous){showToast('No previous browser draft found');return;}if(!readPreRecoveryLayout()){try{localStorage.setItem(BEFORE_RECOVERY_KEY,projectFingerprint(project));}catch(_){showToast('Could not save current layout; export JSON first');return;}}snapshot();project=normalizeProject(clone(previous));selected=null;clearPlacement();afterChange('Recovered previous browser draft',{authoritative:true});showToast('Previous draft restored; pre-recovery layout saved');}
   function returnPreRecoveryLayout(){const before=readPreRecoveryLayout();if(!before){showToast('No pre-recovery layout found');return;}snapshot();project=normalizeProject(clone(before));selected=null;clearPlacement();localStorage.removeItem(BEFORE_RECOVERY_KEY);afterChange('Returned to pre-recovery layout',{authoritative:true});showToast('Pre-recovery layout restored');}
-  function field(label,key,value,type='text'){
-    const attributes = key === 'steps' ? 'step="1" min="2" max="40" placeholder="14"' :
-      key === 'modelHeight' ? 'step="any" min="6" max="300"' : 'step="any"';
+  function field(label,key,value,type='text',inputAttributes=''){
+    const attributes = inputAttributes || ( key === 'steps' ? 'step="1" min="2" max="40" placeholder="14"' :
+      key === 'modelHeight' ? 'step="any" min="6" max="300"' : 'step="any"');
     return `<div class="field"><label for="prop-${key}">${label}</label><input id="prop-${key}" data-prop="${key}" type="${type}" value="${htmlEscape(value)}" ${type==='number'?attributes:''}></div>`;
   }
   function hotspotField(label,key,value,type='text'){return `<div class="field"><label for="hotspot-${key}">${label}</label><input id="hotspot-${key}" data-hotspot-prop="${key}" type="${type}" value="${htmlEscape(value)}" ${type==='number'?'step="0.01" min="0" max="100"':''}></div>`;}
@@ -1323,6 +1323,11 @@
   }
 
   function updateObjectPose(item, key, value) {
+    if (item.type === 'scenerySideRoad' && key === 'rotation') {
+      showToast('Side roads automatically meet the main street at a right angle.');
+      renderInspector();
+      return;
+    }
     const parsed = window.RoomcraftObjectControls.poseUpdate(key, value);
     if (!parsed) {
       showToast('Enter a finite center coordinate or rotation.');
@@ -1625,7 +1630,7 @@
       copy.x=current.x+x;copy.y=current.y+y;
       if(copy.type==='cameraThumbnail'){copy.x=Math.min(W,copy.x);copy.y=Math.min(H,copy.y);}
       clampLinkedItem(copy);
-      if(index>0&&(copy.x<0||copy.x>W||copy.y<0||copy.y>H))return false;
+      if(index>0&&!Models.isExterior(copy.type)&&(copy.x<0||copy.x>W||copy.y<0||copy.y>H))return false;
       return !placementBlock(copy);
     });
     if(!placed){showToast('Make room next to this object before duplicating it.');return;}

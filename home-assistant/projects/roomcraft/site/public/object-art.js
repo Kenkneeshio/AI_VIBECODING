@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const assetUrl = window.RoomcraftAssetUrl || (path => path);
-  const supported=new Set(['sofa','table','chair','diningTable','diningChair','bed','desk','armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','lamp','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce','thermostat','presenceSwitch','humidifier','airPurifier','windowFan','garageDoor','garagePriusBlue','garageCeilingLight','floorPlant','artwork','mirror','window']);
+  const supported=new Set(['sofa','table','chair','diningTable','diningChair','bed','desk','armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','lamp','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce','thermostat','presenceSwitch','humidifier','airPurifier','windowFan','garageDoor','garagePriusBlue','garageCeilingLight','sceneryRanchHouse','scenerySideRoad','floorPlant','artwork','mirror','window']);
   // These cells face the same near-top-down camera as the supplied plan.
   // Front-facing atlas pieces use the perspective-aware canvas art below.
   const atlas=new Image();
@@ -1221,7 +1221,7 @@
       c.restore();return drawn;
     }
     const w=o.w,h=o.h,x=-w/2,y=-h/2;
-    if(o.type!=='ceilingLight'&&o.type!=='garageCeilingLight'&&o.type!=='pendantLight'&&o.type!=='wallSconce'&&o.type!=='thermostat'&&o.type!=='windowFan'&&o.type!=='window')worldContact(c,o);
+    if(o.type!=='scenerySideRoad'&&o.type!=='ceilingLight'&&o.type!=='garageCeilingLight'&&o.type!=='pendantLight'&&o.type!=='wallSconce'&&o.type!=='thermostat'&&o.type!=='windowFan'&&o.type!=='window')worldContact(c,o);
     c.save();c.translate(o.x,o.y);c.rotate((o.rotation||0)*Math.PI/180);
     c.shadowColor='transparent';
     switch(o.type){
@@ -1461,6 +1461,133 @@
         }
         disc(c,0,0,radius*.28,'#f5f0d8','#5c747b',.8);
         break;
+      }
+      case 'scenerySideRoad':{
+        // A bounded top-down junction glyph for the catalog and PNG fallback.
+        // The shared 3D street builder owns the actual curved junction route.
+        if(o.id==='preview')c.scale(4,1);
+        const pavement=w*.14, roadWidth=w*.62, top=y+Math.min(h*.13,w*.48);
+        const crossing=Math.min(w*.52,h*.19), curb=Math.max(.6,w*.018);
+        rr(c,x,y,w,crossing+2*pavement,Math.min(3,w*.05),'#d6d0bd','#a9ac99',curb);
+        rr(c,-roadWidth/2-pavement,top,roadWidth+2*pavement,y+h-top,
+          Math.min(3,w*.05),'#d6d0bd','#a9ac99',curb);
+        rr(c,x,y+pavement,w,crossing,.4,gradient(c,x,y,w,crossing,[[0,'#747a7d'],[1,'#82898a']]));
+        rr(c,-roadWidth/2,top,roadWidth,y+h-top,1,
+          gradient(c,-roadWidth/2,top,roadWidth,h,[[0,'#7a8084'],[1,'#717b80']]));
+        c.strokeStyle='#ede4ce';c.lineWidth=Math.max(.5,w*.014);c.beginPath();
+        c.moveTo(-roadWidth/2+2,top+crossing*.5);c.lineTo(-roadWidth/2+2,y+h-2);
+        c.moveTo(roadWidth/2-2,top+crossing*.5);c.lineTo(roadWidth/2-2,y+h-2);c.stroke();
+        c.strokeStyle='#e9d7a0';c.lineWidth=Math.max(.8,w*.021);
+        c.setLineDash([Math.max(3,w*.12),Math.max(3,w*.13)]);c.beginPath();
+        c.moveTo(0,top+crossing*.75);c.lineTo(0,y+h);c.stroke();c.setLineDash([]);
+        for(const side of [-1,1]){
+          c.beginPath();c.moveTo(side*roadWidth*.6,y+pavement+crossing*.5);
+          c.lineTo(side*w*.49,y+pavement+crossing*.5);c.stroke();
+          for(let yy=top+crossing;yy<y+h;yy+=Math.max(12,w*.36)){
+            c.strokeStyle='#b9b6a6';c.lineWidth=.45;c.beginPath();
+            c.moveTo(side*(roadWidth/2+1),yy);c.lineTo(side*(roadWidth/2+pavement-1),yy);c.stroke();
+          }
+        }
+        // Small flush storm drains add surface detail without new scenery.
+        for(const side of [-1,1]){
+          const dx=side*(roadWidth/2-1.6);
+          rr(c,dx-1,top+crossing*.8,2,w*.09,.2,'#4e5b5c');
+          c.strokeStyle='#a6aeaa';c.lineWidth=.3;c.beginPath();
+          for(let dy=0;dy<w*.09;dy+=2){c.moveTo(dx-.7,top+crossing*.8+dy);c.lineTo(dx+.7,top+crossing*.8+dy);}c.stroke();
+        }
+        break;
+      }
+      case 'sceneryRanchHouse':{
+        // Same +Y frontage and yard footprint as the independent +Z 3D ranch.
+        c.save();c.scale(w/130,h/176);c.translate(0,30);
+        rr(c,-65,-118,130,176,2,'#a0af7c');
+        rr(c,-57,20,49,38,.6,gradient(c,-57,20,49,38,[[0,'#d9d2bc'],[1,'#bdbba7']]));
+        c.strokeStyle='#a5a38e';c.lineWidth=.3;c.beginPath();
+        for(const yy of [34,46]){c.moveTo(-57,yy);c.lineTo(-8,yy);}
+        c.moveTo(-32.5,21);c.lineTo(-32.5,57);c.stroke();
+        rr(c,-6,7,14,47,.3,'#d8ceb8');rr(c,-5.5,7,15,10,.3,'#e0d0b3');
+        rr(c,8,8,54,50,.4,gradient(c,8,8,54,50,[[0,'#d6cfb7'],[1,'#c3bea7']]));
+        c.strokeStyle='#aaa48f';c.lineWidth=.3;c.beginPath();
+        for(const yy of [27,42]){c.moveTo(8,yy);c.lineTo(62,yy);}
+        c.moveTo(35,8);c.lineTo(35,58);c.stroke();
+        rr(c,-61.5,-116,123,56,.1,'#9b7757');
+        for(const [xx,yy,ww,hh] of [[-60,-115.5,120,5],[-61.5,-114.5,5,53],[56.5,-114.5,5,53],[-60,-64.5,120,5],[4.5,-110.5,5,47]]){
+          rr(c,xx,yy,ww,hh,.2,'#bc8666');
+          c.strokeStyle='#d4a583';c.lineWidth=.25;c.beginPath();
+          if(ww>hh)for(let offset=3;offset<ww;offset+=6){c.moveTo(xx+offset,yy);c.lineTo(xx+offset,yy+hh);}
+          else for(let offset=3;offset<hh;offset+=6){c.moveTo(xx,yy+offset);c.lineTo(xx+ww,yy+offset);}
+          c.stroke();
+        }
+        for(const [xx,yy,ww,hh] of [[-47,-88,52,18],[16.5,-108,35,24]]){
+          rr(c,xx,yy,ww,hh,.3,'#d9b993','#a38460',.4);rr(c,xx+1,yy+1,ww-2,hh-2,.2,'#755e44');
+        }
+        for(const xx of [-63,63]){
+          rr(c,xx-.8,-118,1.6,60,.1,'#b4a07b','#7c6b50',.3);
+          for(let yy=-116;yy<-58;yy+=7)rr(c,xx-1,yy-1,2,2,.1,'#d1ba8c');
+        }
+        rr(c,-63,-118,126,1.6,.1,'#b4a07b','#7c6b50',.3);
+        for(let xx=-60;xx<=60;xx+=8)rr(c,xx-1,-118,2,2,.1,'#d1ba8c');
+        rr(c,-54,-112,21,22,.3,'#51493733');
+        rr(c,-55,-112.5,22,23,.3,'#9c896d','#766449',.5);
+        for(let yy=-110;yy<-91;yy+=3)rr(c,-55,yy,22,.4,0,'#c4ab82');
+        rr(c,-54,-44,110,54,1,'#c9ab78','#9a815e',.5);
+        rr(c,-54,-20,43,53,1,'#d3b57c','#987b56',.5);
+        rr(c,-50,29,35,3,.3,'#ece6d3','#b8ad95',.35);
+        for(let i=1;i<4;i++)rr(c,-50+i*8.75,29,.3,3,0,'#b0a791');
+        rr(c,17.6,8,31,2,.2,'#e8e4d0');rr(c,18.4,8.3,29,1,.1,'#75929a');
+        rr(c,-2,7,8.4,2,.2,'#71523e');
+        const roofField=(xx,yy,ww,hh,vertical)=>{
+          rr(c,xx+1.4,yy+2,ww,hh,.3,'#514b3c33');
+          rr(c,xx,yy,ww,hh,.2,gradient(c,xx,yy,ww,hh,[[0,'#8b6c5d'],[.5,'#72594e'],[1,'#644c46']]),'#5c4840',.8);
+          c.save();c.beginPath();c.rect(xx,yy,ww,hh);c.clip();
+          const rows=vertical?ww:hh,cols=vertical?hh:ww;
+          for(let row=0;row<rows;row+=2.3){
+            for(let column=-2;column<cols;column+=5.7){
+              const offset=(Math.round(row/2.3)%2)*2.8;
+              c.fillStyle=['#a0806418','#382e3017','#ba98771b'][(Math.round(row/2.3)+Math.round((column+2)/5.7))%3];
+              if(vertical)c.fillRect(xx+row,yy+column+offset,2.15,5.4);
+              else c.fillRect(xx+column+offset,yy+row,5.4,2.15);
+            }
+          }
+          c.restore();
+        };
+        roofField(-57,-48,118,60,false);
+        rr(c,-57,-18.6,118,1.2,.3,'#b39573');
+        roofField(-57.5,-18,50,52,true);
+        rr(c,-33.2,-18,1.4,52,.3,'#b69570');
+        c.strokeStyle='#c1a17d';c.lineWidth=.6;c.beginPath();c.moveTo(-57.5,33.5);c.lineTo(-32.5,33.5);c.lineTo(-7.5,33.5);c.stroke();
+        for(let row=0;row<3;row++)for(let column=0;column<6;column++){
+          if((row===0&&column<2)||(row===2&&column===5))continue;
+          const xx=6+column*7.2,yy=-43+row*6.8;
+          rr(c,xx-.2,yy-.2,7,6.6,.1,'#8a9190');rr(c,xx,yy,6.6,6.2,.1,'#38576e');
+          c.strokeStyle='#7795a8';c.lineWidth=.14;c.beginPath();
+          for(let ix=1;ix<3;ix++){c.moveTo(xx+ix*2.2,yy);c.lineTo(xx+ix*2.2,yy+6.2);}
+          for(let iy=1;iy<4;iy++){c.moveTo(xx,yy+iy*1.55);c.lineTo(xx+6.6,yy+iy*1.55);}c.stroke();
+        }
+        rr(c,43,-25,8,9,0,'#332d2b35');
+        rr(c,41,-26,8,9,.2,'#c2a77d','#806c54',.5);
+        rr(c,40.5,-26.5,9,10,.2,'#dbc69d','#9f8865',.4);rr(c,42,-25,6,7,.1,'#69584a');
+        const shrub=(xx,yy,r)=>{
+          oval(c,xx+.7,yy+1,r,r*.7,'#394b3c30');
+          for(let i=0;i<7;i++){
+            const a=i*2.399,rad=r*(.2+(i%2)*.22);
+            disc(c,xx+Math.cos(a)*rad,yy+Math.sin(a)*rad,r*(.39+(i%2)*.07),['#6e8555','#8ba16a','#a8b77c'][i%3],'#61774c',.2);
+          }
+        };
+        for(const [xx,yy,r] of [[-44,-78,5.3],[-28,-79,6],[-12,-78,5],[25,-97,6],[43,-99,5.6],[44,-89,4.5],[-18,-102,6],[25,-69,6],[-61,7,3],[61,-32,3]])shrub(xx,yy,r);
+        for(const [xx,yy,r] of [[-7,-107,6],[46,-68,7]]){
+          for(let i=0;i<9;i++){
+            const a=i*Math.PI*2/9;
+            poly(c,[[xx+Math.cos(a-.8)*r*.17,yy+Math.sin(a-.8)*r*.17],[xx+Math.cos(a)*r,yy+Math.sin(a)*r],[xx+Math.cos(a+.8)*r*.17,yy+Math.sin(a+.8)*r*.17]],i%2?'#95ad8d':'#688c74','#53765b',.2);
+          }
+          disc(c,xx,yy,.8,'#c4c6a2');
+        }
+        for(let i=0;i<16;i++)disc(c,-44+i*2.3,-76+Math.sin(i*2.4)*2.4,.6,['#f1df9c','#d49a9a','#edc67d'][i%3]);
+        for(const [xx,yy,r] of [[-20,-96,10],[44,-108,10],[48,-79,7.5]]){
+          oval(c,xx+4,yy+5,r,r*.76,'#3f51332e');shrub(xx,yy,r);
+          disc(c,xx-1.3,yy-2,r*.22,'#b1bf8b');
+        }
+        c.restore();break;
       }
       case 'garagePriusBlue':{
         // Orthographic parked hatchback, nose toward +Y like the shared +Z

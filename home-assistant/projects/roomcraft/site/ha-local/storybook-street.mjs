@@ -87,15 +87,16 @@ function coastalColumns(width, renderWidth, centerX) {
 }
 
 export function buildStorybookStreet(batch, {nearZ, farZ, sample = STRAIGHT_STREET}, groundY, width, centerX,
-  {renderWidth = width, drivewayCuts = []} = {}) {
+  {renderWidth = width, drivewayCuts = [], junctionCuts = []} = {}) {
   const roadNorth = farZ + WALK_WIDTH;
   const roadSouth = nearZ - WALK_WIDTH;
   const roadCenter = (roadNorth + roadSouth) / 2;
   const xs = coastalColumns(width, renderWidth, centerX);
   const left = xs[0], right = xs.at(-1);
-  const cutColumns = columns => {
+  const pavementCuts = [...drivewayCuts,...junctionCuts];
+  const cutColumns = (columns,cuts) => {
     let spans=[[columns[0],columns.at(-1)]];
-    for(const cut of drivewayCuts) {
+    for(const cut of cuts) {
       if(!Number.isFinite(cut.minX)||!Number.isFinite(cut.maxX)||cut.maxX<=cut.minX)continue;
       spans=spans.flatMap(([a,b])=>cut.maxX<=a||cut.minX>=b?[[a,b]]:
         [[a,Math.min(b,cut.minX)],[Math.max(a,cut.maxX),b]].filter(([from,to])=>to>from));
@@ -103,17 +104,17 @@ export function buildStorybookStreet(batch, {nearZ, farZ, sample = STRAIGHT_STRE
     return spans.map(([a,b])=>[a,...columns.filter(x=>x>a&&x<b),b]);
   };
   const strip = (start, end, height, color, columns = xs, cut = false) => {
-    for(const run of cut?cutColumns(columns):[columns])
+    for(const run of cut?cutColumns(columns,cut==='junction'?junctionCuts:pavementCuts):[columns])
       streetRibbon(batch, sample, run, start, end, groundY + height, groundY + height, color);
   };
   const wall = (at, bottom, top, color, reverse, cut = false) => {
-    for(const run of cut?cutColumns(xs):[xs])
+    for(const run of cut?cutColumns(xs,pavementCuts):[xs])
       streetRibbon(batch, sample, run, at, at, groundY + bottom, groundY + top, color, reverse);
   };
 
   strip(roadNorth, roadSouth, 1.2, '#73767c');
   strip(roadNorth, roadNorth + 3.4, 1.4, '#656b71');
-  strip(roadSouth - 3.4, roadSouth, 1.4, '#656b71');
+  strip(roadSouth - 3.4, roadSouth, 1.4, '#656b71', xs, 'junction');
 
   for (const [start, end, curbStart, pavingStart] of [
     [farZ, roadNorth, roadNorth - CURB_WIDTH, farZ],
@@ -133,7 +134,7 @@ export function buildStorybookStreet(batch, {nearZ, farZ, sample = STRAIGHT_STRE
 
   for (let x = left + 36; x + 17 < right; x += 72) {
     strip(roadCenter - 1.4, roadCenter + 1.4, 1.34, '#e9ce91',
-      [x - 17, x - 8.5, x, x + 8.5, x + 17]);
+      [x - 17, x - 8.5, x, x + 8.5, x + 17], 'junction');
   }
   return {centerX, width, sample, surfaceY: groundY + 1.24,
     lanes: [(roadCenter + roadSouth) / 2, (roadNorth + roadCenter) / 2],

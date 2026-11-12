@@ -139,6 +139,17 @@
           (item.garageDrivewayWidth !== undefined && (!Number.isFinite(item.garageDrivewayWidth) || item.garageDrivewayWidth < 32 || item.garageDrivewayWidth > 200)))) {
         issue('garage-settings', path, 'Garage roof and driveway settings must use supported values.');
       }
+      if (record(item) && item.type === 'scenerySideRoad' &&
+          (!finite(item.w, item.h) || item.w < 48 || item.w > 140 || item.h < 120 || item.h > 1000 ||
+          (item.rotation !== undefined && item.rotation !== 0) || item.modelHeight !== undefined)) {
+        issue('side-road-settings', path, 'Side roads need width 48–140, length 120–1000, and automatic rotation and height.');
+      }
+      if (record(item) && ['sceneryRanchHouse', 'scenerySideRoad'].includes(item.type) &&
+          (['entityId', 'tapEntityId', 'holdEntityId', 'presenceEntityId', 'presenceTrackEntityId',
+            'vacuumMapEntityId', 'imageEntityId'].some(key => item[key] !== undefined && item[key] !== '') ||
+          item.eventEntityIds !== undefined && (!Array.isArray(item.eventEntityIds) || item.eventEntityIds.length))) {
+        issue('exterior-binding', path, 'Exterior scenery is decorative and cannot bind to a Home Assistant device.');
+      }
       if (!record(item) || typeof item.type !== 'string' || !item.type ||
           ![item.x, item.y].every(coordinate) ||
           !finite(item.w, item.h, item.rotation === undefined ? 0 : item.rotation) ||

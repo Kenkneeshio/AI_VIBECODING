@@ -41,6 +41,8 @@
     { type: 'garageDoor', label: 'Garage door control', icon: '▥', w: 116, h: 52, group: 'systems', visualKind: 'door' },
     { type: 'garagePriusBlue', label: 'Blue Prius hatchback', icon: '▰', w: 34, h: 70, group: 'systems', tags: 'parked car garage Toyota hybrid blue Prius' },
     { type: 'garageCeilingLight', label: 'Garage overhead light', icon: '☀', w: 32, h: 18, group: 'lighting', visualKind: 'light', lightForm: 'bloom_ceiling' },
+    { type: 'sceneryRanchHouse', label: 'Single-story landscape house', icon: '⌂', w: 130, h: 176, group: 'scenery', tags: 'decorative exterior landscape ranch house single story' },
+    { type: 'scenerySideRoad', label: 'Perpendicular side road', icon: '╬', w: 64, h: 380, group: 'scenery', tags: 'decorative exterior landscape street road intersection' },
     { type: 'cameraThumbnail', label: 'Camera thumbnail', icon: '▣', w: 170, h: 110, group: 'security' },
     { type: 'controlZone', label: 'Invisible button area', icon: '▧', w: 120, h: 72, group: 'security' },
     { type: 'uiWeatherOrb', label: 'Sun / moon', icon: '☀', w: 64, h: 64, group: 'interface' },
@@ -60,11 +62,12 @@
     ['living', 'Living & dining'], ['bedroom', 'Bedroom & storage'],
     ['utility', 'Kitchen & bath'], ['lighting', 'Lights & lamps'],
     ['systems', 'Climate, doors & fans'], ['decor', 'Decor'], ['build', 'Build'], ['security', 'Cameras & controls'],
-    ['interface', 'Dashboard interface']
+    ['scenery', 'Exterior scenery'], ['interface', 'Dashboard interface']
   ];
 
   const handoffKey = 'roomcraft.studio-models.v1';
-  const lockedTypes = new Set(['window', 'stairs', 'cameraThumbnail', 'garageDoor', 'presenceSwitch']);
+  const lockedTypes = new Set(['window', 'stairs', 'cameraThumbnail', 'garageDoor', 'presenceSwitch', 'sceneryRanchHouse', 'scenerySideRoad']);
+  const isExterior = type => type === 'sceneryRanchHouse' || type === 'scenerySideRoad';
   const isInterface = type => typeof type === 'string' && type.startsWith('ui');
   const key = value => String(value ?? '').toLowerCase();
   const domain = id => key(id).split('.')[0];
@@ -167,7 +170,7 @@
   }
 
   function canMap(id, model) {
-    if (!isEntityId(id) || typeof model?.type !== 'string' || model.legacy || isInterface(model.type) || model.type === 'stairs') return false;
+    if (!isEntityId(id) || typeof model?.type !== 'string' || model.legacy || isInterface(model.type) || model.type === 'stairs' || isExterior(model.type)) return false;
     if (model.type === 'cameraThumbnail') return domain(id) === 'camera';
     if (model.type === 'garageDoor' || model.type === 'window') {
       return ['cover', 'binary_sensor', 'switch'].includes(domain(id));
@@ -233,18 +236,22 @@
   }
 
   function supportsHeight(item) {
-    return item && !['window', 'stairs', 'controlZone', 'cameraThumbnail', 'mirror', 'artwork'].includes(item.type) &&
+    return item && !['window', 'stairs', 'controlZone', 'cameraThumbnail', 'mirror', 'artwork', 'scenerySideRoad'].includes(item.type) &&
       !isInterface(item.type);
   }
 
   function resizeFootprint(item, axis, value, lock) {
     if (!['w','h'].includes(axis) || !Number.isFinite(value)) return null;
+    const road = item.type === 'scenerySideRoad';
     const minimum = item.type === 'cameraThumbnail' ? 40 : 12;
-    const limits = item.type === 'cameraThumbnail' || isEntityId(item.entityId)
+    const minima = road ? {w:48, h:120} : {w:minimum, h:minimum};
+    const limits = road ? {w:140, h:1000} : item.type === 'cameraThumbnail' || isEntityId(item.entityId)
       ? {w:1536, h:1024} : {w:Infinity, h:Infinity};
-    if (!lock) return {[axis]:Math.min(limits[axis], Math.max(minimum, value))};
+    if (!lock) return {[axis]:Math.min(limits[axis], Math.max(minima[axis], value))};
+    if (![item.w, item.h].every(Number.isFinite) || item.w <= 0 || item.h <= 0) return null;
     const maxScale = Math.min(limits.w / item.w, limits.h / item.h);
-    const minScale = Math.min(maxScale, Math.max(minimum / item.w, minimum / item.h));
+    const minScale = Math.max(minima.w / item.w, minima.h / item.h);
+    if (minScale > maxScale) return null;
     const scale = Math.min(maxScale, Math.max(minScale, value / item[axis]));
     return {w:Math.round(item.w * scale * 10) / 10, h:Math.round(item.h * scale * 10) / 10};
   }
@@ -732,7 +739,7 @@
     };
   }
 
-  root.RoomcraftModels = Object.freeze({catalog, canMap, canBind, canReplace, suggestions, supportsHeight, resizeFootprint, resizeCornerFootprint,
+  root.RoomcraftModels = Object.freeze({catalog, isExterior, canMap, canBind, canReplace, suggestions, supportsHeight, resizeFootprint, resizeCornerFootprint,
     splitDiningFurniture, placementRole, kitchenTopOpening, specialtyBarrierSections, walkingObstacleBoxes, blockingPlacement,
     orderMountedObjects, underGarageRoof, drawWithGarageRoofOcclusion, mount, handoffKey});
 })(typeof window === 'undefined' ? globalThis : window);

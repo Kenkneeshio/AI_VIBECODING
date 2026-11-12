@@ -106,7 +106,13 @@
     return transform;
   }
 
+  const isExterior = item => item.type === 'sceneryRanchHouse' || item.type === 'scenerySideRoad';
+  const exteriorEntityKeys = ['entityId', 'tapEntityId', 'holdEntityId', 'presenceEntityId',
+    'presenceTrackEntityId', 'vacuumMapEntityId', 'imageEntityId'];
+
   function validBinding(item) {
+    if (isExterior(item) && (exteriorEntityKeys.some(key => item[key] !== undefined && item[key] !== '')
+        || item.eventEntityIds !== undefined && (!Array.isArray(item.eventEntityIds) || item.eventEntityIds.length))) return false;
     return (!('tapAction' in item) || actions.has(item.tapAction))
       && (!('holdAction' in item) || actions.has(item.holdAction))
       && (!('tapEntityId' in item) || typeof item.tapEntityId === 'string'
@@ -462,18 +468,21 @@
 
   function renderInspector(item, template, field, variantField, escape, entityOptions = [], dimensions = {}) {
     const camera = item.type === 'cameraThumbnail';
+    const road = item.type === 'scenerySideRoad';
     const zone = item.type === 'controlZone';
     const appearance = '<div class="inspector-block"><p class="inspector-label">APPEARANCE & POSITION</p>'
       + field('Name', 'name', item.name) + variantField(template, item.type)
       + '<div class="field-grid">' + field('Center X', 'x', item.x, 'number') + field('Center Y', 'y', item.y, 'number') + '</div>'
-      + field('Rotation (degrees)', 'rotation', item.rotation, 'number')
+      + field('Rotation (degrees)', 'rotation', item.rotation, 'number', road ? 'disabled aria-describedby="side-road-alignment"' : '')
+      + (road ? '<p class="field-hint" id="side-road-alignment">The road automatically meets the main street at a right angle. Move its center to choose the junction; width and length remain editable.</p>' : '')
       + '<p class="field-hint">' + (zone
         ? 'This outline appears only while editing. Drag it over the artwork, then resize its corners to set the tappable area.'
         : 'Drag this object to move it; drag a corner handle to resize. Hold Shift or enable Keep width/depth ratio to keep proportions.') + '</p>'
-      + '<div class="inspector-actions"><button type="button" class="secondary-button" data-action="rotate">↻ Rotate 90°</button>'
+      + '<div class="inspector-actions">' + (road ? '' : '<button type="button" class="secondary-button" data-action="rotate">↻ Rotate 90°</button>')
       + '<button type="button" class="secondary-button" data-action="duplicate">▣ Duplicate</button></div></div>';
     const sizing = '<div class="inspector-block"><p class="inspector-label">DIMENSIONS · PLAN PX</p>'
-      + '<div class="field-grid">' + field('Width', 'w', item.w, 'number') + field('Depth', 'h', item.h, 'number') + '</div>'
+      + '<div class="field-grid">' + field('Width', 'w', item.w, 'number', road ? 'min="48" max="140" step="any"' : '')
+      + field(road ? 'Length' : 'Depth', 'h', item.h, 'number', road ? 'min="120" max="1000" step="any"' : '') + '</div>'
       + (dimensions.height ? field('Height in 3D (blank = model)', 'modelHeight', item.modelHeight ?? '', 'number') : '')
       + (item.type === 'stairs' ? field('Stair treads (blank = 14)', 'steps', item.steps ?? '', 'number') : '')
       + '<div class="inspector-actions"><label><input type="checkbox" data-lock-dimensions'
@@ -496,6 +505,8 @@
         + '" placeholder="binary_sensor.ring, binary_sensor.person" autocomplete="off"></div>'
         + cameraEventPicker(item, entityOptions, escape)
         + '<p class="field-hint">Live during an event keeps the last image visible and tries live video when a listed sensor turns on. Always show live feed is for cameras that can stream continuously.</p></div>';
+    } else if (isExterior(item)) {
+      link = '<p class="field-hint">Exterior scenery stays at ground level and can be placed beyond the home. It is decorative and has no Home Assistant device binding.</p>';
     } else if (item.type.startsWith('ui') || item.type === 'stairs') {
       link = '';
     } else {

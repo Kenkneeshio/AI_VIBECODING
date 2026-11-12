@@ -1,5 +1,9 @@
 # Decision log
 
+## Keep personal landmarks generic, editable and outside the condo contract
+
+Represent an exterior ranch and side street as explicit catalog items using the existing project/Undo/Save workflow. Keep their ground elevation and scenery bounds separate from the upstairs home. Derive the road's orientation and junction from the shared curved street, rather than allowing a rotation that disconnects its curb geometry. Reject Home Assistant entity/action bindings on these decorative types. Use a deterministic code-native house recipe with a generic public name and synthetic proof art; retain no identifying reference address, URL or photo in Git. Document the dated visible frontage, inferred unseen sides and fixed-PNG crop honestly. [Exterior landmark contract](exterior-landmarks.md)
+
 ## Preserve the garage orientation and let real openings reveal contents
 
 Keep the home-facing garage entrance and full opaque roof. Derive a safe side driveway instead of rotating the building toward the street. Replace the decorative dark doorway plane with an actual interior and a contiguous state-driven shutter. Only an open doorway and an appropriate viewing angle reveal the independently editable Prius; neither the roof nor the real door state is overridden to display it. The overhead fixture stays below the ceiling. Add detail to the parked vehicle recipe without changing traffic models or inventing telemetry. [Garage contract](garage-driveway.md)

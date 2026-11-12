@@ -2,6 +2,7 @@
 
 | Goal | Reason | Evidence of completion |
 | --- | --- | --- |
+| Add editable personal landmarks without changing the condo | A familiar miniature house and connected side street should belong to the authorable landscape while private reference data stays out of Git | Generic ranch/road catalog, shared ground placement, perpendicular route compiler, binding exclusions and synthetic art checks; full validation and deployment pending in the [landmark record](exterior-landmarks.md) |
 | Preserve a home-facing roofed garage with natural visibility | The customer wants the actual building orientation and a detailed Prius visible only through the doorway | Opaque roof/shutter occlusion, clear real opening, side-route driveway and detailed parked-car recipe; see [correction release](garage-driveway.md#full-roof-correction-release) |
 | Connect and furnish an editable detached garage | The exterior needs a believable street entrance, visible parked car and separate light without more hard-painted objects | Shared driveway/curb geometry, optional cutaway roof and independent car/light catalog entries; release evidence belongs in the [garage record](garage-driveway.md) |
 | Keep terrain and structure experimentation recoverable | A malformed edit should not replace a usable layout or destroy its undo history | Pure audit/repair, completed-edit checkpoints, manual Check & repair and shared save validation; release evidence belongs in the [safe-editing record](edit-safety.md) |

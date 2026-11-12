@@ -1,3 +1,4 @@
+import {isExteriorScenery} from './storybook-exterior.mjs';
 import {compileStorybookPlan, createStorybookScene} from './storybook-scene.mjs';
 import {normalizeCameraView, storybookCameraTileSize} from './storybook-camera.mjs';
 import {placeStorybookTargets} from './storybook-state.mjs';
@@ -53,7 +54,7 @@ export function pickEditorItem(items, screenPoint, planPoint, anchors, width, he
     const distance = Math.hypot(anchor.x * width - screenPoint.x, anchor.y * height - screenPoint.y);
     const near = distance <= SELECT_RADIUS;
     // The garage mesh is picked separately at its visible ground-level height.
-    if (!near && (['garageDoor','garagePriusBlue','garageCeilingLight'].includes(item.type) || !containsItem(item, planPoint))) return [];
+    if (!near && (['garageDoor','garagePriusBlue','garageCeilingLight'].includes(item.type) || isExteriorScenery(item.type) || !containsItem(item, planPoint))) return [];
     return [{item, index, distance, near, area: item.w * item.h}];
   });
   candidates.sort((a, b) => Number(b.near) - Number(a.near) ||

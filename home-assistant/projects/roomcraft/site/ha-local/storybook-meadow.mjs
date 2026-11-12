@@ -43,7 +43,7 @@ function supportPads(plan, groundY) {
   const house = plan.houseBounds;
   const pads = [house];
   for (const placement of plan.placements ?? []) {
-    if (placement.item.type !== 'garageDoor') continue;
+    if (!['garageDoor','sceneryRanchHouse'].includes(placement.item.type)) continue;
     const {h} = placement.item;
     pads.push(padAround(placement, -h * .55, h * .66));
   }
@@ -115,7 +115,7 @@ function cellAt(nodes, point) {
 }
 
 /** Static relief in world X/Z. heightAt reads the same triangles that the renderer draws. */
-export function createStorybookMeadow({plan, street, width, depth, centerX, centerZ, groundY, terrain, terrainSampler}) {
+export function createStorybookMeadow({plan, street, width, depth, centerX, centerZ, groundY, terrain, terrainSampler, extraPads=[]}) {
   const baseColumns = Math.min(120, Math.max(1, Math.ceil(width / CELL_SIZE)));
   const baseRows = Math.min(80, Math.max(1, Math.ceil(depth / CELL_SIZE)));
   const stepX = width / baseColumns, stepZ = depth / baseRows;
@@ -130,7 +130,7 @@ export function createStorybookMeadow({plan, street, width, depth, centerX, cent
   const uv = geometry.attributes.uv;
   const colors = new Float32Array(position.count * 3);
   const paint = new Float32Array(position.count * 4);
-  const pads = supportPads(plan, groundY);
+  const pads = [...supportPads(plan, groundY),...extraPads];
   const house = plan.houseBounds;
   const spanX = Math.max(680, house.maxX - house.minX);
   const spanZ = Math.max(465, house.maxZ - house.minZ);
