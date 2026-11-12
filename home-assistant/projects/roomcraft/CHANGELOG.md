@@ -7,6 +7,7 @@
 - Add detailed Prius bodywork, panel seams, glazing, rims, grille and lighting lenses; keep its headlights off.
 - Keep the overhead fixture under the roof and suppress enclosed contents in the overhead PNG export.
 - See the [garage correction record](docs/garage-driveway.md#full-roof-correction-release) for verified release status.
+- Verified 612 tests, CI, built Studio interactions/PNG clipping, exact HA asset/layout readback and tablet. Deployed HA `fced00a0d6eff1fa` and private Studio version 105.
 
 ## Connect and furnish the detached garage
 

@@ -94,7 +94,22 @@ The route uses a bounded set of deterministic candidate curves. Its start follow
 
 This release preserves layout version 2 and all existing bindings. No new persisted fields are needed: roof, rotation, driveway width and individual car/light objects already exist. Art adds deterministic blue bodywork, glazing, panel seams and wheel/light details; it does not add telemetry or turn on parked headlights. The full-roof shell has a real doorway rather than a painted dark blocker. Side-driveway recipes check actual floor boundaries, the garage shell, stairs and walls. The overhead fixture is physically beneath the roof.
 
-Verification and deployment evidence will be recorded after the complete source gate and live readback. The previous garage release below is the rollback baseline.
+Released on 12 November 2026 from runtime `4b8870e4432945afb9897e6ed27283846eccafe0`.
+
+| Check | Observed result |
+| --- | --- |
+| Exact source gate | Clean dependency install; architecture/release checks; 509 site, 65 HA, 30 installer and 8 presence tests (612 total); TypeScript, lint, production build and manifest verification passed. Lint: 0 errors, 17 existing warnings. |
+| Runtime manifest | `sha256:7ce8ac49c8545c989bbaf93d706b08d0beb7d605927bba24dc28319e4cbe87f3`, 349 inputs. Later documentation receipts are not a claim to rebuild that later revision. |
+| CI | [Exact runtime GitHub checks passed](https://github.com/Kenkneeshio/AI_VIBECODING/actions/runs/43290358083). |
+| Art and geometry | Chrome model comparison confirms open-door visibility and opaque closed/overhead occlusion. Prius: 2,262 triangles, four opaque material draws, no animation or inferred headlights. Ray tests cover front, top, sides and back. The wrapped road uses one unioned, tessellated surface to avoid overlapping-layer speckling; rotated/mirrored routes, obstacles, hill interiors and deterministic output pass. |
+| Studio browser | Built editor passed home-facing full roof, separate objects, movement/Undo, Save/PNG and a real canvas pixel test for partial roof clipping. Source-built and built-bundle screenshots were inspected. |
+| HA assets | Resource `fced00a0d6eff1fa`; eleven asset hashes match through LAN and Nabu Casa. Installer views/resources and eight non-view fields matched the pre-install backup before layout publication. |
+| Saved household arrangement | Saved through the actual Studio. A helper lost its transient success label when HA reloaded the iframe after the save; no second save was sent. Independent API readback then matched the exact expected layout: garage rotation 0, default full roof, driveway width 60, car/light rotation 0, all 77 objects and other geometry/bindings preserved, and a fresh PNG. A subsequent authenticated read-only Studio check passed. The private helper now waits for API readback instead of that transient label. |
+| Tablet | Companion cold-start and 1920 × 1080 Home capture inspected: roof restored, entrance faces home, the blue nose appears only beneath the doorway, and the curved side drive joins the street cleanly. The tablet remains on Home. Synthetic closed/open checks did not actuate the real garage. |
+| Hosted Studio | Owner-private version 105 deployed successfully from source `cad81bcbb7a2ff867e1cf283165a25d2c8c852b6`; provenance read back. App-subset manifest `sha256:8e0cd19e3a3558d52b2f3a1f703e16fbcc20edfff88e7d8a032570800403c1e3` (256 inputs). Hosted browser interaction was not separately repeated. |
+| Recovery | Protected pre-install receipt `roomcraft-home-before-roomcraft-lan-20261112-112741-579798.json` plus the protected `roomcraft-home-before-garage-roof` pre-layout backup. Previous runtime `1bb5c502af60651eb3222a88732fce679bda3aaa`, HA `c913eacbd528db82`, Site version 104. Restore the corresponding saved layout and deployments through the deployment runbook. |
+
+The overhead light remains unassigned. No car telemetry, automatic parent-child movement or physical-light verification is claimed. The generated driveway is a 3D environment feature; the compatibility PNG omits that environment route and clips enclosed/partially covered car and light artwork against opaque roof footprints.
 
 ## Previous garage release verification
 
