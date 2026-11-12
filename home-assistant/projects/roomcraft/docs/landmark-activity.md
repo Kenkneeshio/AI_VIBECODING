@@ -43,7 +43,27 @@ The initial camera proof exposed a roof-hidden family resident and insufficient 
 
 ![Synthetic office demo chapter](images/landmark-demo-office.png)
 
-Focused deterministic/time/geometry/settings tests and source Chrome checks passed. The actual-card demo fixture verifies all three chapters, 60-second completion, muted narration, camera restoration and zero HA service calls. The Studio fixture exercises real Inspector inputs, Undo, invalid-value rejection, file import and mock Save/readback. Full release-gate, exact built-browser, tablet and deployment evidence will be recorded after those checks run. All public visuals use synthetic layouts and generic labels.
+The final source passed the complete release gate: 555 site tests, 65 bridge/weather tests, 30 installer tests and 8 presence tests (658 total), architecture checks, deterministic release/manifest checks, TypeScript, lint, production build and whitespace validation. Lint retains 17 existing warnings and zero errors. The runtime GitHub CI [run 43322769537](https://github.com/Kenkneeshio/AI_VIBECODING/actions/runs/43322769537) passed.
+
+The actual-card Chrome fixture ran against the final built bundle. It verifies all three chapters, 60-second completion, every weather/moon preview, muted narration and cue seeks, camera restoration, unchanged layout/state inputs and zero HA service calls. The final built Studio fixture exercises real Inspector inputs, Undo, invalid-value rejection, file import and mock Save/readback. All public visuals use synthetic layouts and generic labels.
+
+An independent static-model collision review found the school guide passing through a shrub. The final route ends before it; 3,276 sampled route/support checks across native, resized and height-scaled variants then passed. A committed regression adds 459 actual campus geometry probes around the guide corridor. Decorative art totals 24,366 triangles and 22 draws across all three recipes; this is geometry accounting, not a general FPS guarantee.
+
+| Released artifact | Exact evidence |
+| --- | --- |
+| Runtime source | `465aadf21978d7d9ba8ef91470a87616cfb9caaf` |
+| Full-project manifest | `sha256:80c9e45a421a36464b2add22684b4044106a485b467f16b3302a4eadc24058f4`, 371 inputs |
+| HA resource revision | `76cafcd1969162f8` |
+| HA readback | 11 exact asset hashes over LAN and Nabu Casa; Home/Studio/Controls structure verified; all 8 non-view configuration fields match the pre-install backup, including the unchanged 82-item layout |
+| Owner-private Site | Version 110, deployment `appgdep_6af641c7543081918234bedd922b3b71`, succeeded; owner-only audience retained |
+| Site source | `cdbabc46785d7be894f2c4363713d5df35c9c1b6` |
+| Site subset manifest | `sha256:c45fab6c51ef97de67cb0f744f1fa85d29e8c890fede2c4da48eccc4c5cec4f2`, 267 inputs |
+| Local packaged archive hash | `sha256:924a428a5787ba0928019e26fbc40cd44651a77bf71cc803634e829f0de0f8b5` |
+| Site stored archive hash | `sha256:0ce40324391e9b172ef3ae269cd5d3d11720785ab260afd22cf9886a225a59c2` |
+
+The 1920 × 1080 Apolosign calendar tablet cold-launched Companion 2026.10.1-full with its HOME alias intact. A later loaded frame showed the complete home, roads and landmarks. The real **1-minute demo** menu action ran with narration muted; timed tablet captures verified school, all three family residents, office satellites and automatic return to the original Home view. The displayed FPS samples were 24 in Home, 34/42/41 at the landmark chapters and 24 after return; these are observations, not a controlled benchmark. No physical device was actuated.
+
+No separate hosted-Site visual check was performed; successful native publication verifies deployment, while the matching shared source was checked in Chrome and HA. The protected installer backup is recorded in the local management log; private dashboard and tablet media are not published to GitHub. Runtime code and source gate are anchored to the exact commit above; this post-deployment evidence is a separate documentation update.
 
 ## Rollback
 

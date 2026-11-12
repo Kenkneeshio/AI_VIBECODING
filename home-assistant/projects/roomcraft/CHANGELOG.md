@@ -5,6 +5,7 @@
 - Extend the shared tour to 60 seconds with school, family-house and office chapters; optional narration remains muted by default.
 - Add configurable miniature people, activities, vehicles and event accents, including two grandparents with a young Asian girl and office satellites. Home and Studio use the same deterministic animation layer.
 - Track acceptance, grouped-editing controls, exact validation and deployment evidence in [living landmarks](docs/landmark-activity.md).
+- Deployed runtime `465aadf21`, HA `76cafcd1969162f8`, owner-private Studio 110; 658 tests, runtime CI, final built browser fixtures, exact live readback and the timed wall-tablet tour passed. All 82 existing objects and control data are preserved.
 
 ## Editable elementary school and playgrounds — 12 November 2026
 
