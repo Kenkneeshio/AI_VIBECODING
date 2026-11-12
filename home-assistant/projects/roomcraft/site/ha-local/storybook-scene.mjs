@@ -1162,6 +1162,7 @@ export function createStorybookScene(canvas, layout) {
     } else livePeople.setTracks(tracks, timeSeconds, options);
   }
   function anchor(itemId) {
+    if (cameraView.preset === 'waterfront') return null;
     const entry = anchors.get(itemId);
     if (!entry || currentWidth < 1 || currentHeight < 1) return null;
     const { x, z, baseY, object } = entry;
