@@ -28,6 +28,7 @@ jobs:
           cache: npm
           cache-dependency-path: home-assistant/projects/roomcraft/site/package-lock.json
       - run: npm ci
+      - run: npm run architecture:check
       - run: npm run release:verify
       - run: npm test
       - run: node --test ha-local/roomcraft-card.test.mjs ha-local/roomcraft-weather-outdoor.test.mjs
@@ -37,9 +38,12 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - run: npm run release:manifest:verify
+      - run: node scripts/architecture-check.mjs --output dist/roomcraft-architecture.json
       - uses: actions/upload-artifact@v4
         with:
           name: roomcraft-release-manifest-${{ github.sha }}
-          path: home-assistant/projects/roomcraft/site/dist/roomcraft-release-manifest.json
+          path: |
+            home-assistant/projects/roomcraft/site/dist/roomcraft-release-manifest.json
+            home-assistant/projects/roomcraft/site/dist/roomcraft-architecture.json
           if-no-files-found: error
       - run: git diff --check

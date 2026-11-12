@@ -1,5 +1,12 @@
 # Changelog
 
+## Document and guard the builder architecture
+
+- Published a current architecture guide with system, engine, save, live-state and release diagrams, units, team boundaries and a staged builder roadmap.
+- Added a deterministic module inventory and AST-based checks for pure-engine boundaries and shared Home/Studio dependencies. Build and CI run the guard.
+- Both save transports reject malformed decorative-object geometry before any upload or dashboard write. Legacy omitted rotation and valid exterior/custom objects remain compatible.
+- Refreshed the project entry documentation and made remaining procedural scenery limitations explicit. See the [audit and evidence](docs/architecture-audit-2026-11-12.md).
+
 ## Edit the landscape in Studio
 
 - Studio has terrain brushes for raising, lowering, smoothing, painting, and restoring ground. Place individual trees, sage, and rocks. Edits work with Undo, Save, and layout export.

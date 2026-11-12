@@ -1,5 +1,7 @@
 # Roomcraft engineering handoff
 
+Start with the [current architecture and engineering guide](architecture.md) for system setup, framework, engine, module ownership, units and flow diagrams. The [12 November architecture audit](architecture-audit-2026-11-12.md) distinguishes implemented builder controls from remaining recipe editing and records the shared publication validation fix. Run `npm run architecture:check` before adding a module. The chronological release notes below are historical evidence, not a complete statement of current behavior.
+
 The [La Jolla art release](coastal-art-release.md) covers the world geometry, sandstone texture, surf shader, camera framing, and the curved street profile shared by the coastal terrain, sidewalks, and moving actors. The update is shared by the live dashboard and Studio. Home Assistant's published layout schema and device actions require no migration.
 
 `storybook-meadow.mjs` owns inland relief, flat pads for built objects, and the sampler used to ground plantings on its rendered triangles. `storybook-street.mjs` supplies the dune grades and shared sand sampler. The Cove and Shores recipes use that sampler to join the exposed terrain. The [coastal terrain release](coastal-art-release.md#coastal-elevation-and-planting) records the design and verification.

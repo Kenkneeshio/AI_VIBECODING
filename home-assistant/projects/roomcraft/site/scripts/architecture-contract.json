@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "sourceRoots": ["app", "lib", "public", "ha-local"],
+  "exclude": ["public/storybook-editor.js"],
+  "excludeSuffixes": [".test.mjs", ".d.ts"],
+  "pureRoots": ["public/engine/"],
+  "owners": [
+    {"id": "engine", "prefixes": ["public/engine/"]},
+    {"id": "transport", "files": ["public/ha-iframe-bridge.js", "ha-local/roomcraft-card.js", "ha-local/dashboard-project.mjs", "ha-local/dashboard-snapshots.mjs", "lib/dashboard-elements.ts"], "prefixes": ["app/api/"]},
+    {"id": "studio", "files": ["public/app.js", "ha-local/storybook-editor.mjs", "ha-local/storybook-terrain-editor.mjs", "ha-local/storybook-studio-look.mjs"]},
+    {"id": "live-runtime", "files": ["ha-local/roomcraft-storybook.mjs", "ha-local/roomcraft-weather-outdoor.js"]},
+    {"id": "scene-and-features", "prefixes": ["ha-local/storybook-"]},
+    {"id": "catalog-and-raster", "prefixes": ["public/"]},
+    {"id": "hosted-shell", "prefixes": ["app/", "lib/"]}
+  ],
+  "entrypoints": [
+    "public/app.js",
+    "public/engine/verification-harness.js",
+    "public/engine/terrain.js",
+    "ha-local/roomcraft-storybook.mjs",
+    "ha-local/storybook-editor.mjs",
+    "ha-local/storybook-scene.mjs",
+    "ha-local/roomcraft-card.js",
+    "app/api/dashboard/route.ts"
+  ],
+  "requiredImports": [
+    {"from": "ha-local/roomcraft-storybook.mjs", "to": "ha-local/storybook-scene.mjs", "reason": "Home uses the shared 3D scene"},
+    {"from": "ha-local/storybook-editor.mjs", "to": "ha-local/storybook-scene.mjs", "reason": "Studio uses the same 3D scene"},
+    {"from": "ha-local/roomcraft-card.js", "to": "ha-local/dashboard-project.mjs", "reason": "Native publish uses shared validation"},
+    {"from": "app/api/dashboard/route.ts", "to": "ha-local/dashboard-project.mjs", "reason": "Hosted publish uses shared validation"},
+    {"from": "ha-local/roomcraft-card.js", "to": "ha-local/dashboard-snapshots.mjs", "reason": "Native publish uses shared history"},
+    {"from": "app/api/dashboard/route.ts", "to": "ha-local/dashboard-snapshots.mjs", "reason": "Hosted publish uses shared history"},
+    {"from": "ha-local/storybook-scene.mjs", "to": "public/engine/terrain.js", "reason": "3D rendering consumes the authored terrain contract"},
+    {"from": "ha-local/dashboard-project.mjs", "to": "public/engine/terrain.js", "reason": "Both save transports validate the authored terrain contract"}
+  ]
+}

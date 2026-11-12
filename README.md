@@ -42,6 +42,8 @@ AI_VIBECODING/
 
 ## Current status
 
+Roomcraft engineers should start with the [architecture and system guide](home-assistant/projects/roomcraft/docs/architecture.md), including framework, engine, module ownership, measurement units and code-flow diagrams. The [architecture audit](home-assistant/projects/roomcraft/docs/architecture-audit-2026-11-12.md) records the current improvements and remaining builder work.
+
 [Roomcraft](home-assistant/projects/roomcraft/README.md) is the active second-floor layout authoring project. Its [illustrated manual](home-assistant/projects/roomcraft/docs/user-manual.md) covers walls, floors, furniture, and Home Assistant transfer. [Tuya LAN](home-assistant/projects/tuya-lan/README.md) documents a pilot for local control of eligible, already-paired Tuya devices. The older [ishioho dashboard](home-assistant/projects/ishioho/README.md) remains as a tested four-theme prototype with its source and history preserved. Committing here does not deploy these projects to Home Assistant.
 
 ## Public repository

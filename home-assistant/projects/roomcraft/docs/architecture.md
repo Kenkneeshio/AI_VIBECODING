@@ -1,96 +1,257 @@
-# Architecture and team boundaries
+# Roomcraft architecture and engineering guide
 
-Roomcraft separates authored layout data, rendering, dashboard transport, and live Home Assistant state. Keep each boundary narrow so teams can change one layer without changing every other layer.
+Roomcraft is a Home Assistant control interface and a builder-style editor for the same home. Author rooms, furniture, controls, and outdoor scenery in Studio, save once, and see the same design respond to real devices in Home.
 
-The [deterministic engine contract](engine-contract.md) is normative for module dependency direction, canonical inputs, command replay, layer order, migrations, change review, release evidence, and rollback. This page describes the deployed data flow; where a future extraction is discussed, it must preserve that contract rather than create a second layout or renderer.
+**Assessment, 12 November 2026.** The shared layout, renderer, deterministic terrain engine, and authenticated save adapters are a sound foundation. Roomcraft is not yet a fully generic building game. Some scenery remains procedural, large adapters combine responsibilities, and editor and publication validation are not yet one complete model validator.
+
+[Audit and evidence](architecture-audit-2026-11-12.md) · [Engine contract](engine-contract.md) · [Release standard](release-standard.md) · [User manual](user-manual.md) · [Engineering handoff](engineering-handoff.md)
+
+![Shared coastal scene at wide zoom](images/la-jolla-wide-coast.png)
+
+## Customer outcome
+
+| Customer | Outcome | Acceptance |
+| --- | --- | --- |
+| Household operator | The illustrated device is the control and shows actual state | Separate light/fan bindings, unavailable treatment, explicit actions. Rendering never operates a device. |
+| Builder | Arrange the home and landscape without editing source | Select, modify, undo, save, reload, and export the same result. Every new visible feature declares its editing surface. |
+| Tablet user | A legible, responsive scene | Shared framing, bounded graphics, reduced motion, target-device verification. |
+| Engineer | Continue without reconstructing chat history | Source ownership, units, data flow, tests, setup, known gaps and rollback are discoverable here. |
+| Installer | Reuse the system for another home | Public code and synthetic examples stay separate from private geometry, credentials and telemetry. |
+
+This audit improves engineering discoverability, boundary checks and publication validation. It does not replace the engine, change the customer's floor plan or make every generated mesh independently editable.
+
+## System setup
+
+```mermaid
+flowchart TB
+  subgraph Clients["Household clients"]
+    Tablet["Android wall tablet"]
+    Browser["Laptop / phone browser"]
+  end
+  subgraph HA["Home Assistant host"]
+    UI["Home / Studio / Controls"]
+    Session["Signed-in session and native services"]
+    Store[("Dashboard configuration")]
+    Files["Static Roomcraft bundles"]
+    Devices["Integrations, Presence and Watchdog"]
+  end
+  subgraph Hosted["Optional owner-private Site"]
+    Editor["Alternate Studio"]
+    Bridge["Authenticated server bridge"]
+  end
+  Source["Workstation and GitHub source"] --> Gate["Tests, build and manifest"]
+  Gate --> Deploy["Separate HA and Site deployments"]
+  Tablet --> UI
+  Browser --> UI
+  UI --> Files
+  UI --> Session
+  Session <--> Store
+  Session <--> Devices
+  Browser --> Editor --> Bridge --> Session
+  Deploy --> Files
+  Deploy --> Hosted
+```
+
+HA routes are `/roomcraft-home/home`, `/roomcraft-home/studio` and `/roomcraft-home/controls`. Home is the 3D interface, Studio edits from above, and Controls is the room-organized conventional view. Main Dashboard remains separate.
+
+The tablet runs the browser/Companion client. HA Green serves assets and device APIs. Development, bundling, Git and protected administration happen on the workstation and CI. The optional hosted editor is a separate deployment. GitHub publication alone changes neither runtime.
+
+## Framework and base code
+
+| Responsibility | Implementation and entry point |
+| --- | --- |
+| Shared 3D scene | Three.js and polygon-clipping, [scene source](../site/ha-local/storybook-scene.mjs) |
+| HA interface | Native custom elements, [Home card](../site/ha-local/roomcraft-storybook.mjs), [Studio bridge](../site/ha-local/roomcraft-card.js) |
+| Authoring app | HTML/CSS and classic JavaScript, [editor shell](../site/public/editor.html), [app](../site/public/app.js), [3D editor adapter](../site/ha-local/storybook-editor.mjs) |
+| Portable engine | Browser/Node-testable scripts under [public/engine](../site/public/engine), frozen namespace registration |
+| 2D compatibility export | [Raster renderer](../site/public/raster-renderer.js) and [object art](../site/public/object-art.js). Does not render the 3D coastline. |
+| Optional hosted shell | React and Next-style routes through Vinext/Vite and Cloudflare Workers, [dashboard API](../site/app/api/dashboard/route.ts) |
+| Build | esbuild for HA/Studio bundles, framework build for the Site, [orchestrator](../site/scripts/build-roomcraft.mjs) |
+| Install | Python [installer](../site/ha-local/install.py), authenticated management adapter and SSH kept outside Git |
+| Verification | Node/Python tests, TypeScript, ESLint, source manifest, synthetic browser fixtures and separate device checks |
+
+[package.json](../site/package.json) and its lockfile own dependency versions. CI selects Node 24; the package accepts Node 22.13 or newer. The editor canvas is not a React component tree. Extend its shared contracts before adding another renderer or framework.
+
+## Engine layers and modules
+
+```mermaid
+flowchart TD
+  Input["Studio gestures and Inspector"] --> Model["Authored model and edit history"]
+  Model --> Compile["Structure / placement / terrain compilation"]
+  Compile --> Scene["Shared 3D scene and recipes"]
+  Model --> Export["2D render plan and export"]
+  Model --> Validate["Shared publication validation"]
+  Export --> Transport["HA or owner-private server transport"]
+  Validate --> Transport
+  State["Authenticated transient state"] --> Normalize["State / weather / tracking adapters"]
+  Normalize --> Scene
+```
+
+The pure engine must not import adapters or read DOM, network, storage, device services or ambient time. Adapters supply explicit inputs. Render animation can sample elapsed time; authored IDs and geometry cannot derive from it.
+
+| Unit | Owns | Source |
+| --- | --- | --- |
+| Canonical core | Serialization, hashes, finite values, seeded IDs | [deterministic-core.js](../site/public/engine/deterministic-core.js) |
+| Project runtime | Commands, replay, normalization, migration executor, canonical I/O | [project-runtime.js](../site/public/engine/project-runtime.js) |
+| Render contract | Layers, ordered operations, assets, environment evidence | [render-contract.js](../site/public/engine/render-contract.js), [verification facade](../site/public/engine/verification-harness.js) |
+| Structure | Connected walls, floors, railings, starter corrections | [wall joins](../site/public/engine/wall-joins.js), [reference geometry](../site/public/engine/reference-geometry.js), [3D structure](../site/ha-local/storybook-structure.mjs) |
+| Terrain | Settings, sparse cells, brushes, normalization and limits | [terrain.js](../site/public/engine/terrain.js) |
+| Catalog and models | Types, variants, footprints, finishes, placement roles | [inventory](../site/public/inventory.js), [variants](../site/public/catalog-variants.js), [furniture](../site/ha-local/storybook-furniture.mjs), [devices](../site/ha-local/storybook-devices.mjs) |
+| Editor | Selection, Inspector, gestures, drafts, Save, Undo | [app](../site/public/app.js), [3D adapter](../site/ha-local/storybook-editor.mjs), [terrain UI](../site/ha-local/storybook-terrain-editor.mjs) |
+| Scene composition | Combine geometry, models, lighting and effects | [storybook-scene.mjs](../site/ha-local/storybook-scene.mjs) |
+| Outdoor world | Shared road/shore sampling, meadow, ocean, landmarks, planting | [street](../site/ha-local/storybook-street.mjs), [meadow](../site/ha-local/storybook-meadow.mjs), [ocean](../site/ha-local/storybook-ocean.mjs), [planting](../site/ha-local/storybook-coastal-planting.mjs) |
+| Live state | Real state to visual targets and explicit actions | [state adapter](../site/ha-local/storybook-state.mjs), [Home](../site/ha-local/roomcraft-storybook.mjs) |
+| Motion and calibration | Radar transforms, smoothing, supported routes, seating, robot alignment | [tracking](../site/ha-local/storybook-tracking.mjs), [floor support](../site/ha-local/storybook-floor-support.mjs), [person motion](../site/ha-local/storybook-person-motion.mjs), [vacuum alignment](../site/ha-local/storybook-vacuum-alignment.mjs) |
+| Utility panels | Weather, energy, location, calendar, health and control dialogs | Domain `storybook-*.mjs` modules composed by Home |
+| Publication | Shared validation, normalization, snapshots, revision checks, readback | [project](../site/ha-local/dashboard-project.mjs), [snapshots](../site/ha-local/dashboard-snapshots.mjs), HA and Site adapters |
+| Release | Source inventory, boundaries, artifacts, evidence | [architecture checker](../site/scripts/architecture-check.mjs), [release script](../site/scripts/roomcraft-release.mjs), [CI](../../../../.github/workflows/roomcraft.yml) |
+
+This is a modular monolith with shared source modules, not a plugin sandbox or a full entity-component-system engine. The largest adapters are extraction seams, not a pattern for new features.
+
+## State, coordinates and units
+
+| State | Owner and rule |
+| --- | --- |
+| `roomcraft_layout` | Saved private dashboard. Version 2, authored rooms, walls/fences, items, hotspots, optional scene settings and terrain. Shared editable truth. |
+| `roomcraft_plan` | Derived picture card, image and control metadata. Compatibility projection, not another authored layout. |
+| `roomcraft_snapshots` | Up to three displaced designs. Keep full dashboard backups separately. |
+| Energy, commute, location and health mappings | Private dashboard root. Preserve them through layout saves. |
+| Browser draft and display preferences | Local recovery and display choices, not another published project. |
+| Entity values, media, tracks and forecasts | Authenticated transient runtime, excluded from authored geometry and public assets. |
+| Demo | Explicit simulated inputs, no physical service calls. |
+
+| Coordinate / unit | Meaning |
+| --- | --- |
+| Project `x,y` | 1536 × 1024 design units, not metres. |
+| World `x,z` | Project `x,y` mapped to the ground plane. World `y` is elevation. |
+| Elevation | Upstairs datum near zero, outdoor grade −111, stair base −108, default wall height 56. Renderer defaults, not surveyed storey heights. |
+| Item dimensions | `w,h` are footprint; optional `modelHeight` is vertical span; rotation uses degrees. |
+| Terrain grid | 32 world units, integer `col,row` to world `x,z`, height delta −32…64, ≤4096 cells and ≤96 props. |
+| Terrain sliders | Beach width, hills and planting are relative percentages. Road setback and brush radius use world units. |
+| Legacy plan export | `(x,y)` → `(x,y−80)` in 1536 × 864, then display percentages. Does not move authored geometry. |
+| Radar | Source centimetres transformed to design coordinates through private calibration. |
+| Vacuum | Raw map units and map identity must be verified. Metric distance uses inverse calibrated transform, not design-pixel distance. |
+| Screen | CSS pixels and drawing-buffer pixels are separate. Graphics resolution cannot resize the authored home. |
+
+See [layout format](layout-format.md) and [LiDAR alignment](lidar-tv-release.md) before changing units or transforms.
+
+## Edit and Save flow
+
+```mermaid
+sequenceDiagram
+  actor Author
+  participant Studio
+  participant Engine
+  participant Bridge
+  participant HA as HA dashboard
+  Author->>Studio: Drag, brush or Inspector edit
+  Studio->>Engine: Apply authored change
+  Engine-->>Studio: Draft and undo state
+  Studio->>Studio: Shared scene preview
+  Author->>Studio: Save
+  Studio->>Bridge: Draft, image, loaded revision
+  Bridge->>Bridge: Shared validation
+  Bridge->>HA: Read and compare revision
+  Bridge->>HA: Upload image
+  Bridge->>HA: Read again and compare
+  Bridge->>Bridge: Derive projection and retain previous design
+  Bridge->>HA: Save merged dashboard
+  Bridge->>HA: Read back and verify
+  Bridge-->>Studio: Verified result or conflict
+```
+
+The HA path uses [iframe messaging](../site/public/ha-iframe-bridge.js) and the authenticated parent card. Exact origin, window and request checks protect the boundary. The iframe never receives a token. The Site uses owner authorization and a server-held secret.
+
+Lovelace has no atomic compare-and-swap. Rechecks reduce conflicts but leave a short read-to-write race. Use one active publisher during planned recovery. A rejected layout must never reach upload/save.
+
+Editor history currently stores gesture snapshots and journals `scene.replace`. Terrain records one completed stroke as one undoable change. Fine-grained commands such as `terrain.stroke` and `item.move` are future incremental work.
+
+## Live control flow
 
 ```mermaid
 flowchart LR
-  E[Editor UI<br/>rooms, walls, floors, items] --> M[Versioned layout JSON]
-  M --> R[Raster renderer<br/>PNG image]
-  M --> C[Control mapper<br/>picture elements]
-  R --> T{Dashboard transport}
-  C --> T
-  T --> A[HA same-origin custom card<br/>current HA user]
-  T --> B[Optional owner-only cloud Site bridge]
-  A --> H[(Roomcraft Home<br/>roomcraft_layout + roomcraft_plan)]
-  B --> H
-  H -->|Import and revision| A
-  H -->|Import and revision| B
-  H --> L[Home<br/>3D controls, weather, radar, utility popups]
+  HA["Authenticated HA state"] --> Normalize["Normalize state and freshness"]
+  Normalize --> Frame["Transient frame inputs"]
+  Layout["Saved layout"] --> Scene["Shared 3D scene"]
+  Frame --> Scene
+  Scene --> Display["Art, motion and hit targets"]
+  Touch["Explicit touch / hold"] --> Action["Validated action adapter"]
+  Action --> Service["HA service or native details"]
+  Service --> HA
 ```
 
-## Current contracts
+Graphic state follows the actual bound state entity. Fan motor and fan light are independent. Unknown, stale and unavailable are distinct from off. Render frames, Studio previews and demos must not actuate devices. Media remains authenticated. Floor support and route checks constrain avatars and robot motion.
 
-| Layer | Source | Owns | Must avoid |
-| --- | --- | --- | --- |
-| Editor | `site/public/editor.html`, `app.js`, `styles.css`, `inventory.js` | User interactions, layout changes, local draft, JSON/YAML export | Direct access to server secrets |
-| Art | `site/public/object-art.js`, `raster-renderer.js`, `responsive-inspector.js`, `assets/` | Perspective objects, room surfaces, windows, PNG render | Device service calls |
-| HA transport and runtime | `site/ha-local/roomcraft-card.js`, `site/ha-local/roomcraft-weather-outdoor.js`, `site/public/ha-iframe-bridge.js` | Same-origin editor messages, current-user HA API calls, PNG upload, revision check, dashboard save/verify, authenticated object/camera/weather overlays | Sending an HA token into the iframe or static assets |
-| Cloud transport | `site/app/api/dashboard/route.ts`, `site/lib/dashboard-elements.ts` | Owner authorization, input validation, HA image upload, revision check, dashboard save/verify, camera overlay configuration | Publishing the server token to client code |
-| Home Assistant | Roomcraft Home and Studio views with the stored `roomcraft_layout`, `roomcraft_plan`, and snapshot history | Official editor entry, authenticated device controls, projected plan image, and layout recovery | Storing transient telemetry in layout geometry |
-| Future live adapters | `integrations/` when introduced | Read-only subscriptions, entity bindings, calibrated robot position, safe service actions | Mutating layout geometry from telemetry |
+## Builder completeness and target architecture
 
-The layout model stores `version`, `rooms`, `walls`, `items`, and `hotspots`. Rooms hold polygons and floor surface IDs; walls are endpoint pairs; items hold type, position, dimensions, rotation, and optional state/action bindings. `controlZone` items are invisible, movable hit areas. The separate `hotspots` array retains legacy independent `state-icon` controls with percentage positions. Both editor transports use layout version 2. **Any change to a persisted field's meaning requires a migration, a sample fixture, and a round-trip test in both transports.** The editable project space remains 1536 × 1024. The dashboard presentation PNG includes the full x0–1536 width and crops y80–944, producing an exact 1536 × 864 16:9 view. This is a display transform, not a change in room or item coordinates.
+Every new feature must declare its persisted settings, editor control, undo unit, serialization path, renderer consumer and acceptance test. Ordinary configuration should not require a later code change.
 
-Both transports read `roomcraft_layout` and the `roomcraft_plan` picture-elements projection from Roomcraft Home. Older installations can still supply the projection through a `plan` view. On export each transport uploads a rendered PNG, updates the projection image, derives object controls and camera overlays from items, merges independent hotspots, writes the project, and reads back to verify. Each rejects an export when the dashboard changes after import. The dashboard keeps its Home and Studio views, health metadata, and reserved projection elements. The Studio card receives Home Assistant's `hass` object, validates the editor window, origin, and request IDs, and performs privileged operations itself. The static editor requests those operations when framed or opened by that card.
+| Feature | Available now | Remaining gap |
+| --- | --- | --- |
+| Home | Editable floors, walls, fences, joins, materials | Broader automated touch/selection coverage |
+| Objects | Catalog, variants, dimensions, transforms, bindings/actions | Registry-driven Inspector and full shared model validation |
+| Terrain | Raise/lower/smooth/paint/erase, individual trees/sage/rocks, Undo/Save | More per-prop transforms and shape handles |
+| Coast and road | Presets, width/setback, hills, planting, grouped landmark visibility | Generated ledges, roads, paths, umbrellas and plantings are not all independently selectable |
+| Live appearance | Shared renderer and appearance preview | Authentication and live-source availability differ between transports |
+| Views and graphics | Camera defaults/free view and display choices | Per-browser preferences intentionally remain separate from authored layout |
 
-For a full-width export, both transports map project `(x, y)` to display `(x, y - 80)`, then divide horizontal positions/sizes by 1536 and vertical positions/sizes by 864 for Home Assistant percentages. The plan card's `roomcraft_scene: full-width-v1` marker tells import to reverse this mapping for independent `state-icon` controls. Import also recognizes the earlier `wall-to-wall-v1` 1472 × 828 crop; an unmarked legacy 3:2 card is imported without conversion. Camera and bound-object overlays are regenerated from original project items. The menu, weather, time, and editor link are viewport chrome and stay near the top of the cropped scene. See [layout format](layout-format.md) for the formula and compatibility contract.
+The next reusable foundation is an **environment recipe registry**. A recipe should declare stable identity, parameter types, units, defaults, bounds, Inspector controls, geometry builder, placement sampler and collision policy. Selectable instances can then expose coastline and road handles without duplicating geometry. This is a target design, not a claimed shipped universal registry.
 
-### Bound objects and dashboard overlays
+## Development and release
 
-The editor owns item placement and binding IDs; Home Assistant owns live state and media. Export derives dashboard elements from bound items without copying telemetry into the authored layout:
+Start in `home-assistant/projects/roomcraft/site`. Keep private adapters and credentials outside the checkout.
 
-| Item | Authored fields | Dashboard output | Offline behavior |
-| --- | --- | --- | --- |
-| Lamp, ceiling light, fan, AC, window, door, invisible control zone | Item geometry, `entityId` state source, optional `visualKind`, label/icon, tap and hold actions/target entities | `custom:roomcraft-object-control` at the item's percentage position; the object is the tap target and its authenticated overlay uses high-contrast live state | A neutral unknown/unavailable treatment replaces stale on/off art; scenes report **Ready** rather than a false on/off state |
-| Presence dimmer | `presenceSwitch` item, light `entityId`, optional binary `presenceEntityId` | One wall-switch control: the face toggles the dimmer and attached dots animate from occupancy | Presence never changes or implies the light state; non-`on` and unavailable occupancy do not animate |
-| Each camera thumbnail | Its own item geometry, optional `camera.*`/`image.*` IDs, `previewMode`, and optional `eventEntityIds` | One `custom:roomcraft-camera-thumbnail` picture element per item ID, with a validated mode and event sensors | Neutral message or dated latest-event still in that frame; no stale public media or spillover into another camera |
-
-The plan's clock, editor shortcut, device menu, indoor-air badge, electrical badge, and sun/moon anchor are managed by `ui*` layout items; camera frames remain `cameraThumbnail` items. Both transports apply their geometry to retained private dashboard elements without copying entity IDs or runtime values into public defaults. The clock label keeps its HA value in a subdued translucent style. `roomcraft-weather-outdoor.js` remains a separate versioned Lovelace module: private dashboard config supplies a `weather.*` entity, `sun.sun`, and optional `sensor.*` moon phase; the card requests hourly forecasts through the signed-in HA WebSocket service and filters timestamps through 12 hours. Forecast and current weather never enter the editable layout. Its full 1536 × 864 SVG and exterior mask remain fixed while `uiWeatherOrb` controls only the celestial position and size.
-
-The front-door, overhead, and garage thumbnails are separate camera items with independent media and unavailable handling. The doorbell's `event_live` mode reads configured ring/person binary sensors and opens a 60-second live attempt only after an `on` edge; the last dated event image is the fallback. The overhead `live_auto` mode mounts native HA media without a wake command and requires advancing video or frame count to claim **LIVE**, even if HA calls the camera `idle`. The garage `live` mode requests `camera.turn_on` only on an explicit tap. Each camera fetches same-origin media through the signed-in session; no proxy URL, token, or frame is written to public assets or layout JSON. [Live object graphics and camera frames](live-object-graphics.md) records the state normalization, motion, configuration, and verification contract.
-
-The two browser editors may each have a local draft. On opening, each loads the current dashboard project and preserves a different browser draft for explicit recovery. An already open editor must use **Import from dashboard** after the other publishes. The dashboard project, rather than a browser's local storage, is the shared source of truth. If the Studio iframe stays blank, its card opens the same editor in a new tab and accepts messages from that exact same-origin popup while Studio remains open; a direct static URL has no dashboard transport. The installed `/local/roomcraft/` assets are reachable by anyone who can reach the HA web server; do not put tokens, live entity inventories, private photos, or dashboard JSON in that static directory.
-
-## Extension contracts
-
-Future features should consume Home Assistant state through a small adapter, leaving geometry and art independent:
-
-```ts
-type EntityBinding = {
-  sceneId: string;                 // stable room/object/control ID
-  entityId: string;                // resolved privately for this installation
-  capability: "light" | "fan" | "garage" | "camera" | "vacuum" | "weather";
-};
-
-type LiveState = {
-  entityId: string;
-  available: boolean;
-  state: string;
-  attributes: Record<string, unknown>;
-  updatedAt: string;
-};
+```powershell
+npm ci
+npm run architecture:check
+npm run architecture:report
+npm test
+node --test ha-local/roomcraft-card.test.mjs ha-local/roomcraft-weather-outdoor.test.mjs
+python -m unittest discover -s ha-local -p "test_*.py"
+python -m unittest discover -s ../ha-presence/tests -p "test_*.py"
+npx tsc --noEmit
+npm run lint
+npm run build
+npm run release:manifest:verify
+git diff --check
 ```
 
-Keep `EntityBinding` in private installation configuration or the private dashboard project. Public examples use fictional IDs. A renderer should receive normalized `LiveState` rather than reaching into Home Assistant globals. A command adapter should validate entity domain and availability, then call Home Assistant's native service or details action. No service action should run just because the map loaded.
+For local authoring development use `npm run dev` and its printed URL. Use synthetic fixtures for automated edits and save tests. Use the [deployment guide](deployment.md) for authenticated installation and backup.
 
-The [public HA inventory](ha-inventory/README.md) is a dated, state-free metadata snapshot for planning and team handoff. It lists sanitized entity IDs, domain, area, integration, and audit availability; it does not supply runtime values, authenticated media, object coordinates, credentials, or a deployable binding file. The shipped drawer exposes On plan, All entities, search, registry availability, and the six curated sections recorded in the [Main Dashboard map](main-dashboard-map.md). The [control guide](ha-controls-and-menu.md) separates verified room placements from candidates. Revalidate every binding against live Home Assistant before use.
+After shared renderer changes, regenerate `public/storybook-editor.js` with `node scripts/build-storybook.mjs --write-editor`. After public changes run `npm run release:stamp-editor`. Never hand edit generated bundles.
 
-### Robot location
+```mermaid
+flowchart LR
+  Source["Source and fixtures"] --> Gates["Architecture and tests"]
+  Gates --> Build["Shared bundles and hosted build"]
+  Build --> Manifest["Deterministic source manifest"]
+  Manifest --> Git["Reviewed Git revision"]
+  Git --> Backup["Private backup"]
+  Backup --> HA["HA install and readback"]
+  Backup --> Site["Private Site publish"]
+  HA --> Verify["Home / Studio / tablet verification"]
+  Site --> Hosted["Hosted verification"]
+  Verify --> Record["Evidence and rollback"]
+  Hosted --> Record
+```
 
-The vacuum map camera can expose a robot position and map calibration points. To place the robot on the illustrated plan, store a separate transform from vacuum-map coordinates to Roomcraft canvas coordinates, with the map identity and timestamp. At least three non-collinear matched points are needed for an affine transform. Live 3D checks the transformed position against the floor before accepting it. Stale telemetry holds the last accepted position and stops the tracking pulse. With no accepted position, the marker uses the authored dock if it fits the floor. Keep camera access tokens and live map images inside authenticated Home Assistant.
+The architecture report enumerates handwritten modules, ownership, imports and normalized line counts. Its checks cover declared shared imports and selected pure-engine boundaries. It is not proof of semantic purity, complete editability, frame rate or device operation.
 
-### Responsive and motion layers
+## Team ownership and next stages
 
-Maintain one scene coordinate system and fit it into phone, tablet, laptop, and kiosk viewports without stretching. UI panels can reflow independently. Decorative animation should respect `prefers-reduced-motion`, pause when hidden, and never substitute a forecast for observed weather. The clock and weather should use Home Assistant's time zone and entity data.
+| Team | Owns | Evidence |
+| --- | --- | --- |
+| Engine | Model, IDs, commands, migrations, terrain, validation | Round-trip, rejection, determinism, compatibility |
+| Builder | Selection, Inspector, gestures, history | Mouse/touch, undo/redo, save/reload, accessibility |
+| World and art | Shared geometry, recipes, materials, placement | Live/Studio parity, cameras, floor support, tablet budget |
+| Integrations | Auth, state, explicit actions, media and sensors | Both transports, stale/offline behavior, safe preview |
+| Release | Build, provenance, backup, deployment | Exact revision and independently verified rollback route |
 
-## Working agreements
+1. Extract one complete model validator shared by editor and publication, retaining compatibility fixtures.
+2. Introduce a property/recipe registry. Convert one environment recipe end to end before migrating the rest.
+3. Extract versioned domain commands from `app.js`, preserving snapshot replay during transition.
+4. Separate compilation, world composition and lifecycle from `storybook-scene.mjs`, keeping one Home/Studio renderer.
+5. Promote ad-hoc browser checks into sanitized reproducible fixtures for terrain, saves, controls and wide camera views.
 
-- **Editor team:** schema migrations, geometry, undo/redo, accessible selection and touch behavior.
-- **Art team:** asset provenance, perspective, windows, floors, object variants, export parity.
-- **HA team:** same-origin card and cloud bridge parity, authenticated runtime adapters, device command safety, backups and rollback.
-- **QA/documentation team:** visual snapshots at laptop/tablet sizes, JSON round-trip, release notes, user manual.
-
-Use separate pull requests for model changes, art changes, and Home Assistant runtime changes when practical. A model change should include a migration plan and editor/bridge tests; art changes should include before/after graphics; runtime changes should include disconnected and unavailable states. The [deployment guide](deployment.md) defines release order and rollback.
+Each stage must preserve saved layouts and provide an independently verifiable improvement. See the [dated audit](architecture-audit-2026-11-12.md) for this release's actual work and remaining limitations.
 

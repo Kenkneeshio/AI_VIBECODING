@@ -40,10 +40,12 @@ From `home-assistant/projects/roomcraft/site`, run `npm run release:stamp-editor
 
 ```powershell
 npm ci
+npm run architecture:check
 npm run release:verify
 npm test
 node --test ha-local/roomcraft-card.test.mjs ha-local/roomcraft-weather-outdoor.test.mjs
 python -m unittest discover -s ha-local -p "test_*.py"
+python -m unittest discover -s ../ha-presence/tests -p "test_*.py"
 npx tsc --noEmit
 npm run lint
 npm run build

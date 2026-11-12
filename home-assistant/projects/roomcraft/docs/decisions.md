@@ -1,5 +1,9 @@
 # Decision log
 
+## Keep the builder foundation shared and auditable
+
+Retain the common authored model and Home/Studio renderer. Add executable dependency checks and accurate architecture documentation before extracting more code. Reject malformed ordinary object geometry at the shared publication boundary because editor checks alone cannot protect API callers. Move toward a recipe/property registry and domain commands in independently verifiable stages, preserving current layouts and undo behavior. [Architecture audit](architecture-audit-2026-11-12.md)
+
 ## Author the landscape in Studio
 
 Save optional terrain settings and sparse, world-aligned brush edits with the layout. Keep one undo entry per stroke, preserve the edit in browser drafts and shared saves, and have the same terrain sampler in Home and Studio. Keep render extents separate from traffic and sailing routes so the wider map does not change their timing.

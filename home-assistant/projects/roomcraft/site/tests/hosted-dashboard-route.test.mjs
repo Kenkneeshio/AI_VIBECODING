@@ -164,6 +164,31 @@ test('hosted and native project constraints reject malformed plan geometry befor
   assert.equal(calls.filter(([type]) => type === 'lovelace/config/save').length, 0);
 });
 
+test('hosted publication rejects malformed decorative furniture before any Home Assistant operation', async () => {
+  let uploads = 0;
+  const {route, calls, dashboards} = harness({[canonicalPath]:home}, {onUpload:() => uploads++});
+  const imported = await (await route.GET(request())).json();
+  const afterImport = calls.length;
+  const furniture = {id:'table', type:'table', x:480, y:640, w:150, h:90, rotation:0};
+  for (const item of [
+    {id:'missing', type:'table'}, {...furniture, x:null}, {...furniture, w:0},
+    {...furniture, h:-10}, {...furniture, rotation:'45'}, {...furniture, modelHeight:301},
+  ]) {
+    const response = await route.POST(request({revision:imported.revision,
+      project:{...project, items:[item]}, pngDataUrl:testPng()}));
+    assert.equal(response.status, 400);
+    assert.match((await response.json()).message, /invalid object geometry/);
+  }
+  assert.equal(uploads, 0);
+  assert.equal(calls.length, afterImport, 'invalid geometry must fail before opening the HA connection');
+  assert.deepEqual(dashboards[canonicalPath], home);
+  const legacy = {...furniture};
+  delete legacy.rotation;
+  assert.equal((await route.POST(request({revision:imported.revision,
+    project:{...project, items:[legacy]}, pngDataUrl:testPng()}))).status, 200);
+  assert.deepEqual(dashboards[canonicalPath].roomcraft_layout.items, [legacy]);
+});
+
 test('hosted editor falls back only for an unmigrated or missing Roomcraft Home', async () => {
   for (const current of [undefined, shell]) {
     const {route} = harness({[canonicalPath]: current, [legacyPath]: legacy});
@@ -197,7 +222,9 @@ test('hosted publish snapshots the previous layout and exact projection in the s
   const {route, dashboards} = harness({[canonicalPath]: previous});
   const imported = await (await route.GET(request())).json();
   const response = await route.POST(request({revision: imported.revision,
-    project: {...project, items: [{id: 'example-lamp', type: 'lamp'}]}, pngDataUrl: testPng()}));
+    project: {...project, items: [
+      {id:'example-lamp', type:'lamp', x:450, y:300, w:48, h:60, rotation:0},
+    ]}, pngDataUrl: testPng()}));
   assert.equal(response.status, 200);
   const saved = dashboards[canonicalPath];
   assert.equal(saved.roomcraft_snapshots.length, 1);

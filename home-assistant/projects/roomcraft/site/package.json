@@ -12,6 +12,8 @@
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
     "test": "node --test \"tests/*.test.mjs\"",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "architecture:check": "node scripts/architecture-check.mjs --check",
+    "architecture:report": "node scripts/architecture-check.mjs --json",
     "release:verify": "node scripts/roomcraft-release.mjs --verify",
     "release:stamp-editor": "node scripts/roomcraft-release.mjs --stamp-editor",
     "release:manifest": "node scripts/roomcraft-release.mjs --write",

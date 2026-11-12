@@ -41,6 +41,15 @@ export function dashboardProjectProblem(project, {validCameraThumbnail, validObj
     if (!object(item) || typeof item.id !== 'string' || typeof item.type !== 'string') {
       return 'The layout has an invalid object.';
     }
+    // Decorative items need the same usable geometry as linked controls. Keep
+    // omitted legacy rotation compatible, but never coerce malformed numbers.
+    if (!finite(item.x, item.y, item.w, item.h,
+        item.rotation === undefined ? 0 : item.rotation) || item.w <= 0 || item.h <= 0 ||
+        (Object.hasOwn(item, 'zIndex') && !Number.isFinite(item.zIndex)) ||
+        (Object.hasOwn(item, 'modelHeight') &&
+          (!Number.isFinite(item.modelHeight) || item.modelHeight < 6 || item.modelHeight > 300))) {
+      return 'The layout has invalid object geometry.';
+    }
     if (INTERFACE_ITEMS.has(item.type) &&
         (!finite(item.x, item.y, item.w, item.h, item.rotation ?? 0) ||
           item.x < 0 || item.x > PLAN_WIDTH || item.y < 0 || item.y > PLAN_HEIGHT ||

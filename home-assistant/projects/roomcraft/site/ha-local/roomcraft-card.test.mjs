@@ -169,7 +169,9 @@ test('consolidated Studio imports and publishes the projection in Roomcraft Home
   const imported = await card._readDashboard();
   assert.equal(imported.source, 'http://ha.example.test/roomcraft-home/home');
   const previous = structuredClone(saved);
-  await card._writeDashboard({project: {...imported.project, items: [{id: 'example-lamp', type: 'lamp'}]},
+  await card._writeDashboard({project: {...imported.project, items: [
+    {id:'example-lamp', type:'lamp', x:450, y:300, w:48, h:60, rotation:0},
+  ]},
     revision: imported.revision, pngDataUrl: pngDataUrl()});
   assert.deepEqual(saved.views, [{path: 'home'}, {path: 'studio'}]);
   assert.equal(saved.roomcraft_health.cards[0].entities[0], 'sensor.example_health');
@@ -195,6 +197,42 @@ test('LAN bridge rejects invalid camera thumbnail before image upload', async ()
   await assert.rejects(card._writeDashboard({ project: invalid, revision: imported.revision,
     pngDataUrl: pngDataUrl() }), /invalid camera thumbnail/i);
   assert.equal(uploads, 0);
+});
+
+test('LAN bridge rejects malformed decorative furniture before dashboard reads, upload, or save', async () => {
+  const saved = dashboard();
+  let calls = 0;
+  let uploads = 0;
+  const card = new Card();
+  card.hass = {
+    connected:true, user:{is_admin:true},
+    callWS:async request => {
+      calls++;
+      if (request.type === 'lovelace/config/save') Object.assign(saved, structuredClone(request.config));
+      return structuredClone(saved);
+    },
+    fetchWithAuth:async () => {
+      uploads++;
+      return {ok:true, json:async () => ({id:'b'.repeat(32)})};
+    },
+  };
+  const imported = await card._readDashboard();
+  const afterImport = calls;
+  const furniture = {id:'table', type:'table', x:480, y:640, w:150, h:90, rotation:0};
+  const write = item => card._writeDashboard({revision:imported.revision,
+    project:{...imported.project, items:[item]}, pngDataUrl:pngDataUrl()});
+  for (const item of [
+    {id:'missing', type:'table'}, {...furniture, x:NaN}, {...furniture, w:0},
+    {...furniture, h:-10}, {...furniture, rotation:'45'}, {...furniture, zIndex:Infinity},
+  ]) await assert.rejects(write(item), /invalid object geometry/);
+  assert.equal(uploads, 0);
+  assert.equal(calls, afterImport);
+  assert.deepEqual(saved, dashboard());
+  const legacy = {...furniture};
+  delete legacy.rotation;
+  await write(legacy);
+  assert.deepEqual(saved.roomcraft_layout.items, [legacy]);
+  assert.equal(uploads, 1);
 });
 
 test('LAN bridge exports event triggers and validates camera modes and sensor IDs', async () => {

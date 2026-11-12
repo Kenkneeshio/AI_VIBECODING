@@ -6,6 +6,10 @@ The contract applies to the partially integrated engine and to remaining respons
 
 ## What “deterministic” means
 
+The [architecture guide](architecture.md) maps the current framework, modules, units, and code flows. `npm run architecture:check` enforces selected engine/import boundaries and shared Home/Studio dependencies. `npm run architecture:report` generates the source inventory. These static checks supplement behavioral evidence; they do not prove every operation pure or every feature editable.
+
+For every new configurable feature, record its persisted fields, types/units/defaults/bounds, Studio control, undo unit, import/export path, renderer consumer and acceptance fixture. For generated scenery, identify which recipe parameters are editable and which meshes remain grouped. A recipe/property registry is planned; it must not be described as already implemented.
+
 For the same validated layout, engine revision, asset set, render profile, and explicit command stream, Roomcraft must produce the same:
 
 - migrated and normalized layout;

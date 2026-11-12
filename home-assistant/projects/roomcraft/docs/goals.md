@@ -2,6 +2,7 @@
 
 | Goal | Reason | Evidence of completion |
 | --- | --- | --- |
+| Make the builder engine understandable and reproducible for another team | Configuration and development should not depend on chat history or undocumented code paths | Current architecture guide, source ownership inventory, enforced shared boundaries and publication rejection tests; full recipe editing remains staged in the roadmap |
 | Make the coast recognizable as La Jolla | The setting should recall a familiar beach when the household opens Roomcraft | The shared 3D scene combines the Shores promenade and Scripps Pier with the Cove's sandstone pocket beach, using the references in the release record |
 | Let each display try maximum quality and recover automatically | The wall tablet and a desktop have different rendering budgets | Insane graphics preserves the manual profile and expires after five seconds without confirmation |
 | Edit overhead and give phone users direct room controls | Layout edits need a fixed viewpoint and a small screen needs labeled touch targets | Studio uses the shared overhead render and supports kitchen worktops. The third view groups Home Assistant controls by room |

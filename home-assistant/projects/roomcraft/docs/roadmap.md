@@ -1,30 +1,26 @@
 # Roadmap and acceptance criteria
 
-This page distinguishes what the current second-floor dashboard does from extensions that need their own implementation and verification. Sequence features by their data and security dependencies.
+The [architecture guide](architecture.md) describes the implemented system. The [dated audit](architecture-audit-2026-11-12.md) records evidence and deficiencies. This roadmap is organized around the builder experience rather than historical catalog counts.
 
-| Capability | Current state | Next acceptance criterion |
+| Capability | Implemented | Next acceptance |
 | --- | --- | --- |
-| Rooms, interior walls, floor finishes | Editable in Roomcraft; layout version 2 | Geometry and rendered PNG round-trip from dashboard without lost changes |
-| Furniture, baby play items, lights and lamps as objects | The 325-choice catalog includes an 88-entry detailed crafted-miniature collection and 42 bed variants across nine constructions and six size classes. Style and Size choose authored footprints; Finish preserves placed geometry. Sixteen photo-inspired play variants remain available, eight play-area objects are placed separately, and lamps/fans remain movable. Some reference details remain baked into the PNG. | Confirm the fireplace wall before placing the new mantel and side shelf; add remaining baked furniture as independent objects; expand the same product/size/material contract to other furniture families; compare every new construction at 100% in editor, export, and supported tablet profiles |
-| Home Assistant controls | Object-bound controls derive from private entity bindings; current HA readback confirmed 41 editable items, 13 mapped controls, three managed camera frames, and one weather element, including separate fan and light targets | Verify actual device actions and unavailable states without assuming that every scene has an independent state sensor |
-| Dining ceiling fan and light | Verified four-channel switch channels 4/3 independently drive motor rotation and center-light glow; both artworks are the direct toggle buttons. | Observe natural on/off transitions, add speed control only if HA exposes a trustworthy speed entity, and keep both targets aligned if the layout moves |
-| Device discovery and room mapping | Dated [sanitized inventory](ha-inventory/README.md) covers all registry and live-state entries; some devices, including the ceiling fan, have no HA area and some lights are unavailable | Confirm physical placement before binding each object; refresh metadata without publishing live values |
-| Compact control menu | Drawer shipped with On plan, All entities, search, registry availability, and six curated Main Dashboard sections | Check search, unavailable/disabled labels, category navigation, and touch fit on the target tablet; keep the old dashboard as a reference |
-| Adaptive full screen and tablet recovery | HA-hosted Studio panel plus canvas fit/zoom/focus. An exact 16:9 image uses the full original x0–1536 width and y80–944 of the unchanged 1536 × 1024 project. A private 1920 × 1080 tablet capture showed both original house sides, three camera widgets, weather strip, and no crop or scroll. Home Assistant Companion is the tablet's default Android Home app and reopened after an app force-stop. | Verify physical touch alignment, editor/drawer targets, portrait and other screen sizes; verify dashboard launch after a supervised reboot using the [tablet access runbook](tablet-access.md) |
-| Real-time clock and weather | Native HA values remain on the plan and Live Home view. The outdoor module reads current weather plus hourly forecasts through 12 hours, sun, and moon phase, and clips animation to the exterior. Current rain and forecast strip were visible on the tablet. | Verify a real daylight transition, moon art, reduced motion, and forecast tick touch on the tablet; retain observed current conditions if the forecast call fails |
-| Live device graphics | Bound lights, fan, AC, windows, and door/garage controls use high-contrast active/inactive treatments from HA state. Unknown or unrecognized values stay neutral; scenes remain action-ready. The fan alone has stepped motion. | Check appearance, accessible actions, reduced motion, and unavailable behavior on the physical tablet; keep broader environment animation optional |
-| Garage door | Native HA cover card is present in Live Home | Verify actual open/closed/unavailable state and the command path on device |
-| Cameras | The current plan has separate front-door event-gated, overhead auto-live, and garage tap-live `cameraThumbnail` items. A private tablet capture showed the doorbell still and decoded overhead and garage feeds. | Observe or safely simulate a real doorbell 60-second event window/still fallback, longer playback, and independent unavailable behavior without copying media or URLs to public assets |
-| Vacuum controls and live location | On-plan robot opens current state, authenticated map, Start/Pause/Dock/Locate, and map-supplied room cleaning. A six-value affine transform now maps the private Dreame coordinates onto the illustrated plan. Fresh active positions transition and animate; stale active data freezes; docked state parks the marker. | Add a graphical calibration workflow, persist and validate map identity, and refine matched points if the vacuum map or illustrated plan changes |
-| General scene animation | Planned | Motion respects user preference and does not obscure controls |
+| One design | Home and Studio share layout v2 and the 3D renderer | Save/reload parity across both transports and recovery after conflict |
+| Home authoring | Rooms, floors, walls, fences, joins, furniture, dimensions, bindings | Sanitized mouse/touch regression fixtures covering all basic operations |
+| Terrain authoring | Brush edits, placed terrain props, coast/road settings, grouped landmarks | Per-instance recipe editing, transform handles and configurable shape paths |
+| Interactive controls | Actual-state object art, separate fan/light, rich light controls | Continue unavailable/stale and touch-target verification for each capability |
+| Live features | Weather/day-night, cameras, radar avatars, vacuum, TV, utilities, traffic | Data-provider availability and physical-device checks remain separate from art tests |
+| Calibration | Radar alignment/heat map and LiDAR survey/ruler | Verified physical reference points, clear confidence and stale-data treatment |
+| Performance | Per-browser graphics/FPS choices and bounded high-quality preview | Repeatable target-tablet frame and memory budgets with representative media |
+| Engineering | Source ownership guide, architecture guard, deterministic manifest, shared publication checks | One complete model validator, property registry, domain commands and compiler extraction |
 
-## Delivery order
+## Ordered engineering stages
 
-1. **Stable model and authoring.** Keep a single editable layout, migration path, strong import/export validation, and visual regression fixtures.
-2. **Authenticated Studio shell.** The HA-hosted custom card now owns dashboard transfer through the signed-in user's session. Keep its behavior aligned with the owner-private cloud bridge and test tablet sizing.
-3. **Device state and commands.** Native HA cards show time, weather, lights, fan, garage, and vacuum map. Roomcraft object overlays now supply room-bound visual state without changing layout geometry. The vacuum object adds an authenticated map and explicit actions, with no command on render or panel open; extend the same adapter pattern only with verified sources and safe native actions.
-4. **Vacuum calibration.** The runtime affine transform and private calibration are installed. Next provide a graphical matching workflow, record map identity, and revalidate against known positions after either map changes.
-5. **Camera and motion.** Event-gated doorbell attempts, overhead auto-live playback, tap-start garage media, stepped fan motion, and exterior weather animation are installed. Test stream recovery, a real doorbell event, forecast accuracy across a day/night transition, and tablet performance with reduced motion.
+1. **Complete the shared model boundary.** Move remaining editor validation into portable domain code. Cover finite geometry, IDs, references, bounds and compatibility in fixtures used by both publication transports.
+2. **Make recipes editable.** Start with one scenery recipe whose schema defines ID, parameters, units, defaults, bounds, Inspector controls, placement and collision. Prove edit, undo, export, save and reload before converting the other scenery groups.
+3. **Unify commands and history.** Introduce domain commands one feature at a time, retaining snapshot replay during migration.
+4. **Extract scene composition.** Separate pure compilation, world generation and GPU lifecycle while preserving the single Home/Studio renderer.
+5. **Make browser acceptance repeatable.** Bring sanitized terrain, furniture, save-conflict, media-failure and wide-camera fixtures into the repository and CI where practical.
+6. **Expand only through contracts.** New art families, sensor integrations and environment themes declare editable parameters, state semantics, reduced-motion behavior, performance limits and rollback.
 
-Every feature should document its data source, update frequency, offline behavior, accessibility, security boundary, and rollback path before release.
+Do not turn these into a single engine rewrite. Every stage preserves customer layout data and ships its own usable improvement. Follow the [release standard](release-standard.md) for evidence and deployment.
 
