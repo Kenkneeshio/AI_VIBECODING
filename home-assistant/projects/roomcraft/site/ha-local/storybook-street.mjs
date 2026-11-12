@@ -6,6 +6,7 @@ const WALK_WIDTH = 26;
 const ROAD_WIDTH = 92;
 const CURB_WIDTH = 4;
 const VERGE_WIDTH = 18;
+const MAX_LANDWARD_SHIFT = 34;
 const BEACH_VIEW_DEPTH = 236;
 const SAND_MATERIAL = '#fffbec';
 const SHORE_LANDMARKS = Object.freeze({point: -.43, cove: -.29, eastShelf: -.145});
@@ -34,7 +35,9 @@ export function storybookStreetBounds(plan) {
   const {minZ, maxZ} = plan.houseBounds;
   const shrubs = minZ - (maxZ - minZ) * .11 - 46;
   const path = plan.editableStructure ? Infinity : minZ - 146;
-  const nearZ = Math.min(plan.bounds.minZ, shrubs, path) - VERGE_WIDTH;
+  // Reserve the full landward bend before positioning the street against the
+  // saved footprint, which can include a garage or stairs north of the house.
+  const nearZ = Math.min(plan.bounds.minZ - MAX_LANDWARD_SHIFT, shrubs, path) - VERGE_WIDTH;
   const farZ = nearZ - 2 * WALK_WIDTH - ROAD_WIDTH;
   const {minX, maxX} = plan.houseBounds;
   const sample = streetProfile((minX + maxX) / 2, Math.max(940, maxX - minX));

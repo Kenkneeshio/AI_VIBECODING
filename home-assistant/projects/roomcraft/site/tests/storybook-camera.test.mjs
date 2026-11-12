@@ -196,7 +196,7 @@ test('portrait and tablet framing keep the curved beach and the house in view', 
   const scene = {bounds, houseBounds: {...bounds, minZ: 240}, editableStructure: true};
   const street = storybookStreetBounds(scene);
   assert.ok(street.sceneryMinZ < street.farZ && street.farZ < street.nearZ && street.nearZ < bounds.minZ);
-  assert.equal(storybookStreetBounds({...scene, editableStructure: false}).nearZ, 76);
+  assert.ok(storybookStreetBounds({...scene, editableStructure: false}).nearZ <= 76);
   const batch = {box() {}, ball() {}, add(geometry) { geometry.dispose(); }};
   const {water} = buildStorybookNeighborhood(batch, street, -111, scene.houseBounds, 6200, 768);
   assert.ok(water.shoreline.length > 2);

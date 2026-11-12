@@ -57,7 +57,9 @@ test('La Jolla shares the sculpted shore between the sand, water, and cinematic 
 
 test('the authored road bends smoothly and the sidewalk meets the graded beach at every column', () => {
   const house = {minX:220, maxX:1450, minZ:210, maxZ:820};
-  const curved = storybookStreetBounds({houseBounds:house, bounds:house, editableStructure:true});
+  // A garage or stair apron can extend farther north than the house.
+  const bounds = {...house, minZ:82};
+  const curved = storybookStreetBounds({houseBounds:house, bounds, editableStructure:true});
   const points = Array.from({length: 101}, (_, i) => house.minX + i * (house.maxX - house.minX) / 100);
   const shifts = points.map(x => curved.sample(x, curved.farZ).z);
   assert.ok(Math.max(...shifts) - Math.min(...shifts) > 35);
@@ -68,7 +70,9 @@ test('the authored road bends smoothly and the sidewalk meets the graded beach a
     const slope = (curved.sample(x + .01, curved.farZ).z - curved.sample(x - .01, curved.farZ).z) / .02;
     assert.ok(Math.abs(Math.tan(-yaw) - slope) < 1e-8);
     assert.ok(Math.abs(slope) < .15, 'no sharp kinks');
-    assert.ok(Math.abs(curved.sample(x, curved.nearZ).z - z - (curved.nearZ - curved.farZ)) < 1e-8);
+    const inlandEdge = curved.sample(x, curved.nearZ).z;
+    assert.ok(Math.abs(inlandEdge - z - (curved.nearZ - curved.farZ)) < 1e-8);
+    assert.ok(inlandEdge <= bounds.minZ - 18, 'the full bend clears the northernmost saved structures');
   }
 
   const width = 1800, centerX = 835, ground = -111;
