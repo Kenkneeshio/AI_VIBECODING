@@ -9,19 +9,21 @@ const {water} = buildStorybookNeighborhood({box() {}, ball() {}, add(geometry) {
   street, -111, {minX:350, maxX:1430}, 6200, 780);
 const layout = planStorybookBeachPlay(water, street);
 
-test('La Jolla keeps the Cove sheltered and Scripps Pier visibly raised across the animated surf', () => {
+test('La Jolla shares the sculpted shore between the sand, water, and cinematic frames', () => {
   const room = {minX:350, maxX:1430};
   const capture = () => {
-    const boxes = [], cliffs = [];
-    const {water} = buildStorybookNeighborhood({
-      box(...args) { boxes.push(args); },
+    let sand;
+    const {water, coastalFrames} = buildStorybookNeighborhood({
+      box() {},
       ball() {},
       add(geometry, shade, x, y, z) {
-        if (shade === '#d6b98f') cliffs.push({x, y, z, vertices:geometry.attributes.position.count});
+        if (shade === '#fffbec') sand = {x, y, z, vertices:geometry.attributes.position.count,
+          coloredVertices:geometry.attributes.color.count};
         geometry.dispose();
       },
     }, street, -111, room, 6200, 780);
-    return {boxes, cliffs, water};
+    const {sandHeight, ...shape} = water;
+    return {sand, water:shape, coastalFrames, sandGrade: Object.values(water.playSites).map(x => sandHeight(x, -330))};
   };
   const coast = capture();
   assert.deepEqual(capture(), coast);
@@ -32,10 +34,10 @@ test('La Jolla keeps the Cove sheltered and Scripps Pier visibly raised across t
   assert.ok(shoreAt(.29) > shoreAt(.145) + 50, 'the pocket retreats from Point La Jolla');
   assert.ok(shoreAt(.29) > shoreAt(.43) + 50, 'sandstone headlands enclose the pocket');
   assert.ok(Math.abs(shoreAt(-.36) - shoreAt(-.49)) < 10, 'Shores remains a broad gentle beach');
-  assert.ok(coast.cliffs.length >= 7 && coast.cliffs.every(cliff => cliff.vertices > 20));
-  const deck = coast.boxes.find(([width, height, , shade]) => width === 12.5 && height === 1.8 && shade === '#b9b4a6');
-  assert.ok(deck[5] > coast.water.y && deck[6] - deck[2] / 2 < shoreAt(-.30) - 55);
-  assert.equal(coast.boxes.filter(([width, height, , shade]) => width === 1.5 && height === 15.4 && shade === '#989a92').length, 20);
+  assert.equal(coast.sand.vertices, coast.water.shoreline.length * 9);
+  assert.equal(coast.sand.vertices, coast.sand.coloredVertices);
+  assert.ok(coast.sandGrade.every(y => y > -111 && y < coast.water.y));
+  assert.ok(coast.coastalFrames.waterfront.minX > coast.coastalFrames.shores.maxX);
 });
 
 test('the authored shoreline gives the volleyball and sandcastle groups distinct dry-sand patches', () => {

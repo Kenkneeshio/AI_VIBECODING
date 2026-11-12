@@ -38,11 +38,11 @@ export function planStorybookBeachPlay(water, street) {
     // This is the authored dry-sand ramp from +.28 to +.71 above the terrain.
     const dryEdge = shoreAt(shoreline, x) + 22;
     const grade = THREE.MathUtils.clamp((farZ + .4 - z) / (farZ + .4 - dryEdge), 0, 1);
-    const y = waterY - .77 + grade * .43;
+    const y = water.sandHeight?.(x, z) ?? waterY - .77 + grade * .43;
     return {x, y, z, halfWidth, halfDepth};
   }
-  const court = patch(focusX - 72, 46, 18);
-  const castle = patch(focusX + 68, 27, 15);
+  const court = patch(water.playSites?.court ?? focusX - 72, 46, 18);
+  const castle = patch(water.playSites?.castle ?? focusX + 68, 27, 15);
   return court || castle ? {court, castle} : null;
 }
 

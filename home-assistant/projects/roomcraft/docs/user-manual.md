@@ -6,6 +6,8 @@ Roomcraft Studio edits the layout used by Roomcraft Home. Use the 3D view to arr
 
 Open **Roomcraft Home** in the Home Assistant sidebar for the live view. The bottom bar has **Power**, **Weather**, **Calendar & to-dos**, **Controls**, and **Menu**.
 
+Open **Menu → View controls → Camera view** and choose **Waterfront · La Jolla Cove** for the sandstone cliffs or **La Jolla Shores** for the pier and park. Choose **Default** to return to your home view. The coastline uses the same weather and time of day as the home scene.
+
 Use **On the map** for Object details and Presence tracking, and **View controls** for view presets, rotation, zoom and default view settings. **Manage** opens Layout Studio and popups for Object models, Devices and sensors, Indoor air and System health when configured. The labels from **Object details** show each linked control's name and current state. The toggle is saved in the current browser.
 
 ### Explore energy use

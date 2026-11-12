@@ -1013,14 +1013,23 @@ export function storybookDrawingPixelRatio(width, height, deviceRatio, {
   return Math.max(1 / Math.min(width, height), ratio * (insaneGraphics ? 1 : renderScale));
 }
 
-export function createStorybookScene(canvas, layout, {insaneGraphics = false} = {}) {
+function loadCoastSandstone(document, assetBase) {
+  const root = new URL(assetBase ?? './', document.baseURI);
+  const texture = new THREE.TextureLoader().load(new URL('la-jolla-sandstone-v1.png', root).href);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = texture.wrapT = THREE.MirroredRepeatWrapping;
+  texture.anisotropy = 4;
+  return texture;
+}
+
+export function createStorybookScene(canvas, layout, {insaneGraphics = false, assetBase} = {}) {
   const plan = compileStorybookPlan(layout);
   const renderer = new THREE.WebGLRenderer({
     canvas, antialias: true, alpha: false, powerPreference: insaneGraphics ? 'high-performance' : 'low-power',
   });
   try {
     renderer.resetState();
-    return buildStorybookScene(canvas, layout, plan, renderer);
+    return buildStorybookScene(canvas, layout, plan, renderer, assetBase);
   } catch (error) {
     releaseRenderer(renderer);
     throw error;
@@ -1037,7 +1046,7 @@ function releaseRenderer(renderer) {
   }
 }
 
-function buildStorybookScene(canvas, layout, plan, renderer) {
+function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   let sceneSettings = layout.sceneSettings;
   let displaySettings = {};
   const scene = new THREE.Scene();
@@ -1060,13 +1069,15 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
   const street = storybookStreetBounds(plan);
   const road = buildStorybookStreet(batch, street, GROUND_Y, ground.geometry.parameters.width, ground.position.x);
   let traffic;
-  const {water} = buildStorybookNeighborhood(batch, street, GROUND_Y, plan.houseBounds,
-    ground.geometry.parameters.width, ground.position.x);
+  const sandstone = loadCoastSandstone(canvas.ownerDocument, assetBase);
+  const {water, coastalFrames} = buildStorybookNeighborhood(batch, street, GROUND_Y, plan.houseBounds,
+    ground.geometry.parameters.width, ground.position.x, {sandstone});
   const shoreCenter = water.shoreline.reduce((closest, point) =>
     Math.abs(point.x - water.focusX) < Math.abs(closest.x - water.focusX) ? point : closest);
   const sceneryFocus = {
     road: {x: road.centerX, y: road.surfaceY + 8, z: (road.lanes[0] + road.lanes[1]) / 2},
-    coast: {x: water.focusX + 16, y: water.y, z: shoreCenter.z - 36},
+    coast: {x: (coastalFrames.waterfront.minX + coastalFrames.waterfront.maxX) / 2,
+      y: water.y + 9, z: shoreCenter.z - 20},
     beach: {x: water.focusX, y: water.y + 8, z: shoreCenter.z + 37},
   };
   buildYard(batch, plan, street, treeWind);
@@ -1076,6 +1087,7 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
     const texture = node.material?.map;
     return texture ? [[texture, texture.anisotropy]] : [];
   }));
+  surfaceAnisotropy.set(sandstone, sandstone.anisotropy);
   buildWalls(batch, plan);
   buildFences(batch, plan.fences);
   batch.finish();
@@ -1209,10 +1221,7 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
   let people = livePeople;
   let lastDraftPositions;
   let trackedControlChanged = false;
-  const cameraBounds = {...plan.bounds, sceneryMinZ: street.sceneryMinZ, waterfront: {
-    minX: water.focusX - 475, maxX: water.focusX + 605,
-    minZ: shoreCenter.z - 352, maxZ: shoreCenter.z + 88,
-  }};
+  const cameraBounds = {...plan.bounds, sceneryMinZ: street.sceneryMinZ, coastalFrames};
   for (const placement of plan.placements) {
     const object = roots.get(placement.item.id);
     if (!object) continue;
@@ -1514,7 +1523,7 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
     beachPlay.dispose();
     const geometries = new Set();
     const materials = new Set();
-    const textures = new Set();
+    const textures = new Set([sandstone]);
     scene.traverse(node => {
       if (node.geometry) geometries.add(node.geometry);
       for (const mat of Array.isArray(node.material) ? node.material : [node.material]) {

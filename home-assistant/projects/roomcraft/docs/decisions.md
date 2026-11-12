@@ -1,5 +1,9 @@
 # Decision log
 
+## Frame La Jolla from the water
+
+Use seaward camera positions to reveal the bluff faces and the pier supports. Each coastal preset fits its own landmark bounds, while Default still frames the house and shoreline together. Build the sand, stone, parks and surf in world coordinates so free orbit and real weather stay consistent. The only new raster in the live scene supplies the sandstone material.
+
 ## Keep Studio overhead and put physical measurements on the scan
 
 Use the shared live scene from directly above for Studio editing. Keep authoring gestures in that view and retain the existing dashboard revision check in Save. Generate the room controls from the published dashboard and Home Assistant's current state.

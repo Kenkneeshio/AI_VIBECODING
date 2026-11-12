@@ -14,11 +14,11 @@ const MOON_ANGLES = {
   waning_crescent: -3 * Math.PI / 4,
 };
 const PALETTES = Object.fromEntries(Object.entries({
-  clear: ['#b7c8a9', '#79c6b9', '#32768c', '#e5f4ea', '#dcf1ec', '#fff1bd'],
-  overcast: ['#a5b9a9', '#76aca8', '#456e7f', '#d0e4df', '#b5ced0', '#ffe4b0'],
-  night: ['#415b66', '#2b6678', '#16354d', '#91b7bf', '#68899f', '#e4f0f5'],
-  sunrise: ['#a9aa9e', '#71aaa8', '#536f9b', '#d9dce8', '#e5b7bc', '#ffe0ae'],
-  sunset: ['#b3a08f', '#7296a1', '#635879', '#f0cbc4', '#d39a9b', '#ffae80'],
+  clear: ['#a2c9ac', '#45aaa4', '#23617f', '#e8f7ef', '#b3e0df', '#fff0c5'],
+  overcast: ['#95b5a5', '#579491', '#3c647a', '#dcebe9', '#a7c4c9', '#ffe6bf'],
+  night: ['#344e5c', '#225464', '#10273f', '#88adb8', '#5e819b', '#e2eefc'],
+  sunrise: ['#a7b19c', '#68a4a8', '#536e97', '#ebe2e3', '#dda6ae', '#ffdfae'],
+  sunset: ['#b3a58f', '#6c97a1', '#624f78', '#f8dcd2', '#cc95a1', '#ffad81'],
 }).map(([kind, colors]) => [kind, colors.map(color => new THREE.Color(color))]));
 const SOLAR_BANDS = {
   sunrise: ['#efad92', '#8baac6'].map(shade => new THREE.Color(shade)),
@@ -92,41 +92,69 @@ const fragmentShader = `
 
   float cloud(vec2 point, vec2 center, float scale) {
     vec2 p = (point - center) / scale;
-    float bed = softEllipse(p, vec2(0.0, -4.0), vec2(99.0, 12.0), 0.69);
-    float puff = softEllipse(p, vec2(-31.0, 1.8), vec2(47.0, 17.0), 0.68);
-    float drift = softEllipse(p, vec2(39.0, 5.4), vec2(67.0, 15.0), 0.72);
-    return max(bed, max(puff, drift));
+    float bed = softEllipse(p, vec2(0.0, -4.0), vec2(108.0, 14.0), 0.87);
+    float puff = softEllipse(p, vec2(-25.0, 5.0), vec2(54.0, 17.0), 0.84);
+    float tail = softEllipse(p, vec2(39.0, 7.0), vec2(71.0, 11.0), 0.85);
+    return max(bed, max(puff * 0.9, tail * 0.8));
+  }
+
+  float waterHash(vec2 p) {
+    vec3 cell = fract(vec3(p.xyx) * vec3(0.1031, 0.1099, 0.0871));
+    cell += dot(cell, cell.yzx + 33.33);
+    return fract((cell.x + cell.y) * cell.z);
+  }
+
+  float waterNoise(vec2 point) {
+    vec2 cell = floor(point);
+    vec2 corner = fract(point);
+    corner = corner * corner * (3.0 - 2.0 * corner);
+    return mix(mix(waterHash(cell), waterHash(cell + vec2(1.0, 0.0)), corner.x),
+      mix(waterHash(cell + vec2(0.0, 1.0)), waterHash(cell + vec2(1.0)), corner.x), corner.y);
+  }
+
+  float crestProfile(float phase, float width, float softEdge) {
+    return 1.0 - smoothstep(width, width + softEdge, abs(phase - 0.81));
   }
 
   void main() {
     float offshore = coastPoint.y;
-    float swell = sin(coastPoint.x * 0.009 - offshore * 0.012 - waterTime * 0.16);
-    float crossSwell = sin(coastPoint.x * 0.022 + offshore * 0.018 + waterTime * 0.21);
-    float rippleA = sin(coastPoint.x * 0.032 + offshore * 0.19 + swell * 1.8 + crossSwell * 0.8 - waterTime * 1.17);
-    float rippleB = sin(coastPoint.x * -0.057 + offshore * 0.105 + crossSwell * 1.4 - swell * 0.56 + waterTime * 0.87);
+    // Wind waves cross the bay in world space. Only the break bends with the shore.
+    vec2 sea = surfacePoint.xz * vec2(1.0, -1.0);
+    float windTime = waterTime * mix(0.88, 1.16, roughness - 1.0);
+    float swell = sin(dot(sea, vec2(0.015, 0.022)) - windTime * 0.19);
+    float crossSwell = sin(dot(sea, vec2(-0.037, 0.016)) + windTime * 0.23);
+    float basin = waterNoise(sea * vec2(0.013, 0.022) + vec2(swell, crossSwell) * 0.18);
+    float rippleA = sin(dot(sea, vec2(0.047, 0.176)) + swell * 1.32 + crossSwell * 0.78 + basin * 5.2 - windTime);
+    float rippleB = sin(dot(sea, vec2(-0.103, 0.146)) + crossSwell * 1.17 - basin * 3.4 + windTime * 0.79);
     vec3 toCamera = normalize(cameraPosition - surfacePoint);
     float slant = 1.0 - clamp(toCamera.y, 0.0, 1.0);
-    float waveLight = smoothstep(0.37, 0.99, rippleA) * smoothstep(-0.69, 0.85, swell + rippleB * 0.48);
+    float wavePacket = swell * 0.46 + crossSwell * 0.37 + (basin - 0.5) * 1.6;
+    float waveLight = smoothstep(0.53, 0.98, rippleA) * smoothstep(-0.26, 0.78, wavePacket + rippleB * 0.42)
+      + smoothstep(0.78, 0.99, rippleB) * smoothstep(-0.2, 0.81, -wavePacket + rippleA * 0.35) * 0.47;
     float caustic = 0.0;
     if (waterHighDetail) {
-      vec2 fold = vec2(coastPoint.x * .11 + offshore * .17, coastPoint.x * .09 - offshore * .20);
-      fold += vec2(swell * 1.4, crossSwell * 1.2) + waterTime * vec2(-.87, .74);
-      vec2 ripples = sin(fold + .48 * sin(fold.yx));
+      vec2 fold = vec2(dot(sea, vec2(0.19, 0.29)), dot(sea, vec2(0.24, -0.18)));
+      fold += vec2(swell, crossSwell) * 1.2 + windTime * vec2(-0.79, 0.67);
+      vec2 ripples = sin(fold + 0.68 * sin(fold.yx));
       float visibleDetail = 1.0 - smoothstep(.6, 2.3, max(fwidth(fold.x), fwidth(fold.y)));
-      caustic = smoothstep(.71, 1.55, abs(ripples.x + ripples.y)) * visibleDetail;
+      caustic = smoothstep(0.69, 1.49, abs(ripples.x + ripples.y)) * visibleDetail;
     }
-    float depth = smoothstep(8.0, 278.0, offshore + rippleB * 3.2);
+    float depth = smoothstep(17.0, 325.0, offshore + (basin - 0.5) * 42.0);
     vec3 color = mix(shallowTint, deepTint, depth);
-    color = mix(color, shoreTint, 1.0 - smoothstep(0.0, 21.0, offshore));
-    color = mix(color, foamTint, waveLight * mix(0.14, 0.044, depth));
-    color = mix(color, foamTint, caustic * (1.0 - smoothstep(8.0, 112.0, offshore)) * .084);
-    color = mix(color, cloudTint, slant * slant * 0.13);
+    color = mix(color, shoreTint, 1.0 - smoothstep(0.0, 24.0 + basin * 13.0, offshore));
+    // Green-blue pockets in the shallows suggest reef and kelp under moving water.
+    float seabed = smoothstep(0.56, 0.91, basin + crossSwell * 0.075)
+      * smoothstep(8.0, 26.0, offshore) * (1.0 - smoothstep(95.0, 252.0, offshore));
+    color *= 0.94 + basin * 0.12 + (swell * 0.019 + crossSwell * 0.012) - seabed * 0.23;
+    color = mix(color, cloudTint, waveLight * mix(0.115, 0.035, depth));
+    color = mix(color, foamTint, caustic * (1.0 - smoothstep(8.0, 128.0, offshore)) * 0.064);
+    color = mix(color, cloudTint, slant * slant * 0.15);
 
     // The artistically reflected sky follows the water and shifts as the camera orbits.
     if (offshore < 700.0 && abs(coastPoint.x) < 800.0) {
       float reflectionEdge = (1.0 - smoothstep(550.0, 785.0, abs(coastPoint.x)))
         * (1.0 - smoothstep(540.0, 685.0, offshore));
-      vec2 rippleOffset = vec2(rippleA * 4.5, rippleB * 3.8) * roughness;
+      vec2 rippleOffset = vec2(rippleA * 4.8 + swell * 2.3, rippleB * 2.5 + crossSwell * 2.8) * roughness;
       vec2 mirror = coastPoint + rippleOffset + vec2(toCamera.x, -toCamera.z) * 18.0;
       // The twilight band follows the local bearing even when the sun's disc is below the horizon.
       if (solarBand > 0.0) {
@@ -143,8 +171,9 @@ const fragmentShader = `
       float nearCloud = cloud(mirror, vec2(-186.0 + drift, 49.0), 1.32);
       float farCloud = cloud(mirror, vec2(182.0 + drift * 0.74, 69.0), 1.18);
       float bank = softEllipse(mirror, vec2(drift, 72.0), vec2(372.0, 62.0), 0.86);
-      float clouds = max(max(nearCloud, farCloud * 0.9) * cloudCover, bank * max(0.0, cloudCover - 0.5));
-      color = mix(color, cloudTint, clouds * reflectionEdge * (0.66 + slant * 0.12));
+      float clouds = max(max(nearCloud, farCloud * 0.9) * cloudCover, bank * max(0.0, cloudCover - 0.46));
+      float reflectedCloudLight = clouds * reflectionEdge * (0.27 + waveLight * 0.18 + slant * 0.15);
+      color = mix(color, cloudTint, reflectedCloudLight);
 
       if (bodyVisibility > 0.0) {
         vec2 bodyDistance = mirror - bodyPosition;
@@ -154,41 +183,58 @@ const fragmentShader = `
           float discRadius = dot(disc, disc);
           float hemisphere = sqrt(max(0.0, 1.0 - discRadius));
           float terminator = disc.x * moonLight.x + hemisphere * moonLight.y;
-          float dayCore = 1.0 - smoothstep(0.25, 1.12, discRadius);
+          float dayCore = 1.0 - smoothstep(0.36, 1.11, discRadius);
           float moonCore = (1.0 - smoothstep(0.57, 1.08, discRadius)) * smoothstep(-0.13, 0.18, terminator);
-          float core = mix(dayCore * (0.79 + 0.15 * rippleA), moonCore, moon);
-          float glow = softEllipse(bodyDistance, vec2(0.0), vec2(78.0, 36.0), 0.96);
+          float core = mix(dayCore * (0.73 + 0.20 * rippleA), moonCore, moon);
+          float glow = softEllipse(bodyDistance, vec2(0.0), vec2(69.0, 39.0), 0.98);
 
           // Shallow, staggered crests scatter the reflection along a tapered path toward shore.
           float towardShore = -bodyDistance.y;
-          float pathWidth = mix(24.0, 55.0 + slant * 12.0 + lowSolar * 8.0, smoothstep(0.0, 38.0, towardShore));
+          float pathWidth = mix(24.0, 54.0 + slant * 12.0 + lowSolar * 8.0, smoothstep(0.0, 44.0, towardShore));
           float pathX = bodyDistance.x - towardShore * toCamera.x * 0.32 + rippleB * 6.4;
           float path = (1.0 - smoothstep(0.05, 1.0, abs(pathX) / pathWidth))
             * smoothstep(-14.0, 2.0, towardShore) * (1.0 - smoothstep(26.0, 61.0, towardShore))
             * smoothstep(3.0, 13.0, offshore);
-          float facet = sin(towardShore * 0.51 + pathX * 0.048 + rippleB * 0.86 - waterTime * 1.48);
+          float facet = sin(towardShore * 0.70 + pathX * 0.065 + rippleB * 1.05 - windTime * 1.37);
           float streak = path * smoothstep(0.29, 0.97, facet) * smoothstep(-0.7, 0.54, rippleA + swell * 0.29);
           float glints = path * smoothstep(0.79, 0.99, rippleB) * smoothstep(0.25, 0.95, facet);
           glints += path * caustic * smoothstep(.28, .97, facet) * .52;
-          float amount = (core * 0.82 + glow * 0.25 + streak * 0.63) * bodyVisibility;
+          float amount = (core * 0.79 + glow * 0.30 + streak * 0.68) * bodyVisibility;
           color = mix(color, bodyTint, min(amount, 0.93));
-          color = mix(color, mix(bodyTint, vec3(1.0), 0.70), (streak * 0.18 + glints * 0.35) * bodyVisibility);
+          color = mix(color, mix(bodyTint, vec3(1.0), 0.70), (streak * 0.21 + glints * 0.42) * bodyVisibility);
         }
       }
     }
 
-    // Increasing phase sends the crests shoreward while distance fades them offshore.
-    float phase = fract((offshore + rippleA * 2.5 + rippleB * 1.4) / 26.0 + waterTime * 0.24);
-    float crest = smoothstep(0.70, 0.90, phase) * (1.0 - smoothstep(0.93, 1.0, phase));
-    float breakers = (1.0 - smoothstep(22.0, 82.0, offshore)) * smoothstep(0.1, 6.0, offshore);
-    float scallop = smoothstep(-0.44, 0.84, rippleB + rippleA * 0.2);
-    float wash = (1.0 - smoothstep(0.0, 8.0, offshore)) * (0.16 + 0.10 * rippleA);
-    color = mix(color, foamTint, wash + crest * breakers * mix(0.31, 0.85, scallop));
+    if (offshore < 94.0) {
+      float shoreTurn = sin(coastPoint.x * 0.026 + 0.6 * swell) * 2.8
+        + sin(coastPoint.x * 0.082 + windTime * 0.34) * 1.32;
+      // The top of the crest brightens first; the foam thins and fragments behind it.
+      float passage = (offshore + shoreTurn + (basin - 0.5) * 4.0) / 31.0 + windTime * 0.19;
+      float phase = fract(passage);
+      float softEdge = clamp(fwidth(passage), 0.010, 0.055);
+      float rim = crestProfile(phase, 0.018, softEdge);
+      float trail = smoothstep(0.48, 0.81, phase) * (1.0 - smoothstep(0.79, 0.85, phase));
+      float breakers = (1.0 - smoothstep(24.0, 92.0, offshore)) * smoothstep(0.4, 7.0, offshore);
+      float breakPattern = waterNoise(vec2(sea.x * 0.087, offshore * 0.21) + vec2(windTime * 0.11, 0.0));
+      float scallop = smoothstep(0.36, 0.79, breakPattern + crossSwell * 0.18);
+      float net = smoothstep(0.31, 0.70, breakPattern + rippleA * 0.17);
+      float swashEdge = 1.0 - smoothstep(0.35, 2.6 + basin * 2.4, offshore);
+      float swash = swashEdge * (0.06 + scallop * 0.41)
+        + (1.0 - smoothstep(2.0, 12.0, offshore)) * net * 0.12;
+      color *= 1.0 - trail * breakers * 0.09;
+      color = mix(color, foamTint, clamp(swash + breakers * (rim * (0.035 + scallop * 0.86) +
+        trail * net * 0.27), 0.0, 0.96));
+    }
     if (rain > 0.0) {
-      vec2 drop = fract(coastPoint / vec2(13.0, 17.0)) - 0.5;
+      vec2 grid = sea / vec2(17.0, 19.0);
+      float seed = waterHash(floor(grid));
+      float age = fract(windTime * 0.89 + seed);
+      vec2 drop = fract(grid) - mix(vec2(0.31, 0.70), vec2(0.69, 0.29), seed);
       float circle = length(drop);
-      float ring = 1.0 - smoothstep(0.025, 0.078, abs(circle - (0.23 + rippleB * 0.14)));
-      color = mix(color, foamTint, ring * smoothstep(0.7, 1.0, rippleA) * 0.18);
+      float ring = 1.0 - smoothstep(0.014, 0.045, abs(circle - (0.04 + age * 0.26)));
+      color = mix(color, foamTint, ring * smoothstep(0.40, 0.71, seed)
+        * (1.0 - smoothstep(0.34, 0.82, age)) * mix(0.17, 0.10, depth));
     }
     color = mix(color, mix(cloudTint, foamTint, 0.46),
       fog * (0.26 + 0.42 * smoothstep(15.0, 145.0, offshore)));

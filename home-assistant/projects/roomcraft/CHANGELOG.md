@@ -1,5 +1,10 @@
 # Changelog
 
+## Rebuild the La Jolla waterfront
+
+- Rebuilt the coastline with connected sandstone headlands, coastal scrub, a landscaped La Vereda promenade, and a longer Scripps Pier.
+- Surf, shallows, rain and reflections follow the shared 3D shoreline and live weather. **Waterfront · La Jolla Cove** and **La Jolla Shores** frame the coast from the water.
+
 ## Overhead Studio, room controls, and a La Jolla coastline
 
 - Studio edits the same 3D scene as Home from directly above. **Save** publishes the draft, and **Return to live dashboard** sits next to it.

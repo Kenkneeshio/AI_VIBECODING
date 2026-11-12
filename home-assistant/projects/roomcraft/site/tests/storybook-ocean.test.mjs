@@ -61,3 +61,16 @@ test('reflections, clouds, moon phase and reduced motion keep their independent 
   assert.equal(still.waterTime, 0);
   assert.deepEqual(still, sampleOcean(moon, 200));
 });
+
+test('rain changes the swell and ripple inputs even with reflections off', () => {
+  const wet = {condition:'rainy', windSpeed:16, windBearing:290, reflections:false};
+  const clear = sampleOcean({reflections:false});
+  const rain = sampleOcean(wet);
+  assert.equal(clear.rain, 0);
+  assert.equal(rain.rain, 1);
+  assert.equal(rain.cloudCover, 0);
+  assert.ok(rain.roughness > clear.roughness);
+  assert.notEqual(rain.deepTint, clear.deepTint);
+  assert.notEqual(rain.reflectedWind, 0);
+  assert.deepEqual(sampleOcean(wet), rain);
+});

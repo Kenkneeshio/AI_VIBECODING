@@ -897,7 +897,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.locationPanel.update(this.session);
       this.prepareUtilities(config);
       this.scene = createStorybookScene(this.canvas, this.model.layout,
-        {insaneGraphics: this.displaySettings.value.insaneGraphics});
+        {insaneGraphics: this.displaySettings.value.insaneGraphics, assetBase: '/local/roomcraft/'});
       const vacuum = this.model.layout.items.find(item => item.entityId?.startsWith('vacuum.') && item.vacuumMapEntityId);
       this.vacuumMapOverlay.configure(vacuum);
       this.lidarRuler.configure(vacuum);

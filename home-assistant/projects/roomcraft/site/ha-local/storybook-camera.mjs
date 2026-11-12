@@ -17,7 +17,8 @@ export const CAMERA_PRESETS = Object.freeze({
   east: cameraPreset('From east', 90, 42),
   south: cameraPreset('From south', 0, 42),
   west: cameraPreset('From west', 270, 42),
-  waterfront: cameraPreset('Waterfront', 0, 15),
+  waterfront: cameraPreset('Waterfront · La Jolla Cove', 154, 50),
+  shores: cameraPreset('La Jolla Shores', 208, 49),
   free: cameraPreset('Free view', 0, 25),
 });
 
@@ -106,7 +107,9 @@ export function studioCameraPreferences(host) {
 /** Fit one authored bounding box at an explicit viewport and orthographic pose. */
 export function fitStorybookCamera(camera, bounds, width, height, view = 'top', {focus, demoZoom} = {}) {
   const normalized = normalizeCameraView(view);
-  if (normalized.preset === 'waterfront' && bounds?.waterfront) bounds = bounds.waterfront;
+  const coastFrame = bounds?.coastalFrames?.[normalized.preset] ??
+    (normalized.preset === 'waterfront' ? bounds?.waterfront : undefined);
+  if (coastFrame) bounds = coastFrame;
   if (![bounds?.minX, bounds?.maxX, bounds?.minZ, bounds?.maxZ, width, height].every(Number.isFinite) ||
       width <= 0 || height <= 0 || bounds.maxX < bounds.minX || bounds.maxZ < bounds.minZ) {
     throw new Error('A finite scene bounding box and viewport are required.');
@@ -124,12 +127,15 @@ export function fitStorybookCamera(camera, bounds, width, height, view = 'top', 
   camera.lookAt(center);
   camera.updateMatrixWorld(true);
 
-  const upperY = Math.max(92, Number.isFinite(bounds.maxY) ? bounds.maxY : 92);
+  const coastal = coastFrame && Number.isFinite(bounds.minY) && Number.isFinite(bounds.maxY);
+  const lowerY = coastal ? bounds.minY : SCENERY_FLOOR;
+  const upperY = coastal ? bounds.maxY : Math.max(92, Number.isFinite(bounds.maxY) ? bounds.maxY : 92);
   const frame = new THREE.Box3();
   const corner = new THREE.Vector3();
-  for (const x of [bounds.minX - 37, bounds.maxX + 37]) {
-    for (const z of [bounds.minZ - 53, bounds.maxZ + 36]) {
-      for (const y of [SCENERY_FLOOR, upperY]) {
+  const sideMargin = coastal ? 12 : 37;
+  for (const x of [bounds.minX - sideMargin, bounds.maxX + sideMargin]) {
+    for (const z of [bounds.minZ - (coastal ? 6 : 53), bounds.maxZ + (coastal ? 5 : 36)]) {
+      for (const y of [lowerY, upperY]) {
         frame.expandByPoint(corner.set(x, y, z).applyMatrix4(camera.matrixWorldInverse));
       }
     }
