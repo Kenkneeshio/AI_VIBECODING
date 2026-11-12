@@ -99,7 +99,11 @@ test('a stage change swaps the activities at the same time and clears the beach 
   assert.ok(beach.root.getObjectByName('beach-surfers').count > 0);
   beach.update(0, {activity:'evening'});
   assert.deepEqual(names(), ['beach-evening-bonfires']);
-  assert.equal(beach.root.getObjectByName('beach-bonfire-sand-glow').count, 2);
+  assert.equal(beach.root.getObjectByName('beach-bonfire-sand-glow').count, 1);
+  assert.equal(beach.root.getObjectByName('beach-firepit-2'), undefined);
+  assert.equal(beach.root.getObjectByName('beach-bonfire-contact-shadows').count, 1);
+  beach.update(0, {activity:'day', night:true});
+  assert.deepEqual(names(), ['beach-evening-bonfires']);
   beach.update(0, {activity:'overnight'});
   assert.deepEqual(names(), []);
   beach.update(0, {activity:'day'});

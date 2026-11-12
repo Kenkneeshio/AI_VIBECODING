@@ -1,5 +1,10 @@
 # Changelog
 
+## Quieter nights on the waterfront
+
+- Vehicles illuminate the road ahead with headlights after sunset. Tail lights follow the same traffic animation.
+- Sidewalk traffic and boats are sparse after dark. The beach keeps a small evening bonfire and clears overnight.
+
 ## Calibrate radar coverage and keep movement on the floor
 
 - Radar avatars stay on home floors and avoid walls. They walk through clear doorways and can take a seat after repeated nearby detections. The vacuum also respects walls. A blocked report can disappear and reacquire at a confirmed point without drawing a path across the wall.

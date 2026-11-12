@@ -128,6 +128,66 @@ test('instanced cars sit on the rendered road and disappear when a feed is unava
   traffic.dispose();
 });
 
+test('night beams start at modeled headlights and point forward in each lane', () => {
+  const traffic = createStorybookTraffic(road);
+  const beams = traffic.root.getObjectByName('road-headlight-beams');
+  const halos = traffic.root.getObjectByName('road-lamp-halos');
+  const night = {night:true, transientTelemetry:true};
+  const sedan = {...profile('ambient'), vehicleStyle:'seafoam-sedan'};
+  const slots = createTrafficMotion(road).update(3, sedan, false, true);
+  traffic.update(3, sedan, night);
+  assert.equal(beams.count, slots.length * 2);
+  assert.equal(halos.count, slots.length * 4);
+  assert.equal(beams.material.blending, THREE.AdditiveBlending);
+  assert.equal(beams.material.depthWrite, false);
+  const matrix = new THREE.Matrix4();
+  for (const [index, slot] of slots.entries()) {
+    for (const side of [0, 1]) {
+      beams.getMatrixAt(index * 2 + side, matrix);
+      const origin = new THREE.Vector3().applyMatrix4(matrix);
+      const far = new THREE.Vector3(1, .16, 0).applyMatrix4(matrix);
+      const laneDirection = slot.lane ? -1 : 1;
+      assert.ok((origin.x - slot.x) * laneDirection > 23);
+      assert.ok((far.x - origin.x) * laneDirection > 52);
+      assert.ok(Math.abs(far.z - slot.z) < 11);
+      assert.ok(Math.abs(far.y - road.surfaceY - .16) < 1e-5);
+    }
+  }
+  const glow = new THREE.Color();
+  halos.getColorAt(0, glow);
+  assert.ok(glow.g > .8);
+  halos.getColorAt(3, glow);
+  assert.ok(glow.r > glow.g * 4);
+  traffic.update(3, {...profile('ambient'), vehicleStyle:'ruby-motorcycle'}, night);
+  assert.equal(beams.count, slots.length);
+  assert.equal(halos.count, slots.length * 2);
+  traffic.dispose();
+});
+
+test('night lights are disabled in daylight and follow replay and reduced-motion vehicle poses', () => {
+  const traffic = createStorybookTraffic(road);
+  const beams = traffic.root.getObjectByName('road-headlight-beams');
+  const halos = traffic.root.getObjectByName('road-lamp-halos');
+  const mix = profile('ambient');
+  const options = {night:true, transientTelemetry:true};
+  const state = () => [beams, halos].map(mesh => Array.from(mesh.instanceMatrix.array.slice(0, mesh.count * 16)));
+  traffic.update(2, mix, options);
+  const first = state();
+  traffic.update(4, mix, options);
+  assert.notDeepEqual(state(), first);
+  traffic.update(2, mix, options);
+  assert.deepEqual(state(), first);
+  traffic.update(2, mix, {...options, reduceMotion:true});
+  const frozen = state();
+  traffic.update(40, mix, {...options, reduceMotion:true});
+  assert.deepEqual(state(), frozen);
+  traffic.update(40, mix, {transientTelemetry:true});
+  for (const mesh of [beams, halos]) assert.ok(!mesh.visible && mesh.count === 0);
+  traffic.update(41, undefined, options);
+  for (const mesh of [beams, halos]) assert.ok(!mesh.visible && mesh.count === 0);
+  traffic.dispose();
+});
+
 test('the everyday mix has predictable cars and occasional semis and motorcycles', () => {
   const traffic = createStorybookTraffic(road);
   const visibleModels = () => traffic.root.children.filter(child => child.isGroup && child.visible);

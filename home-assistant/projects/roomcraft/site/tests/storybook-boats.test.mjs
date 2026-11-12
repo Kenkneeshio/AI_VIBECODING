@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {createStorybookBoatRoutes, createStorybookBoats, sampleStorybookBoat} from '../ha-local/storybook-boats.mjs';
+import {createStorybookBoatRoutes, createStorybookBoats, createStorybookNightSailing,
+  sampleStorybookBoat} from '../ha-local/storybook-boats.mjs';
 
 const water = {
   y: -104.95,
@@ -130,7 +131,7 @@ test('models are geometrically distinct, wake foam stays offshore, and dispose r
   assert.equal(scene.root.children.length, 0);
 });
 
-test('the personal watercraft has a seated rider and clears the water at the overnight stage', () => {
+test('the personal watercraft has a seated rider and stays off the water after dark', () => {
   const scene = createStorybookBoats(water);
   const jet = scene.root.getObjectByName('Lagoon jet ski');
   const wake = scene.root.getObjectByName('Lagoon jet ski wake');
@@ -144,9 +145,59 @@ test('the personal watercraft has a seated rider and clears the water at the ove
   scene.update(12, {activity:'overnight', night:true, transientTelemetry:true});
   assert.equal(jet.visible, false);
   assert.equal(wake.visible, false);
-  assert.ok(boatsIn(scene).filter(boat => boat !== jet).every(boat => boat.visible));
+  assert.ok(boatsIn(scene).every(boat => !boat.visible));
+  scene.update(42, {activity:'evening', night:true, transientTelemetry:true});
+  assert.equal(jet.visible, false);
+  assert.equal(wake.visible, false);
   scene.update(12, {activity:'morning', transientTelemetry:true});
   assert.equal(jet.visible, true);
   assert.equal(wake.visible, true);
+  scene.dispose();
+});
+
+test('night boats enter offshore from the side and only one passing hull, wake and light group appears', () => {
+  const passage = createStorybookNightSailing(water);
+  const ship = (time, activity) => {
+    const entry = passage(time, activity);
+    return entry && {id:entry.route.id, ...sampleStorybookBoat(entry.route, entry.elapsed)};
+  };
+  assert.equal(ship(42, 'evening').id, 'cabin');
+  assert.ok(Math.abs(ship(42, 'evening').x - water.focusX) < 1e-6);
+  assert.equal(ship(160, 'evening'), null);
+  assert.equal(ship(174, 'overnight'), null);
+  assert.equal(ship(175, 'overnight').id, 'fishing');
+  assert.ok(Math.abs(ship(175, 'overnight').x - water.focusX) > 2700);
+  const centerFrames = activity => {
+    let visible = 0;
+    for (let time = 0; time < 1500; time++) {
+      const frame = ship(time, activity);
+      if (!frame) continue;
+      assert.ok(['cabin', 'fishing'].includes(frame.id));
+      assert.ok(frame.z < shoreAt(frame.x) - 42);
+      if (Math.abs(frame.x - water.focusX) < 850) visible++;
+    }
+    return visible;
+  };
+  const evening = centerFrames('evening');
+  const overnight = centerFrames('overnight');
+  assert.ok(overnight > 0 && overnight < evening && evening < 300);
+
+  const scene = createStorybookBoats(water);
+  const visible = () => scene.root.children.filter(child => child.visible).map(child => child.name);
+  const options = {activity:'evening', night:true, transientTelemetry:true};
+  scene.update(42, options);
+  assert.deepEqual(visible(), ['Coral cabin launch wake', 'Coral cabin launch']);
+  const lights = scene.root.getObjectByName('Coral cabin launch running lights');
+  assert.equal(lights.visible, true);
+  assert.equal(lights.children.length, 3);
+  const image = snapshot(scene);
+  scene.update(160, options);
+  assert.deepEqual(visible(), []);
+  scene.update(42, options);
+  assert.deepEqual(snapshot(scene), image);
+  scene.update(42, {...options, reduceMotion:true});
+  assert.deepEqual(visible(), []);
+  scene.update(0, {activity:'morning', transientTelemetry:true});
+  assert.equal(lights.visible, false);
   scene.dispose();
 });

@@ -7,6 +7,9 @@ const WALK_SPACING = 525;
 const CYCLE_SPACING = 1100;
 const WALK_WIDTH = 22;
 const WRAP_PADDING = 75;
+const NIGHT_WALK_GAP = 75;
+const NIGHT_CYCLE_GAP = 105;
+const NIGHT_FIRST_CROSSING = 54;
 const WALKERS = [
   {shirt: '#c87f70', trim: '#f1d19d', pants: '#556072', skin: '#d49876', hair: '#4d3635', accessory: 'bun'},
   {shirt: '#6a988b', trim: '#e8c58d', pants: '#5f666b', skin: '#a86a50', hair: '#382c34', accessory: 'cap'},
@@ -67,8 +70,31 @@ export function compileStorybookSidewalk(road) {
       });
     }
   }
-  function sample(seconds = 0, reduceMotion = false) {
+  const walkerSeconds = span / WALK_SPEED;
+  const cycleSeconds = span / CYCLE_SPEED;
+  const nightPeriod = walkerSeconds + NIGHT_WALK_GAP + cycleSeconds + NIGHT_CYCLE_GAP;
+  const nightOffset = Math.max(0, walkerSeconds / 2 - NIGHT_FIRST_CROSSING);
+  const nightAdults = [-1, 1].map(direction => walkers.find(actor => actor.direction === direction && !actor.child)).filter(Boolean);
+  const nightBikes = [-1, 1].map(direction => cyclists.find(actor => actor.direction === direction)).filter(Boolean);
+
+  function sample(seconds = 0, reduceMotion = false, {night = false, activity} = {}) {
     const time = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+    if (activity === 'overnight') return {walkers: [], cyclists: []};
+    if (night || activity === 'evening') {
+      if (reduceMotion) return {walkers: [], cyclists: []};
+      const passage = Math.floor((time + nightOffset) / nightPeriod);
+      const phase = (time + nightOffset) % nightPeriod;
+      const cycling = phase >= walkerSeconds + NIGHT_WALK_GAP;
+      const elapsed = cycling ? phase - walkerSeconds - NIGHT_WALK_GAP : phase;
+      const actors = cycling ? nightBikes : nightAdults;
+      const duration = cycling ? cycleSeconds : walkerSeconds;
+      if (elapsed >= duration || !actors.length) return {walkers: [], cyclists: []};
+      const actor = actors[(passage + 1) % actors.length];
+      const offset = elapsed / duration * span;
+      const x = start + (actor.direction > 0 ? offset : span - offset);
+      const posed = {...actor, x, gait: elapsed * (cycling ? 7 : 10) + actor.phase};
+      return cycling ? {walkers: [], cyclists: [posed]} : {walkers: [posed], cyclists: []};
+    }
     const place = (actors, speed, cadence) => actors.map(actor => ({
       ...actor,
       x: start + wrap(actor.offset + actor.direction * speed * time, span),
@@ -158,8 +184,6 @@ export function createStorybookSidewalk(road) {
   });
   const walkers = layer('sidewalk-walkers', new THREE.SphereGeometry(1, 9, 6),
     new THREE.MeshStandardMaterial({color: '#fff', roughness: .81}), parts);
-  let colorIndex = 0;
-  for (const actor of paths.walkers) paintWalker(actor, true, shade => walkers.setColorAt(colorIndex++, swatches.get(shade)));
   const shadows = layer('sidewalk-contact-shadows', new THREE.CircleGeometry(1, 16).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({color: '#584b52', opacity: .23, transparent: true, depthWrite: false}),
     paths.walkers.length + paths.cyclists.length);
@@ -173,13 +197,15 @@ export function createStorybookSidewalk(road) {
   let liveSeconds = 0;
   let previousLiveTime;
   let lastPose;
-  function update(seconds, {reduceMotion = false, night = false, transientTelemetry = false} = {}) {
-    if (night !== lastNight) {
+  let lastPalette;
+  function update(seconds, {reduceMotion = false, night = false, transientTelemetry = false, activity} = {}) {
+    const dark = night || activity === 'evening' || activity === 'overnight';
+    if (dark !== lastNight) {
       for (const layers of bikes.values()) for (const {role, mesh} of layers) {
-        if (role === 'headlamp') mesh.material.emissiveIntensity = night ? 1.05 : .16;
-        if (role === 'taillamp') mesh.material.emissiveIntensity = night ? .75 : .18;
+        if (role === 'headlamp') mesh.material.emissiveIntensity = dark ? 1.05 : .16;
+        if (role === 'taillamp') mesh.material.emissiveIntensity = dark ? .75 : .18;
       }
-      lastNight = night;
+      lastNight = dark;
     }
     if (!transientTelemetry) {
       const step = Number.isFinite(previousLiveTime) && Number.isFinite(seconds)
@@ -188,9 +214,13 @@ export function createStorybookSidewalk(road) {
       previousLiveTime = seconds;
     }
     const time = transientTelemetry ? (reduceMotion ? 0 : seconds) : liveSeconds;
-    if (lastPose?.time === time && lastPose?.reduceMotion === reduceMotion && lastPose?.transientTelemetry === transientTelemetry) return;
-    lastPose = {time, reduceMotion, transientTelemetry};
-    const frame = paths.sample(time, reduceMotion);
+    if (lastPose?.time === time && lastPose?.reduceMotion === reduceMotion &&
+        lastPose?.transientTelemetry === transientTelemetry && lastPose?.night === night && lastPose?.activity === activity) return;
+    lastPose = {time, reduceMotion, transientTelemetry, night, activity};
+    const frame = paths.sample(time, reduceMotion, {night, activity});
+    const palette = frame.walkers.length === paths.walkers.length ? 'day' : frame.walkers[0]?.id;
+    const recolor = palette !== lastPalette;
+    lastPalette = palette;
     let partIndex = 0;
     let shadowIndex = 0;
     function shadow(actor, length, width) {
@@ -203,12 +233,13 @@ export function createStorybookSidewalk(road) {
     for (const actor of frame.walkers) {
       const {direction, scale} = actor;
       const yaw = direction > 0 ? 0 : Math.PI;
-      paintWalker(actor, reduceMotion, (_shade, x, y, z, width, height, depth, lean = 0) => {
+      paintWalker(actor, reduceMotion, (shade, x, y, z, width, height, depth, lean = 0) => {
         transform.position.set(actor.x + x * scale * direction, actor.y + y * scale,
           actor.z + z * scale * direction);
         transform.rotation.set(0, yaw, lean);
         transform.scale.set(width * scale, height * scale, depth * scale);
         transform.updateMatrix();
+        if (recolor) walkers.setColorAt(partIndex, swatches.get(shade));
         walkers.setMatrixAt(partIndex++, transform.matrix);
       });
       shadow(actor, 5.32, 4.1);
@@ -225,7 +256,13 @@ export function createStorybookSidewalk(road) {
       bikeCounts.set(actor.style.id, index + 1);
       shadow(actor, actor.style.length * .52, actor.style.width * .58);
     }
-    for (const layers of bikes.values()) for (const {mesh} of layers) mesh.instanceMatrix.needsUpdate = true;
+    for (const [style, layers] of bikes) for (const {mesh} of layers) {
+      mesh.count = bikeCounts.get(style) ?? 0;
+      mesh.instanceMatrix.needsUpdate = true;
+    }
+    walkers.count = partIndex;
+    shadows.count = shadowIndex;
+    if (recolor && walkers.instanceColor) walkers.instanceColor.needsUpdate = true;
     walkers.instanceMatrix.needsUpdate = true;
     shadows.instanceMatrix.needsUpdate = true;
   }

@@ -4,6 +4,9 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 const TAU = Math.PI * 2;
 const {clamp, lerp} = THREE.MathUtils;
 const CHOPPY = new Set(['rainy', 'pouring', 'lightning-rainy', 'windy', 'windy-variant']);
+const EVENING_GAP = 188;
+const OVERNIGHT_GAP = 490;
+const OVERNIGHT_DELAY = 175;
 const HULL_SECTIONS = [[-.49, .67], [-.34, .94], [-.10, 1], [.20, .84], [.39, .48], [.51, .045]];
 const RECIPES = [
   {id: 'sailboat', name: 'Ivory sailboat', length: 59, beam: 21, paint: '#558e94', deck: '#e1bb86',
@@ -57,6 +60,54 @@ export function createStorybookBoatRoutes(water) {
     }
     return true;
   });
+}
+
+/** A quiet ship crosses from well outside the normal coast view. Its wake uses the same route. */
+export function createStorybookNightSailing(water, routes = createStorybookBoatRoutes(water)) {
+  if (!routes.length) return () => null;
+  const {shoreline, farZ} = water;
+  const first = shoreline[0].x + 120;
+  const last = shoreline.at(-1).x - 120;
+  const width = last - first;
+  if (width < 120) return () => null;
+
+  function passage(ids, speed, gap, offsetFor) {
+    const duration = width / speed;
+    const period = duration + gap;
+    const vessels = ids.flatMap(id => {
+      const route = routes.find(candidate => candidate.id === id);
+      if (!route) return [];
+      const directions = [1, -1].map(direction => ({
+        ...route, start: 0, period: duration,
+        point(angle) {
+          const edge = route.length * .55;
+          const x = clamp((direction > 0 ? first : last) + direction * width * angle / TAU,
+            shoreline[0].x + edge + 8, shoreline.at(-1).x - edge - 8);
+          const dry = Math.min(shoreAt(shoreline, x), shoreAt(shoreline, x - edge), shoreAt(shoreline, x + edge));
+          const z = Math.max(farZ + 65, dry - route.offshore - Math.sin(angle * 2) * route.drift * .55);
+          return {x, z};
+        },
+      }));
+      for (let step = 0; step <= 20; step++) {
+        const {x, z} = directions[0].point(step * TAU / 20);
+        if (shoreAt(shoreline, x) - z < route.length / 2 + 8) return [];
+      }
+      return [directions];
+    });
+    if (!vessels.length) return () => null;
+    const offset = offsetFor(duration, period);
+    return seconds => {
+      const time = (Number.isFinite(seconds) ? Math.max(0, seconds) : 0) + offset;
+      const elapsed = time % period;
+      if (elapsed >= duration) return null;
+      const index = Math.floor(time / period);
+      return {route: vessels[index % vessels.length][index % 2], elapsed};
+    };
+  }
+
+  const evening = passage(['cabin', 'fishing'], 37, EVENING_GAP, duration => Math.max(0, duration / 2 - 42));
+  const overnight = passage(['fishing'], 29, OVERNIGHT_GAP, (_duration, period) => period - OVERNIGHT_DELAY);
+  return (seconds, activity) => (activity === 'overnight' ? overnight : evening)(seconds);
 }
 
 function heading(route, angle, delta = .003) {
@@ -352,14 +403,14 @@ function wakeArt(route, waterY) {
   mesh.name = route.name + ' wake';
   mesh.frustumCulled = false;
 
-  function update({angle}, night) {
+  function update({angle}, night, path = route) {
     const duration = route.wakeSeconds ?? (route.id === 'cabin' ? 4.1 : 6);
-    const previousArc = duration * TAU / route.period;
+    const previousArc = duration * TAU / path.period;
     for (let step = 0; step < WAKE_STEPS; step++) {
       const t = step / (WAKE_STEPS - 1);
       const theta = angle - previousArc * t;
-      const yaw = heading(route, theta);
-      const {x, z} = route.point(theta);
+      const yaw = heading(path, theta);
+      const {x, z} = path.point(theta);
       const cos = Math.cos(yaw);
       const sin = Math.sin(yaw);
       const stern = route.length * .48;
@@ -387,11 +438,26 @@ export function createStorybookBoats(water) {
   const root = new THREE.Group();
   root.name = 'Coastal boats';
   const material = new THREE.MeshStandardMaterial({vertexColors: true, side: THREE.DoubleSide, roughness: .73});
-  const boats = createStorybookBoatRoutes(water).map(route => {
+  const routes = createStorybookBoatRoutes(water);
+  const nightSailing = createStorybookNightSailing(water, routes);
+  const lampShape = new THREE.SphereGeometry(1.35, 8, 6);
+  const lampColors = ['#ff896b', '#8bf0b4', '#fff1c4'].map(color => new THREE.MeshBasicMaterial({color, toneMapped:false}));
+  const boats = routes.map(route => {
     const hull = boatArt(route, material);
     const wake = wakeArt(route, water.y);
+    let lights;
+    if (route.id === 'cabin' || route.id === 'fishing') {
+      lights = new THREE.Group();
+      lights.name = `${route.name} running lights`;
+      for (const [index, position] of [[.33,6.5,-.27],[.33,6.5,.27],[-.36,6.7,0]].entries()) {
+        const lamp = new THREE.Mesh(lampShape, lampColors[index]);
+        lamp.position.set(position[0] * route.length, position[1], position[2] * route.beam);
+        lights.add(lamp);
+      }
+      hull.add(lights);
+    }
     root.add(wake.mesh, hull);
-    return {route, hull, wake};
+    return {route, hull, wake, lights};
   });
   let liveTime = 0;
   let lastTime;
@@ -405,15 +471,19 @@ export function createStorybookBoats(water) {
     }
     lastTime = transientTelemetry ? undefined : now;
     const time = transientTelemetry ? (reduceMotion ? 0 : now ?? 0) : liveTime;
-    for (const {route, hull, wake} of boats) {
-      const visible = route.id !== 'jet-ski' || activity !== 'overnight';
+    const dark = night || activity === 'evening' || activity === 'overnight';
+    const passage = dark && !reduceMotion ? nightSailing(time, activity) : null;
+    for (const {route, hull, wake, lights} of boats) {
+      const visible = !dark || passage?.route.id === route.id;
       hull.visible = visible;
       wake.mesh.visible = visible;
+      if (lights) lights.visible = dark && visible;
       if (!visible) continue;
-      const sample = sampleStorybookBoat(route, time, {condition});
+      const path = passage?.route ?? route;
+      const sample = sampleStorybookBoat(path, passage?.elapsed ?? time, {condition});
       hull.position.set(sample.x, water.y + sample.heave, sample.z);
       hull.rotation.set(sample.roll, sample.yaw, sample.pitch, 'YXZ');
-      wake.update(sample, night);
+      wake.update(sample, dark, path);
     }
   }
 
@@ -426,6 +496,8 @@ export function createStorybookBoats(water) {
       wake.mesh.material.dispose();
     }
     material.dispose();
+    lampShape.dispose();
+    for (const color of lampColors) color.dispose();
     root.clear();
   }
 

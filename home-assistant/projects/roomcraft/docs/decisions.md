@@ -1,5 +1,9 @@
 # Decision log
 
+## Give the nighttime neighborhood its own rhythm
+
+Use the live sun state for road lighting and quieter waterfront activity. Directional headlight effects follow the same road position and lane as the miniature. Use deterministic appearance windows for occasional outdoor figures and vessels after dark. Preserve the existing beach schedule, including the empty beach after 11 p.m. Keep these visual effects outside the authored layout and Home Assistant device state.
+
 ## Compare measured radar detections with the plan
 
 Record anonymized 25 cm sensor-local coverage bins on Home Assistant. Use at most one position report every five seconds per switch, summarize per minute, and expire coverage after seven days. Keep the high-frequency target details excluded from Recorder. Map the bins with the current calibration when requested. A radar coverage test uses controlled observations at known points. A heat map cannot establish whether an unobserved area was empty or out of range. The calibration fit preserves one scale across both axes and exposes residual and held-out errors before publishing.

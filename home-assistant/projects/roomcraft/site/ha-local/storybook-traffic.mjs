@@ -16,6 +16,83 @@ const NEIGHBORHOOD_FLEET = [
   'pine-suv', 'blue-wagon', 'sand-pickup', 'butter-compact',
   'lavender-delivery', 'pine-suv', 'teal-semi', 'indigo-motorcycle',
 ].map(id => VEHICLES.get(id));
+const HEADLIGHT_COLOR = new THREE.Color('#fff1cf');
+const TAILLIGHT_COLOR = new THREE.Color('#db514c');
+
+function lampMounts(geometry) {
+  geometry.computeBoundingBox();
+  const box = geometry.boundingBox;
+  if (box.max.z - box.min.z < 5) return [box.getCenter(new THREE.Vector3())];
+  const middle = (box.min.z + box.max.z) / 2;
+  const halves = [new THREE.Box3(), new THREE.Box3()];
+  const point = new THREE.Vector3();
+  const vertices = geometry.attributes.position;
+  for (let index = 0; index < vertices.count; index++) {
+    point.fromBufferAttribute(vertices, index);
+    halves[Number(point.z >= middle)].expandByPoint(point);
+  }
+  return halves.map(half => half.getCenter(new THREE.Vector3()));
+}
+
+const LIGHT_FADE = `
+  #ifdef USE_FOG
+    #ifdef FOG_EXP2
+      opacity *= exp(-fogDensity * fogDensity * vFogDepth * vFogDepth);
+    #else
+      opacity *= 1.0 - smoothstep(fogNear, fogFar, vFogDepth);
+    #endif
+  #endif
+`;
+
+function nightLightMaterial(billboard) {
+  return new THREE.ShaderMaterial({
+    fog:true,
+    uniforms:THREE.UniformsUtils.clone(THREE.UniformsLib.fog),
+    transparent:true,
+    depthWrite:false,
+    blending:THREE.AdditiveBlending,
+    toneMapped:false,
+    vertexShader:`
+      varying vec2 lightUv;
+      ${billboard ? 'varying vec3 tint;' : ''}
+      #include <fog_pars_vertex>
+      void main() {
+        lightUv = uv;
+        ${billboard ? `
+          tint = instanceColor;
+          vec4 mvPosition = modelViewMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+          mvPosition.xy += position.xy * vec2(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz));
+        ` : 'vec4 mvPosition = modelViewMatrix * instanceMatrix * vec4(position, 1.0);'}
+        gl_Position = projectionMatrix * mvPosition;
+        #include <fog_vertex>
+      }
+    `,
+    fragmentShader:`
+      varying vec2 lightUv;
+      ${billboard ? 'varying vec3 tint;' : ''}
+      #include <fog_pars_fragment>
+      void main() {
+        ${billboard ? `
+          float radius = length(lightUv * 2.0 - 1.0);
+          float bloom = 1.0 - smoothstep(0.06, 0.96, radius);
+          float center = 1.0 - smoothstep(0.10, 0.38, radius);
+          float opacity = bloom * bloom * 0.43 + center * 0.39;
+          vec3 color = tint;
+        ` : `
+          float along = lightUv.x;
+          float width = mix(0.23, 1.0, smoothstep(0.02, 0.76, along));
+          float softEdge = 1.0 - smoothstep(width * 0.22, width, abs(lightUv.y * 2.0 - 1.0));
+          float falloff = smoothstep(0.0, 0.09, along) * pow(1.0 - along, 1.42);
+          float opacity = softEdge * falloff * 0.39;
+          vec3 color = vec3(1.0, 0.80, 0.53);
+        `}
+        ${LIGHT_FADE}
+        gl_FragColor = vec4(color, opacity);
+        #include <colorspace_fragment>
+      }
+    `,
+  });
+}
 
 function neighborhoodVehicle({index, lane}) {
   const block = Math.floor(index / AMBIENT.stride);
@@ -95,8 +172,8 @@ export function createStorybookTraffic(road) {
   const motion = createTrafficMotion(road);
   let demoMotion;
   const models = new Map();
-  function meshFor(geometry, material) {
-    const mesh = new THREE.InstancedMesh(geometry, material, motion.capacity);
+  function meshFor(geometry, material, capacity = motion.capacity) {
+    const mesh = new THREE.InstancedMesh(geometry, material, capacity);
     mesh.count = 0;
     mesh.frustumCulled = false;
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -104,15 +181,22 @@ export function createStorybookTraffic(road) {
   }
   const shadows = meshFor(new THREE.CircleGeometry(1, 18).rotateX(-Math.PI / 2).translate(0, .02, 0),
     new THREE.MeshBasicMaterial({color: '#35323c', opacity: .23, transparent: true, depthWrite: false}));
-  root.add(shadows);
+  const beams = meshFor(new THREE.PlaneGeometry(1, 2).rotateX(-Math.PI / 2).translate(.5, .16, 0),
+    nightLightMaterial(false), motion.capacity * 2);
+  beams.name = 'road-headlight-beams';
+  const halos = meshFor(new THREE.PlaneGeometry(1, 1), nightLightMaterial(true), motion.capacity * 4);
+  halos.name = 'road-lamp-halos';
+  beams.visible = halos.visible = false;
+  root.add(shadows, beams, halos);
   const transform = new THREE.Object3D();
+  const laneHalf = Math.abs(road.lanes[0] - road.lanes[1]) / 2;
   let lastNight;
   root.visible = false;
 
   function setLamps(model, night) {
     for (const {mesh, role} of model.layers) {
-      if (role === 'headlamp') mesh.material.emissiveIntensity = night ? 1.65 : .26;
-      if (role === 'taillamp') mesh.material.emissiveIntensity = night ? .91 : .28;
+      if (role === 'headlamp') mesh.material.emissiveIntensity = night ? 2.45 : .26;
+      if (role === 'taillamp') mesh.material.emissiveIntensity = night ? 1.13 : .28;
     }
   }
 
@@ -124,10 +208,21 @@ export function createStorybookTraffic(road) {
       ({mesh: meshFor(geometry, material), role}));
     group.add(...layers.map(({mesh}) => mesh));
     root.add(group);
-    const model = {group, layers, count: 0};
+    const mounts = role => lampMounts(layers.find(layer => layer.role === role).mesh.geometry);
+    const model = {group, layers, headlamps:mounts('headlamp'), taillamps:mounts('taillamp'), count: 0};
     setLamps(model, lastNight);
     models.set(vehicle.id, model);
     return model;
+  }
+
+  function haloAt(index, slot, direction, lamp, front) {
+    const size = front ? 12.4 : 8.6;
+    transform.position.set(slot.x + direction * (lamp.x + (front ? 1.1 : -1.0)),
+      road.surfaceY + lamp.y + .8, slot.z + direction * lamp.z);
+    transform.scale.set(size, size, 1);
+    transform.updateMatrix();
+    halos.setMatrixAt(index, transform.matrix);
+    halos.setColorAt(index, front ? HEADLIGHT_COLOR : TAILLIGHT_COLOR);
   }
 
   function update(time, profile, {reduceMotion = false, night = false, transientTelemetry = false} = {}) {
@@ -135,6 +230,8 @@ export function createStorybookTraffic(road) {
     const clock = transientTelemetry ? demoMotion : motion;
     const slots = clock.update(time, profile, reduceMotion, transientTelemetry);
     root.visible = slots.length > 0;
+    beams.visible = halos.visible = night && root.visible;
+    beams.count = halos.count = 0;
     if (!root.visible) return;
     if (night !== lastNight) {
       lastNight = night;
@@ -142,6 +239,8 @@ export function createStorybookTraffic(road) {
     }
     for (const model of models.values()) model.count = 0;
     const selected = VEHICLES.get(profile?.vehicleStyle);
+    let beamIndex = 0;
+    let haloIndex = 0;
     for (const [index, slot] of slots.entries()) {
       // Keep a car's silhouette stable across wraps and changes in traffic mode.
       const vehicle = selected ?? neighborhoodVehicle(slot);
@@ -155,6 +254,24 @@ export function createStorybookTraffic(road) {
       transform.scale.set(vehicle.length * .55, 1, vehicle.width * .62);
       transform.updateMatrix();
       shadows.setMatrixAt(index, transform.matrix);
+      if (!night) continue;
+      const direction = slot.lane ? -1 : 1;
+      const length = THREE.MathUtils.clamp(vehicle.length * 1.10, 53, 86);
+      for (const lamp of model.headlamps) {
+        const width = Math.max(5, Math.min(16, laneHalf - Math.abs(lamp.z) - 1));
+        transform.position.set(slot.x + direction * (lamp.x + 1), road.surfaceY, slot.z + direction * lamp.z);
+        transform.scale.set(length, 1, width);
+        transform.updateMatrix();
+        beams.setMatrixAt(beamIndex++, transform.matrix);
+        haloAt(haloIndex++, slot, direction, lamp, true);
+      }
+      for (const lamp of model.taillamps) haloAt(haloIndex++, slot, direction, lamp, false);
+    }
+    if (night) {
+      beams.count = beamIndex;
+      halos.count = haloIndex;
+      beams.instanceMatrix.needsUpdate = halos.instanceMatrix.needsUpdate = true;
+      halos.instanceColor.needsUpdate = true;
     }
     shadows.count = slots.length;
     shadows.instanceMatrix.needsUpdate = true;

@@ -45,6 +45,38 @@ test('walkers and cyclists move at distinct steady speeds with deterministic pha
   }
 });
 
+test('evening gives one complete passage at a time, with empty and overnight frames', () => {
+  const paths = compileStorybookSidewalk(road);
+  const options = {night:true, activity:'evening'};
+  const walker = paths.sample(54, false, options);
+  assert.equal(walker.walkers.length, 1);
+  assert.equal(walker.walkers[0].child, false);
+  assert.ok(Math.abs(walker.walkers[0].x - road.centerX) < 1e-6);
+  assert.deepEqual(paths.sample(240, false, options), {walkers:[], cyclists:[]});
+  const cyclist = paths.sample(315, false, options);
+  assert.equal(cyclist.walkers.length, 0);
+  assert.equal(cyclist.cyclists.length, 1);
+  assert.deepEqual(paths.sample(315, false, options), cyclist);
+  for (let seconds = 0; seconds < 1900; seconds += 3) {
+    const {walkers, cyclists} = paths.sample(seconds, false, options);
+    assert.ok(walkers.length + cyclists.length <= 1);
+  }
+  assert.deepEqual(paths.sample(54, true, options), {walkers:[], cyclists:[]});
+  assert.deepEqual(paths.sample(54, false, {...options, activity:'overnight'}), {walkers:[], cyclists:[]});
+
+  const sidewalk = createStorybookSidewalk(road);
+  sidewalk.update(54, {...options, transientTelemetry:true});
+  assert.equal(sidewalk.root.getObjectByName('sidewalk-contact-shadows').count, 1);
+  sidewalk.update(240, {...options, transientTelemetry:true});
+  assert.ok(sidewalk.root.children.every(mesh => mesh.count === 0));
+  sidewalk.update(315, {...options, transientTelemetry:true});
+  assert.equal(sidewalk.root.getObjectByName('sidewalk-walkers').count, 0);
+  assert.equal(sidewalk.root.getObjectByName('sidewalk-contact-shadows').count, 1);
+  sidewalk.update(315, {transientTelemetry:true, activity:'morning'});
+  assert.ok(sidewalk.root.getObjectByName('sidewalk-contact-shadows').count > 1);
+  sidewalk.dispose();
+});
+
 function snapshot(sidewalk) {
   const matrix = new THREE.Matrix4();
   return sidewalk.root.children.map(mesh => [

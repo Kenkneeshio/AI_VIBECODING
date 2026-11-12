@@ -437,14 +437,12 @@ function firepit(camp, index) {
 function eveningActivity(plan) {
   const group = new THREE.Group();
   group.name = 'beach-evening-bonfires';
-  const camps = [plan.court, plan.castle].filter(Boolean);
+  const camps = [plan.court ?? plan.castle];
   group.add(...camps.map(firepit));
   function sample(time) {
-    return camps.flatMap(({x, y, z}, index) => [-1, 1].map(side => ({
-      kind:'beachgoer', style:index * 2 + Number(side > 0), scale:side > 0 && index === 1 ? .82 : .95,
-      yaw:-side * Math.PI / 2, x:x + side * 16.23, y, ground:y, z:z - side * 1.25,
-      reach:.36 + Math.sin(time * 1.42 + index * 1.78 + side * 1.35) * .27,
-    })));
+    const {x, y, z} = camps[0];
+    return [{kind:'beachgoer', style:0, scale:.95, yaw:Math.PI / 2, x:x - 16.23, y, ground:y, z:z + 1.25,
+      reach:.36 + Math.sin(time * 1.42 - 1.35) * .27}];
   }
   const drawActors = actorLayer(group, sample(0), 'beach-bonfire-figures', 'beach-bonfire-contact-shadows');
   const flames = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 9, 7),
@@ -530,8 +528,9 @@ export function createStorybookBeachPlay(water, street) {
   let lastTime;
   let lastReduced;
   let lastActivity;
-  function update(seconds, {reduceMotion = false, transientTelemetry = false, activity = 'day'} = {}) {
-    const selected = Object.hasOwn(stages, activity) || activity === 'overnight' ? activity : 'day';
+  function update(seconds, {reduceMotion = false, transientTelemetry = false, activity = 'day', night = false} = {}) {
+    const selected = activity === 'overnight' ? activity : night ? 'evening' :
+      Object.hasOwn(stages, activity) ? activity : 'day';
     if (!transientTelemetry) {
       const dt = Number.isFinite(previousTime) && Number.isFinite(seconds)
         ? THREE.MathUtils.clamp(seconds - previousTime, 0, .25) : 0;
