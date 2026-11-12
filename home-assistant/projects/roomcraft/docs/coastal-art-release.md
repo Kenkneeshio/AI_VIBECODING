@@ -83,3 +83,12 @@ In Studio, choose **Terrain** or press **T**. Pick **Raise**, **Lower**, **Smoot
 The brushes apply to open meadow and outer dunes. Protected areas include the road, surf, built footprints, and the terrain holding the Cove and Shores landmarks. **Smooth** blends brush height changes. **Erase** restores generated terrain where it clears a cell. Coast and road controls select authored shapes. Cove and Shores remain grouped landmarks with visibility controls.
 
 The wide renderer extends the shoreline, ocean, and road independently of traffic, walking, and sailing ranges. It fills the distant foreground outside the editable mesh, allowing lowered ground to remain visible. Landward groves sit on larger, shaded hills. The pure terrain contract applies sparse changes to the shared world grid. The meadow sampler reads rendered triangles so vegetation and the stair approach sit on the surface. No raster asset or layout version change applies.
+
+![Wide coastal view with the extended ocean and inland terrain.](images/la-jolla-wide-coast.png)
+
+![Studio Terrain tab with brush modes and landscape controls.](images/studio-terrain-tools.png)
+
+- Runtime revision `864e9f4614bdd8e194d9688403770d91a200f136` passed 503 JavaScript and 38 Python tests, TypeScript, lint with 17 existing warnings, and the production build. The source manifest is `sha256:a7c29e3b8a731d8270cc91ea028b833661b855ed268900b050a3925efd275bb6`.
+- Chromium rendered six views at minimum zoom, including overhead, diagonal, and shallow sea-facing and land-facing views. The stamped editor passed mouse sculpt and paint, protected areas, undo and redo, scenery placement and removal, touch input, and a mocked Save that retained the terrain and existing project fields.
+- LAN and Nabu Casa served eleven matching assets, and the layout and projection matched the protected pre-release backup. Signed-in Home rendered both coastal presets and Default. Signed-in Studio opened all six Terrain tools and returned to Home. The wall tablet cold-opened the updated Default view and showed 28 FPS at the time of capture.
+- Private Studio version 99 was published from `8d1e5eff930792ae09d3726b9ce91c5feedec068`, with matching editor, style, terrain engine, renderer, and texture bytes. To roll back the software, reinstall `de81f85b8b223ed16af07f705504225534a373b7` and restore Studio version 98. Preserve any subsequently authored terrain by exporting the layout JSON before a downgrade. See [deployment recovery](deployment.md).
