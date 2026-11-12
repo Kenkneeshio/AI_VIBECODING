@@ -1,5 +1,7 @@
 # Roomcraft engineering handoff
 
+Latest architecture release evidence is anchored to runtime source `5671e943d983496f7c59d74bfeec4b774afb4704`, HA resource version `d25830e164fd80b1`, and owner-private Studio version 101. GitHub CI passed with the same manifest as the Windows build. Read the [audit verification table](architecture-audit-2026-11-12.md#verification-and-deployment-record) for the exact checks and limits.
+
 Start with the [current architecture and engineering guide](architecture.md) for system setup, framework, engine, module ownership, units and flow diagrams. The [12 November architecture audit](architecture-audit-2026-11-12.md) distinguishes implemented builder controls from remaining recipe editing and records the shared publication validation fix. Run `npm run architecture:check` before adding a module. The chronological release notes below are historical evidence, not a complete statement of current behavior.
 
 The [La Jolla art release](coastal-art-release.md) covers the world geometry, sandstone texture, surf shader, camera framing, and the curved street profile shared by the coastal terrain, sidewalks, and moving actors. The update is shared by the live dashboard and Studio. Home Assistant's published layout schema and device actions require no migration.

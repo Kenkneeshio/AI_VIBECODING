@@ -4,6 +4,7 @@
 
 - Published a current architecture guide with system, engine, save, live-state and release diagrams, units, team boundaries and a staged builder roadmap.
 - Added a deterministic module inventory and AST-based checks for pure-engine boundaries and shared Home/Studio dependencies. Build and CI run the guard.
+- Repaired two missing optional WASM dependency records exposed by npm 11.19.1. The final release passed GitHub CI and produced the same manifest on Windows and Linux.
 - Both save transports reject malformed decorative-object geometry before any upload or dashboard write. Legacy omitted rotation and valid exterior/custom objects remain compatible.
 - Refreshed the project entry documentation and made remaining procedural scenery limitations explicit. See the [audit and evidence](docs/architecture-audit-2026-11-12.md).
 
