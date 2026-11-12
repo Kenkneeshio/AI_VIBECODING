@@ -88,9 +88,24 @@ This feature does not yet solve furniture collision preferences, arbitrary room 
 
 ## Verification and release record
 
-The release owner records the exact source revision, automated results, browser/Undo checks, HA/Site/tablet readback and rollback evidence here after the full [release gate](release-standard.md). Do not infer deployment from source documentation.
+Verified on 2026-11-12 against runtime source [`57b7b2cfba0f329e52d5e37978158d8c46e8f42f`](https://github.com/Kenkneeshio/AI_VIBECODING/commit/57b7b2cfba0f329e52d5e37978158d8c46e8f42f). The runtime source and this later evidence record are separate commits.
 
-Required evidence includes pure-engine rejection and idempotence fixtures, terrain capacity and ordering tests, editor history recovery, and both transport side-effect guards. The release uses synthetic geometry for public tests and keeps private dashboard backups outside Git.
+- **Release gate:** clean dependency install, architecture guard, engine/release verification, 484 site tests, 65 native bridge/weather tests, 30 installer tests and 8 presence tests passed (587 total). Typecheck, production build, manifest readback and whitespace checks passed. ESLint has zero errors and the existing 17 warnings. [GitHub Actions passed on the same runtime source](https://github.com/Kenkneeshio/AI_VIBECODING/actions/runs/43278368480).
+- **Deterministic input manifest:** `sha256:b2ce5f0f0dd596ef39b44c6f91dc940489322ffb65aaff517eed0d0caec8a4f0` for 339 canonical inputs.
+- **Browser:** the checked-in [browser verification script](../site/scripts/verify-edit-safety-browser.mjs) passed against generated editor assets in headless Chrome at 1280 × 900. It exercises real mouse and touch terrain gestures, protected house boundaries, paint/props, Undo/Redo, auto repair, self-crossing room rollback, incomplete-drag Save blocking and the menu check. Save uses an isolated mock; no household actions occur.
+- **Home Assistant:** pre-install backup retained outside Git. Resource version `2e7c11c7487e8c80` installed and read back; 11 selected assets (including both safety engines) match source through LAN and remote HA. Home/Studio/Controls and all eight non-view dashboard fields match the expected backed-up configuration. The current project passed preflight with 9 rooms, 40 structural segments and 75 objects.
+- **Authenticated browser:** Home opened Studio with current live appearance. Manual repair was checked with the exact draft restored afterward; 3D stayed active. A write guard confirmed no image upload or dashboard save.
+- **Private Studio:** owner-private version **102** deployed successfully from Site source `0c2fc6a9fcff458938f5afcf1b985476ff806cac`; saved-version provenance and archive read back. Its source contains the app subset, without the parent GitHub documentation, so its input manifest differs.
+- **Wall tablet:** Apolosign cold launch, Home, Studio 3D, menu visibility and a tap on Check & repair were observed on its 1920 × 1080 screen. It reported “Terrain and structure checks passed.” The tablet was returned to Home. Initial cold loading briefly displayed HA's configuration-error placeholder before the module registered; it cleared without intervention. This release does not change that startup behavior.
+
+To repeat the isolated browser check from `site/` after building:
+
+```powershell
+$env:ROOMCRAFT_LIDAR_QA_DIST = '1'
+node scripts/verify-edit-safety-browser.mjs
+```
+
+Set `ROOMCRAFT_QA_CHROME` when Chrome is not at the script's Windows default path. Test captures remain in an OS temporary directory. Live screenshots and backups stay private; no camera images, entity state or credentials are committed. Private Site browser interaction was not separately repeated; its saved artifact, source provenance and deployment status were verified.
 
 ## Rollback
 

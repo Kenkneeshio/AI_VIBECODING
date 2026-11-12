@@ -6,6 +6,7 @@
 - Unsafe room boundaries, collapsed segments and malformed geometry restore the previous draft with its history and selection. Repairs remain undoable.
 - Studio adds **Main menu → Check & repair layout**. Both save transports reject unsafe geometry before upload or dashboard writes.
 - The [safe-editing contract and release record](docs/edit-safety.md) describes the exact scope, compatibility and verification requirements.
+- Verified 587 automated tests, GitHub CI, browser editing, unchanged HA layout readback and the tablet menu action. Released as HA resource `2e7c11c7487e8c80` and private Studio version 102.
 
 ## Document and guard the builder architecture
 
