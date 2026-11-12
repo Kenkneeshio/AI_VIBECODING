@@ -42,3 +42,9 @@ The live renderer maps the texture onto exposed rock in world coordinates. The s
 - Runtime revision `82213b8e3635dca5fefb55dc4221472f8d2ac54a` passed 478 JavaScript and 38 Python tests, TypeScript, lint with existing warnings, and the production build. The exact source manifest was `sha256:e7d57338349535b8b2f1f5a4006b1c093aaa3a09f6192441766a90c446b3c191`.
 - The renderer reproduced the corrected overhead view and both coastal camera views. The shore also rendered in simulated nighttime, rain, and Insane graphics. Signed-in Home Assistant confirmed the left-hand Cove and both camera options. LAN and Nabu Casa served nine matching release assets and the published layout matched the backup. The wall tablet cold-opened the corrected Default view.
 - Owner-private Studio version 94 was published from `b07e8dc0a52d64f2137ee74be997a1e65de32e75` with matching editor and texture bytes. To roll back this correction, reinstall `1ddfbca03023821b3bd46479a4a4d8169d3ee98f` and restore private Studio version 93.
+
+## Continuous bluff release verification and rollback
+
+- Runtime revision `96a8d20eec9ddbc74e3b105dcfd8a1a5a66aaae6` passed 479 JavaScript and 38 Python tests, TypeScript, lint with existing warnings, and the production build. The verified source manifest was `sha256:af172f42f7119dadd397eba69c6d07d96337b50fff028317d8986eac1c6059c4`.
+- The built renderer reproduced the overhead view and both coastal camera views. Cove also rendered at night, in rain, and with Insane graphics. Signed-in Home Assistant opened Cove, Shores and Default, and the wall tablet cold-opened to the continuous bluff on the left. LAN and Nabu Casa served nine matching assets and the dashboard layout matched the backup.
+- Owner-private Studio version 95 was published from `6323baeaee349379747a829048d4d6d374421e1f` with matching editor and texture bytes. To roll back, reinstall `82213b8e3635dca5fefb55dc4221472f8d2ac54a` and restore private Studio version 94.
