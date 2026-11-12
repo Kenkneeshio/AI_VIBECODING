@@ -37,9 +37,7 @@ export async function captureRadarPoint(read, sleep, now = Date.now, active = ()
   return {error: 'Too few fresh position reports. Check the radar reporting state and try a spot closer to the switch.'};
 }
 
-function drawSurvey(canvas, project, sensor, picked, samples, solution) {
-  const ctx = canvas.getContext('2d');
-  if (!ctx || !project) return;
+export function drawSurveyFloor(ctx, canvas, project) {
   ctx.fillStyle = '#e8eddf';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   for (const room of project.rooms) {
@@ -75,6 +73,12 @@ function drawSurvey(canvas, project, sensor, picked, samples, solution) {
   for (const room of project.rooms) {
     if (room.label) ctx.fillText(room.name, room.label.x, room.label.y, 250);
   }
+}
+
+function drawSurvey(canvas, project, sensor, picked, samples, solution) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx || !project) return;
+  drawSurveyFloor(ctx, canvas, project);
   const marker = (point, color, label) => {
     if (!point) return;
     ctx.beginPath();

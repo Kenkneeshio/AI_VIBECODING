@@ -5,6 +5,7 @@ import {placeStorybookTargets} from './storybook-state.mjs';
 import {createPersonPresence, personSource, readDetectionZones, readPersonTracks} from './storybook-tracking.mjs';
 import {mountStorybookStudioLook} from './storybook-studio-look.mjs';
 import {mountRadarCalibration} from './storybook-calibration-panel.mjs';
+import {mountVacuumAlignment} from './storybook-vacuum-alignment-panel.mjs';
 
 const SELECT_RADIUS = 22;
 const MIN_DRAG = 5;
@@ -84,6 +85,7 @@ export function mountStorybookEditor(document, host) {
   const trackingBridge = host.location?.pathname?.startsWith('/local/roomcraft/')
     ? host.RoomcraftDashboardBridge : null;
   const calibrator = mountRadarCalibration(document, host, {api, bridge: trackingBridge});
+  const vacuumAlignment = mountVacuumAlignment(document, host, {api, bridge: trackingBridge});
   const look = mountStorybookStudioLook(document, host, {api, viewport, bridge: trackingBridge, onChange: () => {
     draw(drag?.item && drag.position ? {[drag.item.id]: {position: drag.position}} : undefined);
   }});
@@ -656,6 +658,7 @@ export function mountStorybookEditor(document, host) {
       leaders.remove();
       look.dispose();
       calibrator?.dispose();
+      vacuumAlignment?.dispose();
       if (miniHelp) miniHelp.textContent = planHelp;
       buttons.left?.removeEventListener('click', rotateLeft);
       buttons.right?.removeEventListener('click', rotateRight);

@@ -1,5 +1,10 @@
 # Changelog
 
+## Compare the vacuum LiDAR map and show television power
+
+- Studio can load the authenticated LiDAR image, pair map and plan landmarks, compare metric distances, preview the overlay and undo an applied alignment. A saved alignment remembers the selected vacuum map so Home avoids applying it to a different floor.
+- Home adds **LiDAR map overlay** and uses the saved alignment. The television switches between a white screen with reported playback text and a dark screen while powered off or unavailable.
+
 ## Keep an occupant on the condo floor and stairs
 
 - Hold a character at its last usable radar position while the linked occupancy sensor remains on. Show an approximate area if the sensor has not sent a usable point, and clear the character on vacancy. The Presence tracking menu identifies held and approximate positions.

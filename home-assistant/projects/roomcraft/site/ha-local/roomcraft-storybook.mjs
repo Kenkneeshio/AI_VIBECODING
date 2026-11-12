@@ -16,6 +16,7 @@ import {bindStorybookDisplaySettings, DISPLAY_SETTINGS_MARKUP, DISPLAY_SETTINGS_
 import {readStorybookUtilities, utilityReading} from './storybook-utilities.mjs';
 import {bindStorybookPower, POWER_PANEL_MARKUP, POWER_PANEL_STYLE} from './storybook-power-panel.mjs';
 import {bindStorybookLightPanel, STORYBOOK_LIGHT_PANEL, STORYBOOK_LIGHT_PANEL_STYLES} from './storybook-light-panel.mjs';
+import {bindVacuumMapOverlay, VACUUM_MAP_TOGGLE} from './storybook-vacuum-map.mjs';
 import {bindStorybookCommutes, COMMUTE_DIALOG_MARKUP, COMMUTE_DIALOG_STYLE} from './storybook-commutes.mjs';
 import {createStorybookLocation, STORYBOOK_LOCATION_MARKUP, STORYBOOK_LOCATION_STYLE} from './storybook-location.mjs';
 import {bindStorybookHeatMap, HEAT_MAP_LEGEND, HEAT_MAP_STYLE, HEAT_MAP_TOGGLE} from './storybook-heatmap-panel.mjs';
@@ -273,6 +274,7 @@ class RoomcraftStorybookCard extends HTMLElement {
                   <button type="button" class="open-tracking" hidden>Presence tracking</button>
                   <button type="button" class="map-toggle toggle-detection-zone" aria-controls="detection-zone-legend" aria-pressed="false" hidden>Detection zone <span class="menu-toggle" aria-hidden="true"></span></button>
                   ${HEAT_MAP_TOGGLE}
+                  ${VACUUM_MAP_TOGGLE}
                 </section>
                 <section class="menu-group" aria-label="View controls">
                   <p class="menu-heading" aria-hidden="true">View controls</p>
@@ -352,6 +354,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.canvas = this.shadowRoot.querySelector('canvas');
     this.overlay = this.shadowRoot.querySelector('.overlay');
     this.lightPanel = bindStorybookLightPanel(this);
+    this.vacuumMapOverlay = bindVacuumMapOverlay(this);
     this.overlay.addEventListener('hass-more-info', event => {
       if (this.lightPanel.open(event.detail?.entityId)) event.stopPropagation();
     });
@@ -585,6 +588,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     if (this.devicesDrawer) this.devicesDrawer.hass = value?.connected === false ? undefined : value;
     this.refreshUtility(previous);
     this.lightPanel.refresh();
+    this.vacuumMapOverlay.sync();
     this.power.refresh(previous);
     this.locationPanel.update(value);
     this.updateDefaultViewButtons();
@@ -820,6 +824,8 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.locationPanel.update(this.session);
       this.prepareUtilities(config);
       this.scene = createStorybookScene(this.canvas, this.model.layout);
+      this.vacuumMapOverlay.configure(this.model.layout.items.find(item =>
+        item.entityId?.startsWith('vacuum.') && item.vacuumMapEntityId));
       this.scene.setView(this.cameraView);
       this.applyDisplaySettings(this.displaySettings.value);
       this.detectionZones = readDetectionZones(this.model.layout.items);
@@ -1247,6 +1253,7 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   reset() {
     this.heatMap.configure();
+    this.vacuumMapOverlay.configure(null);
     this.lightPanel.close();
     this.stopDemo(false);
     this.freeViewGestures?.cancel();

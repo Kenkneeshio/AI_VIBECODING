@@ -1306,6 +1306,10 @@
       snapshot();
       if (update.value === undefined) delete target[key];
       else target[key] = update.value;
+      if (key === 'vacuumMapEntityId') {
+        delete target.vacuumMapId;
+        delete target.vacuumPositionTransform;
+      }
       afterChange(tracking ? 'Updated person tracking' : 'Updated dashboard button');
       return;
     }
@@ -1787,6 +1791,29 @@
       item.presenceTrackTransform = change.value;
       afterChange('Radar calibration applied to the draft. Export to dashboard when ready.');
       return true;
+    },
+    setVacuumAlignment(id, vacuumEntity, mapEntity, mapId, transform) {
+      const item = project.items.find(entry => entry.id === id);
+      const controls = window.RoomcraftObjectControls;
+      if (!item || controls.visualKind(item) !== 'vacuum' || item.entityId !== vacuumEntity ||
+          (item.vacuumMapEntityId ?? '') !== mapEntity || !Array.isArray(transform) ||
+          (mapId !== undefined && (!Number.isSafeInteger(mapId) || mapId <= 0))) return null;
+      const change = controls.propertyUpdate('vacuumPositionTransform', transform.join(', '));
+      if (!change.valid || !change.value) return null;
+      if (item.vacuumPositionTransform?.every((value, index) => value === change.value[index]) &&
+          (mapId === undefined || item.vacuumMapId === mapId)) return {changed: false};
+      snapshot();
+      const previous = history.at(-1);
+      item.vacuumPositionTransform = change.value;
+      if (mapId !== undefined) item.vacuumMapId = mapId;
+      afterChange('LiDAR alignment applied to the draft. Export to dashboard when ready.');
+      const revision = projectChangeSerial;
+      return {changed: true, undo() {
+        if (revision !== projectChangeSerial || history.at(-1) !== previous) return false;
+        undo();
+        select('item', id);
+        return true;
+      }};
     },
     setSceneSetting(key, value) {
       const next = SceneSettings.withFeature(project.sceneSettings, key, value);

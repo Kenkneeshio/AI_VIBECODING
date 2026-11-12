@@ -72,6 +72,14 @@ Open **Menu → Location sharing → Connect Google Maps** on a computer. Use th
 
 Return to **Location sharing** and select **Show Google shared locations on this screen**. Each browser remembers its own choice. The map uses the latest available Home Assistant location for each connected Google share. The Google session can expire, and Home Assistant’s integration settings let you replace it.
 
+## Align the vacuum’s LiDAR map
+
+In **Layout Studio**, select the vacuum and choose **Align LiDAR map** in its Inspector. The Home Assistant editor loads the selected vacuum map. Match three or more landmarks spread across the scan and the plan. Pick fixed corners that the vacuum could see. Use **Undo last pair** to correct a point.
+
+Compare the distance between the first two landmarks in metres. Enter a tape measurement if available. Check the independent error and turn the preview overlay on and off before selecting **Apply to draft**. **Undo alignment** restores the previous draft alignment. **Export to dashboard** publishes the new calibration. The **LiDAR map overlay** under **Home → Menu → On the map** shows the current saved alignment without moving the vacuum.
+
+The television shows the title, app or input that its Home Assistant entity reports. Its screen is white while the TV is on and black while it is off. An unavailable TV stays dark.
+
 ## Track presence on the 3D plan
 
 Open **Menu → On the map → Presence tracking** in Roomcraft Home to see the bound switches' radar target counts and recent zone reports. A calibrated switch can show one anonymous character for each fresh target. The sensor can miss an occupant or pick up moving objects, so its count is an estimate of detected targets. It has no heart-rate or breathing-rate reading.

@@ -1,12 +1,13 @@
 import {combineCommuteReadings, commuteReading, readStorybookCommutes} from './storybook-commutes.mjs';
 import '../public/light-capabilities.js';
+import {vacuumMapMetadata} from './storybook-vacuum-alignment.mjs';
 
 const CONTROL = 'custom:roomcraft-object-control';
 const CAMERA = 'custom:roomcraft-camera-thumbnail';
 const MOTION_WEATHER = new Set(['pouring', 'rainy', 'lightning', 'lightning-rainy', 'snowy',
   'snowy-rainy', 'hail', 'windy', 'windy-variant', 'fog']);
 const ACTIVE_HVAC = new Set(['cooling', 'heating', 'drying', 'fan', 'preheating', 'defrosting']);
-const ACTIVE_TV = new Set(['on', 'playing', 'paused', 'buffering']);
+const ACTIVE_TV = new Set(['on', 'idle', 'playing', 'paused', 'buffering']);
 const VACUUM_POSITION_MAX_AGE_MS = 20 * 60 * 1000;
 const SPEED_FACTORS = new Map([['m/s', 1], ['km/h', 1 / 3.6], ['mph', .44704], ['kn', .514444], ['ft/s', .3048]]);
 const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
@@ -97,6 +98,8 @@ export function readStorybookConfig(config) {
 
 function vacuumPosition(element, snapshot, state, active, now) {
   const map = snapshot[element.roomcraft_vacuum_map_entity];
+  if (element.roomcraft_vacuum_map_id !== undefined &&
+      vacuumMapMetadata(map)?.mapId !== element.roomcraft_vacuum_map_id) return {wrongMap:true};
   const p = map?.attributes?.vacuum_position;
   const transform = element.roomcraft_vacuum_position_transform;
   const validCoordinate = value => Number.isFinite(value) ||
@@ -164,14 +167,19 @@ export function storybookFrame(model, snapshot = {}, now = 0, timeZone) {
     const position = telemetry?.position;
     if (telemetry?.expiresAt !== undefined) nextRefreshAt = Math.min(nextRefreshAt ?? Infinity, telemetry.expiresAt);
     states[element.roomcraft_item_id] = {state, attributes, presence, active, position,
-      positionObservedAt: telemetry?.observedAt};
+      positionObservedAt: telemetry?.observedAt, ...(telemetry?.wrongMap ? {wrongMap:true} : {})};
     moving ||= presence === 'on' || ['opening', 'closing'].includes(state) ||
       active && (['fan', 'climate', 'device'].includes(kind) || kind === 'vacuum' && Boolean(position));
   }
   for (const [id, entity] of model.televisions ?? []) {
-    const state = snapshot[entity]?.state ?? 'unavailable';
+    const media = snapshot[entity];
+    const state = media?.state ?? 'unavailable';
     const active = ACTIVE_TV.has(state);
-    states[id] = {state, active, presence: 'unavailable', attributes: {}};
+    const attributes = {};
+    for (const key of ['media_title', 'media_series_title', 'app_name', 'source']) {
+      if (active && typeof media?.attributes?.[key] === 'string') attributes[key] = media.attributes[key].slice(0, 96);
+    }
+    states[id] = {state, active, presence: 'unavailable', attributes};
     moving ||= active;
   }
   return {states, environment, moving, nextRefreshAt};

@@ -93,6 +93,8 @@ Check the sky strip edge and ocean reflections by day and at night. Check reduce
 
 ## Presence tracking and calibration
 
+The vacuum alignment tool is a separate survey. The vendor's three image-to-vacuum calibration points map the private raster into raw coordinates. The author fits a uniform metric scale and rotation from corresponding landmarks. The editor commits the selected map identity and affine transform in one undoable operation. [LiDAR and television release record](lidar-tv-release.md)
+
 The occupancy adapter in `storybook-tracking.mjs` maintains one usable location per source when occupancy stays on after radar expiry. The Home Assistant radar adapter retains one nonempty frame in memory for active sessions. Fresh measurements, held positions, and approximate areas remain distinct. `storybook-floor-support.mjs` and `storybook-scene.mjs` use the authored rooms and actual stair geometry for floor height and route checks. The vacancy transition removes the character and its retained location. See [the occupancy release record](occupancy-stairs-release.md).
 
 The [Roomcraft Presence integration](../ha-presence/README.md) attaches to the stock ZHA radar cluster for each already paired Inovelli VZM32-SN. Discovery leaves radio settings alone. An administrator enables reporting per switch through `roomcraft_presence.set_reporting`, which verifies the coordinator bind and reporting attribute. The bridge expires target frames to unknown after eight seconds of silence. An explicit zero-target frame or native ZHA vacancy supplies zero. Recorder excludes tracks, zones and timestamps from attributes.

@@ -7,7 +7,7 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <title>Roomcraft — Second Floor Builder</title>
   <meta name="description" content="A detailed illustrated room builder based on the second-floor home plan.">
-  <link rel="stylesheet" href="styles.css?v=5f88959303244a2e">
+  <link rel="stylesheet" href="styles.css?v=df9104402256ca0b">
 </head>
 <body>
   <div class="app-shell">
@@ -59,7 +59,7 @@
         </div>
 
         <div class="reference-card">
-          <div class="reference-thumb"><img src="assets/floorplan.png?v=5f88959303244a2e" alt="The original furnished second-floor reference"></div>
+          <div class="reference-thumb"><img src="assets/floorplan.png?v=df9104402256ca0b" alt="The original furnished second-floor reference"></div>
           <div class="reference-copy"><strong>Starting reference</strong><span>Original furnished image</span></div>
           <button type="button" class="text-button" id="showReferenceButton">View</button>
         </div>
@@ -221,6 +221,46 @@
       <button type="button" class="primary-button" data-survey="apply">Apply to draft</button>
     </div>
   </dialog>
+  <dialog id="vacuumAlignmentDialog" class="app-dialog scene-settings-dialog vacuum-alignment" aria-labelledby="vacuumAlignmentTitle">
+    <form method="dialog"><button type="submit" class="dialog-close" aria-label="Close vacuum alignment">×</button></form>
+    <h2 id="vacuumAlignmentTitle">Align and scale the LiDAR map</h2>
+    <p>Choose the same corner or doorway on both maps, then add the pair. Use at least three points spread across the condo. Enter coordinates directly if you already have them.</p>
+    <p data-vacuum-survey="status" role="status"></p>
+    <div class="vacuum-survey-maps">
+      <fieldset>
+        <legend>Vacuum LiDAR map</legend>
+        <canvas width="960" height="640" data-vacuum-survey="map" aria-label="Vacuum LiDAR map for choosing a survey point"></canvas>
+        <div class="vacuum-survey-coordinates">
+          <label>Map X <input type="number" data-vacuum-survey="map-x" step="any" inputmode="decimal"></label>
+          <label>Map Y <input type="number" data-vacuum-survey="map-y" step="any" inputmode="decimal"></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Studio floor plan</legend>
+        <canvas width="1536" height="1024" data-vacuum-survey="plan" aria-label="Floor plan for choosing the matching survey point"></canvas>
+        <div class="vacuum-survey-coordinates">
+          <label>Plan X <input type="number" data-vacuum-survey="plan-x" min="0" max="1536" step="any" inputmode="decimal"></label>
+          <label>Plan Y <input type="number" data-vacuum-survey="plan-y" min="0" max="1024" step="any" inputmode="decimal"></label>
+        </div>
+      </fieldset>
+    </div>
+    <div class="vacuum-survey-actions">
+      <button type="button" class="secondary-button" data-vacuum-survey="load">Load LiDAR map</button>
+      <button type="button" class="secondary-button" data-vacuum-survey="undo-point">Undo last pair</button>
+      <button type="button" class="secondary-button" data-vacuum-survey="add">Add matching pair</button>
+    </div>
+    <ol data-vacuum-survey="points" aria-label="Matching survey points"></ol>
+    <div class="vacuum-survey-coordinates">
+      <label>Map units per metre <input type="number" data-vacuum-survey="units" min="0.01" step="any" inputmode="decimal" placeholder="Optional for manual coordinates"></label>
+      <label>Tape distance between points 1 and 2 (m) <input type="number" data-vacuum-survey="distance" min="0.01" step="any" inputmode="decimal" placeholder="Optional"></label>
+    </div>
+    <label class="scene-feature"><input type="checkbox" data-vacuum-survey="overlay" checked> Show alignment overlay</label>
+    <p data-vacuum-survey="quality" role="status"></p>
+    <div class="vacuum-survey-actions vacuum-survey-footer">
+      <button type="button" class="secondary-button" data-vacuum-survey="undo-alignment">Undo alignment</button>
+      <button type="button" class="primary-button" data-vacuum-survey="apply">Apply to draft</button>
+    </div>
+  </dialog>
   <dialog id="helpDialog" class="app-dialog">
     <form method="dialog"><button class="dialog-close" aria-label="Close" value="cancel">×</button></form>
     <p class="eyebrow">HOW IT WORKS</p><h2>A little room to play.</h2>
@@ -237,25 +277,25 @@
       <button type="button" class="primary-button" id="confirmationAccept">Continue</button>
     </div>
   </dialog>
-  <script src="editor-assets.js?v=5f88959303244a2e" defer></script>
-  <script src="engine/deterministic-core.js?v=5f88959303244a2e" defer></script>
-  <script src="engine/project-runtime.js?v=5f88959303244a2e" defer></script>
-  <script src="engine/render-contract.js?v=5f88959303244a2e" defer></script>
-  <script src="engine/verification-harness.js?v=5f88959303244a2e" defer></script>
-  <script src="engine/wall-joins.js?v=5f88959303244a2e" defer></script>
-  <script src="engine/reference-geometry.js?v=5f88959303244a2e" defer></script>
-  <script src="engine/scene-settings.js?v=5f88959303244a2e" defer></script>
-  <script src="ha-iframe-bridge.js?v=5f88959303244a2e" defer></script>
-  <script src="inventory.js?v=5f88959303244a2e" defer></script>
-  <script src="model-library.js?v=5f88959303244a2e" defer></script>
-  <script src="catalog-variants.js?v=5f88959303244a2e" defer></script>
-  <script src="raster-renderer.js?v=5f88959303244a2e" defer></script>
-  <script src="object-art.js?v=5f88959303244a2e" defer></script>
-  <script src="control-actions.js?v=5f88959303244a2e" defer></script>
-  <script src="light-capabilities.js?v=5f88959303244a2e" defer></script>
-  <script src="object-controls.js?v=5f88959303244a2e" defer></script>
-  <script src="app.js?v=5f88959303244a2e" defer></script>
-  <script src="responsive-inspector.js?v=5f88959303244a2e" defer></script>
-  <script src="storybook-editor.js?v=5f88959303244a2e" defer></script>
+  <script src="editor-assets.js?v=df9104402256ca0b" defer></script>
+  <script src="engine/deterministic-core.js?v=df9104402256ca0b" defer></script>
+  <script src="engine/project-runtime.js?v=df9104402256ca0b" defer></script>
+  <script src="engine/render-contract.js?v=df9104402256ca0b" defer></script>
+  <script src="engine/verification-harness.js?v=df9104402256ca0b" defer></script>
+  <script src="engine/wall-joins.js?v=df9104402256ca0b" defer></script>
+  <script src="engine/reference-geometry.js?v=df9104402256ca0b" defer></script>
+  <script src="engine/scene-settings.js?v=df9104402256ca0b" defer></script>
+  <script src="ha-iframe-bridge.js?v=df9104402256ca0b" defer></script>
+  <script src="inventory.js?v=df9104402256ca0b" defer></script>
+  <script src="model-library.js?v=df9104402256ca0b" defer></script>
+  <script src="catalog-variants.js?v=df9104402256ca0b" defer></script>
+  <script src="raster-renderer.js?v=df9104402256ca0b" defer></script>
+  <script src="object-art.js?v=df9104402256ca0b" defer></script>
+  <script src="control-actions.js?v=df9104402256ca0b" defer></script>
+  <script src="light-capabilities.js?v=df9104402256ca0b" defer></script>
+  <script src="object-controls.js?v=df9104402256ca0b" defer></script>
+  <script src="app.js?v=df9104402256ca0b" defer></script>
+  <script src="responsive-inspector.js?v=df9104402256ca0b" defer></script>
+  <script src="storybook-editor.js?v=df9104402256ca0b" defer></script>
 </body>
 </html>

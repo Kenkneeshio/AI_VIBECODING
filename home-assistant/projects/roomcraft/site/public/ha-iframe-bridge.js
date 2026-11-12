@@ -33,7 +33,7 @@
       return true;
     },
     request(method, payload) {
-      if (!['GET', 'POST', 'CAMERA_GET', 'CAMERA_SET', 'TRACK_GET', 'LOOK_GET'].includes(method)) {
+      if (!['GET', 'POST', 'CAMERA_GET', 'CAMERA_SET', 'TRACK_GET', 'LOOK_GET', 'VACUUM_MAP_GET'].includes(method)) {
         return Promise.reject(new Error('Unsupported dashboard operation'));
       }
       const id = ++sequence;

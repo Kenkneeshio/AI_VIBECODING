@@ -2,6 +2,8 @@ import {keepPreviousDashboardDesign, stableDashboardJson as stableStringify} fro
 import {dashboardProjectProblem} from './dashboard-project.mjs';
 import {FREE_VIEW_TILT_LIMIT} from './storybook-camera.mjs';
 import {storybookLightControlLabels} from './storybook-state.mjs';
+import {loadVacuumMap} from './storybook-vacuum-map.mjs';
+import {vacuumMapMetadata} from './storybook-vacuum-alignment.mjs';
 import '../public/control-actions.js';
 
 /**
@@ -204,6 +206,7 @@ function validObjectControl(item) {
       (item.presenceEntityId === '' || /^binary_sensor\.[a-z0-9_]+$/.test(item.presenceEntityId))) &&
     (item.vacuumMapEntityId === undefined || typeof item.vacuumMapEntityId === 'string' &&
       (item.vacuumMapEntityId === '' || /^camera\.[a-z0-9_]+$/.test(item.vacuumMapEntityId))) &&
+    (item.vacuumMapId === undefined || Number.isSafeInteger(item.vacuumMapId) && item.vacuumMapId > 0) &&
     (item.vacuumPositionTransform === undefined || Array.isArray(item.vacuumPositionTransform) &&
       item.vacuumPositionTransform.length === 6 && item.vacuumPositionTransform.every(value =>
         Number.isFinite(value) && Math.abs(value) <= 10000)) &&
@@ -254,6 +257,7 @@ function objectControlElements(items) {
       ...(item.holdEntityId ? { roomcraft_hold_entity: item.holdEntityId } : {}),
       ...(item.presenceEntityId ? { roomcraft_presence_entity: item.presenceEntityId } : {}),
       ...(item.vacuumMapEntityId ? { roomcraft_vacuum_map_entity: item.vacuumMapEntityId } : {}),
+      ...(item.vacuumMapId ? { roomcraft_vacuum_map_id: item.vacuumMapId } : {}),
       ...(item.vacuumPositionTransform ? { roomcraft_vacuum_position_transform: item.vacuumPositionTransform } : {}),
       style: {
         left: percent(item.x - SCENE_LEFT, SCENE_WIDTH), top: percent(item.y - SCENE_TOP, SCENE_HEIGHT),
@@ -613,7 +617,7 @@ class RoomcraftEditorCard extends HTMLElement {
       return;
     }
     if (message.kind !== 'request' || !Number.isSafeInteger(message.id) ||
-        message.id < 1 || !['GET', 'POST', 'CAMERA_GET', 'CAMERA_SET', 'TRACK_GET', 'LOOK_GET'].includes(message.method)) return;
+        message.id < 1 || !['GET', 'POST', 'CAMERA_GET', 'CAMERA_SET', 'TRACK_GET', 'LOOK_GET', 'VACUUM_MAP_GET'].includes(message.method)) return;
     let response;
     try {
       if (!this._hass?.connected) throw new Error('Home Assistant is disconnected.');
@@ -627,6 +631,9 @@ class RoomcraftEditorCard extends HTMLElement {
           break;
         case 'CAMERA_GET': data = await RoomcraftEditorCard.readStartupView(this._hass, this.dashboardPath); break;
         case 'CAMERA_SET': data = await RoomcraftEditorCard.writeStartupView(this._hass, this.dashboardPath, message.payload); break;
+        case 'VACUUM_MAP_GET':
+          data = await loadVacuumMap(this._hass, message.payload?.entityId, () => this._hass);
+          break;
         case 'TRACK_GET': {
           const ids = message.payload;
           if (!Array.isArray(ids) || ids.length > 24 || !ids.every(id =>
@@ -850,6 +857,8 @@ class RoomcraftObjectControl extends HTMLElement {
         (config.roomcraft_vacuum_map_entity !== undefined &&
           (typeof config.roomcraft_vacuum_map_entity !== 'string' ||
             !/^camera\.[a-z0-9_]+$/.test(config.roomcraft_vacuum_map_entity))) ||
+        (config.roomcraft_vacuum_map_id !== undefined &&
+          (!Number.isSafeInteger(config.roomcraft_vacuum_map_id) || config.roomcraft_vacuum_map_id < 1)) ||
         (config.roomcraft_vacuum_position_transform !== undefined &&
           (!Array.isArray(config.roomcraft_vacuum_position_transform) ||
             config.roomcraft_vacuum_position_transform.length !== 6 ||
@@ -1280,6 +1289,13 @@ class RoomcraftObjectControl extends HTMLElement {
     const transform = this._config.roomcraft_vacuum_position_transform;
     const mapState = this._hass?.states?.[this._config.roomcraft_vacuum_map_entity];
     const position = mapState?.attributes?.vacuum_position;
+    if (this._config.roomcraft_vacuum_map_id !== undefined &&
+        vacuumMapMetadata(mapState)?.mapId !== this._config.roomcraft_vacuum_map_id) {
+      this._button?.removeAttribute('data-tracking');
+      this.style.left = this._config.style?.left ?? '';
+      this.style.top = this._config.style?.top ?? '';
+      return;
+    }
     if (!Array.isArray(transform) || transform.length !== 6 || !isObject(position) ||
         !Number.isFinite(Number(position.x)) || !Number.isFinite(Number(position.y))) {
       this._button?.removeAttribute('data-tracking');

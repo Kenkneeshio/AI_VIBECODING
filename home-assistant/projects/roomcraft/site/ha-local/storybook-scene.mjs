@@ -11,6 +11,7 @@ import { createStorybookSolarFade, storybookSolar } from './storybook-solar.mjs'
 import { fitStorybookCamera, normalizeCameraView, storybookHorizonFog, STORYBOOK_CAMERA_FAR } from './storybook-camera.mjs';
 import { applyModelHeight } from './storybook-size.mjs';
 import { createStorybookPeople, STORYBOOK_PERSON_RADIUS } from './storybook-people.mjs';
+import {applyVacuumAlignment} from './storybook-vacuum-alignment.mjs';
 import { compileStorybookSeats } from './storybook-seating.mjs';
 import {
   createFloorSupport, createStorybookFurnitureCollision, nearestSupportedFloorPoint, unobstructedFloor,
@@ -1055,6 +1056,35 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
   // Give avatars their own lighting while sharing the house depth and camera.
   const trackingOverlay = new THREE.Scene();
   const trackingOcclusion = new THREE.Scene();
+  let lidarOverlay;
+  function setVacuumMapOverlay(image, transform) {
+    if (lidarOverlay) {
+      lidarOverlay.removeFromParent();
+      lidarOverlay.geometry.dispose();
+      lidarOverlay.material.map.dispose();
+      lidarOverlay.material.dispose();
+      lidarOverlay = undefined;
+    }
+    if (!image) return true;
+    const w = image.naturalWidth;
+    const h = image.naturalHeight;
+    if (!(w > 0 && h > 0)) return false;
+    const corners = [[0,0],[w,0],[w,h],[0,h]].map(([x,y]) => applyVacuumAlignment(transform, {x,y}));
+    if (corners.some(point => !point || Math.abs(point.x) > 10000 || Math.abs(point.y) > 10000)) return false;
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(corners.flatMap(({x,y}) => [x,.82,y]), 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0,1,1,1,1,0,0,0], 2));
+    geometry.setIndex([0,2,1,0,3,2]);
+    const texture = new THREE.Texture(image);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
+    const material = new THREE.MeshBasicMaterial({map:texture, opacity:.48, transparent:true,
+      side:THREE.DoubleSide, depthWrite:false, toneMapped:false});
+    lidarOverlay = new THREE.Mesh(geometry, material);
+    lidarOverlay.name = 'vacuum-lidar-overlay';
+    scene.add(lidarOverlay);
+    return true;
+  }
   const coverage = createStorybookCoverage();
   const heatMap = createStorybookRadarHeatMap(footprint);
   scene.add(heatMap.root);
@@ -1213,6 +1243,7 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
   }
   function draw(transientTelemetry = false) {
     heatMap.root.visible = !transientTelemetry && cameraView.preset !== 'waterfront';
+    if (lidarOverlay) lidarOverlay.visible = !transientTelemetry && cameraView.preset !== 'waterfront';
     renderer.render(scene, camera);
     const showPeople = (transientTelemetry || displaySettings.showAvatars !== false) &&
       cameraView.preset !== 'waterfront' && people?.hasVisibleTracks;
@@ -1302,7 +1333,7 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
         const measured = motion.observe(state.position, timeSeconds, {
           observation:state.positionObservedAt, reduceMotion,
         });
-        if (!measured && state.state === 'docked') motion.clear();
+        if (!measured && (state.state === 'docked' || state.wrongMap)) motion.clear();
         const reported = motion.sample(timeSeconds, reduceMotion);
         location = reported;
         hasTracking = measured && reported?.current === true;
@@ -1359,6 +1390,7 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
   function dispose() {
     if (disposed) return;
     disposed = true;
+    setVacuumMapOverlay(null);
     livePeople.dispose();
     demoPeople?.dispose();
     coverage.dispose();
@@ -1391,7 +1423,8 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
   const exteriorClearance = () => projectExteriorClearance(plan, camera, currentWidth, currentHeight);
   return {
     resize, render, anchor, setView, getView, getDemoFocus, projectToPlan, pickGarage, exteriorClearance, dispose,
-    hasAmbientMotion: true, setPeople, setDisplaySettings, setDetectionZones: coverage.setZones, setHeatMap: heatMap.setHistory,
+    hasAmbientMotion: true, setPeople, setDisplaySettings, setVacuumMapOverlay,
+    setDetectionZones: coverage.setZones, setHeatMap: heatMap.setHistory,
     get trackedControlChanged() { return trackedControlChanged; },
     get hasPendingReacquisition() { return livePeople.hasPendingReacquisition ||
       [...roots.values()].some(object => object.liveMotion?.pendingReacquisition); },

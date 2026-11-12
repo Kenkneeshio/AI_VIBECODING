@@ -121,6 +121,8 @@ export function validObjectControl(item: unknown): item is JsonObject {
       (item.presenceEntityId === "" || /^binary_sensor\.[a-z0-9_]+$/.test(item.presenceEntityId))) &&
     (item.vacuumMapEntityId === undefined || typeof item.vacuumMapEntityId === "string" &&
       (item.vacuumMapEntityId === "" || /^camera\.[a-z0-9_]+$/.test(item.vacuumMapEntityId))) &&
+    (item.vacuumMapId === undefined || typeof item.vacuumMapId === "number" &&
+      Number.isSafeInteger(item.vacuumMapId) && item.vacuumMapId > 0) &&
     (item.vacuumPositionTransform === undefined || Array.isArray(item.vacuumPositionTransform) &&
       item.vacuumPositionTransform.length === 6 && item.vacuumPositionTransform.every((value) =>
         typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= 10000)) &&
@@ -173,6 +175,7 @@ export function objectControlElements(items: unknown): JsonObject[] {
         ...(item.holdEntityId ? { roomcraft_hold_entity: item.holdEntityId } : {}),
         ...(item.presenceEntityId ? { roomcraft_presence_entity: item.presenceEntityId } : {}),
         ...(item.vacuumMapEntityId ? { roomcraft_vacuum_map_entity: item.vacuumMapEntityId } : {}),
+        ...(item.vacuumMapId ? { roomcraft_vacuum_map_id: item.vacuumMapId } : {}),
         ...(item.vacuumPositionTransform ? { roomcraft_vacuum_position_transform: item.vacuumPositionTransform } : {}),
         style: {
           left: percent((item.x as number) - SCENE_LEFT, SCENE_WIDTH), top: percent((item.y as number) - SCENE_TOP, SCENE_HEIGHT),

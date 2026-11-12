@@ -7,7 +7,7 @@
   const lightForms = new Set(['table_lamp', 'bud_lamp', 'cloud_floor_lamp', 'bloom_ceiling', 'star_pendant', 'acorn_sconce']);
   const iconPattern = /^mdi:[a-z0-9-]+$/i;
   const bindingKeys = new Set(['tapAction', 'holdAction', 'tapEntityId', 'holdEntityId', 'presenceEntityId',
-    'controlLabel', 'controlIcon', 'visualKind', 'vacuumMapEntityId', 'vacuumPositionTransform',
+    'controlLabel', 'controlIcon', 'visualKind', 'vacuumMapEntityId', 'vacuumPositionTransform', 'vacuumMapId',
     'presenceTrackEntityId', 'presenceTrackTransform', 'presenceTrackZone', 'presenceTrackProfile']);
   const radarEntityPattern = /^sensor\.[a-z0-9_]+$/;
   const radarProfiles = new Map([['inovelli-vzm32-sn', 'Inovelli Blue Presence Dimmer']]);
@@ -129,6 +129,7 @@
       && (!('lightForm' in item) || lightForms.has(item.lightForm))
       && (!('vacuumMapEntityId' in item) || typeof item.vacuumMapEntityId === 'string'
         && (!item.vacuumMapEntityId || /^camera\.[a-z0-9_]+$/i.test(item.vacuumMapEntityId)))
+      && (!('vacuumMapId' in item) || Number.isSafeInteger(item.vacuumMapId) && item.vacuumMapId > 0)
       && (!('vacuumPositionTransform' in item) || Array.isArray(item.vacuumPositionTransform)
         && item.vacuumPositionTransform.length === 6
         && item.vacuumPositionTransform.every(value => Number.isFinite(value) && Math.abs(value) <= 10000));
@@ -264,6 +265,7 @@
       ...(item.holdEntityId ? { roomcraft_hold_entity: item.holdEntityId } : {}),
       ...(item.presenceEntityId ? { roomcraft_presence_entity: item.presenceEntityId } : {}),
       ...(item.vacuumMapEntityId ? { roomcraft_vacuum_map_entity: item.vacuumMapEntityId } : {}),
+      ...(item.vacuumMapId ? { roomcraft_vacuum_map_id: item.vacuumMapId } : {}),
       ...(item.vacuumPositionTransform ? { roomcraft_vacuum_position_transform: item.vacuumPositionTransform } : {}),
       style: dimensions(item, 4)
     }));
@@ -516,6 +518,7 @@
           : '')
         + (visualKind(item) === 'vacuum'
           ? entityField('Vacuum map camera', 'vacuumMapEntityId', item.vacuumMapEntityId || '', entityOptions, 'camera', escape)
+            + '<button type="button" class="secondary-button full-width" data-vacuum-alignment>Align LiDAR map</button>'
             + '<div class="field"><label for="prop-vacuumPositionTransform">Position transform (advanced)</label>'
             + '<input id="prop-vacuumPositionTransform" data-prop="vacuumPositionTransform" type="text" value="'
             + escape((item.vacuumPositionTransform || []).join(', ')) + '" placeholder="a, b, c, d, e, f" autocomplete="off"></div>'

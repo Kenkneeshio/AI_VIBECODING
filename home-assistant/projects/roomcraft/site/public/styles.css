@@ -131,6 +131,18 @@ body.dashboard-transfer-busy .workbench{cursor:progress}body.dashboard-transfer-
 .radar-survey-fields label,.radar-calibration>label{display:block;color:#35443a;font-size:13px}
 .radar-survey-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .radar-calibration ol{font-size:13px;max-height:100px;overflow:auto;margin:8px 0}
+.vacuum-alignment{width:min(920px,calc(100% - 26px))}
+.vacuum-survey-maps,.vacuum-survey-coordinates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.vacuum-survey-maps canvas{display:block;width:100%;height:auto;outline:1px solid #bdcabc;border-radius:7px;cursor:crosshair}
+.vacuum-survey-maps canvas[data-empty]{cursor:default}
+.vacuum-survey-maps fieldset{padding:8px}
+.vacuum-survey-maps .vacuum-survey-coordinates{margin-top:8px}
+.vacuum-survey-coordinates label{display:grid;gap:4px;color:#35443a;font-size:13px}
+.vacuum-survey-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:10px}
+.vacuum-survey-footer{position:sticky;bottom:0;padding-block:8px;background:#fffefa;border-top:1px solid #e3e4d9}
+.vacuum-alignment ol{max-height:84px;overflow:auto;font-size:13px;margin:10px 0}
+.vacuum-alignment p[role="status"]{margin-block:8px;font-variant-numeric:tabular-nums}
+@media(max-width:560px){.vacuum-survey-maps{grid-template-columns:minmax(0,1fr)}}
 #scenePreviewWeather{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
 #scenePreviewWeather[hidden]{display:none}
 #scenePreviewWeather label{display:grid;gap:3px;font-size:12px;color:#435447}
