@@ -77,7 +77,7 @@ test('road Inspector explains automatic alignment and exposes bounded dimensions
     assert.match(html, /data-action="duplicate"/);
     if (item === road) {
       assert.match(html, /data-prop="rotation"[^>]*disabled/);
-      assert.match(html, /automatically meets the main street at a right angle/);
+      assert.match(html, /runs straight along the home’s plan grid/);
       assert.match(html, /data-prop="w"[^>]*min="48" max="140"/);
       assert.match(html, /data-prop="h"[^>]*min="120" max="1000"/);
       assert.doesNotMatch(html, /data-action="rotate"/);

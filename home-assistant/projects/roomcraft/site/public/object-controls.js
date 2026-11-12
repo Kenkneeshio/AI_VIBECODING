@@ -474,7 +474,7 @@
       + field('Name', 'name', item.name) + variantField(template, item.type)
       + '<div class="field-grid">' + field('Center X', 'x', item.x, 'number') + field('Center Y', 'y', item.y, 'number') + '</div>'
       + field('Rotation (degrees)', 'rotation', item.rotation, 'number', road ? 'disabled aria-describedby="side-road-alignment"' : '')
-      + (road ? '<p class="field-hint" id="side-road-alignment">The road automatically meets the main street at a right angle. Move its center to choose the junction; width and length remain editable.</p>' : '')
+      + (road ? '<p class="field-hint" id="side-road-alignment">The road runs straight along the home’s plan grid, with a curved junction to the main street. Move its center or change its width and length; nearby facing buildings connect automatically when their entrances have a clear route.</p>' : '')
       + '<p class="field-hint">' + (zone
         ? 'This outline appears only while editing. Drag it over the artwork, then resize its corners to set the tappable area.'
         : 'Drag this object to move it; drag a corner handle to resize. Hold Shift or enable Keep width/depth ratio to keep proportions.') + '</p>'

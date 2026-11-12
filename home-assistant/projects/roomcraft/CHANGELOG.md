@@ -1,5 +1,11 @@
 # Changelog
 
+## Connect exterior buildings with a straight side road — pending release
+
+- Align the side-road spine with the home’s plan grid while preserving its curved main-street junction.
+- Extend the existing shared road and derive a clear approach to the office’s parking entrance, retaining both ranch driveways and all existing objects.
+- Editing, acceptance, evidence and rollback are tracked in the [road connections record](docs/road-connections.md).
+
 ## Editable office campus — 12 November 2026
 
 - Add a detailed six-story office campus to Exterior scenery, with shared Home/Studio rendering and normal move, dimensions, height, rotation, Delete and Undo controls.

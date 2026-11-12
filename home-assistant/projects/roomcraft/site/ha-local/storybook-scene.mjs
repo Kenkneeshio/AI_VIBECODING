@@ -7,7 +7,7 @@ import {makeStorybookParkedVehicle} from './storybook-parked-vehicles.mjs';
 import {makeStorybookSceneryHouse} from './storybook-scenery-house.mjs';
 import {makeStorybookOfficeCampus} from './storybook-office-campus.mjs';
 import {isExteriorScenery, isExteriorBuilding, exteriorBounds, exteriorHouseContains, exteriorCameraBounds} from './storybook-exterior.mjs';
-import {compileStorybookSideRoads,buildStorybookSideRoads,storybookSideRoadContains} from './storybook-side-road.mjs';
+import {compileStorybookSideRoads,buildStorybookSideRoads,storybookSideRoadContains,storybookSideRoadSupportPads} from './storybook-side-road.mjs';
 import '../public/inventory.js';
 import { garagePadContains, isStorybookBlind, makeStorybookDevice } from './storybook-devices.mjs';
 import { compileFloorStructure, compileWallStructure, isOutdoorRoom } from './storybook-structure.mjs';
@@ -1175,7 +1175,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   const garageDriveways = compileStorybookGarageDriveways(plan, street, GROUND_Y);
   const sideRoads = compileStorybookSideRoads(plan,street,GROUND_Y);
   const meadow = createStorybookMeadow({plan, street, width:6200, depth:4200,
-    centerX:(minX + maxX) / 2, centerZ:(minZ + maxZ) / 2, groundY:GROUND_Y, terrain, terrainSampler, extraPads:sideRoads.map(road=>road.bounds)});
+    centerX:(minX + maxX) / 2, centerZ:(minZ + maxZ) / 2, groundY:GROUND_Y, terrain, terrainSampler, extraPads:storybookSideRoadSupportPads(sideRoads)});
   const groundMaterial = new THREE.MeshStandardMaterial({
     color: '#e8e8d2', map: meadowTexture(canvas.ownerDocument), roughness: 0.95, vertexColors:true,
   });

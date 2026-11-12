@@ -13,7 +13,7 @@ const editorCode=process.env.ROOMCRAFT_EXTERIOR_QA_DIST ? await readFile(join(so
    entryPoints:['ha-local/storybook-editor.mjs'],minify:true})).outputFiles[0].contents;
 // The probe exposes the production street-bounds calculation only inside this fixture.
 const probe=(await build({absWorkingDir:source,bundle:true,target:'es2022',format:'iife',write:false,
-  stdin:{contents:"import {storybookStreetBounds} from './ha-local/storybook-street.mjs'; window.RoomcraftExteriorQAStreetBounds=storybookStreetBounds;",resolveDir:source},
+  stdin:{contents:"import {storybookStreetBounds} from './ha-local/storybook-street.mjs'; import {compileStorybookSideRoads} from './ha-local/storybook-side-road.mjs'; window.RoomcraftExteriorQAStreetBounds=storybookStreetBounds; window.RoomcraftExteriorQARoads=compileStorybookSideRoads;",resolveDir:source},
   minify:true})).outputFiles[0].contents;
 const code=Buffer.concat([Buffer.from(editorCode),Buffer.from('\n'),Buffer.from(probe)]);
 const garage={id:'fixture-garage',type:'garageDoor',name:'Garage',x:306,y:112,w:132,h:120,rotation:0,
@@ -128,9 +128,11 @@ try {
     const road=api.getProject().items.find(i=>i.type==='scenerySideRoad');
     if(road.x!==1570||road.y!==350||road.w!==64||road.h!==380)fail('Road defaults or exterior position changed');
     const lock=doc.querySelector('[data-lock-dimensions]');lock.checked=false;lock.dispatchEvent(new Event('change',{bubbles:true}));
-    field('w',80);field('h',420);
+    field('w',80);
+    if(api.getProject().items.find(i=>i.id===road.id).w!==80)fail('Road width edit failed');
+    doc.getElementById('undoButton').click();api.selectItem(road.id);field('h',840);
     const resized=api.getProject().items.find(i=>i.id===road.id);
-    if(resized.w!==80||resized.h!==420)fail('Road dimension edit failed');
+    if(resized.w!==64||resized.h!==840)fail('Road dimension edit/Undo failed');
     if(!doc.getElementById('prop-rotation').disabled||doc.querySelector('[data-action="rotate"]'))fail('Road rotation is not locked');
     field('rotation',90);
     if(api.getProject().items.find(i=>i.id===road.id).rotation!==0)fail('Manual road rotation was accepted');
@@ -169,6 +171,22 @@ try {
     if(api.getProject().items.some(i=>i.id===office.id))fail('Office deletion failed');
     doc.getElementById('undoButton').click();api.selectItem(office.id);
     if(!api.getProject().items.some(i=>i.id===office.id))fail('Office delete Undo failed');
+    const connections=layout=>{
+      const compiled=w.RoomcraftPlanStructure(layout);
+      return w.RoomcraftExteriorQARoads(compiled,w.RoomcraftExteriorQAStreetBounds(compiled,layout.terrain));
+    };
+    api.selectItem(road.id);field('h',380);
+    if(connections(api.getProject())[0]?.connectors.some(c=>c.houseId===office.id))fail('Short road incorrectly reaches the office');
+    doc.getElementById('undoButton').click();
+    if(api.getProject().items.find(i=>i.id===road.id).h!==840)fail('Road length Undo failed');
+    const restoredRoads=connections(api.getProject());
+    if(restoredRoads.length!==1||restoredRoads[0].connectors.length!==3)fail('Restored road must connect both ranch driveways and office parking');
+    const [route]=restoredRoads;
+    if(route.forward.x!==0||route.forward.z!==1||Math.abs(route.end.x-1570)>1e-6||Math.abs(route.end.z-770)>1e-6)fail('Side road is not parallel to the home wall');
+    const officeAccess=route.connectors.find(c=>c.houseId===office.id);
+    if(!officeAccess||officeAccess.bay!=='parking-access'||officeAccess.start.x!==1935||officeAccess.start.z!==659||officeAccess.width!==20)fail('Office driveway misses its parking entrance');
+    if(route.connectors.filter(c=>c.houseId===house.id).length!==2)fail('Both ranch driveways must remain connected');
+    api.selectItem(office.id);
     const after=api.getProject(),plan=w.RoomcraftPlanStructure(after);
     for(const k of ['rooms','walls','hotspots'])if(JSON.stringify(after[k])!==JSON.stringify(before[k]))fail('Unrelated structure changed');
     if(JSON.stringify(after.items.find(i=>i.id==='fixture-garage'))!==JSON.stringify(before.items[0]))fail('Existing garage changed');
@@ -178,7 +196,8 @@ try {
     const ground=plan.placements.filter(p=>['sceneryRanchHouse','scenerySideRoad','sceneryOfficeCampus'].includes(p.item.type));
     return {count:after.items.length,beforeCount:before.items.length,
       ground:ground.map(p=>[p.item.type,p.baseY]),houseBounds:plan.houseBounds,bounds:plan.bounds,
-      exteriorBounds:plan.exteriorBounds,street:street(plan),selection:api.getSelection()};
+      exteriorBounds:plan.exteriorBounds,street:street(plan),selection:api.getSelection(),
+      connections:restoredRoads.map(r=>({id:r.id,forward:r.forward,end:r.end,connectors:r.connectors.map(c=>({building:c.houseId,bay:c.bay,start:c.start,end:c.end,width:c.width}))}))};
   })()`);
   assert.equal(result.count,result.beforeCount+3);
   assert.deepEqual(result.ground,[['scenerySideRoad',-111],['sceneryRanchHouse',-111],['sceneryOfficeCampus',-111]]);
@@ -201,7 +220,7 @@ try {
   const savedRoad=body.project.items.find(i=>i.type==='scenerySideRoad');
   const savedHouse=body.project.items.find(i=>i.type==='sceneryRanchHouse');
   const savedOffice=body.project.items.find(i=>i.type==='sceneryOfficeCampus');
-  assert.deepEqual([savedRoad.x,savedRoad.y,savedRoad.w,savedRoad.h,savedRoad.rotation],[1570,350,80,420,0]);
+  assert.deepEqual([savedRoad.x,savedRoad.y,savedRoad.w,savedRoad.h,savedRoad.rotation],[1570,350,64,840,0]);
   assert.deepEqual([savedHouse.x,savedHouse.y,savedHouse.w,savedHouse.h,savedHouse.rotation],[1775,420,130,176,90]);
   assert.deepEqual([savedOffice.x,savedOffice.y,savedOffice.w,savedOffice.h,savedOffice.rotation],[2020,700,220,180,90]);
   assert.equal(savedOffice.modelHeight,undefined);
@@ -209,9 +228,16 @@ try {
   assert.deepEqual(body.project.items.find(i=>i.id==='fixture-garage'),garage);
   assert.ok(!savedRoad.entityId&&!savedHouse.entityId&&!savedOffice.entityId);
   assert.ok(body.pngDataUrl.startsWith('data:image/png;base64,'));
+  const savedConnections=await evaluate(`(()=>{
+    const w=${wd},saved=window.ops.find(([method])=>method==='POST')[1].project;
+    const plan=w.RoomcraftPlanStructure(saved),street=w.RoomcraftExteriorQAStreetBounds(plan,saved.terrain);
+    return w.RoomcraftExteriorQARoads(plan,street).map(r=>({id:r.id,forward:r.forward,end:r.end,
+      connectors:r.connectors.map(c=>({building:c.houseId,bay:c.bay,start:c.start,end:c.end,width:c.width}))}));
+  })()`);
+  assert.deepEqual(savedConnections,result.connections,'saved layout deterministically rebuilds the same cardinal road and all driveways');
   await writeFile(join(qa,'evidence.json'),JSON.stringify(result,null,2));
   assert.deepEqual(errors,[]);
-  console.log('PASS: Studio exterior catalog placement, position/rotation/dimension controls, move/Undo, decorative binding guards, unchanged home/street bounds, ground elevations, selection and PNG+layout mock Save; no physical actions');
+  console.log('PASS: Studio exterior catalog placement, position/rotation/dimension controls, move/Undo, road-length Undo and three connected driveways, decorative binding guards, unchanged home/street bounds, ground elevations, selection and PNG+layout mock Save; no physical actions');
   console.log(qa);
 } finally {
   ws?.close();

@@ -1,5 +1,9 @@
 # Decision log
 
+## Separate the side-road spine from the curved street junction
+
+Align the side-road body with the authored plan grid and adapt only its mouth to the coastal street. Keep existing position/length controls and zero-rotation contract. Derive building-specific driveway endpoints from deterministic art recipes, with bounded reach, obstruction checks and shared paving/terrain/planting protection. Extend the existing road through the editor instead of moving accepted buildings or storing another hard-painted connector. [Shared road contract](road-connections.md)
+
 ## Extend the shared exterior-building contract for office landmarks
 
 Use another grouped catalog recipe for a commercial building, with the same ground plane, camera bounds, editing, disposal and binding restrictions as the ranch. Preserve existing roads and layout objects. Reference the actual visible multi-story architecture rather than substitute a generic low-rise. Keep artwork deterministic and code-native; document inferred detail and grouped editing. [Office landmark](office-landmark.md)

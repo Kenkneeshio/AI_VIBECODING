@@ -2,12 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {compileStorybookPlan,storybookPlantClearsStructures} from '../ha-local/storybook-scene.mjs';
 import {storybookStreetBounds} from '../ha-local/storybook-street.mjs';
-import {compileStorybookSideRoads,storybookSideRoadContains,buildStorybookSideRoads} from '../ha-local/storybook-side-road.mjs';
+import {compileStorybookSideRoads,storybookSideRoadContains,buildStorybookSideRoads,storybookSideRoadSupportPads} from '../ha-local/storybook-side-road.mjs';
 import {createStorybookMeadow} from '../ha-local/storybook-meadow.mjs';
 import {exteriorHouseContains,exteriorFootprint,isExteriorBuilding} from '../ha-local/storybook-exterior.mjs';
 
 const ground=-111;
-const roadItem={id:'outside-side-road',type:'scenerySideRoad',x:1570,y:350,w:64,h:380,rotation:0};
+const roadItem={id:'outside-side-road',type:'scenerySideRoad',x:1570,y:350,w:64,h:840,rotation:0};
 const houseItem={id:'outside-family-house',type:'sceneryRanchHouse',x:1775,y:420,w:130,h:176,rotation:90};
 const officeItem={id:'outside-office-campus',type:'sceneryOfficeCampus',x:2020,y:700,w:220,h:180,rotation:90};
 const base={version:2,editableReferenceVersion:10,hotspots:[],walls:[],rooms:[{
@@ -37,13 +37,21 @@ test('exterior objects preserve condo bounds, upstairs placement and the existin
   assert.ok(plan.exteriorBounds.maxX>=officeItem.x+officeItem.h/2);
 });
 
-test('the full scene compiles the intended right-side road and west-facing house connection',()=>{
+test('one cardinal side road connects both ranch driveways and the office parking entrance',()=>{
   const {plan,street,roads}=setup();
   assert.equal(roads.length,1);
   const [road]=roads;
   assert.equal(road.id,roadItem.id);
-  assert.equal(road.connectors.length,2);
-  assert.equal(road.connectors[0].houseId,houseItem.id);
+  assert.equal(road.connectors.length,3);
+  assert.equal(road.connectors.filter(c=>c.houseId===houseItem.id).length,2);
+  const office=road.connectors.find(c=>c.houseId===officeItem.id);
+  assert.ok(office,'office parking shares the same side road');
+  assert.deepEqual(road.forward,{x:0,z:1});
+  assert.equal(road.origin.x,1570);assert.equal(road.end.x,1570);assert.equal(road.end.z,770);
+  assert.deepEqual(office.start,{x:1935,z:659});
+  assert.deepEqual(office.end,{x:1602,z:659});
+  assert.equal(office.width,20);
+  assert.equal(JSON.stringify(setup().roads),JSON.stringify(roads),'derived junctions and all driveways regenerate identically');
   assert.ok(road.bounds.minX>plan.houseBounds.maxX,'the junction and sidewalk clear the condo');
   assert.equal(road.origin.z,street.sample(road.origin.x,street.nearZ-26).z);
   assert.ok(road.end.z>houseItem.y,'the street reaches beyond the family house entrance');
@@ -52,11 +60,11 @@ test('the full scene compiles the intended right-side road and west-facing house
   assert.ok(storybookSideRoadContains(roads,roadItem.x,roadItem.y));
 });
 
-test('meadow support stays level underneath both exterior buildings and the house road aprons',()=>{
+test('meadow support stays level underneath both exterior buildings and every connecting driveway',()=>{
   const {plan,street,roads}=setup();
   const {minX,maxX,minZ,maxZ}=plan.bounds;
   const meadow=createStorybookMeadow({plan,street,width:6200,depth:4200,
-    centerX:(minX+maxX)/2,centerZ:(minZ+maxZ)/2,groundY:ground,extraPads:roads.map(road=>road.bounds)});
+    centerX:(minX+maxX)/2,centerZ:(minZ+maxZ)/2,groundY:ground,extraPads:storybookSideRoadSupportPads(roads)});
   try {
     for(const building of plan.placements.filter(p=>isExteriorBuilding(p.item.type))) {
       const corners=exteriorFootprint(building);
@@ -85,13 +93,17 @@ test('meadow support stays level underneath both exterior buildings and the hous
 
 test('exterior exclusion footprints cover the house, road and connecting apron while leaving the condo alone',()=>{
   const {plan,roads}=setup(),house=plan.placements.find(p=>p.item.id===houseItem.id);
-  const connector=roads[0].connectors[0],x=(connector.start.x+connector.end.x)/2,z=(connector.start.z+connector.end.z)/2;
+  const connectors=roads[0].connectors;
   assert.equal(exteriorHouseContains(plan.placements,house.x,house.z),true);
   assert.equal(exteriorHouseContains(plan.placements,roadItem.x,roadItem.y),false);
   assert.equal(storybookPlantClearsStructures([house],house.x,house.z,24),false);
   assert.equal(storybookPlantClearsStructures([house],house.x+82,house.z,24),false,'a canopy touching the house is excluded');
   assert.equal(storybookPlantClearsStructures([house],house.x+135,house.z,24),true);
-  assert.equal(storybookSideRoadContains(roads,x,z,10),true,'terrain editing and planting exclude the derived apron');
+  for(const connector of connectors)for(let t=0;t<=10;t++){
+    const x=connector.start.x+(connector.end.x-connector.start.x)*t/10;
+    const z=connector.start.z+(connector.end.z-connector.start.z)*t/10;
+    assert.equal(storybookSideRoadContains(roads,x,z,10),true,'terrain editing and planting exclude the entire driveway, including office access');
+  }
   assert.equal(storybookSideRoadContains(roads,700,470,10),false);
   assert.equal(exteriorHouseContains(plan.placements,700,470,10),false);
 });
@@ -106,15 +118,31 @@ test('the office campus moves independently and participates in exterior clearan
   assert.equal(storybookPlantClearsStructures([office],office.x+100,office.z,20),false);
   assert.equal(storybookPlantClearsStructures([office],office.x+140,office.z,20),true);
   assert.equal(roads.length,1);
-  assert.ok(roads[0].connectors.every(connector=>connector.houseId===houseItem.id),'no inferred office driveway or entity binding');
+  assert.equal(roads[0].connectors.filter(connector=>connector.houseId===officeItem.id).length,1);
   const moved={...project,items:project.items.map(item=>item.id===officeItem.id?{...item,x:2280,y:760,w:240,h:200,rotation:35}:item)};
   const after=setup(moved);
   assert.deepEqual(after.plan.placements.filter(p=>p.item.id!==officeItem.id),plan.placements.filter(p=>p.item.id!==officeItem.id));
   assert.deepEqual(after.plan.bounds,plan.bounds);
   assert.deepEqual(after.plan.houseBounds,plan.houseBounds);
   assert.deepEqual(after.street.sample(2020,after.street.nearZ),street.sample(2020,street.nearZ));
-  assert.deepEqual(after.roads.map(r=>[r.origin,r.cut,r.connectors]),roads.map(r=>[r.origin,r.cut,r.connectors]));
+  assert.deepEqual(after.roads.map(r=>[r.origin,r.cut,r.connectors.filter(c=>c.houseId===houseItem.id)]),
+    roads.map(r=>[r.origin,r.cut,r.connectors.filter(c=>c.houseId===houseItem.id)]),
+    'moving the office never moves the branch or either ranch driveway');
   assert.notDeepEqual(after.plan.exteriorBounds,plan.exteriorBounds);
   const blocked=setup({...project,items:project.items.map(item=>item.id===officeItem.id?{...item,x:roadItem.x,y:roadItem.y}:item)});
   assert.equal(blocked.roads.length,0,'an exterior road cannot pass through the office campus');
+});
+
+
+test('blocking office access preserves the clear road and ranch driveways without drawing through structures',()=>{
+  const barrier={id:'office-access-barrier',x1:1810,y1:620,x2:1810,y2:700};
+  const {roads}=setup({...project,walls:[barrier]});
+  assert.equal(roads.length,1);
+  assert.equal(roads[0].connectors.filter(c=>c.houseId===houseItem.id).length,2);
+  assert.equal(roads[0].connectors.filter(c=>c.houseId===officeItem.id).length,0,
+    'a wall across office access omits that driveway, rather than routing through the wall');
+  const {roads:short}=setup({...project,items:project.items.map(item=>item.id===roadItem.id?{...item,h:380}:item)});
+  assert.equal(short[0].connectors.filter(c=>c.houseId===houseItem.id).length,2);
+  assert.equal(short[0].connectors.filter(c=>c.houseId===officeItem.id).length,0,
+    'a short authored road never silently stretches to reach the office');
 });

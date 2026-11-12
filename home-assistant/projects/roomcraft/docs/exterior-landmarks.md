@@ -1,5 +1,7 @@
 # Editable exterior landmarks
 
+The [shared-road follow-up](road-connections.md) supersedes the original tangent-based side-road alignment described in this release record and adds an office parking connection. This page retains the original deployment evidence.
+
 **Status: deployed and verified, 12 November 2026.** Runtime source `4490638e29e831cd21c9723627f5bc44eeab6353`, Home Assistant resource `309de5e7f537f676`, and owner-private Studio version **106**. The exact source passed 634 automated tests and GitHub CI; guarded Studio publication, independent layout readback and a 1920 × 1080 wall-tablet capture verified the customer result. The previous garage release remains the rollback baseline below.
 
 The customer clarified that the front area is a second driveway and the large garden belongs behind the house. The revised recipe incorporates that correction and the verified overhead arrangement: two front concrete bays, a substantial enclosed rear garden, a small shed and an L-shaped rear-roof solar array.

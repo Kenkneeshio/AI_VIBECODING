@@ -1,5 +1,7 @@
 # Editable office campus landmark
 
+The [shared-road follow-up](road-connections.md) connects this office recipe’s parking entrance to the extended house side road. This page records the original model release.
+
 **Status:** deployed and verified on 12 November 2026. Runtime `779097d4`, HA resource `6707571f81774d15`, owner-private Studio version 107. The complete release gate passed 639 tests; authenticated Studio Save/readback and the calendar tablet verified the placed landmark.
 
 ## Customer outcome

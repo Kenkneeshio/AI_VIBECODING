@@ -5,6 +5,14 @@ import {isExteriorBuilding} from './storybook-exterior.mjs';
 const {clamp,lerp}=MathUtils;
 const WALK=26,CURB=4,CORNER=40;
 const TYPES=new Set(['garageDoor','stairs']);
+// Authored model-space access points, including full model height for the
+// shared Inspector height override. Distances are bounded per building recipe.
+const ACCESS_RECIPES={
+  sceneryRanchHouse:{w:130,h:176,height:55.2,slab:1.81,maxGap:160,
+    bays:[{id:'garage',x:-32.5,width:49,front:88},{id:'second-driveway',x:35,width:54,front:88}]},
+  sceneryOfficeCampus:{w:220,h:180,height:122.8,slab:2.55,maxGap:400,surface:'asphalt',
+    bays:[{id:'parking-access',x:-41,width:20,front:85}]},
+};
 const add=(a,b,s=1)=>({x:a.x+b.x*s,z:a.z+b.z*s});
 const dot=(a,b)=>a.x*b.x+a.z*b.z;
 const delta=(a,b)=>({x:a.x-b.x,z:a.z-b.z});
@@ -54,16 +62,14 @@ function local(road,across,along) {
   return add(add(road.origin,road.tangent,across),road.forward,along);
 }
 
-// A quarter circle joins each side curb to the beach road. Its outer start is
-// pinned to the same vertical cut as the existing curved sidewalk, preventing
-// a tiny triangular grass gap when the main street is not horizontal.
+// Each corner follows the main street's slope at its mouth, then smoothly
+// straightens into the cardinal side-road spine. Moving the main-road bend
+// therefore cannot tilt the whole residential road or pull it off the home.
 function cornerPoint(road,side,theta,inset=0) {
   const radius=CORNER-inset;
   const p=local(road,side*(road.width/2+CORNER-radius*Math.sin(theta)),CORNER-radius*Math.cos(theta));
-  const cutX=side<0?road.cut.minX:road.cut.maxX;
-  const pinned=sample(road.street,cutX,road.street.nearZ-WALK+inset);
-  const start=local(road,side*(road.width/2+CORNER),inset);
-  return add(p,delta(pinned,start),Math.cos(theta)**2);
+  const profile=sample(road.street,p.x,road.street.nearZ-WALK+inset);
+  return {x:p.x,z:p.z+(profile.z-road.origin.z-inset)*Math.cos(theta)**2};
 }
 
 function sideRows(road,side,from,to) {
@@ -82,19 +88,13 @@ function makeRoad(placement,street) {
   const {x,z,item}=placement;
   if(![x,z,item.w,item.h,street.nearZ].every(Number.isFinite)||item.w<=0||item.h<=0)return null;
   const width=clamp(item.w,48,140),bodyLength=clamp(item.h,120,1000);
-  let junctionX=x;
-  for(let i=0;i<12;i++) {
-    const p=sample(street,junctionX,street.nearZ-WALK);
-    if(!Number.isFinite(p.yaw??0)||Math.abs(p.yaw??0)>.45)return null;
-    junctionX=lerp(junctionX,x-(z-p.z)*Math.tan(p.yaw??0),.75);
-  }
-  const origin=sample(street,junctionX,street.nearZ-WALK),yaw=origin.yaw??0;
-  if(![origin.x,origin.z,yaw].every(Number.isFinite))return null;
-  const forward={x:Math.sin(yaw),z:Math.cos(yaw)},tangent={x:Math.cos(yaw),z:-Math.sin(yaw)};
+  const origin=sample(street,x,street.nearZ-WALK),yaw=origin.yaw??0;
+  if(![origin.x,origin.z,yaw].every(Number.isFinite)||Math.abs(yaw)>.45)return null;
+  const forward={x:0,z:1},tangent={x:1,z:0};
   const centerDistance=dot(delta({x,z},origin),forward),length=centerDistance+bodyLength/2;
   if(centerDistance<30||length<CORNER+70||length>2000)return null;
   const mouth=(width/2+CORNER)*tangent.x;
-  const road={id:item.id,item,width,bodyLength,length,origin,forward,tangent,angle:-yaw,street,
+  const road={id:item.id,item,width,bodyLength,length,origin,forward,tangent,angle:0,street,
     cut:{minX:origin.x-mouth,maxX:origin.x+mouth},connectors:[]};
   const left=sideRows(road,-1,0,length)(WALK),right=sideRows(road,1,0,length)(WALK);
   const mouthPoints=Array.from({length:17},(_,i)=>sample(street,lerp(road.cut.minX,road.cut.maxX,i/16),street.nearZ-WALK));
@@ -104,30 +104,31 @@ function makeRoad(placement,street) {
   return road;
 }
 
-function connectHouses(roads,plan,groundY) {
-  for(const house of (plan.placements??[]).filter(p=>p.item.type==='sceneryRanchHouse')) {
-    const forward={x:-Math.sin(house.angle),z:Math.cos(house.angle)};
-    const across={x:Math.cos(house.angle),z:Math.sin(house.angle)};
-    // Match the ranch recipe's two slabs after its +30 Z recentering. The
-    // maximum model height is the 55.2-unit chimney, also used by applyModelHeight.
-    const sx=house.item.w/130,sz=house.item.h/176;
-    const sy=Number.isFinite(house.item.modelHeight)&&house.item.modelHeight>=6&&house.item.modelHeight<=300?
-      house.item.modelHeight/55.2:Math.min(sx,sz);
-    for(const bay of [{id:'garage',x:-32.5,width:49,front:58},{id:'second-driveway',x:35,width:54,front:58}]) {
-      const width=bay.width*sx,start=add(add(house,forward,(bay.front+30)*sz),across,bay.x*sx);
+function connectBuildings(roads,plan,groundY) {
+  for(const building of plan.placements??[]) {
+    const recipe=ACCESS_RECIPES[building.item.type];
+    if(!recipe)continue;
+    const forward={x:-Math.sin(building.angle),z:Math.cos(building.angle)};
+    const across={x:Math.cos(building.angle),z:Math.sin(building.angle)};
+    const sx=building.item.w/recipe.w,sz=building.item.h/recipe.h;
+    const sy=Number.isFinite(building.item.modelHeight)&&building.item.modelHeight>=6&&building.item.modelHeight<=300?
+      building.item.modelHeight/recipe.height:Math.min(sx,sz);
+    for(const bay of recipe.bays) {
+      const width=bay.width*sx,start=add(add(building,forward,bay.front*sz),across,bay.x*sx);
       const choices=roads.map(road=>{
         const offset=delta(start,road.origin),along=dot(offset,road.forward),lateral=dot(offset,road.tangent);
         const side=Math.sign(lateral),gap=Math.abs(lateral)-road.width/2-WALK;
         return {road,along,side,gap};
-      }).filter(({road,along,side,gap})=>gap>=-3&&gap<=160&&along>CORNER+width/2+10&&along<road.length-width/2-10&&
+      }).filter(({road,along,side,gap})=>gap>=-3&&gap<=recipe.maxGap&&along>CORNER+width/2+10&&along<road.length-width/2-10&&
         dot(forward,road.tangent)*side<-.8).sort((a,b)=>a.gap-b.gap||a.road.id.localeCompare(b.road.id));
       for(const {road,along,side} of choices) {
         const end=local(road,side*road.width/2,along),startAcross=dot(across,road.forward)<0?{x:-across.x,z:-across.z}:across;
         const footprint=[add(start,startAcross,-width/2),add(end,road.forward,-width/2),
           add(end,road.forward,width/2),add(start,startAcross,width/2)];
-        if(blockedPolygons(plan,house,groundY).some(p=>overlaps(footprint,p))||
-          roads.some(r=>r.connectors.some(c=>overlaps(footprint,c.footprint))))continue;
-        road.connectors.push({houseId:house.item.id,bay:bay.id,houseY:groundY+1.81*sy,along,side,width,start,end,footprint});
+        if(blockedPolygons(plan,building,groundY).some(p=>overlaps(footprint,p))||
+          roads.some(r=>(r!==road&&overlaps(footprint,r.footprint))||r.connectors.some(c=>overlaps(footprint,c.footprint))))continue;
+        road.connectors.push({buildingId:building.item.id,buildingType:building.item.type,houseId:building.item.id,
+          bay:bay.id,houseY:groundY+recipe.slab*sy,surface:recipe.surface??'concrete',along,side,width,start,end,footprint});
         break;
       }
     }
@@ -144,13 +145,18 @@ export function compileStorybookSideRoads(plan,street,groundY=-111) {
       roads.some(other=>overlaps(road.footprint,other.footprint)))continue;
     roads.push(road);
   }
-  connectHouses(roads,plan,groundY);
+  connectBuildings(roads,plan,groundY);
   return roads;
 }
 
-/** Includes the junction, sidewalks and optional house aprons for planting/terrain protection. */
+/** Includes junctions, sidewalks and all building accesses for planting/terrain protection. */
 export function storybookSideRoadContains(roads,x,z,margin=0) {
   return roads.some(road=>[road.footprint,...road.connectors.map(c=>c.footprint)].some(points=>pointInside(points,x,z,Math.max(0,margin))));
+}
+
+/** Separate support pads preserve terrain between roads and distant campuses. */
+export function storybookSideRoadSupportPads(roads) {
+  return roads.flatMap(road=>[road.bounds,...road.connectors.map(connector=>bounds(connector.footprint))]);
 }
 
 function ribbon(batch,rows,color,height) {
@@ -212,11 +218,24 @@ export function buildStorybookSideRoads(batch,roads,heightAt,groundY=-111) {
       const rows=Array.from({length:steps+1},(_,i)=>{
         return [mix(c.footprint[1],c.footprint[0],i/steps),mix(c.footprint[2],c.footprint[3],i/steps)];
       });
-      ribbon(batch,rows,'#c5bcae',(p,r)=>{
+      const height=(p,r)=>{
         const distance=r/steps*length,walkY=grade(p)+3.8,ramp=Math.min(12,length*.25),shoulder=Math.min(WALK,length*.55);
         if(distance<ramp)return lerp(grade(p),walkY,distance/ramp);
         return lerp(walkY,c.houseY,clamp((distance-shoulder)/(length-shoulder),0,1));
-      });
+      };
+      if(c.surface==='asphalt') {
+        // Side-by-side bands share vertices and grade; concrete edges never
+        // overlap the asphalt or flicker. Solid edge faces avoid a floating strip.
+        for(const [from,to,color] of [[0,.04,'#b7b2a0'],[.04,.96,'#4e5d5e'],[.96,1,'#b7b2a0']])
+          ribbon(batch,rows.map(([a,b])=>[mix(a,b,from),mix(a,b,to)]),color,height);
+        for(const side of [0,1]) {
+          const direction=delta(rows.at(-1)[side],rows[0][side]);
+          const outward=delta(rows[0][side],mix(rows[0][0],rows[0][1],.5));
+          const bottomFirst=-direction.z*outward.x+direction.x*outward.z>0;
+          ribbon(batch,rows.map(row=>[row[side],row[side]]),'#aaa591',
+            (p,r,column)=>Boolean(column)===bottomFirst?height(p,r):heightAt(p.x,p.z)+.02);
+        }
+      } else ribbon(batch,rows,'#c5bcae',height);
     }
   }
   return roads.length;
