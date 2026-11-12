@@ -15,6 +15,8 @@ const project = {version:2,editableReferenceVersion:10,walls:[],hotspots:[],room
   {id:'garage',type:'garageDoor',x:306,y:112,w:132,h:120,rotation:0},
   {id:'road',type:'scenerySideRoad',x:1570,y:350,w:64,h:380,rotation:0},
   {id:'house',type:'sceneryRanchHouse',x:1775,y:420,w:130,h:176,rotation:90},
+  {id:'school-road',type:'scenerySideRoad',x:-80,y:350,w:64,h:840,rotation:0},
+  {id:'school',type:'scenerySchoolCampus',x:-300,y:475,w:300,h:240,rotation:270},
   {id:'office',type:'sceneryOfficeCampus',x:2020,y:700,w:220,h:180,rotation:90},
 ]};
 
@@ -23,7 +25,7 @@ test('exterior framing includes scenery while leaving structural and street boun
   const street=storybookStreetBounds(plan);
   const frame=exteriorCameraBounds(plan);
   assert.equal(frame.maxX,2110);
-  assert.equal(frame.minX,240);
+  assert.ok(Math.abs(frame.minX+420)<1e-8);
   assert.deepEqual(plan.bounds,before);
   assert.deepEqual(plan.houseBounds,home);
   const afterStreet=storybookStreetBounds(plan);

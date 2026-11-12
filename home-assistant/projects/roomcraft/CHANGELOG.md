@@ -1,5 +1,10 @@
 # Changelog
 
+## Editable elementary school and playgrounds — pending release
+
+- Add a reference-informed elementary school campus with play areas on the left of the home and a connected side road.
+- Preserve the shared Home/Studio editor workflow, exterior ground/framing and existing layout/control data. See the [school campus record](docs/school-campus.md) for acceptance, evidence and rollback.
+
 ## Connect exterior buildings with a straight side road — 12 November 2026
 
 - Align the side-road spine with the home’s plan grid while preserving its curved main-street junction.

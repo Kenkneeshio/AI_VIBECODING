@@ -1,5 +1,9 @@
 # Decision log
 
+## Make the school another authored exterior recipe
+
+Use one grouped elementary-school campus recipe and a separate editable side-road object. Reuse the exterior ground, camera, terrain/planting clearance, binding guards and shared Home/Studio renderer. Include play equipment in the campus art instead of a static background image. Keep private location discovery and original reference media out of source; document inferred architectural detail and grouped editing limits. [School campus](school-campus.md)
+
 ## Separate the side-road spine from the curved street junction
 
 Align the side-road body with the authored plan grid and adapt only its mouth to the coastal street. Keep existing position/length controls and zero-rotation contract. Derive building-specific driveway endpoints from deterministic art recipes, with bounded reach, obstruction checks and shared paving/terrain/planting protection. Extend the existing road through the editor instead of moving accepted buildings or storing another hard-painted connector. [Shared road contract](road-connections.md)

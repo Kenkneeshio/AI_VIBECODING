@@ -8,6 +8,7 @@ import {makeStorybookFurniture} from '../ha-local/storybook-furniture.mjs';
 import {makeStorybookParkedVehicle} from '../ha-local/storybook-parked-vehicles.mjs';
 import {makeStorybookSceneryHouse} from '../ha-local/storybook-scenery-house.mjs';
 import {makeStorybookOfficeCampus} from '../ha-local/storybook-office-campus.mjs';
+import {makeStorybookSchoolCampus} from '../ha-local/storybook-school-campus.mjs';
 
 const {templates} = globalThis.RoomcraftModels.catalog();
 const catalog = new Map(templates.map(entry => [entry.type, entry]));
@@ -19,7 +20,7 @@ const sceneOwned = new Set([
 function model(item) {
   const {type, w, h} = catalog.get(item);
   const layoutItem = {type, w, h};
-  return makeStorybookSceneryHouse(layoutItem) ?? makeStorybookOfficeCampus(layoutItem) ?? makeStorybookParkedVehicle(layoutItem) ?? makeStorybookDevice(layoutItem) ?? makeStorybookFurniture(layoutItem);
+  return makeStorybookSceneryHouse(layoutItem) ?? makeStorybookOfficeCampus(layoutItem) ?? makeStorybookSchoolCampus(layoutItem) ?? makeStorybookParkedVehicle(layoutItem) ?? makeStorybookDevice(layoutItem) ?? makeStorybookFurniture(layoutItem);
 }
 
 function meshes(root) {

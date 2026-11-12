@@ -106,7 +106,7 @@
     return transform;
   }
 
-  const isExterior = item => ['sceneryRanchHouse', 'scenerySideRoad', 'sceneryOfficeCampus'].includes(item.type);
+  const isExterior = item => ['sceneryRanchHouse', 'scenerySideRoad', 'sceneryOfficeCampus', 'scenerySchoolCampus'].includes(item.type);
   const exteriorEntityKeys = ['entityId', 'tapEntityId', 'holdEntityId', 'presenceEntityId',
     'presenceTrackEntityId', 'vacuumMapEntityId', 'imageEntityId'];
 

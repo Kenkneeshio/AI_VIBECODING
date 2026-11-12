@@ -15,7 +15,8 @@ const catalog = new Map(Models.catalog().templates.map(model => [model.type, mod
 const road = {id:'branch', type:'scenerySideRoad', name:'Side road', x:1660, y:-45, w:64, h:380, rotation:0, entityId:''};
 const house = {id:'house', type:'sceneryRanchHouse', name:'Landscape house', x:1775, y:420, w:130, h:176, rotation:90, entityId:''};
 const office = {id:'office', type:'sceneryOfficeCampus', name:'Office campus', x:2020, y:700, w:220, h:180, rotation:90, entityId:''};
-const layout = (items = [road, house, office]) => ({version:2, rooms:[], walls:[], hotspots:[], items});
+const school = {id:'school', type:'scenerySchoolCampus', name:'School and playgrounds', x:-300, y:475, w:300, h:240, rotation:270, entityId:''};
+const layout = (items = [road, house, office, school]) => ({version:2, rooms:[], walls:[], hotspots:[], items});
 const publicationProblem = project => dashboardProjectProblem(project,
   {validCameraThumbnail:() => true, validObjectControl:() => true});
 const plain = value => JSON.parse(JSON.stringify(value));
@@ -42,6 +43,7 @@ test('exterior catalog models remain movable beyond the condo and cannot become 
   }
   assert.equal(Models.supportsHeight(house), true);
   assert.equal(Models.supportsHeight(office), true);
+  assert.equal(Models.supportsHeight(school), true);
   assert.equal(Models.supportsHeight(road), false);
   assert.equal(Models.canMap('light.porch', catalog.get('lamp')), true, 'ordinary device mapping stays enabled');
 });
@@ -63,12 +65,14 @@ test('numeric and handle resizing enforce the same road limits with or without r
   assert.deepEqual(plain(Models.resizeFootprint(house, 'w', 200, false)), {w:200});
   assert.deepEqual(plain(Models.resizeFootprint(office, 'w', 240, false)), {w:240});
   assert.deepEqual(plain(Models.resizeFootprint(office, 'h', 200, false)), {h:200});
+  assert.deepEqual(plain(Models.resizeFootprint(school, 'w', 330, false)), {w:330});
+  assert.deepEqual(plain(Models.resizeFootprint(school, 'h', 260, false)), {h:260});
 });
 
 test('road Inspector explains automatic alignment and exposes bounded dimensions without device controls', () => {
   const field = (label,key,value,type,attributes = '') =>
     `<label>${label}<input data-prop="${key}" value="${value}" type="${type}" ${attributes}></label>`;
-  for (const item of [road, house, office]) {
+  for (const item of [road, house, office, school]) {
     const html = Controls.renderInspector(item, catalog.get(item.type), field, () => '', String, [], {height:Models.supportsHeight(item)});
     assert.doesNotMatch(html, /DASHBOARD BUTTON|data-prop="entityId"/);
     assert.match(html, /data-prop="x"/);
@@ -106,7 +110,7 @@ test('unsafe imported side roads reject the whole edit and both dashboard public
 });
 
 test('decoration binding rejection also covers hand-edited files and secondary action targets', () => {
-  for (const item of [road,house,office]) {
+  for (const item of [road,house,office,school]) {
     for (const change of [{entityId:'switch.house'}, {tapEntityId:'light.porch'},
       {holdEntityId:'cover.garage'}, {presenceEntityId:'binary_sensor.people'},
       {presenceTrackEntityId:'sensor.targets'}, {vacuumMapEntityId:'camera.map'},

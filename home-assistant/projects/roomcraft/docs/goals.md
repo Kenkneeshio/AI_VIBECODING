@@ -2,6 +2,7 @@
 
 | Goal | Reason | Evidence of completion |
 | --- | --- | --- |
+| Add the neighboring school as editable scenery | Familiar school buildings and playgrounds should belong to the same miniature landscape and connect naturally to its street | Reference and model work in progress in [school campus](school-campus.md) |
 | Connect exterior landmarks through one editable straight road | The office should sit beside the ranch’s road, which should run parallel to the condo | Straight shared spine, three approaches and closer office placement; 642 tests, CI, actual Studio Save, HA/Site publication and tablet inspection in [road connections](road-connections.md) |
 | Add an editable office landmark to the exterior scene | Familiar destinations should fit the same miniature world without changing the condo or introducing another renderer | Shared detailed office recipe, editable dimensions and placement, 639 tests, CI, exact Studio Save/HA readback, private Site 107 and tablet rendering verified in the [office record](office-landmark.md) |
 | Add editable personal landmarks without changing the condo | A familiar miniature house and connected side street should belong to the authorable landscape while private reference data stays out of Git | Generic ranch/road catalog, two driveways and rear garden, shared ground/framing, perpendicular route compiler and binding exclusions; 634 tests, CI, HA/Site deployment, exact layout readback and tablet proof in the [landmark record](exterior-landmarks.md) |

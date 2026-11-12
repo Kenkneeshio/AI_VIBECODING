@@ -12,6 +12,8 @@ const ACCESS_RECIPES={
     bays:[{id:'garage',x:-32.5,width:49,front:88},{id:'second-driveway',x:35,width:54,front:88}]},
   sceneryOfficeCampus:{w:220,h:180,height:122.8,slab:2.55,maxGap:400,surface:'asphalt',
     bays:[{id:'parking-access',x:-41,width:20,front:85}]},
+  scenerySchoolCampus:{w:300,h:240,height:32,slab:1.6,maxGap:160,surface:'asphalt',
+    bays:[{id:'school-entry',x:0,width:28,front:120}]},
 };
 const add=(a,b,s=1)=>({x:a.x+b.x*s,z:a.z+b.z*s});
 const dot=(a,b)=>a.x*b.x+a.z*b.z;

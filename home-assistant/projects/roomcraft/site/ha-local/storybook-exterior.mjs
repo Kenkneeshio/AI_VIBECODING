@@ -1,5 +1,5 @@
 /** Decorative exterior models do not redefine the upstairs plan or coastline. */
-export const isExteriorBuilding = type => ['sceneryRanchHouse','sceneryOfficeCampus'].includes(type);
+export const isExteriorBuilding = type => ['sceneryRanchHouse','sceneryOfficeCampus','scenerySchoolCampus'].includes(type);
 export const isExteriorScenery = type => isExteriorBuilding(type) || type==='scenerySideRoad';
 
 export function exteriorFootprint({item,x,z,angle}, margin = 0) {

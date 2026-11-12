@@ -6,6 +6,7 @@ import { makeStorybookFurniture } from './storybook-furniture.mjs';
 import {makeStorybookParkedVehicle} from './storybook-parked-vehicles.mjs';
 import {makeStorybookSceneryHouse} from './storybook-scenery-house.mjs';
 import {makeStorybookOfficeCampus} from './storybook-office-campus.mjs';
+import {makeStorybookSchoolCampus} from './storybook-school-campus.mjs';
 import {isExteriorScenery, isExteriorBuilding, exteriorBounds, exteriorHouseContains, exteriorCameraBounds} from './storybook-exterior.mjs';
 import {compileStorybookSideRoads,buildStorybookSideRoads,storybookSideRoadContains,storybookSideRoadSupportPads} from './storybook-side-road.mjs';
 import '../public/inventory.js';
@@ -1318,7 +1319,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
       }
     }
     const object = sideRoadObject ?? (item.type==='scenerySideRoad' ? null : stair ? makeStorybookStairs(stair) :
-      makeStorybookSceneryHouse(drawItem) ?? makeStorybookOfficeCampus(drawItem) ?? makeStorybookParkedVehicle(drawItem) ??
+      makeStorybookSceneryHouse(drawItem) ?? makeStorybookOfficeCampus(drawItem) ?? makeStorybookSchoolCampus(drawItem) ?? makeStorybookParkedVehicle(drawItem) ??
       makeStorybookDevice(drawItem, {window: isBlind ? window : undefined, mountY}) ??
       makeStorybookFurniture(drawItem, {mountY, surfaceDetail}));
     if (object) {
