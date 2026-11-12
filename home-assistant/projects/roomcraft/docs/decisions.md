@@ -1,5 +1,9 @@
 # Decision log
 
+## Derive the driveway and keep garage contents editable
+
+Attach the road connection and roof view to the garage's existing authored object. Derive the route from its entrance and the shared street profile, with matching sidewalk cuts and one corridor for planting clearance. Keep the Prius and overhead fixture separate catalog objects so they can be selected, moved, resized, removed and mapped without painting them into the building. Preserve first-floor elevation and existing garage state; leave the overhead control unassigned until a real entity is known. Parent-child transforms and vehicle telemetry remain separate future work. [Garage contract](garage-driveway.md)
+
 ## Repair only what preserves the author's intent
 
 Use a pure bounded guard at the completed-edit boundary and again before publication. Remove redundant room points and reduce excessive authored terrain steps, while preserving IDs, paint, props and existing landscape settings. Reject an ambiguous structural change as one transaction rather than guessing a new floor plan. Restore history and selection with the previous draft. Keep repairs undoable, and preserve older valid terrain until the user edits it or explicitly requests repair. [Safe-editing contract](edit-safety.md)

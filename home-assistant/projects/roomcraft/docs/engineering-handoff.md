@@ -1,5 +1,7 @@
 # Roomcraft engineering handoff
 
+The [garage contract](garage-driveway.md) covers the new derived driveway, sidewalk cuts, cutaway roof and separate Prius/overhead-light models. It names persisted fields and module boundaries, and reserves the exact release evidence. Do not infer deployment from this implementation note; the safe-editing release below remains the preceding verified baseline until the garage release record is completed.
+
 The [safe-editing contract](edit-safety.md) covers automatic terrain/structure protection, whole-edit rollback, Undo/Redo preservation, the Studio **Check & repair layout** action and shared transport validation. Its completed release record is the authority for verification and deployment: runtime `57b7b2c`, 587 automated tests and CI passed, HA resource `2e7c11c7487e8c80`, private Studio version 102, authenticated browser and wall-tablet checks. The architecture release below remains the preceding verified baseline.
 
 Latest architecture release evidence is anchored to runtime source `5671e943d983496f7c59d74bfeec4b774afb4704`, HA resource version `d25830e164fd80b1`, and owner-private Studio version 101. GitHub CI passed with the same manifest as the Windows build. Read the [audit verification table](architecture-audit-2026-11-12.md#verification-and-deployment-record) for the exact checks and limits.

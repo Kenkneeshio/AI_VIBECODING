@@ -351,8 +351,9 @@ function coverOpenFraction(state) {
   return null;
 }
 
-function garage(w, h) {
+function garage(item, w, h) {
   const root = new THREE.Group();
+  const cutaway = item.garageRoof === 'cutaway';
   const depth = h * 0.72;
   const frameW = w * 0.74;
   const front = depth / 2;
@@ -364,44 +365,61 @@ function garage(w, h) {
   const shingles = [material(color.tile), material(color.paleTile)];
   const bay = material(color.dark);
   box(root, w, 5, h * GARAGE_PAD_DEPTH, trim, 0, 2.5, h * GARAGE_PAD_CENTER);
-  box(root, w * 0.88, frameH + 4, 5, siding, 0, (frameH + 4) / 2, -front + 2);
+  const wallHeight = cutaway ? Math.min(18, frameH * .42) : frameH + 4;
+  box(root, w * 0.88, wallHeight, 5, siding, 0, wallHeight / 2, -front + 2);
   for (const x of [-w * 0.42, w * 0.42]) {
-    box(root, w * 0.09, frameH + 4, depth, siding, x, (frameH + 4) / 2);
+    box(root, w * 0.09, wallHeight, depth, siding, x, wallHeight / 2);
     softBox(root, w * 0.1, frameH + 4, 5, trim, x, (frameH + 4) / 2, front + 1, 1.5);
   }
-  const shape = new THREE.Shape();
-  shape.moveTo(-w * 0.49, 0);
-  shape.lineTo(w * 0.49, 0);
-  shape.lineTo(0, roofH);
-  shape.closePath();
-  const cap = new THREE.ExtrudeGeometry(shape, {
-    depth: depth + 11, bevelThickness: 1.5, bevelSize: 1.5, bevelSegments: 2,
-  });
-  cap.translate(0, 0, -front - 5.5);
-  mesh(root, cap, roof, 0, frameH + 4);
-  const halfRun = w * .49;
-  const roofSlope = Math.atan2(roofH, halfRun);
-  const roofSpan = Math.hypot(roofH, halfRun);
-  const shingleDepth = (depth + 11) / 8;
-  const shingleRows = [[], []];
-  for (const side of [-1, 1]) {
-    for (let row = 0; row < 8; row++) {
-      const z = -front - 5.5 + (row + .5) * shingleDepth;
-      const shingle = new THREE.BoxGeometry(roofSpan * .97, 2.2, shingleDepth - .62);
-      shingle.rotateZ(-side * roofSlope);
-      shingle.translate(side * halfRun * .5, frameH + 5.65 + roofH * .5, z);
-      shingleRows[row % 2].push(shingle);
+  if (cutaway) {
+    // A sectioned view preserves the garage's independent door control while
+    // exposing its authored contents. Caps finish the cut edges without a roof
+    // or opaque bay plane concealing the car and separately mapped ceiling lamp.
+    const concrete = material(0xc3c2b6, {roughness: .91});
+    box(root, w * .74, .18, depth - 7, concrete, 0, 5.12, 0).name = 'Garage interior floor';
+    box(root, w * .88, 1.5, 5.6, trim, 0, wallHeight + .75, -front + 2);
+    for (const side of [-1, 1]) {
+      box(root, w * .095, 1.5, depth, trim, side * w * .42, wallHeight + .75);
+      softBox(root, w * .14, 2, 3, material(color.muted), side * w * .17, 6.2, -front + 9, .5);
     }
+    box(root, .34, .07, depth - 7, material(0xa8a99f), 0, 5.25, 0);
+  } else {
+    const roofGroup = child(root);
+    roofGroup.name = 'Garage roof';
+    const shape = new THREE.Shape();
+    shape.moveTo(-w * 0.49, 0);
+    shape.lineTo(w * 0.49, 0);
+    shape.lineTo(0, roofH);
+    shape.closePath();
+    const cap = new THREE.ExtrudeGeometry(shape, {
+      depth: depth + 11, bevelThickness: 1.5, bevelSize: 1.5, bevelSegments: 2,
+    });
+    cap.translate(0, 0, -front - 5.5);
+    mesh(roofGroup, cap, roof, 0, frameH + 4);
+    const halfRun = w * .49;
+    const roofSlope = Math.atan2(roofH, halfRun);
+    const roofSpan = Math.hypot(roofH, halfRun);
+    const shingleDepth = (depth + 11) / 8;
+    const shingleRows = [[], []];
+    for (const side of [-1, 1]) {
+      for (let row = 0; row < 8; row++) {
+        const z = -front - 5.5 + (row + .5) * shingleDepth;
+        const shingle = new THREE.BoxGeometry(roofSpan * .97, 2.2, shingleDepth - .62);
+        shingle.rotateZ(-side * roofSlope);
+        shingle.translate(side * halfRun * .5, frameH + 5.65 + roofH * .5, z);
+        shingleRows[row % 2].push(shingle);
+      }
+    }
+    shingleRows.forEach((parts, row) => {
+      mesh(roofGroup, mergeGeometries(parts), shingles[row]);
+      parts.forEach(part => part.dispose());
+    });
+    softBox(roofGroup, 4, 4.5, depth + 12, roof, 0, frameH + roofH + 5.6, 0, 1.5);
+    box(root, frameW, frameH, 1.5, bay, 0, frameH / 2 + 4, front - 4);
   }
-  shingleRows.forEach((parts, row) => {
-    mesh(root, mergeGeometries(parts), shingles[row]);
-    parts.forEach(part => part.dispose());
-  });
-  softBox(root, 4, 4.5, depth + 12, roof, 0, frameH + roofH + 5.6, 0, 1.5);
   box(root, w * 0.95, 3.5, 3.5, trim, 0, frameH + 4, front + 5.5);
-  box(root, frameW, frameH, 1.5, bay, 0, frameH / 2 + 4, front - 4);
   // The pad and shell cast a ground shadow while the shutter animates independently.
-  for (const node of root.children) if (node.isMesh) node.castShadow = true;
+  root.traverse(node => { if (node.isMesh) node.castShadow = true; });
   const doorSurface = material(color.mint);
   const doorInset = material(color.sage);
   const doorHeight = frameH - 3;
@@ -433,6 +451,44 @@ function garage(w, h) {
       });
       const moving = ['opening', 'closing'].includes(stateValue(state));
       lantern.emissiveIntensity = moving ? 0.55 + (0.5 + 0.5 * Math.cos(seconds * 6)) : 0;
+    },
+  };
+}
+
+function garageCeilingLight(w, h) {
+  const root = new THREE.Group();
+  root.name = 'Garage overhead light';
+  const bodyHeight = 50;
+  const casing = material(0x65767c, {roughness:.48, metalness:.35});
+  const trim = material(0xe4e8df, {roughness:.42});
+  const idle = new THREE.Color(0xaab3b0);
+  const diffuser = material(idle, {emissive:color.warm, emissiveIntensity:0});
+  const tint = new THREE.Color(color.warm);
+  const width = w * .9, depth = h * .75;
+  softBox(root, width, 3.2, depth, casing, 0, bodyHeight, 0, 1.3);
+  for (const x of [-width * .38, width * .38]) {
+    softBox(root, 2.2, 1.1, depth + 1.5, trim, x, bodyHeight + 2, 0, .4);
+  }
+  for (const z of [-depth * .23, depth * .23]) {
+    const panel = softBox(root, width * .82, 1.4, depth * .31, diffuser, 0, bodyHeight + 1.9, z, .65);
+    panel.name = 'Garage light diffuser';
+  }
+  const pool = lightPool(root, Math.min(48, Math.max(w, h) * 1.25), 5.4);
+  root.traverse(node => { if (node.isMesh && node.material !== diffuser && !node.material.isShaderMaterial) node.castShadow = true; });
+  return {
+    root, anchorY:bodyHeight + 2,
+    animate(state) {
+      // Explicit on/off owns the illustration. Inferred activity, stale sensor
+      // states and an unbound decoration must never invent a powered lamp.
+      const power = stateValue(state) === 'on' ? brightness(state) : 0;
+      const rgb = state?.attributes?.rgb_color;
+      if (Array.isArray(rgb) && rgb.length === 3 && rgb.every(Number.isFinite)) {
+        tint.setRGB(...rgb.map(value => clamp(value / 255, 0, 1)), THREE.SRGBColorSpace);
+      } else tint.setHex(color.warm);
+      diffuser.emissive.copy(tint);
+      diffuser.emissiveIntensity = power * 1.05;
+      diffuser.color.copy(power > 0 ? tint : idle);
+      pool(power, tint);
     },
   };
 }
@@ -575,7 +631,8 @@ export function makeStorybookDevice(item, context = {}) {
   const kind = item.visualKind;
   if (type === 'cameraThumbnail' || type.startsWith('ui')) return null;
   if (type === 'presenceSwitch') return presenceSwitch(w, context);
-  if (type === 'garageDoor') return garage(w, h);
+  if (type === 'garageDoor') return garage(item, w, h);
+  if (type === 'garageCeilingLight') return garageCeilingLight(w, h);
   if (type === 'door' || kind === 'door') return hingedDoor(w);
   if (type === 'window') return aperture(w, true, Boolean(item.entityId));
   if (type === 'controlZone') {

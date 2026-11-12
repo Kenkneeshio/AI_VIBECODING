@@ -1377,7 +1377,8 @@
       afterChange(`Applied ${surfaceById[value].name} to ${target.name}`);
       return;
     }
-    if(selected.kind==='item'&&window.RoomcraftObjectControls.isBindingKey(key)){
+    if(selected.kind==='item'&&(window.RoomcraftObjectControls.isBindingKey(key)||window.RoomcraftObjectControls.isAppearanceKey(key))){
+      if(window.RoomcraftObjectControls.isAppearanceKey(key)&&target.type!=='garageDoor')return;
       const tracking = key === 'presenceTrackEntityId' || key === 'presenceTrackTransform' || key === 'presenceTrackZone'
         || key === 'presenceTrackProfile';
       if (target.type === 'cameraThumbnail' || (tracking && target.type !== 'presenceSwitch')) return;
@@ -1389,6 +1390,7 @@
           presenceTrackZone: 'Enter x min, x max, y min, y max in centimetres, between −600 and 600. Each minimum must be below its maximum.',
           presenceTrackProfile: 'Choose a radar model from the list.',
           controlIcon: 'Use an icon like mdi:lightbulb',
+          garageDrivewayWidth: 'Enter a driveway width from 32 to 200, or leave it blank for automatic sizing.',
         };
         showToast(errors[key] || 'Choose a valid button setting');
         renderInspector();
@@ -1402,7 +1404,7 @@
         delete target.vacuumMapId;
         delete target.vacuumPositionTransform;
       }
-      afterChange(tracking ? 'Updated person tracking' : 'Updated dashboard button');
+      afterChange(tracking ? 'Updated person tracking' : window.RoomcraftObjectControls.isAppearanceKey(key) ? 'Updated garage' : 'Updated dashboard button');
       return;
     }
     if(selected.kind==='item'&&target.type==='cameraThumbnail'&&key==='eventEntityIds'){

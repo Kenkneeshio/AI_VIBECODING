@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const assetUrl = window.RoomcraftAssetUrl || (path => path);
-  const supported=new Set(['sofa','table','chair','diningTable','diningChair','bed','desk','armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','lamp','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce','thermostat','presenceSwitch','humidifier','airPurifier','windowFan','garageDoor','floorPlant','artwork','mirror','window']);
+  const supported=new Set(['sofa','table','chair','diningTable','diningChair','bed','desk','armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','lamp','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce','thermostat','presenceSwitch','humidifier','airPurifier','windowFan','garageDoor','garagePriusBlue','garageCeilingLight','floorPlant','artwork','mirror','window']);
   // These cells face the same near-top-down camera as the supplied plan.
   // Front-facing atlas pieces use the perspective-aware canvas art below.
   const atlas=new Image();
@@ -1221,7 +1221,7 @@
       c.restore();return drawn;
     }
     const w=o.w,h=o.h,x=-w/2,y=-h/2;
-    if(o.type!=='ceilingLight'&&o.type!=='pendantLight'&&o.type!=='wallSconce'&&o.type!=='thermostat'&&o.type!=='windowFan'&&o.type!=='window')worldContact(c,o);
+    if(o.type!=='ceilingLight'&&o.type!=='garageCeilingLight'&&o.type!=='pendantLight'&&o.type!=='wallSconce'&&o.type!=='thermostat'&&o.type!=='windowFan'&&o.type!=='window')worldContact(c,o);
     c.save();c.translate(o.x,o.y);c.rotate((o.rotation||0)*Math.PI/180);
     c.shadowColor='transparent';
     switch(o.type){
@@ -1462,7 +1462,77 @@
         disc(c,0,0,radius*.28,'#f5f0d8','#5c747b',.8);
         break;
       }
+      case 'garagePriusBlue':{
+        // Orthographic parked hatchback, nose toward +Y like the shared +Z
+        // model. The car carries no road, garage floor, or baked light state.
+        const line=Math.min(w,h)*.018;
+        for(const side of [-1,1]){
+          for(const axle of [-.29,.29]){
+            rr(c,side*w*.42-w*.055,axle*h-h*.062,w*.11,h*.124,w*.025,'#303943','#192531',line);
+            rr(c,side*w*.45-w*.012,axle*h-h*.042,w*.025,h*.084,w*.008,'#899eae');
+          }
+        }
+        c.beginPath();c.moveTo(-w*.30,-h*.475);
+        c.bezierCurveTo(-w*.41,-h*.46,-w*.43,-h*.30,-w*.43,-h*.08);
+        c.lineTo(-w*.41,h*.31);c.quadraticCurveTo(-w*.38,h*.485,-w*.24,h*.49);
+        c.lineTo(w*.24,h*.49);c.quadraticCurveTo(w*.38,h*.485,w*.41,h*.31);
+        c.lineTo(w*.43,-h*.08);c.bezierCurveTo(w*.43,-h*.30,w*.41,-h*.46,w*.30,-h*.475);
+        c.closePath();c.fillStyle=gradient(c,x,y,w,h,[[0,'#4172a4'],[.18,'#7ba6cf'],[.48,'#5085ba'],[.83,'#75a6d4'],[1,'#316699']]);
+        c.fill();c.strokeStyle='#27547d';c.lineWidth=line*1.5;c.stroke();
+        poly(c,[[-w*.32,-h*.38],[w*.32,-h*.38],[w*.29,-h*.16],[-w*.29,-h*.16]],'#283f53','#b5d0e4',line);
+        poly(c,[[-w*.29,-h*.355],[w*.27,-h*.355],[w*.25,-h*.19],[-w*.26,-h*.19]],gradient(c,-w*.3,-h*.36,w*.6,h*.17,[[0,'#7b9faf'],[.5,'#476a84'],[1,'#304d66']]));
+        rr(c,-w*.345,-h*.41,w*.69,h*.035,w*.018,'#80acd0','#345f85',line);
+        for(const side of [-1,1]){
+          const p=v=>side*w*v;
+          poly(c,[[p(.33),-h*.32],[p(.395),-h*.28],[p(.38),h*.17],[p(.30),h*.10]],'#29465d','#8fb5cf',line);
+          poly(c,[[p(.344),-h*.235],[p(.378),-h*.20],[p(.367),h*.045],[p(.322),h*.01]],'#668da6');
+          rr(c,side*w*.35-w*.02,-h*.075,w*.04,h*.035,w*.008,'#cbd9de');
+          rr(c,side*w*.35-w*.02,h*.12,w*.04,h*.03,w*.008,'#cbd9de');
+          rr(c,side*w*.455-w*.045,h*.14,w*.09,h*.05,w*.028,'#6c9ac4','#2d587c',line);
+        }
+        rr(c,-w*.285,-h*.16,w*.57,h*.26,w*.09,gradient(c,-w*.28,-h*.16,w*.56,h*.26,[[0,'#91b7d6'],[.4,'#72a2ce'],[1,'#4d83b5']]),'#b8d1e2',line);
+        poly(c,[[-w*.29,h*.105],[w*.29,h*.105],[w*.355,h*.285],[-w*.355,h*.285]],'#29495f','#abc7d8',line);
+        poly(c,[[-w*.265,h*.13],[w*.26,h*.13],[w*.31,h*.255],[-w*.31,h*.255]],gradient(c,-w*.3,h*.13,w*.6,h*.13,[[0,'#88b5cb'],[.38,'#517993'],[1,'#365774']]));
+        poly(c,[[-w*.25,h*.14],[-w*.19,h*.14],[w*.19,h*.25],[w*.10,h*.25]],'#d5ecf255');
+        for(const side of [-1,1]){
+          poly(c,[[side*w*.36,h*.31],[side*w*.34,h*.41],[side*w*.20,h*.45],[side*w*.24,h*.36]],'#f7f3de','#87a7b5',line);
+          rr(c,side*w*.315-w*.035,-h*.446,w*.07,h*.077,w*.013,'#d75b61','#7b3f58',line);
+          rr(c,side*w*.315-w*.025,-h*.43,w*.05,h*.018,w*.008,'#f7ccb0');
+        }
+        rr(c,-w*.22,h*.455,w*.44,h*.026,w*.015,'#263e50');
+        rr(c,-w*.10,h*.425,w*.20,h*.025,w*.009,'#e8ebdf','#91a9b7',line);
+        oval(c,0,h*.35,w*.037,h*.011,'#c9dde6','#517a96',line*.7);
+        c.beginPath();c.moveTo(-w*.28,h*.32);c.quadraticCurveTo(0,h*.29,w*.28,h*.32);c.strokeStyle='#b6d5eb88';c.lineWidth=line;c.stroke();
+        break;
+      }
+      case 'garageCeilingLight':{
+        const r=Math.min(w,h)*.11,line=Math.min(w,h)*.045;
+        rr(c,-w*.47,-h*.38,w*.94,h*.76,r,'#4d5b68','#263c4c',line);
+        rr(c,-w*.44,-h*.34,w*.88,h*.66,r,gradient(c,x,y,w,h,[[0,'#e2e9df'],[.5,'#cad4cf'],[1,'#99acae']]),'#eef4e7',line*.6);
+        for(const dy of [-.18,.18]){
+          rr(c,-w*.36,dy*h-h*.10,w*.72,h*.2,r*.6,'#819797');
+          rr(c,-w*.345,dy*h-h*.085,w*.69,h*.14,r*.5,gradient(c,x,y,w,h,[[0,'#ffffff'],[.5,'#eef1df'],[1,'#c8d2c6']]));
+          rr(c,-w*.33,dy*h-h*.075,w*.65,h*.022,r*.4,'#ffffff');
+        }
+        for(const dx of [-.405,.405])disc(c,w*dx,0,Math.min(w,h)*.035,'#657a81');
+        break;
+      }
       case 'garageDoor':{
+        if(o.garageRoof==='cutaway'){
+          const line=Math.min(w,h)*.01;
+          rr(c,-w*.50,-h*.39,w,h*.96,w*.015,'#d9d5cb','#a99e90',line);
+          rr(c,-w*.375,-h*.30,w*.75,h*.60,w*.008,gradient(c,-w*.375,-h*.3,w*.75,h*.6,[[0,'#c1bbae'],[.48,'#dcd5c8'],[1,'#d0c8ba']]));
+          for(const side of [-1,1]){
+            rr(c,side*w*.42-w*.045,-h*.36,w*.09,h*.72,w*.01,'#bd9e7e','#887564',line);
+            rr(c,side*w*.42-w*.031,-h*.355,w*.062,h*.70,w*.005,'#e8dcc6');
+          }
+          rr(c,-w*.44,-h*.36,w*.88,h*.055,w*.006,'#d2b38d','#8d7562',line);
+          rr(c,-w*.43,-h*.356,w*.86,h*.026,w*.005,'#f1e4cd');
+          rr(c,-w*.37,h*.345,w*.74,h*.033,w*.006,'#8caaa0','#496b64',line);
+          rr(c,-w*.36,h*.35,w*.72,h*.009,w*.002,'#d9e7cf');
+          for(const side of [-1,1])rr(c,side*w*.42-w*.05,h*.325,w*.1,h*.07,w*.008,'#f4e6cf','#998570',line);
+          break;
+        }
         // Detached miniature garage: driveway, building shell, hipped roof,
         // paneled door, porch lamp, and two shrubs read clearly from above.
         rr(c,x+w*.12,y+h*.69,w*.76,h*.29,5,'#c9c4b5','#817d73',1);

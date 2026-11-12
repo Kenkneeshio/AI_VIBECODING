@@ -270,6 +270,17 @@ function addDetails(art) {
   } else if (detail === 'sports') {
     box(length * -.4, shoulder + 1.1, 0, 4.2, 1.15, outer * 1.72, DETAILS.window);
     box(length * .39, shoulder - .65, 0, 6.5, .28, 1.65, '#f6e5cc');
+  } else if (detail === 'prius') {
+    // A long, low bonnet and split rear hatch distinguish the parked hybrid
+    // from the road fleet. Its recipe is deliberately absent from traffic.
+    box(length * -.422, shoulder + 2.2, 0, 1.6, .82, outer * 1.67, roof);
+    box(length * -.44, shoulder + .7, 0, .34, 1.4, outer * 1.25, DETAILS.window);
+    box(length * .389, shoulder + .05, 0, 1.35, .35, 2.35, DETAILS.rim);
+    for (const side of [-1, 1]) {
+      box(length * -.10, shoulder - 1.7, side * (outer + .11), 2.9, .46, .32, DETAILS.hub);
+      box(length * .20, shoulder - 1.7, side * (outer + .11), 2.9, .46, .32, DETAILS.hub);
+      box(length * -.02, shoulder - 3.3, side * (outer + .13), length * .53, .3, .2, '#749ec8');
+    }
   } else if (detail === 'pickup') {
     const bedX = length * -.25;
     box(bedX, shoulder + .22, 0, length * .35, .42, outer * 1.43, DETAILS.wood);
@@ -527,6 +538,30 @@ export function buildStorybookVehicle(id) {
     [new THREE.BoxGeometry(1.48, 1.8, outer * .35)
       .translate(end * (nose + .19), lampY, side * outer * .63), '#ffffff']));
   return vehicleLayers(bodyParts, lamps(1, frontY - 1.75), lamps(-1, shoulder - 2.65));
+}
+
+/** Parked-only blue Prius hatchback. It never changes the seeded traffic fleet. */
+export function buildStorybookParkedPrius() {
+  const recipe = {length:68, width:28, height:22.5, tire:4.6,
+    cabin:[-.43,-.14,.065,.32], body:'#4b83ba', roof:'#76a3cf', detail:'prius', windows:3};
+  const art = createArt(recipe);
+  addDetails(art);
+  const {outer,nose,frontY,shoulder,bodyParts} = art;
+  const headlights = [-1,1].map(side => {
+    const points = [
+    [nose-5.2,shoulder+.3,side*outer*.82],
+    [nose-.6,frontY+.4,side*outer*.76],
+    [nose+.2,frontY-.4,side*outer*.44],
+    [nose-3.2,shoulder+.3,side*outer*.48],
+    ];
+    return [quad(side < 0 ? points.reverse() : points),'#ffffff'];
+  });
+  const tail = [-1,1].map(side =>
+    [new THREE.BoxGeometry(1.4,3.9,2.7).translate(-nose+.55,shoulder-1.3,side*outer*.73),'#ffffff']);
+  const layers = vehicleLayers(bodyParts,paintedLayer(headlights),paintedLayer(tail));
+  // Parked art carries no inferred ignition state or automatic headlights.
+  for (const {material} of layers) material.emissiveIntensity = 0;
+  return layers;
 }
 
 /** Build an independently owned +X-facing bicycle and its seated rider. */

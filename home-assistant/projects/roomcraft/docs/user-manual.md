@@ -66,6 +66,12 @@ Select a placed object and open **Dimensions** in the Inspector. Enter width and
 
 Use **Center X**, **Center Y**, and **Rotation** for precise placement. The dining table and chairs are separate objects. Select a chair to move, resize, rotate, or delete it independently. Choose a dining table or dining chair from **Object models → Add objects** to add more.
 
+### Connect and furnish a garage
+
+Select **Garage door control** in Studio and choose **Roof view → Cutaway · show interior** to expose its contents. Turn **Connect driveway to street** on, face the entrance toward the road, and leave **Driveway width** blank for automatic sizing or enter 32–200 plan units. The road follows the garage and current street; it is omitted when no clear entrance route is available.
+
+Search **Blue Prius hatchback** and **Garage overhead light** in **Main menu → Object models** to add them. Both can be moved, resized and removed independently. Moving the garage does not automatically move its contents. Map the overhead fixture to its actual light/switch using **State entity** and its own actions; an unassigned fixture is decorative. **Save** publishes the arrangement. [Garage editing details and limits](garage-driveway.md)
+
 ### Match Home or preview an appearance
 
 Open **Main menu → Scene settings** in Studio or **Menu → Manage → Scene settings** in Home. The visual layer switches and the bottom dock position are saved with the layout. Select **Save** to apply them to Home.

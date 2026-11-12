@@ -39,6 +39,8 @@
     { type: 'airPurifier', label: 'Air purifier', icon: '≋', w: 48, h: 62, group: 'systems', visualKind: 'device' },
     { type: 'windowFan', label: 'Window fan', icon: '✣', w: 46, h: 46, group: 'systems', visualKind: 'fan' },
     { type: 'garageDoor', label: 'Garage door control', icon: '▥', w: 116, h: 52, group: 'systems', visualKind: 'door' },
+    { type: 'garagePriusBlue', label: 'Blue Prius hatchback', icon: '▰', w: 34, h: 70, group: 'systems', tags: 'parked car garage Toyota hybrid blue Prius' },
+    { type: 'garageCeilingLight', label: 'Garage overhead light', icon: '☀', w: 32, h: 18, group: 'lighting', visualKind: 'light', lightForm: 'bloom_ceiling' },
     { type: 'cameraThumbnail', label: 'Camera thumbnail', icon: '▣', w: 170, h: 110, group: 'security' },
     { type: 'controlZone', label: 'Invisible button area', icon: '▧', w: 120, h: 72, group: 'security' },
     { type: 'uiWeatherOrb', label: 'Sun / moon', icon: '☀', w: 64, h: 64, group: 'interface' },
@@ -484,6 +486,11 @@
   }
 
   function orderMountedObjects(items) {
+    // Cutaway floors are drawn before independently editable parked vehicles.
+    // Keep this stable even after the author reorders the object collection.
+    if (items.some(item => item.type === 'garagePriusBlue') && items.some(item => item.type === 'garageDoor')) {
+      items = [...items.filter(item => item.type === 'garageDoor'), ...items.filter(item => item.type !== 'garageDoor')];
+    }
     const surfaces = items.filter(item => placementRole(item) === 'surface');
     const tables = surfaces.filter(isDiningTable);
     const mounted = new Set();

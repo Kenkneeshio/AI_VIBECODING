@@ -3,6 +3,7 @@ import polygonClipping from 'polygon-clipping';
 import {sceneFeatureEnabled, sceneWind} from './storybook-scene-settings.mjs';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { makeStorybookFurniture } from './storybook-furniture.mjs';
+import {makeStorybookParkedVehicle} from './storybook-parked-vehicles.mjs';
 import '../public/inventory.js';
 import { garagePadContains, isStorybookBlind, makeStorybookDevice } from './storybook-devices.mjs';
 import { compileFloorStructure, compileWallStructure, isOutdoorRoom } from './storybook-structure.mjs';
@@ -25,6 +26,7 @@ import { buildStorybookNeighborhood, buildStorybookStreet, storybookStreetBounds
 import { createStorybookMeadow } from './storybook-meadow.mjs';
 import { addCoastalPlanting } from './storybook-coastal-planting.mjs';
 import { buildStorybookYardAccess } from './storybook-yard-access.mjs';
+import {compileStorybookGarageDriveways, storybookGarageDrivewayContains, buildStorybookGarageDriveways} from './storybook-garage-driveway.mjs';
 import '../public/engine/terrain.js';
 import { createStorybookTraffic } from './storybook-traffic.mjs';
 import { createStorybookSidewalk } from './storybook-sidewalk.mjs';
@@ -714,7 +716,7 @@ function meadowTexture(document) {
   return texture;
 }
 
-function buildYard(batch, groveBatch, plan, street, treeWind, heightAt, sandHeight, density) {
+function buildYard(batch, groveBatch, plan, street, treeWind, heightAt, sandHeight, density, garageDriveways = []) {
   const { minX, maxX, minZ, maxZ } = plan.houseBounds;
   const width = maxX - minX;
   const depth = maxZ - minZ;
@@ -734,6 +736,7 @@ function buildYard(batch, groveBatch, plan, street, treeWind, heightAt, sandHeig
     if (!keepPlant(index)) continue;
     const x = minX + fx * width;
     const z = minZ + fz * depth;
+    if (storybookGarageDrivewayContains(garageDriveways, x, z, 45)) continue;
     const size = 21 + rand() * 24;
     const groundY = heightAt(x, z);
     batch.ball(size * 0.94, 9, size * 0.67, '#6d886a', x, groundY + 7, z);
@@ -770,6 +773,7 @@ function buildYard(batch, groveBatch, plan, street, treeWind, heightAt, sandHeig
   ];
   const structures = plan.placements.filter(({item}) => item.type === 'garageDoor' || item.type === 'stairs');
   const clearsBuiltArea = (x, z, radius) => {
+    if (storybookGarageDrivewayContains(garageDriveways, x, z, radius)) return false;
     if (z - radius <= street.sample(x, street.nearZ).z + 3) return false;
     if (x + radius > minX && x - radius < maxX && z + radius > minZ && z - radius < maxZ) return false;
     return !structures.some(structure => {
@@ -971,7 +975,8 @@ function buildPrecipitation(scene, plan, sceneryMinZ) {
 }
 
 function garageBaseY(type) {
-  return type === 'garageDoor' ? GROUND_Y : 0;
+  return type === 'garagePriusBlue' ? GROUND_Y + 5.21 :
+    ['garageDoor','garageCeilingLight'].includes(type) ? GROUND_Y : 0;
 }
 
 function cameraAboveGarage(camera, garage) {
@@ -1153,6 +1158,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   const terrain = terrainEngine.valid(layout.terrain) ? terrainEngine.normalize(layout.terrain) : undefined;
   const terrainSampler = terrain?.cells?.some(cell => cell.height || cell.cover) ? terrainEngine.createSampler(terrain) : null;
   const street = storybookStreetBounds(plan, terrain);
+  const garageDriveways = compileStorybookGarageDriveways(plan, street, GROUND_Y);
   const meadow = createStorybookMeadow({plan, street, width:6200, depth:4200,
     centerX:(minX + maxX) / 2, centerZ:(minZ + maxZ) / 2, groundY:GROUND_Y, terrain, terrainSampler});
   const groundMaterial = new THREE.MeshStandardMaterial({
@@ -1180,13 +1186,15 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   const groveBatch = makeStaticBatch(scene);
   const treeWind = createStorybookTreeWind(treeBatch);
   const renderWidth = 16568;
-  const road = buildStorybookStreet(batch, street, GROUND_Y, ground.geometry.parameters.width, ground.position.x, {renderWidth});
+  const road = buildStorybookStreet(batch, street, GROUND_Y, ground.geometry.parameters.width, ground.position.x,
+    {renderWidth, drivewayCuts:garageDriveways.map(route => route.cut)});
   let traffic;
   const sandstone = loadCoastSandstone(canvas.ownerDocument, assetBase);
   const coast = buildStorybookNeighborhood(batch, street, GROUND_Y, plan.houseBounds,
     ground.geometry.parameters.width, ground.position.x, {sandstone, renderWidth, terrain, terrainSampler});
   const {water, coastalFrames} = coast;
-  const canEditTerrain = (x,z) => meadow.canEditTerrain(x,z) || coast.canEditTerrain(x,z);
+  const canEditTerrain = (x,z) => !storybookGarageDrivewayContains(garageDriveways,x,z,10) &&
+    (meadow.canEditTerrain(x,z) || coast.canEditTerrain(x,z));
   const shoreCenter = water.shoreline.reduce((closest, point) =>
     Math.abs(point.x - water.focusX) < Math.abs(closest.x - water.focusX) ? point : closest);
   const sceneryFocus = {
@@ -1194,10 +1202,11 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     coast: {x: water.cove.x, y: water.y + 9, z: water.cove.z - 20},
     beach: {x: water.focusX, y: water.y + 8, z: shoreCenter.z + 37},
   };
-  buildYard(batch, groveBatch, plan, street, treeWind, meadow.heightAt, water.sandHeight, (terrain?.planting ?? 100) / 100);
+  buildYard(batch, groveBatch, plan, street, treeWind, meadow.heightAt, water.sandHeight, (terrain?.planting ?? 100) / 100, garageDriveways);
   buildPlacedLandscape(batch, groveBatch, terrain, terrainEngine.GRID_SIZE,
     (x,z) => coast.canEditTerrain(x,z) ? water.sandHeight(x,z) : meadow.heightAt(x,z), canEditTerrain);
   if (terrain?.yardAccess !== false) buildStorybookYardAccess(batch, plan, street, meadow.heightAt, GROUND_Y);
+  buildStorybookGarageDriveways(batch, garageDriveways, meadow.heightAt, GROUND_Y);
   buildReferenceLanding(batch, plan);
   buildFloors(scene, batch, plan, canvas.ownerDocument);
   const surfaceAnisotropy = new Map(scene.children.flatMap(node => {
@@ -1282,6 +1291,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     const drawItem = item.type === 'window' && window ? window : item;
     const stair = stairsById.get(item.id);
     const object = stair ? makeStorybookStairs(stair) :
+      makeStorybookParkedVehicle(drawItem) ??
       makeStorybookDevice(drawItem, {window: isBlind ? window : undefined, mountY}) ??
       makeStorybookFurniture(drawItem, {mountY, surfaceDetail});
     if (object) {
@@ -1304,7 +1314,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
       }
       scene.add(object.root);
       roots.set(item.id, object);
-      if (item.type === 'garageDoor') garages.set(object.root, item.id);
+      if (['garageDoor','garagePriusBlue','garageCeilingLight'].includes(item.type)) garages.set(object.root, item.id);
       lighting.register(item, object);
     }
     anchors.set(item.id, { x, z, baseY, rootY: object?.root.position.y, object });

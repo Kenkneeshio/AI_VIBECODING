@@ -53,7 +53,7 @@ export function pickEditorItem(items, screenPoint, planPoint, anchors, width, he
     const distance = Math.hypot(anchor.x * width - screenPoint.x, anchor.y * height - screenPoint.y);
     const near = distance <= SELECT_RADIUS;
     // The garage mesh is picked separately at its visible ground-level height.
-    if (!near && (item.type === 'garageDoor' || !containsItem(item, planPoint))) return [];
+    if (!near && (['garageDoor','garagePriusBlue','garageCeilingLight'].includes(item.type) || !containsItem(item, planPoint))) return [];
     return [{item, index, distance, near, area: item.w * item.h}];
   });
   candidates.sort((a, b) => Number(b.near) - Number(a.near) ||

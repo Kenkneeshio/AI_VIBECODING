@@ -215,7 +215,7 @@
       return descriptor.renderLayer;
     }
     if (item.type === 'rug' || artFamily === 'playMat' || artFamily === 'floorMat') return 'rugs';
-    if (item.type === 'ceilingLight' || item.type === 'pendantLight' || artFamily === 'ceilingFan') {
+    if (item.type === 'ceilingLight' || item.type === 'garageCeilingLight' || item.type === 'pendantLight' || artFamily === 'ceilingFan') {
       return 'ceiling-devices';
     }
     if (item.type === 'window') return 'openings';

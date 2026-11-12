@@ -134,6 +134,11 @@
     });
     project.items.forEach((item, index) => {
       const path = 'items[' + index + ']';
+      if (record(item) && ((item.garageRoof !== undefined && !['full','cutaway'].includes(item.garageRoof)) ||
+          (item.garageDriveway !== undefined && typeof item.garageDriveway !== 'boolean') ||
+          (item.garageDrivewayWidth !== undefined && (!Number.isFinite(item.garageDrivewayWidth) || item.garageDrivewayWidth < 32 || item.garageDrivewayWidth > 200)))) {
+        issue('garage-settings', path, 'Garage roof and driveway settings must use supported values.');
+      }
       if (!record(item) || typeof item.type !== 'string' || !item.type ||
           ![item.x, item.y].every(coordinate) ||
           !finite(item.w, item.h, item.rotation === undefined ? 0 : item.rotation) ||

@@ -1,5 +1,12 @@
 # Changelog
 
+## Connect and furnish the detached garage
+
+- Added an opt-in garage driveway with adjustable width, shared curved-street alignment, a matching curb ramp and planting clearance.
+- Added a cutaway roof option and separate Blue Prius hatchback and Garage overhead light models. The objects remain independently editable at garage elevation.
+- The overhead fixture uses ordinary light mapping and is left unassigned until its physical controlling entity is identified.
+- See the [garage contract and release record](docs/garage-driveway.md) for editing, module ownership, verification and rollback status.
+
 ## Protect terrain and structure edits
 
 - Completed edits run a shared geometry check before the draft is committed. Safe repeated room corners are cleaned up, and abrupt terrain height steps soften while preserving paint and placed props.

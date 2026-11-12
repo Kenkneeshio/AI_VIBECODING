@@ -2,6 +2,7 @@
   'use strict';
 
   const actions = new Set(['auto', 'toggle', 'activate', 'more-info', 'none']);
+  const appearanceKeys = new Set(['garageRoof', 'garageDriveway', 'garageDrivewayWidth']);
   const actionRules = window.RoomcraftControlActions;
   const visualKinds = new Set(['auto', 'light', 'fan', 'climate', 'window', 'door', 'vacuum', 'device', 'none']);
   const lightForms = new Set(['table_lamp', 'bud_lamp', 'cloud_floor_lamp', 'bloom_ceiling', 'star_pendant', 'acorn_sconce']);
@@ -136,8 +137,15 @@
   }
 
   function propertyUpdate(key, rawValue) {
-    if (!bindingKeys.has(key) || typeof rawValue !== 'string') return { valid: false };
+    if ((!bindingKeys.has(key) && !appearanceKeys.has(key)) || typeof rawValue !== 'string') return { valid: false };
     const value = rawValue.trim();
+    if (key === 'garageRoof') return ['full','cutaway'].includes(value)
+      ? {valid:true,value:value==='full'?undefined:value} : {valid:false};
+    if (key === 'garageDriveway') return ['true','false'].includes(value)
+      ? {valid:true,value:value==='true'?true:undefined} : {valid:false};
+    if (key === 'garageDrivewayWidth') return !value ? {valid:true,value:undefined}
+      : Number.isFinite(Number(value)) && Number(value)>=32 && Number(value)<=200
+        ? {valid:true,value:Number(value)} : {valid:false};
     if (key === 'tapAction' || key === 'holdAction') {
       return actions.has(value) ? { valid: true, value: value === 'auto' ? undefined : value } : { valid: false };
     }
@@ -530,12 +538,19 @@
     return '<div class="inspector-block"><p class="inspector-label">SELECTED OBJECT</p>'
       + '<div class="selection-title"><span class="selection-icon">' + template.icon + '</span><div><h3>' + escape(item.name)
       + '</h3><p>' + escape(template.label) + '</p></div></div></div>'
-      + appearance + sizing + (item.type === 'presenceSwitch' ? trackingInspector(item, escape, entityOptions) : '')
+      + appearance + sizing
+      + (item.type === 'garageDoor' ? '<div class="inspector-block"><p class="inspector-label">GARAGE &amp; DRIVEWAY</p>'
+        + selectField('garageRoof','Roof view',item.garageRoof||'full',[['full','Full roof'],['cutaway','Cutaway · show interior']])
+        + selectField('garageDriveway','Connect driveway to street',String(item.garageDriveway===true),[['false','Off'],['true','On']])
+        + field('Driveway width (32–200 plan units)','garageDrivewayWidth',item.garageDrivewayWidth??'','number','min="32" max="200" step="1"')
+        + '<p class="field-hint">Leave width blank for automatic sizing. Point the door toward the street; blocked routes are omitted. Car and overhead light are separate models at ground level.</p></div>' : '')
+      + (item.type === 'presenceSwitch' ? trackingInspector(item, escape, entityOptions) : '')
       + link + '<button type="button" class="danger-button" data-action="delete">Remove object</button>';
   }
 
   window.RoomcraftObjectControls = {
     isBindingKey: key => bindingKeys.has(key),
+    isAppearanceKey: key => appearanceKeys.has(key),
     validBinding, propertyUpdate, clearDeviceLinks, presenceCalibration, presenceAlignment, presenceAlignmentValues, effectiveTapAction, effectiveHoldAction,
     normalizeEntityOptions, manualDashboardElements, manualYaml, poseUpdate, renderInspector, visualKind
   };
