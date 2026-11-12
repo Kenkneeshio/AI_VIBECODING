@@ -42,7 +42,7 @@ python tools/install.py --component-only `
 
 ### Refresh Roomcraft coverage
 
-Use a fresh private Home dashboard backup and a copy of the current Watchdog YAML. The generator monitors the published control and camera bindings that still match the layout. It keeps existing sensor choices and timing settings. Review the proposed file locally, add any intentionally monitored out-of-plan entities with repeatable `--extra-roomcraft-entity` arguments, then use `tools/install.py --private-config` in the planned restart window.
+Use a fresh private Home dashboard backup and a copy of the current Watchdog YAML. The generator monitors matched controls and cameras, their linked inputs, and the configured radar, TV, weather, energy, traffic, location, and status sources. A radar waiting for coordinates can still be online. Review the proposed file locally, add intentionally monitored out-of-plan entities with repeatable `--extra-roomcraft-entity` arguments, then use `tools/install.py --private-config` in the planned restart window. The refresh preserves curated sensors and timing settings.
 
 ```powershell
 python tools/build_private_config.py --dashboard-backup <private-dashboard-backup> --existing-config <private-watchdog-yaml> --output <private-proposed-watchdog-yaml>

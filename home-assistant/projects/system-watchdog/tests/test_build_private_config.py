@@ -37,6 +37,34 @@ class PrivateConfigTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             config.active_bindings({**payload, "roomcraft_plan": {"type": "wrong"}})
 
+    def test_dashboard_sources_include_non_control_models_and_live_feature_dependencies(self):
+        payload = {
+            "roomcraft_layout": {"items": [
+                {"id": "tv", "type": "tv", "entityId": "media_player.tv"},
+                {"id": "radar", "type": "presenceSwitch", "presenceTrackEntityId": "sensor.radar",
+                 "presenceEntityId": "binary_sensor.occupied"},
+                {"id": "cleaner", "type": "robotVacuum", "entityId": "vacuum.cleaner"},
+                {"id": "cam", "type": "cameraThumbnail", "entityId": "camera.front"},
+            ]},
+            "roomcraft_plan": {"type": "picture-elements", "elements": [
+                {"type": config.CONTROL, "roomcraft_item_id": "cleaner", "entity": "vacuum.cleaner",
+                 "roomcraft_vacuum_map_entity": "camera.vacuum_map", "roomcraft_tap_entity": "script.clean"},
+                {"type": config.CAMERA, "roomcraft_item_id": "cam", "camera_entity": "camera.front",
+                 "image_entity": "image.latest_event", "event_entities": ["binary_sensor.ring"]},
+                {"type": config.WEATHER, "weather_entity": "weather.home", "moon_entity": "sensor.moon"},
+                {"type": config.STATUS, "roomcraft_status_kind": "air", "entities": [{"entity": "sensor.air"}]},
+            ]},
+            "roomcraft_commutes": {"version": 1, "routes": [{"entity": "sensor.traffic", "baselineEntity": "sensor.clear"}]},
+            "roomcraft_energy": {"version": 1, "home": {"power": "sensor.main", "statistic": "sensor.recorder_only"},
+                                 "groups": [{"today": "sensor.branch"}]},
+            "roomcraft_location": {"sources": [{"entity": "device_tracker.phone"}]},
+        }
+        self.assertEqual(config.active_bindings(payload), sorted([
+            "media_player.tv", "sensor.radar", "binary_sensor.occupied", "vacuum.cleaner", "camera.vacuum_map",
+            "script.clean", "camera.front", "binary_sensor.ring", "weather.home", "sun.sun", "sensor.moon",
+            "sensor.air", "sensor.traffic", "sensor.clear", "sensor.main", "sensor.branch", "device_tracker.phone",
+        ]))
+
     def test_refresh_replaces_only_roomcraft_list_and_keeps_unavailable_explicit_sensor(self):
         prefix = "# Private monitoring choices\nscan_interval: 120\nstale_after: 750\n"
         suffix = "\nsensor_entities:\n  - binary_sensor.offline_leak\n  - sensor.manual\n"

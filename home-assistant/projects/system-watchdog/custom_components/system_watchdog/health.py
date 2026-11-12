@@ -11,7 +11,13 @@ BAD_ENTRY_STATES = {"setup_error", "setup_retry", "migration_error", "failed_unl
 
 def _category(status: str, message: str, issues: Iterable[str] = (), **details: Any) -> dict[str, Any]:
     issue_list = list(issues)
-    return {"status": status, "message": message, "issues": issue_list[:50], **details}
+    return {"status": status, "message": message, "issues": issue_list[:50], "issue_count": len(issue_list), **details}
+
+
+def _waiting_radar(state) -> bool:
+    attributes = getattr(state, "attributes", None)
+    return (isinstance(attributes, Mapping) and attributes.get("tracking_schema") == "roomcraft-presence-v1"
+            and attributes.get("track_status") in ("waiting", "stale"))
 
 
 def entity_health(states: Mapping[str, Any], entity_ids: Iterable[str], label: str) -> dict[str, Any]:
@@ -22,7 +28,7 @@ def entity_health(states: Mapping[str, Any], entity_ids: Iterable[str], label: s
         value = getattr(state, "state", None) if state is not None else None
         if state is None:
             issues.append(f"{entity_id}: missing")
-        elif value in BAD_ENTITY_STATES:
+        elif value in BAD_ENTITY_STATES and not (value == "unknown" and _waiting_radar(state)):
             issues.append(f"{entity_id}: {value}")
     return _category(
         "healthy" if not issues else "warning",
@@ -73,6 +79,8 @@ def external_health(
     checks = heartbeat.get("checks", {})
     for name in names:
         check = checks.get(name, {}) if isinstance(checks, Mapping) else {}
+        if not isinstance(check, Mapping):
+            check = {}
         healthy = check.get("healthy") is True
         message = str(check.get("message") or ("Healthy" if healthy else "Failed check"))[:240]
         issues = check.get("issues", []) if isinstance(check.get("issues", []), list) else []
@@ -94,7 +102,7 @@ def build_report(
     categories = {
         "home_assistant": _category("healthy", "Home Assistant watchdog is running"),
         "integrations": integration_health(entries),
-        "roomcraft": entity_health(states, roomcraft_entities, "Roomcraft objects"),
+        "roomcraft": entity_health(states, roomcraft_entities, "Roomcraft sources"),
         "sensors": entity_health(states, sensor_entities, "sensors"),
         **external_health(heartbeat, now, stale_after),
     }
@@ -104,7 +112,7 @@ def build_report(
     return {
         "updated_at": now.astimezone(timezone.utc).isoformat(),
         "overall": overall,
-        "issue_count": len(issues),
+        "issue_count": sum(item["issue_count"] for item in categories.values()),
         "issues": issues[:100],
         "categories": categories,
     }

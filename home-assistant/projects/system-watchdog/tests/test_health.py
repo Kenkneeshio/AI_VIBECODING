@@ -45,6 +45,23 @@ class HealthTests(unittest.TestCase):
         self.assertEqual(report["overall"], "warning")
         self.assertIn("light.room: unavailable", report["categories"]["roomcraft"]["issues"])
 
+    def test_healthy_radar_can_wait_for_coordinates_but_an_unavailable_radio_is_reported(self):
+        entity = "sensor.radar"
+        state = SimpleNamespace(state="unknown", attributes={
+            "tracking_schema": "roomcraft-presence-v1", "track_status": "waiting"})
+        self.assertEqual(health.entity_health({entity: state}, [entity], "sources")["available"], 1)
+        state.attributes["track_status"] = "stale"
+        self.assertEqual(health.entity_health({entity: state}, [entity], "sources")["available"], 1)
+        state.state = "unavailable"
+        self.assertEqual(health.entity_health({entity: state}, [entity], "sources")["issues"], [f"{entity}: unavailable"])
+
+    def test_count_includes_issues_beyond_the_bounded_details(self):
+        report = health.build_report(now=self.now, states=self.states, entries=self.entries,
+                                     roomcraft_entities=[f"sensor.missing_{index}" for index in range(80)],
+                                     sensor_entities=[], heartbeat=self.heartbeat, stale_after=600)
+        self.assertEqual(report["issue_count"], 80)
+        self.assertEqual(len(report["issues"]), 50)
+
     def test_failed_integration_is_warning(self):
         self.entries.append(SimpleNamespace(title="Broken", state=SimpleNamespace(value="setup_error"), disabled_by=None))
         report = self.report()

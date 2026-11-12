@@ -4,6 +4,6 @@
   "codeowners": [],
   "documentation": "https://github.com/Kenkneeshio/AI_VIBECODING/tree/main/home-assistant/projects/system-watchdog",
   "iot_class": "local_polling",
-  "version": "0.2.2"
+  "version": "0.2.3"
 }
 

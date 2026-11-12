@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.3
+
+- Include Roomcraft's linked camera events, radar, TV, traffic, energy, weather, and location sources when generating monitor coverage.
+- Accept a connected radar that is waiting for fresh positions. Count all issues while keeping dashboard details bounded.
+
 ## 0.2.2 — 2026-11-11
 
 - Require an authenticated Home Assistant administrator for Windows heartbeat writes.
