@@ -1,5 +1,11 @@
 # Decision log
 
+## Separate measured radar points from animated character paths
+
+Use a filter on the displayed character only. The floor ring, coverage and heat map preserve the measurements and the published coordinate transform. A deterministic route follows the authored condo floor, landing and stair surfaces. It uses the same swept body clearance for walls and furniture on every segment. When two points are disconnected, the character holds a reachable position.
+
+Require at least three distinct reports spanning three seconds in one area before choosing an interaction. Use authored object types and rotated footprints to find an approach. Only supported seats allow a short blend into their own cushion. The illustrated activity is inferred from proximity and sends no Home Assistant command. Keep the existing display preference key and broaden its label to **Allow character interactions**. The new calibration shortcut opens existing map controls without changing the sensor's detection settings.
+
 ## Put the Google Maps setup in one Home dialog
 
 A Home Assistant administrator who already receives Google Maps shares can connect the account in one form. The browser sends the selected file unchanged through Home Assistant’s authenticated upload, then advances the known steps of the pinned Google Maps integration. The adapter checks each returned step before sending more data. Native setup remains available for reauthentication, advanced options, and changes to the integration’s flow.

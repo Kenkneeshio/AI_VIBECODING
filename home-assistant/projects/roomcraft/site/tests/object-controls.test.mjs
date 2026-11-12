@@ -148,7 +148,7 @@ test('radar calibration binds a presence switch to a sensor and rejects unusable
   const inspector = c.renderInspector(binding, {icon:'◉', label:'Presence dimmer'}, () => '', () => '', String,
     [{entity_id:'sensor.radar_targets', domain:'sensor', name:'Radar targets', area:'Living room'},
       {entity_id:'switch.dimmer', domain:'switch', name:'Dimmer', area:'Living room'}]);
-  assert.match(inspector, /PERSON TRACKING/);
+  assert.match(inspector, /id="trackingRangeSettings"[^>]*>Tracking range correction/);
   assert.match(inspector, /data-prop="presenceTrackEntityId"/);
   assert.match(inspector, /data-action="calibrate-presence"/);
   assert.match(inspector, /data-action="align-presence"/);

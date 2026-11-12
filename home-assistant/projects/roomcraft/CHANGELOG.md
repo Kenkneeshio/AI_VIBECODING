@@ -1,5 +1,11 @@
 # Changelog
 
+## Smooth radar characters and add furniture interactions
+
+- Characters ignore small position noise and isolated large jumps. They take supported paths around furniture and walls, including doorways and stairs, while the radar ring and heat map retain the measured positions.
+- After three seconds of fresh, settled observations, a character can sit, read, type, eat, cook, wash, tidy, tend plants, watch TV or pets, or play with toys. It walks to a clear approach before acting. The display settings can turn off the interactions or reduce motion.
+- **Presence tracking → Tracking range correction** opens the presence switch settings in Studio. The shortcut is also in Studio’s **Main menu**.
+
 ## Connect Google Maps from Roomcraft Home
 
 - **Menu → Location sharing → Connect Google Maps** now takes the receiving Google email and exported session file in one administrator form. **Connect and show on this screen** completes Home Assistant setup and enables the shared pins in the current browser after success.

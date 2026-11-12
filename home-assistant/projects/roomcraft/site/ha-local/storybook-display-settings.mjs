@@ -56,7 +56,7 @@ export const DISPLAY_SETTINGS_MARKUP = `
         <input type="range" data-display-heat min="0.25" max="1" step="0.05" value="1">
       </label>
       <label class="display-toggle-row"><input type="checkbox" data-display-avatars checked> Show presence characters</label>
-      <label class="display-toggle-row"><input type="checkbox" data-display-seats checked> Allow seated poses</label>
+      <label class="display-toggle-row"><input type="checkbox" data-display-seats checked> Allow character interactions</label>
     </fieldset>
     <button type="button" data-display-reset>Reset display settings</button>
   </dialog>`;

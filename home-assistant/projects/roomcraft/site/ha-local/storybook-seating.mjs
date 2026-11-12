@@ -1,8 +1,5 @@
 const SOFA = /(?:sofa|loveseat|chaise)-/;
 const DESK = /-desk-/;
-const STILL_RADIUS = 10;
-const DWELL_MS = 1200;
-const MAX_OBSERVATION_GAP_MS = 3100;
 
 function seat(x, z, surface, yaw, width, depth, pose) {
   return {x, z, surface, yaw, width, depth, pose};
@@ -105,32 +102,4 @@ export function canUseStorybookSeat(seat, x, z, allowsRoute, tolerance = 1) {
   if (Math.hypot(dx, dz) > seat.reach * tolerance ||
       dx * seat.forwardX + dz * seat.forwardZ < -seat.behind) return false;
   return !allowsRoute || allowsRoute(x, z, seat.x, seat.z);
-}
-
-/** Multiple fresh radar reports can support an inferred sitting pose. Render frames cannot. */
-export function createSeatDwell() {
-  let origin;
-  let firstMarker;
-  let lastMarker;
-  let lastArrival;
-
-  function observe(point, seconds) {
-    const marker = point.expiresAt;
-    if (!Number.isFinite(marker) || marker <= lastMarker) return;
-    if (!origin || marker - lastMarker > MAX_OBSERVATION_GAP_MS ||
-        Math.hypot(point.x - origin.x, point.y - origin.y) > STILL_RADIUS) {
-      origin = point;
-      firstMarker = marker;
-    }
-    lastMarker = marker;
-    lastArrival = seconds;
-  }
-
-  function ready(x, z, seconds) {
-    return Boolean(origin && lastMarker - firstMarker >= DWELL_MS &&
-      seconds - lastArrival <= MAX_OBSERVATION_GAP_MS / 1000 &&
-      Math.hypot(x - origin.x, z - origin.y) <= STILL_RADIUS);
-  }
-
-  return {observe, ready};
 }

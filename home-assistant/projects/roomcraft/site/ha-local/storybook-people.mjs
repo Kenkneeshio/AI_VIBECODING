@@ -1,10 +1,13 @@
 import * as THREE from 'three';
-import {createStorybookMotion} from './storybook-motion.mjs';
-import {canUseStorybookSeat, createSeatDwell} from './storybook-seating.mjs';
+import {createStorybookPersonMotion, createStorybookPersonSignal} from './storybook-person-motion.mjs';
+import {createStorybookPersonNavigation} from './storybook-person-navigation.mjs';
+import {canUseStorybookSeat} from './storybook-seating.mjs';
+import {createStorybookInteractionProps, findStorybookInteraction, storybookInteractionPose,
+  storybookSeatedActivity, storybookSeatedPose} from './storybook-person-interactions.mjs';
 
 const MAX_TRACKS = 24;
 const GROUND_RING_RADIUS = 17.5;
-const SIT_SECONDS = .42;
+const POSE_SECONDS = .42;
 const SEAT_HIPS = 8.9;
 export const STORYBOOK_PERSON_RADIUS = 20;
 const STYLES = [
@@ -12,16 +15,11 @@ const STYLES = [
   {role: 'mama', scale: [1.09, 1.18, 1.12], radius:18, sweater: '#c86587', trim: '#ffdeaf', skin: '#e8af83', hair: '#5a3841'},
   {role: 'baby', scale: [.92, .83, .92], radius:16, sweater: '#8b78cf', trim: '#ffe492', skin: '#f1b98e', hair: '#674138'},
 ];
-const POSES = {
-  idle: {lean:.03, tilt:0, thighs:-1.30, shins:1.16, hands:[-.43,-.40], fidget:.10, pace:2.1},
-  lounge: {lean:-.13, tilt:.07, thighs:-1.16, shins:.92, hands:[-.22,-.14], fidget:.13, pace:1.8},
-  dining: {lean:.06, tilt:.02, thighs:-1.34, shins:1.26, hands:[-.61,-.51], fidget:.14, pace:2.8},
-  desk: {lean:.16, tilt:0, thighs:-1.26, shins:1.18, hands:[-.98,-.92], fidget:.12, pace:6.3},
-  bench: {lean:.04, tilt:-.09, thighs:-1.28, shins:1.10, hands:[-.35,-.56], fidget:.22, pace:3.3},
-};
 const mix = (from, to, amount) => from + (to - from) * amount;
 const clampUnit = value => Math.min(1, Math.max(0, value));
 const angleDelta = (target, start) => Math.atan2(Math.sin(target - start), Math.cos(target - start));
+const STANDING = {lean:0, tilt:0, crouch:0, headPitch:0, lookAside:0, hands:[0,0],
+  armSpread:[0,0], thighs:0, shins:0};
 
 function paintedMaterial(color, emissiveIntensity = 0.12) {
   return new THREE.MeshStandardMaterial({color, roughness: 0.78, emissive: color, emissiveIntensity});
@@ -41,7 +39,8 @@ function animateFace(character, idle, reducedMotion, forwardTilt = 0, lookAside 
  * Route and clearance queries use the same compiled surface as floorAt.
  */
 export function createStorybookPeople(scene, floorAt = () => 0,
-  {supportsRoute, floorClearance, allowsBodyPoint, allowsBodyRoute, seats = [], occlusionScene} = {}) {
+  {supportsRoute, floorClearance, allowsBodyPoint, allowsBodyRoute, geometryRevision,
+    seats = [], interactions = [], occlusionScene} = {}) {
   const group = new THREE.Group();
   group.name = 'tracked-people';
   scene.add(group);
@@ -51,12 +50,16 @@ export function createStorybookPeople(scene, floorAt = () => 0,
   // Initialize the resources only on first use. The normal editor scene and its
   // exports have no runtime characters or dependencies on the tracker feed.
   let art;
+  let props;
   const tracks = new Map();
+  const navigators = new Map();
   const unused = STYLES.map(() => []);
   let preference = false;
   let reduced = false;
   let lastTime = 0;
   let hasVisibleTracks = false;
+  let activitiesEnabled = true;
+  let previousSnapshot;
 
   function makeArt() {
     const head = new THREE.Shape();
@@ -90,6 +93,7 @@ export function createStorybookPeople(scene, floorAt = () => 0,
 
   function makeCharacter(styleIndex) {
     art ??= makeArt();
+    props ??= createStorybookInteractionProps();
     const {role, scale, radius} = STYLES[styleIndex];
     const {sweater, trim, skin, hair} = art.palette[styleIndex];
     const baby = role === 'baby';
@@ -197,7 +201,8 @@ export function createStorybookPeople(scene, floorAt = () => 0,
     }
     if (role === 'papa') ellipse(head, art.ink, 0, 1.6, 9.35, 1.1, .28, .35);
     ellipse(head, art.ink, 0, -1.95, 9.15, 1.38, 0.45, 0.38);
-    return {root, groundMark, poseRoot, body, head, arms, legs, eyes, radius, styleIndex, baby, cue};
+    return {root, groundMark, poseRoot, body, head, arms, legs, eyes, radius, styleIndex, baby, cue,
+      setProp:props.attach(arms)};
   }
 
   const allowsPoint = (x, z) => Number.isFinite(floorAt(x, z)) && (!floorClearance || floorClearance(x, z) > 0);
@@ -207,83 +212,133 @@ export function createStorybookPeople(scene, floorAt = () => 0,
     (supportsRoute?.(x, z, toX, toZ, radius) ?? true) &&
     (allowsBodyRoute?.(x, z, toX, toZ, radius, exceptItemId) ?? true);
 
-  function fitsSeat(seat, x, z, radius, tolerance = 1) {
-    return seat.width >= radius * 1.35 && seat.depth >= radius * .82 &&
-      clearBodyPoint(seat.x, seat.z, radius, seat.itemId) &&
-      canUseStorybookSeat(seat, x, z,
-        (fromX, fromZ, toX, toZ) => clearBodyRoute(fromX, fromZ, toX, toZ, radius, seat.itemId), tolerance);
+  function navigatorFor(radius) {
+    if (!navigators.has(radius)) {
+      navigators.set(radius, createStorybookPersonNavigation({
+        allowsPoint: (x, z) => clearBodyPoint(x, z, radius),
+        allowsRoute: (x, z, toX, toZ) => clearBodyRoute(x, z, toX, toZ, radius),
+        geometryRevision,
+      }));
+    }
+    return navigators.get(radius);
   }
 
-  function nearestSeat(x, z, radius, taken) {
-    let nearest;
-    let distance = Infinity;
-    for (const seat of seats) {
-      const next = Math.hypot(x - seat.x, z - seat.z);
-      if (next >= distance || taken.has(seat.id) || !fitsSeat(seat, x, z, radius)) continue;
-      nearest = seat;
-      distance = next;
+  function seatApproaches(seat, point, radius) {
+    const bodyRadius = radius * .8;
+    if (seat.width < radius * 1.35 || seat.depth < radius * .82 ||
+        !clearBodyPoint(seat.x, seat.z, bodyRadius, seat.itemId) ||
+        !canUseStorybookSeat(seat, point.x, point.y,
+          (x, z, endX, endZ) => clearBodyRoute(x, z, endX, endZ, 0, seat.itemId))) return [];
+    const points = [];
+    for (let distance = 16; distance <= 76; distance += 8) {
+      for (const offset of [0, -.5, .5, -1, 1, -1.5, 1.5]) {
+        const direction = seat.heading + offset;
+        const x = seat.x + Math.sin(direction) * distance;
+        const y = seat.z + Math.cos(direction) * distance;
+        if (clearBodyPoint(x, y, radius) && clearBodyRoute(x, y, seat.x, seat.z, bodyRadius, seat.itemId)) {
+          points.push({x, y});
+        }
+      }
+      if (points.length) break;
     }
-    return nearest;
+    return points;
   }
 
-  function seatingBlend(track, target, x, z) {
-    if (track.seat !== target) {
-      track.seat = target;
-      track.poseAt = lastTime;
+  function chooseActivity(track, point, taken) {
+    const {radius} = track.character;
+    const distanceTo = item => Math.hypot(item.x - point.x, item.z - point.y);
+    const nearbySeats = seats.filter(seat => !taken.has(seat.id) && distanceTo(seat) <= seat.reach)
+      .sort((a, b) => distanceTo(a) - distanceTo(b));
+    for (const seat of nearbySeats) {
+      for (const approach of seatApproaches(seat, point, radius)) {
+        if (track.motion.aim(approach, lastTime, reduced)) return {id:seat.id, heading:seat.heading, seat};
+      }
     }
-    if (!target) return 0;
-    // Only interpolate along an open approach. A measured point already in
-    // the cushion appears in its supported pose without crossing the shell.
-    if (reduced || !clearBodyPoint(x, z, track.character.radius) ||
-        !clearBodyPoint(target.x, target.z, track.character.radius) ||
-        !clearBodyRoute(x, z, target.x, target.z, track.character.radius)) return 1;
-    const amount = clampUnit((lastTime - track.poseAt) / SIT_SECONDS);
-    return amount * amount * (3 - 2 * amount);
+    const activity = findStorybookInteraction(interactions, point, radius, {
+      allowsPoint:clearBodyPoint,
+      allowsTarget:(x, z, endX, endZ, itemId) => clearBodyRoute(x, z, endX, endZ, 0, itemId),
+    }, taken);
+    if (activity && track.motion.aim({x:activity.x, y:activity.z}, lastTime, reduced)) return activity;
+    return null;
+  }
+
+  function planTrack(track, current, taken, allowActivities) {
+    const {signal, point, motion, navigator} = track;
+    const revision = geometryRevision?.();
+    const eligible = allowActivities && !point.quality && signal.settled;
+    if (track.activity && (!allowActivities || revision !== track.revision)) {
+      track.blend = 0;
+      track.activity = null;
+      track.leaving = false;
+      track.planned = null;
+    }
+    if (track.activity && !eligible && !(point.quality === 'last-known' && track.blend > 0)) {
+      track.leaving = true;
+      if (track.blend === 0) {
+        track.activity = null;
+        track.leaving = false;
+      }
+    }
+    if (track.activity) return;
+    if (track.planned === signal && track.revision === revision && track.activitiesAllowed === allowActivities) return;
+    track.planned = signal;
+    track.revision = revision;
+    track.activitiesAllowed = allowActivities;
+    if (eligible) {
+      track.activity = chooseActivity(track, signal.target, taken);
+      if (track.activity) return;
+    }
+    const destination = navigator.standingTarget(signal.target, current);
+    motion.aim(destination ?? (!current && point.keepVisible ? point.fallback : null), lastTime, reduced);
   }
 
   function drawCharacter(track, sample, blend) {
-    const {character, seat} = track;
-    const {x, y:z, heading, walking, progress:amount} = sample;
+    const {character, activity} = track;
+    const seat = activity?.seat;
+    const {x, y:z, heading, walking, step} = sample;
     const floor = floorAt(x, z);
     const cos = Math.cos(heading);
     const sin = Math.sin(heading);
     const dx = (seat ? seat.x - x : 0) * blend;
     const dz = (seat ? seat.z - z : 0) * blend;
-    const posture = POSES[seat?.pose ?? 'idle'];
+    const duration = lastTime - (track.poseAt ?? lastTime);
+    const pose = seat ? storybookSeatedActivity(seat, reduced ? 0 : duration) : activity?.pose;
+    const posture = (seat ? storybookSeatedPose(seat, duration, reduced) :
+      storybookInteractionPose(pose, duration, reduced)) ?? STANDING;
     const raise = seat ? seat.y - floor - SEAT_HIPS * STYLES[character.styleIndex].scale[1] : 0;
     character.root.position.set(x, floor, z);
     character.root.rotation.y = heading;
     character.poseRoot.position.set(dx * cos - dz * sin, raise * blend, dx * sin + dz * cos);
-    character.poseRoot.rotation.y = seat ? angleDelta(seat.heading, heading) * blend : 0;
-    character.poseRoot.userData.pose = blend > 0 ? seat.pose : 'standing';
+    character.poseRoot.rotation.y = activity ? angleDelta(activity.heading, heading) * blend : 0;
+    character.poseRoot.userData.pose = blend > 0 ? pose : 'standing';
+    character.setProp(blend > .52 ? posture.prop : undefined);
     const idle = Math.floor(Math.max(0, lastTime - track.born) * 16) / 16 + .7 + character.styleIndex * .62;
-    const step = Math.floor(amount * 12) / 12 * Math.PI * 4;
-    const stride = walking ? Math.sin(step) * .56 : 0;
-    const bounce = walking ? Math.abs(Math.sin(step)) * 1.9 : (1 + Math.sin(idle * 4.7)) * .47;
-    const breath = .19 * (1 + Math.sin(idle * 2.6));
-    character.body.position.y = reduced ? 0 : mix(bounce * (character.baby ? 1.5 : 1), breath, blend);
+    const gait = Math.floor(step * 12) / 12 * 2 * Math.PI;
+    const stride = walking ? Math.sin(gait) * .56 : 0;
+    const bounce = reduced ? 0 : walking ? Math.abs(Math.sin(gait)) * 1.9 : (1 + Math.sin(idle * 4.7)) * .47;
+    character.body.position.y = mix(bounce * (character.baby ? 1.5 : 1), posture.crouch, blend);
     character.body.rotation.x = posture.lean * blend;
     const sway = reduced ? 0 : walking ? stride * .15 : Math.sin(idle * 2.8) * .045;
     character.body.rotation.z = mix(sway, posture.tilt, blend);
     for (let i = 0; i < 2; i++) {
       const side = i === 0 ? -1 : 1;
       const standingArm = walking ? -stride * side : reduced ? 0 : Math.sin(idle * 3.1 + i) * .09;
-      const fidget = reduced ? 0 : Math.sin(idle * posture.pace + i * 2.6) * posture.fidget;
-      const nod = reduced ? 0 : Math.sin(idle * 2.7 + i) * .035;
-      character.arms[i].rotation.x = mix(standingArm, posture.hands[i] + fidget, blend);
-      character.legs[i].thigh.rotation.x = mix(stride * side, posture.thighs + nod, blend);
-      character.legs[i].shin.rotation.x = (posture.shins + nod * 2) * blend;
+      character.arms[i].rotation.x = mix(standingArm, posture.hands[i], blend);
+      character.arms[i].rotation.z = posture.armSpread[i] * blend;
+      character.legs[i].thigh.rotation.x = mix(stride * side, posture.thighs, blend);
+      character.legs[i].shin.rotation.x = posture.shins * blend;
     }
-    const look = reduced || seat?.pose === 'desk' ? 0 : Math.sin(idle * 1.08) * .13 * blend;
-    animateFace(character, idle, reduced, posture.lean * .45 * blend, look);
+    animateFace(character, idle, reduced, posture.headPitch * blend, posture.lookAside * blend);
   }
 
-  function render(seconds, reduceMotion = preference, allowSeats = true) {
+  function render(seconds, reduceMotion = preference, allowActivities = activitiesEnabled) {
     lastTime = Number.isFinite(seconds) ? seconds : lastTime;
     reduced = reduceMotion || preference;
+    activitiesEnabled = allowActivities;
     hasVisibleTracks = false;
-    const pending = [];
     const taken = new Set();
+    const reserve = activity => taken.add(activity.seat ? activity.id : activity.itemId);
+    for (const {activity} of tracks.values()) if (activity) reserve(activity);
     for (const track of tracks.values()) {
       const {character} = track;
       const {x, y:z} = track.point;
@@ -295,36 +350,33 @@ export function createStorybookPeople(scene, floorAt = () => 0,
         character.groundMark.position.set(x, floor + .26, z);
         character.groundMark.scale.setScalar(Math.min(1, clearance / GROUND_RING_RADIUS));
       }
+      const elapsed = Math.max(0, lastTime - track.renderedAt);
+      track.renderedAt = lastTime;
+      if (track.leaving) {
+        track.blend = reduced || !allowActivities ? 0 : clampUnit(track.blend - elapsed / POSE_SECONDS);
+        if (track.blend === 0) {
+          track.activity = null;
+          track.leaving = false;
+          track.planned = null;
+        }
+      }
+      const previousActivity = track.activity;
+      planTrack(track, track.motion.sample(lastTime, reduced), taken, allowActivities);
       const sample = track.motion.sample(lastTime, reduced);
-      if (track.bodyReported && sample?.current) track.bodySuppressed = false;
-      const standing = track.bodyReported && !track.bodySuppressed ? sample : null;
-      const ready = allowSeats && track.point.quality !== 'area' &&
-        (!track.bodyReported || (standing?.current && !standing.walking)) &&
-        track.dwell.ready(x, z, lastTime);
-      if (track.seat) {
-        if (ready && fitsSeat(track.seat, x, z, character.radius, 1.18)) taken.add(track.seat.id);
-        else track.seat = undefined;
+      if (track.activity) {
+        reserve(track.activity);
+        if (sample && !sample.walking && !track.leaving) {
+          if (track.blend === 0) track.poseAt = lastTime;
+          track.blend = reduced ? 1 : clampUnit(track.blend +
+            (track.activity === previousActivity ? elapsed / POSE_SECONDS : 0));
+        }
       }
-      pending.push({track, standing, ready});
-    }
-    for (const {track, standing, ready} of pending) {
-      const {character, point} = track;
-      const target = ready ? track.seat ?? nearestSeat(point.x, point.y, character.radius, taken) : undefined;
-      if (target) taken.add(target.id);
-      const blend = seatingBlend(track, target, point.x, point.y);
-      let sample = target ? {x:point.x, y:point.y, heading:standing?.heading ?? target.heading,
-        walking:false, progress:1} : standing;
-      if (!sample && point.keepVisible) {
-        const safe = [track.lastStanding, point.fallback].find(candidate =>
-          candidate && clearBodyPoint(candidate.x, candidate.y, character.radius));
-        if (safe) sample = {...safe, heading:safe.heading ?? 0, walking:false, progress:1};
-      }
-      if (sample && !target) track.lastStanding = sample;
+      const blend = track.blend * track.blend * (3 - 2 * track.blend);
       character.root.visible = Boolean(sample);
-      character.root.userData.locationQuality = point.quality ?? 'measured';
+      character.root.userData.locationQuality = track.point.quality ?? 'measured';
       if (sample) drawCharacter(track, sample, blend);
       if (character.cue) {
-        character.cue.visible = Boolean(sample && point.keepVisible);
+        character.cue.visible = Boolean(sample && track.point.keepVisible);
         if (character.cue.visible) character.head.getWorldPosition(character.cue.position);
       }
       hasVisibleTracks ||= character.root.visible || character.groundMark.visible;
@@ -332,13 +384,15 @@ export function createStorybookPeople(scene, floorAt = () => 0,
   }
 
   function setTracks(snapshot, seconds, {reduceMotion = false} = {}) {
+    if (snapshot === previousSnapshot && reduceMotion === preference) return;
+    previousSnapshot = snapshot;
     preference = reduceMotion;
     const time = Number.isFinite(seconds) ? seconds : lastTime;
     const next = new Map();
     for (const point of Array.isArray(snapshot) ? snapshot : []) {
       if (typeof point?.id !== 'string' || !point.id || point.id.length > 256 ||
           !Number.isFinite(point.x) || !Number.isFinite(point.y) || next.has(point.id) ||
-          !allowsPoint(point.x, point.y)) continue;
+          (!point.keepVisible && !allowsPoint(point.x, point.y))) continue;
       next.set(point.id, point);
       if (next.size === MAX_TRACKS) break;
     }
@@ -358,18 +412,21 @@ export function createStorybookPeople(scene, floorAt = () => 0,
       const styleIndex = styleCounts.indexOf(Math.min(...styleCounts));
       styleCounts[styleIndex]++;
       const character = unused[styleIndex].pop() ?? makeCharacter(styleIndex);
-      const motion = createStorybookMotion({
+      const navigator = navigatorFor(character.radius);
+      const motion = createStorybookPersonMotion({
         allowsPoint: (x, z) => clearBodyPoint(x, z, character.radius),
-        allowsRoute: (x, z, toX, toZ) => clearBodyRoute(x, z, toX, toZ, character.radius),
+        findRoute:navigator.findRoute, geometryRevision,
       });
-      tracks.set(id, {character, motion, dwell:createSeatDwell(), born:time, poseAt:time});
+      tracks.set(id, {character, motion, navigator, filter:createStorybookPersonSignal(),
+        born:time, renderedAt:time, blend:0});
     }
     for (const [id, point] of next) {
       const track = tracks.get(id);
+      if (track.point === point) continue;
       track.point = point;
-      track.bodyReported = track.motion.observe(point, time, {observation:point.expiresAt, reduceMotion});
-      if (!track.bodyReported) track.bodySuppressed = true;
-      if (seats.length) track.dwell.observe(point, time);
+      const signal = track.filter.observe(point, time);
+      if (track.signal?.target !== signal.target || track.signal.settled !== signal.settled ||
+          track.signal.quality !== point.quality) track.signal = {...signal, quality:point.quality};
     }
     render(time, reduceMotion);
   }
@@ -386,10 +443,12 @@ export function createStorybookPeople(scene, floorAt = () => 0,
     art.groundRing.dispose();
     art.glasses.dispose();
     art.occlusionGlyph.dispose();
+    props.dispose();
     group.clear();
     occlusion.clear();
     for (const pool of unused) pool.length = 0;
     tracks.clear();
+    navigators.clear();
     art = undefined;
   }
 
@@ -403,6 +462,5 @@ export function createStorybookPeople(scene, floorAt = () => 0,
     },
     get hasMotion() { return !reduced && tracks.size > 0; },
     get hasVisibleTracks() { return hasVisibleTracks; },
-    get hasPendingReacquisition() { return [...tracks.values()].some(({motion}) => motion.pendingReacquisition); },
   };
 }

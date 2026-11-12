@@ -413,10 +413,10 @@
     const transform = item.presenceTrackTransform;
     const {lateralScale, forwardScale, headingOffset, skew, flipLeftRight} = presenceAlignmentValues(item);
     const number = value => Number(value.toPrecision(12));
-    return '<div class="inspector-block"><p class="inspector-label">PERSON TRACKING</p>'
+    return '<div class="inspector-block"><h3 class="inspector-label" id="trackingRangeSettings" tabindex="-1">Tracking range correction</h3>'
       + entityField('Radar targets entity', 'presenceTrackEntityId', item.presenceTrackEntityId || '',
         entityOptions, 'sensor', escape)
-      + '<p class="field-hint">Characters follow recent positions from this radar sensor. Preview live positions in Home Assistant Studio and publish the layout to use the calibration on the dashboard.</p>'
+      + '<p class="field-hint">Adjust how radar distances map to the floor plan. Forward scale changes depth and lateral scale changes width. Set the sensor’s physical detection limits in Home Assistant.</p>'
       + '<button type="button" class="secondary-button full-width" data-radar-calibration>Calibrate from measured points</button>'
       + '<div class="field-grid">'
       + '<div class="field"><label for="presence-track-lateral-scale">Lateral scale (px/m)</label>'

@@ -7,7 +7,7 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <title>Roomcraft — Second Floor Builder</title>
   <meta name="description" content="A detailed illustrated room builder based on the second-floor home plan.">
-  <link rel="stylesheet" href="styles.css?v=df9104402256ca0b">
+  <link rel="stylesheet" href="styles.css?v=00716303be76e5f3">
 </head>
 <body>
   <div class="app-shell">
@@ -27,6 +27,7 @@
           <div class="dropdown" id="exportMenu" hidden>
             <button type="button" data-open-models>Object models</button>
             <button type="button" id="sceneSettingsButton" aria-haspopup="dialog">Scene settings</button>
+            <button type="button" id="trackingRangeButton">Tracking range correction</button>
             <button type="button" id="backDashboardButton">Dashboard</button>
             <button type="button" id="focusCanvasButton" aria-pressed="false" title="Expand the artwork for a closer look">Focus canvas</button>
             <button type="button" id="undoButton" data-keep-menu-open title="Undo (Ctrl+Z)">Undo</button>
@@ -59,7 +60,7 @@
         </div>
 
         <div class="reference-card">
-          <div class="reference-thumb"><img src="assets/floorplan.png?v=df9104402256ca0b" alt="The original furnished second-floor reference"></div>
+          <div class="reference-thumb"><img src="assets/floorplan.png?v=00716303be76e5f3" alt="The original furnished second-floor reference"></div>
           <div class="reference-copy"><strong>Starting reference</strong><span>Original furnished image</span></div>
           <button type="button" class="text-button" id="showReferenceButton">View</button>
         </div>
@@ -200,6 +201,13 @@
       <div id="scenePreviewWeather" hidden></div>
     </fieldset>
   </dialog>
+  <dialog id="trackingRangeDialog" class="app-dialog scene-settings-dialog" aria-labelledby="trackingRangeTitle">
+    <form method="dialog"><button type="submit" class="dialog-close" aria-label="Close tracking range correction">×</button></form>
+    <h2 id="trackingRangeTitle">Tracking range correction</h2>
+    <label for="trackingRangeSwitch">Presence switch</label>
+    <select id="trackingRangeSwitch"></select>
+    <button type="button" class="primary-button" id="openTrackingSwitch">Open settings</button>
+  </dialog>
   <dialog id="radarCalibrationDialog" class="app-dialog scene-settings-dialog radar-calibration" aria-labelledby="radarCalibrationTitle">
     <form method="dialog"><button type="submit" class="dialog-close" aria-label="Close radar calibration">×</button></form>
     <h2 id="radarCalibrationTitle">Calibrate radar</h2>
@@ -277,25 +285,25 @@
       <button type="button" class="primary-button" id="confirmationAccept">Continue</button>
     </div>
   </dialog>
-  <script src="editor-assets.js?v=df9104402256ca0b" defer></script>
-  <script src="engine/deterministic-core.js?v=df9104402256ca0b" defer></script>
-  <script src="engine/project-runtime.js?v=df9104402256ca0b" defer></script>
-  <script src="engine/render-contract.js?v=df9104402256ca0b" defer></script>
-  <script src="engine/verification-harness.js?v=df9104402256ca0b" defer></script>
-  <script src="engine/wall-joins.js?v=df9104402256ca0b" defer></script>
-  <script src="engine/reference-geometry.js?v=df9104402256ca0b" defer></script>
-  <script src="engine/scene-settings.js?v=df9104402256ca0b" defer></script>
-  <script src="ha-iframe-bridge.js?v=df9104402256ca0b" defer></script>
-  <script src="inventory.js?v=df9104402256ca0b" defer></script>
-  <script src="model-library.js?v=df9104402256ca0b" defer></script>
-  <script src="catalog-variants.js?v=df9104402256ca0b" defer></script>
-  <script src="raster-renderer.js?v=df9104402256ca0b" defer></script>
-  <script src="object-art.js?v=df9104402256ca0b" defer></script>
-  <script src="control-actions.js?v=df9104402256ca0b" defer></script>
-  <script src="light-capabilities.js?v=df9104402256ca0b" defer></script>
-  <script src="object-controls.js?v=df9104402256ca0b" defer></script>
-  <script src="app.js?v=df9104402256ca0b" defer></script>
-  <script src="responsive-inspector.js?v=df9104402256ca0b" defer></script>
-  <script src="storybook-editor.js?v=df9104402256ca0b" defer></script>
+  <script src="editor-assets.js?v=00716303be76e5f3" defer></script>
+  <script src="engine/deterministic-core.js?v=00716303be76e5f3" defer></script>
+  <script src="engine/project-runtime.js?v=00716303be76e5f3" defer></script>
+  <script src="engine/render-contract.js?v=00716303be76e5f3" defer></script>
+  <script src="engine/verification-harness.js?v=00716303be76e5f3" defer></script>
+  <script src="engine/wall-joins.js?v=00716303be76e5f3" defer></script>
+  <script src="engine/reference-geometry.js?v=00716303be76e5f3" defer></script>
+  <script src="engine/scene-settings.js?v=00716303be76e5f3" defer></script>
+  <script src="ha-iframe-bridge.js?v=00716303be76e5f3" defer></script>
+  <script src="inventory.js?v=00716303be76e5f3" defer></script>
+  <script src="model-library.js?v=00716303be76e5f3" defer></script>
+  <script src="catalog-variants.js?v=00716303be76e5f3" defer></script>
+  <script src="raster-renderer.js?v=00716303be76e5f3" defer></script>
+  <script src="object-art.js?v=00716303be76e5f3" defer></script>
+  <script src="control-actions.js?v=00716303be76e5f3" defer></script>
+  <script src="light-capabilities.js?v=00716303be76e5f3" defer></script>
+  <script src="object-controls.js?v=00716303be76e5f3" defer></script>
+  <script src="app.js?v=00716303be76e5f3" defer></script>
+  <script src="responsive-inspector.js?v=00716303be76e5f3" defer></script>
+  <script src="storybook-editor.js?v=00716303be76e5f3" defer></script>
 </body>
 </html>

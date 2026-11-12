@@ -56,6 +56,7 @@ body.dashboard-transfer-busy .workbench{cursor:progress}body.dashboard-transfer-
 .inspector-toggle:hover{background:#eaf2e9}
 .inspector-toggle span{font-size:10px}
 .inspector-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+#trackingRangeSettings{color:#34483a;font-size:13px;letter-spacing:0;scroll-margin-top:8px}
 .inspector-close{border:1px solid #e5e6de;background:#f9faf5;border-radius:8px;width:32px;height:32px;font-size:22px;line-height:1;color:#526456}
 @media(max-width:900px){
   .workbench{position:relative;overflow:hidden}

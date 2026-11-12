@@ -148,6 +148,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         .tracking-legend li{display:flex;align-items:center;gap:4px}
         .tracking-legend i{display:block;width:8px;height:8px;border-radius:50%;background:var(--dot,#87939d)}
         .tracking-legend .unavailable i{box-sizing:border-box;border:1px solid #87939d;background:transparent}
+        .tracking-calibration{display:inline-flex;align-items:center;min-height:44px;margin-top:8px;color:#286858}
         .zone-legend{position:absolute;right:12px;bottom:12px;z-index:3;display:grid;gap:4px;
           max-width:calc(100% - 24px);box-sizing:border-box;margin:0;padding:7px 9px;list-style:none;
           border:1px solid #c8e7e959;border-radius:9px;background:#13262eea;color:#f5f8ec;
@@ -325,6 +326,7 @@ class RoomcraftStorybookCard extends HTMLElement {
           <li><i aria-hidden="true"></i>Clear</li>
           <li class="unavailable"><i aria-hidden="true"></i>Unavailable</li>
         </ul>
+        <a class="tracking-calibration" href="/roomcraft-home/studio#tracking-range-correction">Tracking range correction</a>
       </dialog>
       <dialog class="utility-dialog" aria-labelledby="utility-title">
         <header><h2 id="utility-title"></h2><button type="button" class="close-utility">Close</button></header>
@@ -574,6 +576,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.snapshots.sync();
     for (const link of this.shadowRoot.querySelectorAll('[data-studio-link]')) link.href = this.studioPath;
     this.shadowRoot.querySelector('[data-scene-settings-link]').href = this.studioPath + '#scene-settings';
+    this.shadowRoot.querySelector('.tracking-calibration').href = this.studioPath + '#tracking-range-correction';
     this.load();
   }
 

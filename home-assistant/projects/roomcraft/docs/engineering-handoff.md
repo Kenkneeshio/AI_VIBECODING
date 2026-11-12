@@ -1,5 +1,7 @@
 # Roomcraft engineering handoff
 
+`storybook-person-motion.mjs` filters the displayed target, records three seconds of fresh dwell evidence, and advances the actor along a swept route. `storybook-person-navigation.mjs` caches floor and furniture route checks by body size and geometry revision. `storybook-person-interactions.mjs` owns catalog-based approaches, poses and held props. `storybook-people.mjs` integrates these with the raw marker and supported seats. See the [character movement release](character-interactions-release.md) for verification and recovery.
+
 `storybook-location.mjs` owns the native Home location panel and the secure administrator setup form. `storybook-google-flow.mjs` advances the pinned Google Maps integration’s native flow and uses the Home Assistant file upload endpoint. The setup anchor, component ownership, verification, and recovery are recorded in the [Google Maps setup release](google-maps-setup-release.md).
 
 The [full system audit](system-audit-full-2026-11-11.md) covers graphics recovery, Studio publishing, radar alignment and avatar geometry, Home Assistant sources, Watchdog, and tablet recovery. For software rollback, reinstall Roomcraft source `372ca0a5a7e2799e1554575f75ae3389a20c8d39` or restore private Studio version 84. The Watchdog installer preserves a separate component and private configuration backup.

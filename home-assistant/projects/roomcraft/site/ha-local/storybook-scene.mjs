@@ -13,6 +13,7 @@ import { applyModelHeight } from './storybook-size.mjs';
 import { createStorybookPeople, STORYBOOK_PERSON_RADIUS } from './storybook-people.mjs';
 import {applyVacuumAlignment} from './storybook-vacuum-alignment.mjs';
 import { compileStorybookSeats } from './storybook-seating.mjs';
+import { compileStorybookInteractions } from './storybook-person-interactions.mjs';
 import {
   createFloorSupport, createStorybookFurnitureCollision, nearestSupportedFloorPoint, unobstructedFloor,
 } from './storybook-floor-support.mjs';
@@ -1131,9 +1132,13 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
   const floorItems = plan.placements.filter(({item, baseY}) => baseY === 0 && roots.has(item.id));
   const restFurniture = createStorybookFurnitureCollision(floorItems);
   let furniture = restFurniture;
+  const placementSupport = createStorybookPlacement(plan.placements, roots);
+  const restingSupports = placementSupport.resolve();
+  let resolvedSupports = restingSupports;
   const peopleOptions = {
     supportsRoute: presence.supportsRoute,
     floorClearance: presence.clearance,
+    geometryRevision: () => furniture,
     allowsBodyPoint: (x, z, radius, exceptItemId) => !furniture.blocksPoint(x, z, radius, exceptItemId),
     allowsBodyRoute: (x, z, endX, endZ, radius, exceptItemId) =>
       !furniture.blocksRoute(x, z, endX, endZ, radius, exceptItemId),
@@ -1141,12 +1146,10 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
   const livePeople = createStorybookPeople(trackingOverlay, floorForPerson, {
     occlusionScene: trackingOcclusion,
     ...peopleOptions, seats: compileStorybookSeats(plan.placements, roots, home.clearance),
+    interactions: compileStorybookInteractions(plan.placements, roots, restingSupports),
   });
   let demoPeople;
   let people = livePeople;
-  const placementSupport = createStorybookPlacement(plan.placements, roots);
-  const restingSupports = placementSupport.resolve();
-  let resolvedSupports = restingSupports;
   let lastDraftPositions;
   let trackedControlChanged = false;
   const cameraBounds = {...plan.bounds, sceneryMinZ: street.sceneryMinZ, waterfront: {
@@ -1426,8 +1429,7 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
     hasAmbientMotion: true, setPeople, setDisplaySettings, setVacuumMapOverlay,
     setDetectionZones: coverage.setZones, setHeatMap: heatMap.setHistory,
     get trackedControlChanged() { return trackedControlChanged; },
-    get hasPendingReacquisition() { return livePeople.hasPendingReacquisition ||
-      [...roots.values()].some(object => object.liveMotion?.pendingReacquisition); },
+    get hasPendingReacquisition() { return [...roots.values()].some(object => object.liveMotion?.pendingReacquisition); },
     canPlacePerson: (x, y) => Number.isFinite(floorForPerson(x, y)),
     personFloorAt: floorForPerson,
     nearestPersonPoint: (x, y, maxDistance = 128) => nearestSupportedFloorPoint(x, y, maxDistance,

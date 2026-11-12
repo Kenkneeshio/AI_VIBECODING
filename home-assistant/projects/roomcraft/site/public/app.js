@@ -1433,6 +1433,47 @@
     if (!dashboardRevision || !applyModelCommand(command)) openModelLibrary();
   }
 
+  function openTrackingSwitch(id) {
+    const item = project.items.find(entry => entry.type === 'presenceSwitch' && entry.id === id);
+    if (!item) return;
+    setFocusCanvas(false);
+    window.RoomcraftEditorViewport.useSelectTool();
+    select('item', item.id);
+    const toggle = document.getElementById('inspectorToggle');
+    if (window.matchMedia('(max-width:900px)').matches && toggle.getAttribute('aria-expanded') !== 'true') toggle.click();
+    const heading = document.getElementById('trackingRangeSettings');
+    heading?.scrollIntoView({block:'start', inline:'nearest'});
+    heading?.focus({preventScroll:true});
+  }
+
+  function openTrackingRange() {
+    const switches = project.items.filter(item => item.type === 'presenceSwitch');
+    if (!switches.length) {
+      showToast('Place a Presence switch to set up tracking range correction.');
+      return;
+    }
+    if (switches.length === 1) {
+      openTrackingSwitch(switches[0].id);
+      return;
+    }
+    const dialog = document.getElementById('trackingRangeDialog');
+    if (dialog.open) return;
+    const choice = document.getElementById('trackingRangeSwitch');
+    choice.replaceChildren(...switches.map(item => new Option(item.name || 'Presence switch', item.id)));
+    if (selected?.kind === 'item' && switches.some(item => item.id === selected.id)) choice.value = selected.id;
+    dialog.showModal();
+    choice.focus();
+  }
+
+  function shouldOpenTrackingRange() {
+    const anchor = '#tracking-range-correction';
+    if (window.location.hash === anchor) return true;
+    if (!window.RoomcraftDashboardBridge) return false;
+    const owner = window.parent === window ? window.opener : window.parent;
+    try { return owner?.location.hash === anchor; }
+    catch { return false; }
+  }
+
   function updateVariant(type,kind='finish'){
     if(selected?.kind!=='item'||!templateByType[type])return;
     const index=project.items.findIndex(i=>i.id===selected.id),o=project.items[index];
@@ -1752,6 +1793,11 @@
     document.getElementById('exportDashboardButton').addEventListener('click',exportToDashboard);
     document.getElementById('backDashboardButton').addEventListener('click',backToDashboard);
     const menu=document.getElementById('exportMenu'),menuButton=document.getElementById('exportButton');
+    const trackingRangeDialog = document.getElementById('trackingRangeDialog');
+    document.getElementById('openTrackingSwitch').addEventListener('click', () => {
+      trackingRangeDialog.close();
+      openTrackingSwitch(document.getElementById('trackingRangeSwitch').value);
+    });
     const showMenu=open=>{menu.hidden=!open;menuButton.setAttribute('aria-expanded',String(open));};
     menuButton.addEventListener('click',()=>showMenu(menu.hidden));
     menu.addEventListener('click',e=>{
@@ -1759,6 +1805,7 @@
       if(!button||button.hasAttribute('data-keep-menu-open'))return;
       showMenu(false);
       if(!button.hasAttribute('data-open-models'))menuButton.focus();
+      if(button.id==='trackingRangeButton')openTrackingRange();
       if(button.dataset.export==='png')exportPng();
       if(button.dataset.export==='json')exportJson();
       if(button.dataset.export==='yaml')exportHaYaml();
@@ -1767,7 +1814,7 @@
     document.getElementById('importButton').addEventListener('click',()=>document.getElementById('importFile').click());document.getElementById('importFile').addEventListener('change',e=>{importProject(e.target.files[0]);e.target.value='';});
     document.getElementById('resetButton').addEventListener('click',async()=>{if(!await askConfirmation('Reset layout','Load the current Home Assistant layout? Your current browser draft can be exported as JSON first, and this change is undoable in this session.','Load current layout'))return;snapshot();project=normalizeProject(clone(dashboardDefaultProject||STARTER));selected=null;clearPlacement();afterChange(dashboardDefaultProject?'Loaded current Home Assistant layout':'Loaded starting furnished plan',{authoritative:true});fitView();});
     window.addEventListener('keydown',e=>{
-      if(modelLibrary?.isOpen)return;
+      if(modelLibrary?.isOpen || trackingRangeDialog.open)return;
       if(!menu.hidden){
         if(e.key==='Escape'){e.preventDefault();showMenu(false);menuButton.focus();}
         return;
@@ -1896,6 +1943,7 @@
   });
   renderCategoryOptions();bindEvents();renderPalette();renderSurfacePalette();renderWallPalette();renderStructureList();renderRoomList();renderHotspotList();renderInspector();updateRestoreButton();updateRecoveryButton();updateHistoryButtons();setTool('select');fitView();draw();
   loadDashboardDefault().finally(() => {
-    if (window.location.search) openModelHandoff();
+    if (shouldOpenTrackingRange()) openTrackingRange();
+    else if (window.location.search) openModelHandoff();
   });
 })();
