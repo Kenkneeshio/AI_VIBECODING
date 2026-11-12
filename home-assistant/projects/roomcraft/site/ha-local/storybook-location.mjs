@@ -1,3 +1,5 @@
+import {connectGoogleMaps} from './storybook-google-flow.mjs';
+
 const PROVIDERS = new Map([
   ['google_maps', 'Google Maps'],
   ['home_assistant', 'Home Assistant'],
@@ -11,6 +13,32 @@ const MAP_LOAD_TIMEOUT_MS = 8000;
 export const STORYBOOK_LOCATION_MARKUP = `
   <dialog class="link-dialog location-dialog" aria-labelledby="location-title">
     <header><h2 id="location-title">Location sharing</h2><button type="button" data-close-link>Close</button></header>
+    <details class="location-setup" data-location-setup hidden>
+      <summary>Connect Google Maps</summary>
+      <p data-google-connect-insecure hidden>Open Roomcraft at your secure Home Assistant address (HTTPS) to connect Google Maps.</p>
+      <form data-google-connect>
+        <p>
+          In a private browser window, sign in to <a href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer">Google Maps</a> with the account that receives your family’s shares.
+          <a href="https://github.com/pnbruckner/ha-google-maps/tree/2.1.0#obtaining-a-cookies-file" target="_blank" rel="noopener noreferrer">Export the session file</a> and close the private window without signing out.
+        </p>
+        <label class="location-setup-field">Google account email
+          <input type="email" autocomplete="email" data-google-connect-email required>
+        </label>
+        <label class="location-setup-field">Google Maps session file (.txt)
+          <input type="file" accept=".txt,text/plain" data-google-connect-file required>
+        </label>
+        <label class="location-google-pref">
+          <input type="checkbox" data-google-connect-include>
+          Include my own location
+        </label>
+        <button type="submit" data-google-connect-submit>Connect and show on this screen</button>
+        <div class="location-links">
+          <a href="/config/integrations/dashboard/add?domain=google_maps" target="_blank" rel="noopener noreferrer">Open Home Assistant setup ↗</a>
+          <a href="/config/integrations/integration/google_maps" target="_blank" rel="noopener noreferrer">Manage existing connections ↗</a>
+        </div>
+      </form>
+    </details>
+    <p class="location-setup-result" data-google-connect-result role="status"></p>
     <p class="location-status" data-location-status role="status"></p>
     <div class="location-map" data-location-map hidden></div>
     <ul class="location-sources" data-location-sources aria-label="Location sources" hidden></ul>
@@ -21,7 +49,6 @@ export const STORYBOOK_LOCATION_MARKUP = `
     <p class="location-google-status" data-location-google-status role="status" hidden></p>
     <div class="location-links">
       <a href="https://myaccount.google.com/locationsharing" target="_blank" rel="noopener noreferrer">Google sharing settings ↗</a>
-      <a href="/config/integrations/dashboard/add?domain=google_maps" data-location-setup target="_blank" rel="noopener noreferrer" hidden>Connect Google Maps ↗</a>
     </div>
   </dialog>`;
 
@@ -39,6 +66,15 @@ export const STORYBOOK_LOCATION_STYLE = `
   .location-google-pref input{width:18px;height:18px;accent-color:#286858}
   .location-google-status{margin:0 0 8px;font-size:.9em}
   .location-links{display:flex;flex-wrap:wrap;gap:0 8px}
+  .location-setup{margin:4px 0 10px;padding:10px 12px;border:1px solid #8a725047;border-radius:10px;background:#f8eddc}
+  .location-setup summary{cursor:pointer;font-weight:700}
+  .location-setup p{margin:8px 0;font-size:.9em;line-height:1.45}
+  .location-setup-field{display:grid;gap:4px;margin:8px 0;font-size:.9em;font-weight:600}
+  .location-setup-field input{box-sizing:border-box;width:100%;min-width:0;min-height:38px;
+    padding:6px 8px;border:1px solid #8a725070;border-radius:7px;background:#fffbf2;color:#2e241c;font:inherit}
+  .location-setup button:disabled{opacity:.65;cursor:wait}
+  .location-setup-result{margin:8px 0;font-size:.9em;line-height:1.45}
+  .location-setup-result:empty{display:none}
   @media(max-width:420px){.location-dialog .location-sources li{display:grid}}
 `;
 
@@ -107,6 +143,17 @@ export function createStorybookLocation(dialog) {
   const googleToggle = dialog.querySelector('[data-location-google]');
   const googleStatus = dialog.querySelector('[data-location-google-status]');
   const googleSetup = dialog.querySelector('[data-location-setup]');
+  const googleForm = dialog.querySelector('[data-google-connect]');
+  const googleEmail = dialog.querySelector('[data-google-connect-email]');
+  const googleFile = dialog.querySelector('[data-google-connect-file]');
+  const googleInclude = dialog.querySelector('[data-google-connect-include]');
+  const googleSubmit = dialog.querySelector('[data-google-connect-submit]');
+  const googleResult = dialog.querySelector('[data-google-connect-result]');
+  const googleInsecure = dialog.querySelector('[data-google-connect-insecure]');
+  const secureSetup = host?.isSecureContext === true;
+  googleForm.hidden = !secureSetup;
+  googleInsecure.hidden = secureSetup;
+  let connecting = false;
   let configured = [];
   let showGoogle = false;
   try { showGoogle = host?.localStorage?.getItem(GOOGLE_DISPLAY_PREF) === 'true'; } catch { /* Storage may be disabled. */ }
@@ -178,7 +225,7 @@ export function createStorybookLocation(dialog) {
     const hasGoogleSource = sources.some(source => source.provider === 'google_maps');
     googleSetup.hidden = !hass?.user?.is_admin;
     googleStatus.hidden = !showGoogle || hass?.connected === false || hasGoogleSource;
-    googleStatus.textContent = googleStatus.hidden ? '' : 'No Google shared locations are connected yet.';
+    googleStatus.textContent = googleStatus.hidden ? '' : 'No Google shared locations are available yet.';
     paintSources(sources);
     const config = locationMapConfig(sources, hass);
     if (!config) {
@@ -200,13 +247,41 @@ export function createStorybookLocation(dialog) {
     void createMap(config, request);
   }
 
-  googleToggle.addEventListener('change', () => {
+  function saveGooglePreference() {
     showGoogle = googleToggle.checked;
     try { host?.localStorage?.setItem(GOOGLE_DISPLAY_PREF, String(showGoogle)); } catch { /* Keep the setting for this tab. */ }
     update(hass);
+  }
+
+  googleToggle.addEventListener('change', saveGooglePreference);
+  googleForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (connecting || !secureSetup || !hass?.user?.is_admin) return;
+    connecting = true;
+    googleSubmit.disabled = true;
+    googleResult.textContent = 'Connecting Google Maps through Home Assistant…';
+    try {
+      await connectGoogleMaps(hass, {
+        username: googleEmail.value,
+        file: googleFile.files?.[0],
+        includeAccount: googleInclude.checked,
+      });
+      googleForm.reset();
+      googleSetup.open = false;
+      googleToggle.checked = true;
+      saveGooglePreference();
+      googleResult.textContent = 'Google Maps is connected. Shared locations appear as Home Assistant receives them.';
+    } catch (error) {
+      googleResult.textContent = error.message;
+    } finally {
+      connecting = false;
+      googleSubmit.disabled = false;
+      if (!dialog.open) googleForm.reset();
+    }
   });
   dialog.addEventListener('close', () => {
     if (dialog.open) return;
+    if (!connecting) googleForm.reset();
     clear();
     say('');
     visibleRows = undefined;
@@ -214,6 +289,12 @@ export function createStorybookLocation(dialog) {
     list.hidden = true;
   });
   return {
+    openGoogleSetup() {
+      if (!hass?.user?.is_admin) return;
+      if (!dialog.open) dialog.showModal();
+      googleSetup.open = true;
+      update(hass);
+    },
     configure(config) {
       configured = readLocationSources(config);
       update(hass);

@@ -68,9 +68,13 @@ Search **Fish Aquarium** or **Lizard Terrarium** to place the animated tanks. Th
 
 ## Show family locations from Google Maps
 
-Open **Menu → Location sharing → Connect Google Maps** on a computer. Use the Google account that already receives your family’s location shares. The community Home Assistant integration guides you through exporting a Netscape cookies file from a private browser window and uploading it directly to the authenticated Home Assistant setup form. Close the private window after export without signing out. Keep the file local until setup succeeds, then remove the exported copy. [Google Maps integration setup and cookie instructions](https://github.com/pnbruckner/ha-google-maps/tree/2.1.0#obtaining-a-cookies-file)
+Open **Menu → Location sharing → Connect Google Maps** from your secure Home Assistant address (HTTPS) on a computer. You need a Home Assistant administrator account. The shortcut `/roomcraft-home/home#google-location-setup` opens the same form.
 
-Return to **Location sharing** and select **Show Google shared locations on this screen**. Each browser remembers its own choice. The map uses the latest available Home Assistant location for each connected Google share. The Google session can expire, and Home Assistant’s integration settings let you replace it.
+1. In a private browser window, sign in to Google Maps with the Google account that already receives your family’s shares. Export the Netscape `.txt` session file using the linked instructions and close the private window without signing out. [Session export instructions](https://github.com/pnbruckner/ha-google-maps/tree/2.1.0#obtaining-a-cookies-file)
+2. Enter that account’s email and choose the exported file in Roomcraft. Select **Include my own location** if you also want this account’s position on the map.
+3. Select **Connect and show on this screen**. Home Assistant starts receiving shared locations. Delete the exported copy from your computer when setup succeeds.
+
+Each browser has its own **Show Google shared locations on this screen** preference. The map uses the latest available Home Assistant location from each share. If Google expires the session, open **Manage existing connections** and follow Home Assistant’s reauthentication prompts. **Open Home Assistant setup** is available for advanced setup.
 
 ## Align the vacuum’s LiDAR map
 

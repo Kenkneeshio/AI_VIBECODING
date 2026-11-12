@@ -1,5 +1,10 @@
 # Changelog
 
+## Connect Google Maps from Roomcraft Home
+
+- **Menu → Location sharing → Connect Google Maps** now takes the receiving Google email and exported session file in one administrator form. **Connect and show on this screen** completes Home Assistant setup and enables the shared pins in the current browser after success.
+- The quick setup requires a secure Home Assistant page. Use the native integration settings to renew an existing session or choose advanced options.
+
 ## Compare the vacuum LiDAR map and show television power
 
 - Studio can load the authenticated LiDAR image, pair map and plan landmarks, compare metric distances, preview the overlay and undo an applied alignment. A saved alignment remembers the selected vacuum map so Home avoids applying it to a different floor.

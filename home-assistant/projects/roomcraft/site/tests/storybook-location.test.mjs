@@ -53,6 +53,8 @@ function panelFixture(loadCardHelpers, stored = new Map()) {
     '[data-location-google]': new EventTarget(),
     '[data-location-google-status]': element(),
     '[data-location-setup]': element(),
+    '[data-google-connect]': Object.assign(new EventTarget(), {reset() {}}),
+    '[data-google-connect-insecure]': element(),
   };
   const dialog = Object.assign(new EventTarget(), {
     open: false,

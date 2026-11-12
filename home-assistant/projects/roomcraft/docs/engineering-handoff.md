@@ -1,5 +1,7 @@
 # Roomcraft engineering handoff
 
+`storybook-location.mjs` owns the native Home location panel and the secure administrator setup form. `storybook-google-flow.mjs` advances the pinned Google Maps integration’s native flow and uses the Home Assistant file upload endpoint. The setup anchor, component ownership, verification, and recovery are recorded in the [Google Maps setup release](google-maps-setup-release.md).
+
 The [full system audit](system-audit-full-2026-11-11.md) covers graphics recovery, Studio publishing, radar alignment and avatar geometry, Home Assistant sources, Watchdog, and tablet recovery. For software rollback, reinstall Roomcraft source `372ca0a5a7e2799e1554575f75ae3389a20c8d39` or restore private Studio version 84. The Watchdog installer preserves a separate component and private configuration backup.
 
 `storybook-traffic.mjs` owns lane-aligned nighttime vehicle lighting. The sidewalk, boats, and beach activity modules own their nighttime appearance rules. The shared renderer feeds Home and Studio the same night state and motion preference. Reinstall Roomcraft source `0bf3fa8df9daca18413152e80b0b35efb8be871c` or restore private Studio version 83 for rollback. This release uses the existing Presence integration and layout format.

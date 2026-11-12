@@ -1,5 +1,11 @@
 # Decision log
 
+## Put the Google Maps setup in one Home dialog
+
+A Home Assistant administrator who already receives Google Maps shares can connect the account in one form. The browser sends the selected file unchanged through Home Assistant’s authenticated upload, then advances the known steps of the pinned Google Maps integration. The adapter checks each returned step before sending more data. Native setup remains available for reauthentication, advanced options, and changes to the integration’s flow.
+
+The file picker is available in a secure browser context. Email and session material stay out of Roomcraft’s project files, preferences, links, and logs. Home Assistant owns the integration entry. A successful **Connect and show on this screen** action enables the current browser’s map preference. The same preference stays independent on other screens.
+
 ## Separate an occupied room from a measured position
 
 A linked occupancy sensor can remain on after the radar stops giving coordinates. Show one anonymous character at the last usable point during that interval. When the source has yet to provide a usable point, show an approximate location on reachable condo or stair geometry. Use a distinct floor ring and explain the difference in Presence tracking. Clear the held point on vacancy. Retain one raw report in memory in the radar adapter so a browser reload can recover it without writing coordinates to layout JSON or Recorder.

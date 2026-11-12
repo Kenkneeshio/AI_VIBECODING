@@ -848,6 +848,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.updateDefaultViewButtons();
       this.resize();
       this.refresh();
+      if (window.location.hash === '#google-location-setup') this.locationPanel.openGoogleSetup();
     } catch {
       if (this.loading === request) this.fail('Roomcraft could not open on this screen.');
     } finally {
