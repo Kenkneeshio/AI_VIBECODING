@@ -1,6 +1,6 @@
 # Editable elementary school campus
 
-**Status:** reference identification and implementation in progress. The preceding verified baseline is runtime `6419875c`, HA `b9409959a1d19a3e`, owner-private Studio 108; see [shared roads](road-connections.md).
+**Status:** deployed and verified on 12 November 2026: runtime `3d6f31db`, HA `8555f9c637e3207c`, owner-private Studio 109. The complete source gate passed 647 tests and GitHub CI. Authenticated Studio Save, exact independent readback and the wall tablet verified the two additions.
 
 ## Customer outcome
 
@@ -42,7 +42,22 @@ The factory uses four opaque merged layers and 18,454 triangles, with no texture
 
 ## Verification and release
 
-Pending deterministic model/Canvas checks, shared scene/catalog/binding/route tests, full release gate, built Studio interactions and Save, backed-up HA installation with exact readback, private Site deployment and loaded wall-tablet visual inspection. Each surface must be recorded separately with its actual source and artifact identity.
+| Surface | Actual result |
+| --- | --- |
+| Frozen runtime | `3d6f31db0adebb503f9ce0ad9b589d5aeda6acd3` |
+| Full source manifest | `sha256:51cdb9348a6b3a14e11bf34017d5055120617ff32c0741d6158a95958e9c7dd4` — 364 inputs |
+| Full release gate | Clean dependency install; 544 site, 65 HA bridge/weather, 30 installer and 8 presence tests passed (647 total). Architecture checked 113 authored modules / 34,954 lines. TypeScript, lint, production build, manifest readback and whitespace passed. Lint retains 17 existing warnings and no errors. |
+| Runtime CI | [GitHub run passed](https://github.com/Kenkneeshio/AI_VIBECODING/actions/runs/43319481726) |
+| Model and art | Exact footprint, native height, grounded opaque geometry, deterministic bytes, independent ownership/disposal and Canvas transformations passed. Reviewed synthetic front/three-quarter/overhead/Canvas proof. All six wing foundations meet the parcel surface. |
+| Independent geometry | Entrance and parking-floor raycasts across scale/aspect/height variants match the derived approach within floating-point tolerance; all 28 units of entrance width are clear. Both road branches compile with four total building approaches, preserving existing right-side connections and supporting terrain/planting exclusions. |
+| Built editor browser | Real Chrome catalog placement at negative coordinates, resize/height/reset, rotation, move/Delete/Undo, road length/Undo, decorative binding rejection, selection, PNG/project mock Save and saved-scene rebuild passed. Default camera includes the whole school and both branches; eight main views and phone/tablet/ultrawide framing pass geometry checks. |
+| HA installation | Private backup before writing. Resource `8555f9c637e3207c`; eleven installed assets exactly match the build over LAN and remote origin. Home/Studio/Controls and eight non-view dashboard fields matched the installer backup before layout publication. |
+| Actual Studio publication | One upload and one guarded Save after a separate verified rollback copy. The real submitted project matches API readback exactly; the new school and road render in the authenticated editor. |
+| Independent saved-project comparison | 80 → 82 items; every original item and its ordering unchanged. Only the new road at (−80,350), size64×840, rotation0 and school at (−300,475), size300×240, rotation270 were added. Both are unbound. All previous device mappings, hotspots and non-item layout fields match. The school entrance has a 68-unit approach to the road. |
+| Wall tablet | Trusted ADB and Companion HOME alias verified; Companion 2026.10.1-full cold-launched. A loaded private 1920 × 1080 capture shows the complete school/play areas on the left, its separate street and entrance, existing home/stairs/garage and both right-side landmarks without clipping. |
+| Private Site | Version109 deployed successfully with owner-only access preserved. Source `2cd8df29843b64da647035f404eab121650d237a`; subset manifest `sha256:18c0519884f2d5ede555fcd3530d51df6f59c36ce32bbe5c6e38c42da6ff20b8` (264 inputs). Archive `sha256:487cfb5f086aa2cd9bcb069ef0ed492632e5fee1b8b8f6fbe9da8b5d18815abf`; deployment `appgdep_6af63ce109ec8191bb23a5496bedb633`. No separate hosted-browser visual check was run. |
+
+The initial inventory-wide test exposed a missing school factory in its test dispatch; it was registered, and the full gate passed again before the runtime was frozen. The reviewed foundation gap was filled before the final model tests. Source, Site and HA artifacts were frozen independently and are identified above. No physical device was actuated by these checks. Actual configuration, reference photos and browser/tablet captures remain in protected local storage outside Git.
 
 ## Rollback
 

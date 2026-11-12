@@ -1,9 +1,10 @@
 # Changelog
 
-## Editable elementary school and playgrounds — pending release
+## Editable elementary school and playgrounds — 12 November 2026
 
 - Add a reference-informed elementary school campus with play areas on the left of the home and a connected side road.
 - Preserve the shared Home/Studio editor workflow, exterior ground/framing and existing layout/control data. See the [school campus record](docs/school-campus.md) for acceptance, evidence and rollback.
+- Deployed runtime `3d6f31db`, HA `8555f9c637e3207c`, owner-private Studio 109; 647 tests, runtime CI, built editor, exact HA asset/project readback and wall-tablet inspection passed. All 80 previous objects remain unchanged.
 
 ## Connect exterior buildings with a straight side road — 12 November 2026
 
