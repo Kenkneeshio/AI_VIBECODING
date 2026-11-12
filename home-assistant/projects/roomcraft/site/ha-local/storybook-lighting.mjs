@@ -15,13 +15,15 @@ const LOW_SUN_COLORS = {
 };
 const HORIZON_COLORS = Object.fromEntries(Object.entries(LOW_SUN_COLORS)
   .map(([kind, colors]) => [kind, colors.map(color => new THREE.Color(color))]));
+const SHADOW_QUALITY = {
+  high: {size: 2048, type: THREE.PCFShadowMap},
+  low: {size: 1024, type: THREE.BasicShadowMap},
+};
 const {clamp, lerp, smoothstep} = THREE.MathUtils;
 
 export function createStorybookLighting(renderer, scene, bounds) {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.07;
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.shadowMap.autoUpdate = false;
 
   const sky = new THREE.HemisphereLight('#fff4e5', '#897e91', 1.13);
@@ -33,8 +35,6 @@ export function createStorybookLighting(renderer, scene, bounds) {
   key.position.set(x - 610, 1150, z - 490);
   key.target.position.set(x, 0, z);
   fill.position.set(x + 290, 410, z + 410);
-  key.castShadow = true;
-  key.shadow.mapSize.setScalar(Math.min(2048, renderer.capabilities.maxTextureSize));
   const span = Math.hypot(maxX - minX, maxZ - minZ) / 2 + 175;
   Object.assign(key.shadow.camera, {
     left: -span, right: span, top: span, bottom: -span, near: 20, far: 2700
@@ -50,9 +50,32 @@ export function createStorybookLighting(renderer, scene, bounds) {
   let previousEnvironment;
   let previousDirection;
   let previousStates;
-  let drawShadow = true;
+  let shadowQuality;
+  let drawShadow;
   const rgb = new THREE.Color();
   const dayColor = new THREE.Color();
+
+  function releaseShadow() {
+    key.shadow.dispose();
+    key.shadow.map = null;
+    key.shadow.mapPass = null;
+  }
+
+  function setShadowQuality(value) {
+    const quality = value === 'off' || value === 'low' ? value : 'high';
+    if (quality === shadowQuality) return;
+    shadowQuality = quality;
+    const profile = SHADOW_QUALITY[quality];
+    renderer.shadowMap.enabled = key.castShadow = Boolean(profile);
+    releaseShadow();
+    renderer.shadowMap.needsUpdate = false;
+    drawShadow = Boolean(profile);
+    if (profile) {
+      renderer.shadowMap.type = profile.type;
+      key.shadow.mapSize.setScalar(Math.min(profile.size, renderer.capabilities.maxTextureSize));
+    }
+  }
+  setShadowQuality('high');
 
   function markStructure() {
     for (const node of scene.children) {
@@ -138,11 +161,11 @@ export function createStorybookLighting(renderer, scene, bounds) {
     }
     // Shadow-casting materials need a valid texture on the first frame even
     // when darkness makes the directional shadow invisible.
-    if (drawShadow || (placementChanged && direct > 0)) {
+    if (renderer.shadowMap.enabled && (drawShadow || (placementChanged && direct > 0))) {
       renderer.shadowMap.needsUpdate = true;
       drawShadow = false;
     }
   }
 
-  return {markStructure, register, update, dispose: () => key.shadow.dispose()};
+  return {markStructure, register, update, setShadowQuality, dispose:releaseShadow};
 }

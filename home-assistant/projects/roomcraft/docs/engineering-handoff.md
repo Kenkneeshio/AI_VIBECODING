@@ -1,5 +1,7 @@
 # Roomcraft engineering handoff
 
+`storybook-display-settings.mjs` owns Home's browser graphics choices and tablet preset. The Home card schedules draws at the selected rate. The shared scene scales its drawing buffer independently of camera framing, and `storybook-lighting.mjs` applies the shadow quality. See the [graphics settings release](graphics-settings-release.md) for verification and recovery.
+
 `storybook-person-motion.mjs` filters the displayed target, records three seconds of fresh dwell evidence, and advances the actor along a swept route. `storybook-person-navigation.mjs` caches floor and furniture route checks by body size and geometry revision. `storybook-person-interactions.mjs` owns catalog-based approaches, poses and held props. `storybook-people.mjs` integrates these with the raw marker and supported seats. See the [character movement release](character-interactions-release.md) for verification and recovery.
 
 `storybook-location.mjs` owns the native Home location panel and the secure administrator setup form. `storybook-google-flow.mjs` advances the pinned Google Maps integration’s native flow and uses the Home Assistant file upload endpoint. The setup anchor, component ownership, verification, and recovery are recorded in the [Google Maps setup release](google-maps-setup-release.md).

@@ -1,5 +1,9 @@
 # Decision log
 
+## Set graphics quality per screen
+
+Store the frame rate limit, render resolution, and shadow quality with Home's display preferences. One preset updates all three while keeping other display choices. The Home render loop applies the cap to live updates and camera motion and skips deadlines missed by slow draws. The shared renderer sizes its drawing buffer independently from the layout and controls. Shadow quality sets the directional shadow map size and filter. Turning shadows off releases the map.
+
 ## Separate measured radar points from animated character paths
 
 Use a filter on the displayed character only. The floor ring, coverage and heat map preserve the measurements and the published coordinate transform. A deterministic route follows the authored condo floor, landing and stair surfaces. It uses the same swept body clearance for walls and furniture on every segment. When two points are disconnected, the character holds a reachable position.

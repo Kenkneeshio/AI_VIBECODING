@@ -12,7 +12,7 @@ import {storybookWeather, storybookWeatherMarkup, storybookWeatherStyles, update
 import {COASTAL_SKY_STYLE, COASTAL_SKY_MARKUP, updateCoastalSky} from './storybook-coastal-sky.mjs';
 import {sceneDockAlignment, sceneFeatureEnabled, sceneWind} from './storybook-scene-settings.mjs';
 import {bindStorybookDisplaySettings, DISPLAY_SETTINGS_MARKUP, DISPLAY_SETTINGS_STYLE,
-  storybookDisplaySceneSettings} from './storybook-display-settings.mjs';
+  STORYBOOK_GRAPHICS_DEFAULTS, storybookDisplaySceneSettings} from './storybook-display-settings.mjs';
 import {readStorybookUtilities, utilityReading} from './storybook-utilities.mjs';
 import {bindStorybookPower, POWER_PANEL_MARKUP, POWER_PANEL_STYLE} from './storybook-power-panel.mjs';
 import {bindStorybookLightPanel, STORYBOOK_LIGHT_PANEL, STORYBOOK_LIGHT_PANEL_STYLES} from './storybook-light-panel.mjs';
@@ -25,7 +25,7 @@ const TAG = 'roomcraft-storybook-card';
 const CONTROL_TAG = 'roomcraft-object-control';
 const CAMERA_TAG = 'roomcraft-camera-thumbnail';
 const EDITOR_TAG = 'roomcraft-editor-card';
-const FRAME_INTERVAL = 1000 / 24;
+const FRAME_DEADLINE_TOLERANCE = .5;
 const DETAIL_VISIBILITY_EVENT = 'roomcraft-detail-visibility';
 const DETECTION_ZONE_KEY = 'roomcraft.show-detection-zone.v1';
 const CAMERA_TILES_KEY = 'roomcraft.show-camera-tiles.v1';
@@ -537,6 +537,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         this.freeViewGestures?.cancel();
         cancelAnimationFrame(this.animationFrame);
         this.animationFrame = undefined;
+        this.nextRenderAt = undefined;
       } else this.refresh();
     };
     this.weather.addEventListener('click', () => {
@@ -1088,8 +1089,12 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   applyDisplaySettings(settings) {
+    const interval = 1000 / settings.frameRate;
+    if (interval !== this.renderInterval) this.nextRenderAt = undefined;
+    this.renderInterval = interval;
     this.world.dataset.dock = sceneDockAlignment(storybookDisplaySceneSettings(this.model?.layout.sceneSettings, settings));
     this.scene?.setDisplaySettings?.(settings);
+    this.scene?.setGraphicsSettings(settings);
     if (this.frame && !this.demoRun) this.paintSky(this.frame.environment, this.session?.connected === false);
     this.anchorDirty = true;
     this.schedule();
@@ -1164,27 +1169,32 @@ class RoomcraftStorybookCard extends HTMLElement {
     if (this.animationFrame !== undefined || !this.scene || !this.frame || document.hidden) return;
     this.animationFrame = requestAnimationFrame(at => {
       this.animationFrame = undefined;
+      const deadline = this.nextRenderAt ?? at;
+      if (at + FRAME_DEADLINE_TOLERANCE < deadline) {
+        this.schedule();
+        return;
+      }
+      const interval = this.renderInterval ?? 1000 / STORYBOOK_GRAPHICS_DEFAULTS.frameRate;
+      // Keep the cadence across vsync boundaries and skip deadlines missed by a slow draw.
+      const elapsed = at + FRAME_DEADLINE_TOLERANCE - deadline;
+      this.nextRenderAt = deadline + (1 + Math.floor(elapsed / interval)) * interval;
       const reduceMotion = this.motionReduced;
       const motion = (this.frame.moving || this.scene.hasAmbientMotion || this.frame.people.length) && !reduceMotion;
-      const animate = motion || this.demoRun;
-      if (this.anchorDirty || !animate || at - this.lastFrame >= FRAME_INTERVAL - 1 || this.lastFrame === undefined) {
-        try {
-          this.updateDemo(at);
-          const demo = this.demoRun;
-          const frame = demo?.frame ?? this.frame;
-          const time = (demo?.sample.elapsedMs ?? at) / 1000;
-          const options = {reduceMotion, transientTelemetry: Boolean(demo)};
-          this.scene.setPeople(frame.people, time, options);
-          this.scene.render(time, frame.states, {...frame.environment, reduceMotion}, options);
-          this.lastFrame = at;
-          if (this.anchorDirty || (!demo && this.scene.trackedControlChanged)) {
-            if (!demo) this.positionControls();
-            this.anchorDirty = false;
-          }
-        } catch {
-          this.fail('The storybook renderer stopped.');
-          return;
+      try {
+        this.updateDemo(at);
+        const demo = this.demoRun;
+        const frame = demo?.frame ?? this.frame;
+        const time = (demo?.sample.elapsedMs ?? at) / 1000;
+        const options = {reduceMotion, transientTelemetry: Boolean(demo)};
+        this.scene.setPeople(frame.people, time, options);
+        this.scene.render(time, frame.states, {...frame.environment, reduceMotion}, options);
+        if (this.anchorDirty || (!demo && this.scene.trackedControlChanged)) {
+          if (!demo) this.positionControls();
+          this.anchorDirty = false;
         }
+      } catch {
+        this.fail('The storybook renderer stopped.');
+        return;
       }
       if (motion || this.demoRun || this.scene?.hasPendingReacquisition) this.schedule();
     });
@@ -1264,6 +1274,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     cancelAnimationFrame(this.animationFrame);
     clearTimeout(this.frameExpiryTimer);
     this.animationFrame = undefined;
+    this.nextRenderAt = undefined;
     this.loading = undefined;
     this.model = undefined;
     this.frame = undefined;

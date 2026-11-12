@@ -1,0 +1,7 @@
+# Graphics settings for the wall tablet
+
+The wall-tablet user can reduce the work Roomcraft does while keeping the house and controls readable. Acceptance covers applying the preset with one tap, selecting each setting independently, retaining the choices after reopening Home, and keeping the 3D drawing and device controls aligned at lower resolution. A real device can draw below the selected limit when a frame is expensive.
+
+Home's browser preferences default to 24 FPS, 100% resolution, and High shadows. The tablet preset sets 20 FPS, 67%, and Off. The draw schedule uses browser frame timestamps and skips missed deadlines. Home Assistant state handling and camera media use their existing updates. The resolution multiplies the renderer's usual pixel ratio, with the camera and control anchors in CSS pixels. Low shadows use a 1024-pixel map and High uses 2048 when the device supports it. Off releases the directional shadow target. Studio uses the shared renderer at its existing defaults.
+
+This release uses the existing layout schema, bindings, art and Home Assistant components. To restore the previous graphics profile for one browser, set 24 FPS, 100%, and High. To roll back the software, rebuild and reinstall source `329407484663802c6119a0b35f2318a36190c512` or restore its protected pre-install assets and dashboard backup. Restore hosted Studio version 88 if needed. See the [deployment recovery guide](deployment.md).

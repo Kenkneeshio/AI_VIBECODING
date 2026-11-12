@@ -1,5 +1,10 @@
 # Changelog
 
+## Tune Roomcraft graphics per screen
+
+- **Display settings → Graphics** adds a frame rate limit, render resolution, and shadow quality. **Tablet performance** sets 20 FPS, 67% resolution, and shadows off on the current browser.
+- The frame rate limit covers dashboard updates and camera motion. Lower render resolution reduces the number of pixels drawn while preserving the size of controls and text.
+
 ## Smooth radar characters and add furniture interactions
 
 - Characters ignore small position noise and isolated large jumps. They take supported paths around furniture and walls, including doorways and stairs, while the radar ring and heat map retain the measured positions.

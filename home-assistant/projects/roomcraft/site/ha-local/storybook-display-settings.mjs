@@ -1,6 +1,13 @@
 import {sceneFeatures} from './storybook-scene-settings.mjs';
 
 export const DISPLAY_SETTINGS_KEY = 'roomcraft.display-settings.v1';
+export const STORYBOOK_GRAPHICS_DEFAULTS = Object.freeze({
+  frameRate: 24, renderScale: 1, shadowQuality: 'high',
+});
+const TABLET_PERFORMANCE = {frameRate:20, renderScale:.67, shadowQuality:'off'};
+const FRAME_RATES = [12, 20, 24, 30, 60];
+const RENDER_SCALES = [.5, .67, .8, 1];
+const SHADOW_QUALITIES = ['off', 'low', 'high'];
 const DOCK = ['left', 'center', 'right'];
 const bounded = (value, min, max) => Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : 1;
 
@@ -11,6 +18,9 @@ export function normalizeStorybookDisplaySettings(input) {
   }
   return {
     features,
+    frameRate: FRAME_RATES.includes(input?.frameRate) ? input.frameRate : STORYBOOK_GRAPHICS_DEFAULTS.frameRate,
+    renderScale: RENDER_SCALES.includes(input?.renderScale) ? input.renderScale : STORYBOOK_GRAPHICS_DEFAULTS.renderScale,
+    shadowQuality: SHADOW_QUALITIES.includes(input?.shadowQuality) ? input.shadowQuality : STORYBOOK_GRAPHICS_DEFAULTS.shadowQuality,
     headlightBrightness: bounded(input?.headlightBrightness, .35, 1.6),
     heatMapOpacity: bounded(input?.heatMapOpacity, .25, 1),
     showAvatars: input?.showAvatars !== false,
@@ -35,6 +45,25 @@ export const DISPLAY_SETTINGS_MARKUP = `
       <button type="button" data-display-close>Close</button>
     </header>
     <p class="display-settings-note">Saved in this browser.</p>
+    <fieldset><legend>Graphics</legend>
+      <button type="button" class="display-tablet-performance" data-display-tablet-performance>Tablet performance</button>
+      <span class="display-settings-note display-graphics-status" data-display-graphics-status role="status"></span>
+      <label class="display-setting-row">Frame rate limit
+        <select data-display-frame-rate>
+          ${FRAME_RATES.map(rate => `<option value="${rate}">${rate} FPS</option>`).join('')}
+        </select>
+      </label>
+      <label class="display-setting-row">Render resolution
+        <select data-display-render-scale>
+          ${RENDER_SCALES.map(scale => `<option value="${scale}">${Math.round(scale * 100)}%</option>`).join('')}
+        </select>
+      </label>
+      <label class="display-setting-row">Shadows
+        <select data-display-shadow-quality>
+          ${SHADOW_QUALITIES.map(quality => `<option value="${quality}">${quality[0].toUpperCase() + quality.slice(1)}</option>`).join('')}
+        </select>
+      </label>
+    </fieldset>
     <fieldset><legend>Scene layers</legend>
       ${sceneFeatures.map(({key, label}) => `
         <label class="display-setting-row">${label}
@@ -72,6 +101,8 @@ export const DISPLAY_SETTINGS_STYLE = `
   .display-settings-dialog :is(select,button){min-height:44px;padding:5px 9px;border:1px solid #c9b8a0;
     border-radius:7px;background:#fffdf6;color:inherit;font:inherit}
   .display-settings-dialog button{cursor:pointer}
+  .display-settings-dialog .display-tablet-performance{background:#e6efe2;border-color:#a9b9a3;color:#2e503b}
+  .display-graphics-status{display:block;margin:4px 0;min-height:1.4em}
   .display-settings-note{margin:5px 0;color:#665849;font-size:12px}
   .display-setting-row,.display-toggle-row,.display-slider-row{min-height:44px;align-items:center;gap:7px}
   .display-setting-row,.display-toggle-row{display:flex}
@@ -95,6 +126,10 @@ export function bindStorybookDisplaySettings(card, onChange, host = window) {
   const seats = byName('seats');
   const headlight = byName('headlight');
   const heat = byName('heat');
+  const frameRate = byName('frame-rate');
+  const renderScale = byName('render-scale');
+  const shadowQuality = byName('shadow-quality');
+  const graphicsStatus = byName('graphics-status');
   let value;
   try { value = parseStored(host.localStorage.getItem(DISPLAY_SETTINGS_KEY)); }
   catch { value = normalizeStorybookDisplaySettings(); }
@@ -110,6 +145,9 @@ export function bindStorybookDisplaySettings(card, onChange, host = window) {
     seats.disabled = !value.showAvatars;
     headlight.value = String(value.headlightBrightness);
     heat.value = String(value.heatMapOpacity);
+    frameRate.value = String(value.frameRate);
+    renderScale.value = String(value.renderScale);
+    shadowQuality.value = value.shadowQuality;
     byName('headlight-value').value = `${Math.round(value.headlightBrightness * 100)}%`;
     byName('heat-value').value = `${Math.round(value.heatMapOpacity * 100)}%`;
   }
@@ -122,6 +160,7 @@ export function bindStorybookDisplaySettings(card, onChange, host = window) {
       if (storage === 'reset') host.localStorage.removeItem(DISPLAY_SETTINGS_KEY);
       if (storage === 'save' && !unchanged) host.localStorage.setItem(DISPLAY_SETTINGS_KEY, JSON.stringify(value));
     } catch { /* Settings still apply in this tab if storage is unavailable. */ }
+    graphicsStatus.textContent = '';
     paint();
     if (!unchanged) onChange(value);
   }
@@ -132,7 +171,8 @@ export function bindStorybookDisplaySettings(card, onChange, host = window) {
       if (select.value !== 'layout') features[select.dataset.displayFeature] = select.value === 'show';
     }
     apply({features, dockAlignment: dock.value, headlightBrightness: headlight.valueAsNumber,
-      heatMapOpacity: heat.valueAsNumber, showAvatars: avatars.checked, seatedPoses: seats.checked});
+      heatMapOpacity: heat.valueAsNumber, showAvatars: avatars.checked, seatedPoses: seats.checked,
+      frameRate:Number(frameRate.value), renderScale:Number(renderScale.value), shadowQuality:shadowQuality.value});
   }
 
   const syncStorage = event => {
@@ -145,7 +185,13 @@ export function bindStorybookDisplaySettings(card, onChange, host = window) {
   });
   byName('close').addEventListener('click', () => dialog.close());
   byName('reset').addEventListener('click', () => apply(undefined, 'reset'));
-  for (const control of [...fields, dock, avatars, seats]) control.addEventListener('change', edit);
+  byName('tablet-performance').addEventListener('click', () => {
+    apply({...value, ...TABLET_PERFORMANCE});
+    graphicsStatus.textContent = 'Tablet performance applied.';
+  });
+  for (const control of [...fields, dock, avatars, seats, frameRate, renderScale, shadowQuality]) {
+    control.addEventListener('change', edit);
+  }
   for (const control of [headlight, heat]) control.addEventListener('input', edit);
   paint();
 

@@ -40,7 +40,9 @@ Roomcraft keeps up to three distinct previous layouts from successful Studio pub
 
 Open **Menu → More options** to show or hide **Camera tiles** or turn on **Reduce motion**. These settings are saved in the current browser.
 
-Choose **Menu → View controls → Display settings** to adjust headlight intensity, heat-map opacity, presence characters, seated poses, and the dock position. Each scenery layer can follow the published layout or use a browser override. **Reset display settings** returns to the published appearance.
+Choose **Menu → View controls → Display settings → Graphics** to adjust the frame rate limit, render resolution, and shadows. **Tablet performance** sets 20 FPS, 67% render resolution, and turns shadows off. Set the frame rate limit to 12 FPS or render resolution to 50% for a lighter setting. The frame rate is an upper limit and depends on how fast the device can draw. Settings save on the screen where you change them. To restore graphics defaults, select 24 FPS, 100%, and High shadows.
+
+Display settings also controls headlight intensity, heat-map opacity, presence characters, character interactions, and the dock position. Each scenery layer can follow the published layout or use a browser override. **Reset display settings** restores the graphics defaults and clears the other browser overrides.
 
 Choose **Menu → 45-second demo** for a tour of live dashboard features, beach activity, weather and traffic. The weather chapter shows every Home Assistant condition and all eight moon phases. The demo starts muted with captions. Choose **Unmute** to hear the voice track. Select **Stop** or press **Escape** to return early to your previous view and the latest live readings. With **Reduce motion** enabled, the chapters advance with the camera held still.
 

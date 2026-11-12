@@ -1170,6 +1170,7 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
   let disposed = false;
   let currentWidth = 0;
   let currentHeight = 0;
+  let renderScale = 1;
   let cameraView = normalizeCameraView();
   let cameraFraming;
   const raycaster = new THREE.Raycaster();
@@ -1187,14 +1188,26 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
       horizonFog.far = haze.far + offset;
     }
   }
+  function resizeDrawingBuffer() {
+    const deviceRatio = canvas.ownerDocument.defaultView?.devicePixelRatio || 1;
+    const nativeRatio = Math.min(deviceRatio, 1.5, Math.sqrt(2700000 / (currentWidth * currentHeight)));
+    const pixelRatio = Math.max(1 / Math.min(currentWidth, currentHeight), nativeRatio * renderScale);
+    renderer.setDrawingBufferSize(currentWidth, currentHeight, pixelRatio);
+  }
   function resize(width, height) {
     if (disposed || width < 1 || height < 1 || (width === currentWidth && height === currentHeight)) return;
     currentWidth = width;
     currentHeight = height;
-    const deviceRatio = canvas.ownerDocument.defaultView?.devicePixelRatio || 1;
-    renderer.setPixelRatio(Math.min(deviceRatio, 1.5, Math.sqrt(2700000 / (width * height))));
-    renderer.setSize(width, height, false);
+    resizeDrawingBuffer();
     updateCamera();
+  }
+  function setGraphicsSettings({renderScale: nextScale, shadowQuality} = {}) {
+    if (disposed) return;
+    lighting.setShadowQuality(shadowQuality);
+    const scale = Number.isFinite(nextScale) ? THREE.MathUtils.clamp(nextScale, .5, 1) : 1;
+    if (scale === renderScale) return;
+    renderScale = scale;
+    if (currentWidth > 0 && currentHeight > 0) resizeDrawingBuffer();
   }
   function setView(value, framing) {
     cameraView = normalizeCameraView(value);
@@ -1426,7 +1439,7 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
   const exteriorClearance = () => projectExteriorClearance(plan, camera, currentWidth, currentHeight);
   return {
     resize, render, anchor, setView, getView, getDemoFocus, projectToPlan, pickGarage, exteriorClearance, dispose,
-    hasAmbientMotion: true, setPeople, setDisplaySettings, setVacuumMapOverlay,
+    hasAmbientMotion: true, setPeople, setDisplaySettings, setGraphicsSettings, setVacuumMapOverlay,
     setDetectionZones: coverage.setZones, setHeatMap: heatMap.setHistory,
     get trackedControlChanged() { return trackedControlChanged; },
     get hasPendingReacquisition() { return [...roots.values()].some(object => object.liveMotion?.pendingReacquisition); },

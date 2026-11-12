@@ -91,3 +91,42 @@ test('a cold scene allocates its shadow texture in twilight and darkness', () =>
     lighting.dispose();
   }
 });
+
+test('shadow quality releases stale targets and restores daylight shadows after Off', () => {
+  const renderer = {shadowMap: {}, capabilities: {maxTextureSize: 2048}};
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color();
+  const ground = {color: new THREE.Color()};
+  const lighting = createStorybookLighting(renderer, scene, {minX: 0, maxX: 1500, minZ: 0, maxZ: 850});
+  const key = scene.children.find(node => node.isDirectionalLight && node.castShadow);
+  const daylight = {solar: sample(25, 120, true)};
+  let released = 0;
+  key.shadow.map = {dispose() { released++; }};
+  lighting.setShadowQuality('low');
+  assert.equal(released, 1);
+  assert.equal(key.shadow.map, null);
+  assert.equal(key.shadow.mapSize.x, 1024);
+  assert.equal(renderer.shadowMap.type, THREE.BasicShadowMap);
+  lighting.update(daylight, {}, ground);
+  assert.equal(renderer.shadowMap.needsUpdate, true);
+  const lowTarget = {dispose() { released++; }};
+  key.shadow.map = lowTarget;
+  lighting.setShadowQuality('low');
+  assert.equal(key.shadow.map, lowTarget);
+
+  lighting.setShadowQuality('off');
+  lighting.update(daylight, {}, ground, true);
+  assert.equal(released, 2);
+  assert.equal(key.shadow.map, null);
+  assert.equal(key.castShadow, false);
+  assert.equal(renderer.shadowMap.enabled, false);
+  assert.equal(renderer.shadowMap.needsUpdate, false);
+
+  lighting.setShadowQuality('high');
+  lighting.update(daylight, {}, ground);
+  assert.equal(key.castShadow, true);
+  assert.equal(key.shadow.mapSize.x, 2048);
+  assert.equal(renderer.shadowMap.type, THREE.PCFShadowMap);
+  assert.equal(renderer.shadowMap.needsUpdate, true);
+  lighting.dispose();
+});
