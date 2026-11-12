@@ -25,11 +25,16 @@
 - Roomcraft Home contained the live and Studio views, with layout v2, reference revision 10, nine rooms and 76 items. The initial review found no orphaned controls. All three Waze sources reported current calibrated readings. The authenticated coverage API returned recorded radar bins.
 - The Tuya lamp and five Emporia circuit groups remained unavailable after an entity refresh. The device registry had no exact alternate binding for the lamp. The energy hub and 22 other groups supplied month and billing readings. Two groups lacked a live power binding.
 - The location map has two active Home Assistant tracking sources. Google Location Sharing still needs a configured source. Calendar and to-do integrations expose nine calendars and five lists. Four native door contacts are available for future mapping to their physical openings.
-- The front-door latest-event endpoint returned a JPEG. Check continuously streamed and on-demand cameras through decoded media in the Home UI. The generic snapshot endpoint can fail independently of live playback.
+- The wall tablet decoded live overhead video and showed the latest doorbell event image. The garage thumbnail requested the on-demand stream, but the camera returned RTSP 404 and Home Assistant did not produce a playable HLS stream. A direct P2P start also failed. The garage camera returned to idle. Check the garage camera's stream path at the device before changing its dashboard binding.
 - The Android Companion app held the Home role and was in the foreground. Tablet Keeper 0.1.1 retained its secure-settings permission. The Windows watchdog task had a successful recent run. Codex has a Windows startup entry and the workstation's AC sleep timeout is disabled.
-- Watchdog 0.2.3 expanded the Home check from 25 to 126 sources. The background radar archive remained readable after the Core restart.
+- Watchdog 0.2.3 expanded the Home check from 25 to 126 sources. After the Core restart, 109 were available, and the background radar archive remained readable. The TCL TV integration remained in setup retry after reload.
 
 Both Studio transports read the dashboard revision around upload and verify the save. Home Assistant's Lovelace save lacks an atomic revision precondition. Two clients could still publish simultaneously after their final read. Use the revision status and layout snapshots to review and recover competing edits.
+
+## Release verification
+
+- Roomcraft source `0da21e3d4f8b9c1cd882f409301749edd1106561` passed 397 Node tests and 38 Python tests. Type checking, lint, and production bundling passed. Lint reported 17 existing warnings, and the full and production npm audits reported zero findings. Watchdog, Tablet Keeper, Tuya LAN, and Ishioho checks also passed.
+- Home Assistant served the verified Home, Studio bridge, and editor bundles byte-for-byte. The private hosted Studio deployment reported version 85 with its verified package revision. The tablet cold-launched Home and displayed the new settings dialog. Chromium exercised publishing, radar transforms, rendering recovery, and the full demo with fixture telemetry.
 
 ## Repeat the verification
 
