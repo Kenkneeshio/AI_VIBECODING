@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {buildSync} from 'esbuild';
+import {invalidStructureProjects, validStructureProject} from './structure-safety-fixtures.mjs';
 
 const {outputFiles: [bundle]} = buildSync({
   entryPoints: [fileURLToPath(new URL('../app/api/dashboard/route.ts', import.meta.url))],
@@ -247,4 +248,28 @@ test('hosted bridge fails immediately when Home Assistant disconnects during a c
   const response = await route.GET(request());
   assert.equal(response.status, 502);
   assert.equal((await response.json()).error, 'ha_unavailable');
+});
+
+test('hosted publication blocks unsafe structure before any HA operation and saves a valid fixture intact',async()=>{
+  let uploads=0;
+  const {route,calls,dashboards}=harness({[canonicalPath]:home},{onUpload:()=>uploads++});
+  const imported=await(await route.GET(request())).json();
+  const afterImport=calls.length;
+  for(const {label,project:invalid,message} of invalidStructureProjects()){
+    const response=await route.POST(request({
+      revision:imported.revision,project:invalid,pngDataUrl:testPng(),
+    }));
+    assert.equal(response.status,400,label);
+    assert.match((await response.json()).message,message,label);
+  }
+  assert.equal(uploads,0);
+  assert.equal(calls.length,afterImport,'rejected structure must not open another HA connection');
+  assert.deepEqual(dashboards[canonicalPath],home);
+  const valid=validStructureProject();
+  const response=await route.POST(request({
+    revision:imported.revision,project:valid,pngDataUrl:testPng(),
+  }));
+  assert.equal(response.status,200);
+  assert.equal(uploads,1);
+  assert.deepEqual(dashboards[canonicalPath].roomcraft_layout,valid);
 });

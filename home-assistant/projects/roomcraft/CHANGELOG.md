@@ -1,5 +1,12 @@
 # Changelog
 
+## Protect terrain and structure edits
+
+- Completed edits run a shared geometry check before the draft is committed. Safe repeated room corners are cleaned up, and abrupt terrain height steps soften while preserving paint and placed props.
+- Unsafe room boundaries, collapsed segments and malformed geometry restore the previous draft with its history and selection. Repairs remain undoable.
+- Studio adds **Main menu → Check & repair layout**. Both save transports reject unsafe geometry before upload or dashboard writes.
+- The [safe-editing contract and release record](docs/edit-safety.md) describes the exact scope, compatibility and verification requirements.
+
 ## Document and guard the builder architecture
 
 - Published a current architecture guide with system, engine, save, live-state and release diagrams, units, team boundaries and a staged builder roadmap.

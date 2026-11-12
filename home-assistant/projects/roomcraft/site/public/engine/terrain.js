@@ -7,6 +7,7 @@
   const MAX_PROPS = 96;
   const MIN_HEIGHT = -32;
   const MAX_HEIGHT = 64;
+  const MAX_HEIGHT_STEP = 24;
   const MIN_RADIUS = 24;
   const MAX_RADIUS = 256;
   const MIN_STRENGTH = 1;
@@ -87,6 +88,48 @@
   function normalize(terrain) {
     if (!valid(terrain)) throw new TypeError('Invalid Roomcraft terrain');
     return pack(terrain, cellsOf(terrain));
+  }
+
+  /**
+   * Remove abrupt authored height steps without growing the sparse grid or
+   * altering the underlying coast, paint, props, or landscape settings.
+   * Missing vertices keep their original (zero-delta) height. Each synchronous
+   * pass only reduces integer magnitudes, so results are order-independent and
+   * converge to an idempotent fixed point. A completed edit owns the undo step.
+   */
+  function repair(terrain, {maxStep = MAX_HEIGHT_STEP} = {}) {
+    if (!valid(terrain)) throw new TypeError('Invalid Roomcraft terrain');
+    if (!between(maxStep, 1, MAX_HEIGHT - MIN_HEIGHT)) throw new TypeError('Invalid terrain height step');
+    const cells = indexCells(terrain);
+    const originalHeights = new Map([...cells].map(([key, cell]) => [key, cell.height ?? 0]));
+    let pending = true;
+    while (pending) {
+      const changes = [];
+      for (const [key, cell] of cells) {
+        const height = cell.height ?? 0;
+        if (!height) continue;
+        const sign = Math.sign(height);
+        let magnitude = Math.abs(height);
+        for (const [col, row] of [[cell.col - 1, cell.row], [cell.col + 1, cell.row],
+          [cell.col, cell.row - 1], [cell.col, cell.row + 1]]) {
+          const neighbor = at(cells, col, row)?.height ?? 0;
+          if (Math.abs(height - neighbor) <= maxStep) continue;
+          // Share a mixed-sign jump proportionally; never raise a pit into a
+          // hill or push a peak below the unedited terrain.
+          const allowed = sign * neighbor < 0
+            ? Math.floor(maxStep * Math.abs(height) / (Math.abs(height) + Math.abs(neighbor)))
+            : Math.abs(neighbor) + maxStep;
+          magnitude = Math.min(magnitude, allowed);
+        }
+        if (magnitude < Math.abs(height)) changes.push([key, sign * magnitude]);
+      }
+      pending = changes.length > 0;
+      for (const [key, height] of changes) cells.get(key).height = height;
+    }
+    const count = [...cells].filter(([key, cell]) => (cell.height ?? 0) !== originalHeights.get(key)).length;
+    return count
+      ? {terrain:pack(terrain, [...cells.values()]), changed:true, repairs:[{code:'terrain-steep-step', count}]}
+      : {terrain, changed:false, repairs:[]};
   }
 
   function withSetting(terrain, key, value = DEFAULTS[key]) {
@@ -211,8 +254,8 @@
   }
 
   root.RoomcraftTerrain = Object.freeze({
-    GRID_SIZE, MAX_INDEX, MAX_CELLS, MAX_PROPS, MIN_HEIGHT, MAX_HEIGHT, MIN_RADIUS, MAX_RADIUS,
+    GRID_SIZE, MAX_INDEX, MAX_CELLS, MAX_PROPS, MIN_HEIGHT, MAX_HEIGHT, MAX_HEIGHT_STEP, MIN_RADIUS, MAX_RADIUS,
     MIN_STRENGTH, MAX_STRENGTH, COVERS, PROPS, COASTS, ROADS, DEFAULTS,
-    valid, normalize, withSetting, applyBrush, createSampler,
+    valid, normalize, repair, withSetting, applyBrush, createSampler,
   });
 })(typeof window === 'undefined' ? globalThis : window);

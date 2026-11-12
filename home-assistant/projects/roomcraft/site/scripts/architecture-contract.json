@@ -31,6 +31,7 @@
     {"from": "ha-local/roomcraft-card.js", "to": "ha-local/dashboard-snapshots.mjs", "reason": "Native publish uses shared history"},
     {"from": "app/api/dashboard/route.ts", "to": "ha-local/dashboard-snapshots.mjs", "reason": "Hosted publish uses shared history"},
     {"from": "ha-local/storybook-scene.mjs", "to": "public/engine/terrain.js", "reason": "3D rendering consumes the authored terrain contract"},
-    {"from": "ha-local/dashboard-project.mjs", "to": "public/engine/terrain.js", "reason": "Both save transports validate the authored terrain contract"}
+    {"from": "ha-local/dashboard-project.mjs", "to": "public/engine/terrain.js", "reason": "Both save transports validate the authored terrain contract"},
+    {"from": "ha-local/dashboard-project.mjs", "to": "public/engine/edit-safety.js", "reason": "Both save transports reject unsafe structure"}
   ]
 }

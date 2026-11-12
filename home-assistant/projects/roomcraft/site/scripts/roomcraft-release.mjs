@@ -22,7 +22,8 @@ const REQUIRED_ENGINE_GLOBALS = Object.freeze([
   'RoomcraftWallJoins',
   'RoomcraftReferenceGeometry',
   'RoomcraftSceneSettings',
-  'RoomcraftTerrain'
+  'RoomcraftTerrain',
+  'RoomcraftEditSafety'
 ]);
 export const REQUIRED_ENGINE_SOURCES = Object.freeze([
   'engine/deterministic-core.js',
@@ -32,7 +33,8 @@ export const REQUIRED_ENGINE_SOURCES = Object.freeze([
   'engine/wall-joins.js',
   'engine/reference-geometry.js',
   'engine/scene-settings.js',
-  'engine/terrain.js'
+  'engine/terrain.js',
+  'engine/edit-safety.js'
 ]);
 const ALLOWED_RUNTIME_EXTENSIONS = new Set([
   '.css', '.html', '.js', '.json', '.md', '.mjs', '.mp3', '.mts', '.png', '.ps1', '.py', '.sh', '.svg', '.ts', '.tsx'

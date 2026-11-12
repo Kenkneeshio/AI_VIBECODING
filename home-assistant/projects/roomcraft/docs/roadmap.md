@@ -7,6 +7,7 @@ The [architecture guide](architecture.md) describes the implemented system. The 
 | One design | Home and Studio share layout v2 and the 3D renderer | Save/reload parity across both transports and recovery after conflict |
 | Home authoring | Rooms, floors, walls, fences, joins, furniture, dimensions, bindings | Sanitized mouse/touch regression fixtures covering all basic operations |
 | Terrain authoring | Brush edits, placed terrain props, coast/road settings, grouped landmarks | Per-instance recipe editing, transform handles and configurable shape paths |
+| Edit recovery | Conservative terrain/room repair, rejected-edit rollback, manual Check & repair and shared save audit | [Safe-editing acceptance](edit-safety.md), including preservation of Undo/Redo and protected deployment readback |
 | Interactive controls | Actual-state object art, separate fan/light, rich light controls | Continue unavailable/stale and touch-target verification for each capability |
 | Live features | Weather/day-night, cameras, radar avatars, vacuum, TV, utilities, traffic | Data-provider availability and physical-device checks remain separate from art tests |
 | Calibration | Radar alignment/heat map and LiDAR survey/ruler | Verified physical reference points, clear confidence and stale-data treatment |

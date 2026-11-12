@@ -35,6 +35,7 @@ Generated scenery is not yet entirely selectable piece by piece. [Builder comple
 | --- | --- |
 | Framework, architecture, engine, units and flow diagrams | [Architecture](docs/architecture.md) |
 | Current findings, improvements and verification | [Architecture audit](docs/architecture-audit-2026-11-12.md) |
+| Automatic repair, rejected edits and Undo recovery | [Safe editing](docs/edit-safety.md) |
 | Take over development | [Engineering handoff](docs/engineering-handoff.md) |
 | Determinism, module contracts and migrations | [Engine contract](docs/engine-contract.md) |
 | Release gates and rollback requirements | [Release standard](docs/release-standard.md) |

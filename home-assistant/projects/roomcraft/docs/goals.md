@@ -2,6 +2,7 @@
 
 | Goal | Reason | Evidence of completion |
 | --- | --- | --- |
+| Keep terrain and structure experimentation recoverable | A malformed edit should not replace a usable layout or destroy its undo history | Pure audit/repair, completed-edit checkpoints, manual Check & repair and shared save validation; release evidence belongs in the [safe-editing record](edit-safety.md) |
 | Make the builder engine understandable and reproducible for another team | Configuration and development should not depend on chat history or undocumented code paths | Current architecture guide, source ownership inventory, enforced shared boundaries and publication rejection tests; full recipe editing remains staged in the roadmap |
 | Make the coast recognizable as La Jolla | The setting should recall a familiar beach when the household opens Roomcraft | The shared 3D scene combines the Shores promenade and Scripps Pier with the Cove's sandstone pocket beach, using the references in the release record |
 | Let each display try maximum quality and recover automatically | The wall tablet and a desktop have different rendering budgets | Insane graphics preserves the manual profile and expires after five seconds without confirmation |

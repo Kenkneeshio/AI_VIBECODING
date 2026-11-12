@@ -7,7 +7,7 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <title>Roomcraft — Second Floor Builder</title>
   <meta name="description" content="A detailed illustrated room builder based on the second-floor home plan.">
-  <link rel="stylesheet" href="styles.css?v=fd33c18d1b7a072a">
+  <link rel="stylesheet" href="styles.css?v=699d8707595348cd">
 </head>
 <body>
   <div class="app-shell">
@@ -31,6 +31,7 @@
             <button type="button" id="sceneSettingsButton" aria-haspopup="dialog">Scene settings</button>
             <button type="button" id="trackingRangeButton">Tracking range correction</button>
             <button type="button" id="vacuumAlignmentButton" aria-haspopup="dialog">Align LiDAR map</button>
+            <button type="button" id="repairLayoutButton">Check &amp; repair layout</button>
             <button type="button" id="focusCanvasButton" aria-pressed="false" title="Expand the artwork for a closer look">Focus canvas</button>
             <button type="button" id="undoButton" data-keep-menu-open title="Undo (Ctrl+Z)">Undo</button>
             <button type="button" id="redoButton" data-keep-menu-open title="Redo (Ctrl+Y)">Redo</button>
@@ -127,6 +128,7 @@
             </label>
           </fieldset>
           <p class="terrain-hint" id="terrainBrushHint">Drag over outdoor ground. Release to apply one edit.</p>
+          <p class="terrain-hint">Edit protection is on. Abrupt terrain steps are softened when you finish a stroke. Undo restores the previous terrain.</p>
           <details class="terrain-landscape">
             <summary>Landscape</summary>
             <label class="terrain-field">Coast shape
@@ -329,26 +331,27 @@
       <button type="button" class="primary-button" id="confirmationAccept">Continue</button>
     </div>
   </dialog>
-  <script src="editor-assets.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="engine/deterministic-core.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="engine/project-runtime.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="engine/render-contract.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="engine/verification-harness.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="engine/wall-joins.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="engine/reference-geometry.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="engine/scene-settings.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="engine/terrain.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="ha-iframe-bridge.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="inventory.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="model-library.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="catalog-variants.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="raster-renderer.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="object-art.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="control-actions.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="light-capabilities.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="object-controls.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="app.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="responsive-inspector.js?v=fd33c18d1b7a072a" defer></script>
-  <script src="storybook-editor.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="editor-assets.js?v=699d8707595348cd" defer></script>
+  <script src="engine/deterministic-core.js?v=699d8707595348cd" defer></script>
+  <script src="engine/project-runtime.js?v=699d8707595348cd" defer></script>
+  <script src="engine/render-contract.js?v=699d8707595348cd" defer></script>
+  <script src="engine/verification-harness.js?v=699d8707595348cd" defer></script>
+  <script src="engine/wall-joins.js?v=699d8707595348cd" defer></script>
+  <script src="engine/reference-geometry.js?v=699d8707595348cd" defer></script>
+  <script src="engine/scene-settings.js?v=699d8707595348cd" defer></script>
+  <script src="engine/terrain.js?v=699d8707595348cd" defer></script>
+  <script src="engine/edit-safety.js?v=699d8707595348cd" defer></script>
+  <script src="ha-iframe-bridge.js?v=699d8707595348cd" defer></script>
+  <script src="inventory.js?v=699d8707595348cd" defer></script>
+  <script src="model-library.js?v=699d8707595348cd" defer></script>
+  <script src="catalog-variants.js?v=699d8707595348cd" defer></script>
+  <script src="raster-renderer.js?v=699d8707595348cd" defer></script>
+  <script src="object-art.js?v=699d8707595348cd" defer></script>
+  <script src="control-actions.js?v=699d8707595348cd" defer></script>
+  <script src="light-capabilities.js?v=699d8707595348cd" defer></script>
+  <script src="object-controls.js?v=699d8707595348cd" defer></script>
+  <script src="app.js?v=699d8707595348cd" defer></script>
+  <script src="responsive-inspector.js?v=699d8707595348cd" defer></script>
+  <script src="storybook-editor.js?v=699d8707595348cd" defer></script>
 </body>
 </html>

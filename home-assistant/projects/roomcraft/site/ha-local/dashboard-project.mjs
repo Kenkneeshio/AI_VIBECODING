@@ -1,5 +1,6 @@
 import {validSceneSettings} from './storybook-scene-settings.mjs';
 import '../public/engine/terrain.js';
+import '../public/engine/edit-safety.js';
 
 const PLAN_WIDTH = 1536;
 const PLAN_HEIGHT = 1024;
@@ -7,6 +8,7 @@ const INTERFACE_ITEMS = new Set(['uiWeatherOrb', 'uiMenu', 'uiTime', 'uiEdit', '
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const finite = (...values) => values.every(Number.isFinite);
 const terrainContract = (typeof window === 'undefined' ? globalThis : window).RoomcraftTerrain;
+const editSafety = (typeof window === 'undefined' ? globalThis : window).RoomcraftEditSafety;
 
 export function isDashboardLayout(project) {
   return object(project) && project.version === 2 &&
@@ -63,6 +65,8 @@ export function dashboardProjectProblem(project, {validCameraThumbnail, validObj
       return 'The layout has an invalid object control.';
     }
   }
+  const issues = editSafety.audit(project);
+  if (issues.length) return 'The layout needs repair. ' + issues[0].message;
 }
 
 /** Normalize optional terrain after the shared publication validator has accepted it. */

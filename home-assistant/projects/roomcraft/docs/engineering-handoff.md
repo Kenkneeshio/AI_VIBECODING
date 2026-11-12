@@ -1,5 +1,7 @@
 # Roomcraft engineering handoff
 
+The [safe-editing contract](edit-safety.md) covers automatic terrain/structure protection, whole-edit rollback, Undo/Redo preservation, the Studio **Check & repair layout** action and shared transport validation. Its release record is the authority for the new verification and deployment state. The architecture release below remains the preceding verified baseline until that record is completed.
+
 Latest architecture release evidence is anchored to runtime source `5671e943d983496f7c59d74bfeec4b774afb4704`, HA resource version `d25830e164fd80b1`, and owner-private Studio version 101. GitHub CI passed with the same manifest as the Windows build. Read the [audit verification table](architecture-audit-2026-11-12.md#verification-and-deployment-record) for the exact checks and limits.
 
 Start with the [current architecture and engineering guide](architecture.md) for system setup, framework, engine, module ownership, units and flow diagrams. The [12 November architecture audit](architecture-audit-2026-11-12.md) distinguishes implemented builder controls from remaining recipe editing and records the shared publication validation fix. Run `npm run architecture:check` before adding a module. The chronological release notes below are historical evidence, not a complete statement of current behavior.

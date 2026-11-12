@@ -7,7 +7,7 @@ import { compileStorybookPlan } from '../ha-local/storybook-scene.mjs';
 
 const source = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
 const controlsSource = readFileSync(new URL('../public/object-controls.js', import.meta.url), 'utf8');
-const editorEngineSources = ['wall-joins.js', 'reference-geometry.js', 'scene-settings.js', 'terrain.js'].map(name =>
+const editorEngineSources = ['wall-joins.js', 'reference-geometry.js', 'scene-settings.js', 'terrain.js', 'edit-safety.js'].map(name =>
   readFileSync(new URL(`../public/engine/${name}`, import.meta.url), 'utf8'));
 const storageKey = 'roomcraft.second-floor.v2';
 const crop = { x: 0, y: 80, width: 1536, height: 864 };
@@ -35,7 +35,7 @@ function boot(savedProject, dashboardRequest, options = {}) {
   });
   function element(id = '') {
     return {
-      id, style: {}, dataset: {}, classList: { add() {}, remove() {}, toggle() {} },
+      id, hidden:id === 'exportMenu', style: {}, dataset: {}, classList: { add() {}, remove() {}, toggle() {} },
       addEventListener(name, fn) { listeners.set(`${id}:${name}`, fn); },
       removeEventListener(name, fn) { if (listeners.get(`${id}:${name}`) === fn) listeners.delete(`${id}:${name}`); },
       getContext() { return drawing; },
@@ -66,6 +66,9 @@ function boot(savedProject, dashboardRequest, options = {}) {
     naturalWidth = 0;
     addEventListener() {}
   }
+  class FileReaderStub {
+    readAsText(file) { this.result = file.content; this.onload(); }
+  }
   const window = { addEventListener(name, fn) { listeners.set(`window:${name}`, fn); }, location, RoomcraftInventory: { templates: [
     {type:'fans-fan-light-white',label:'Ceiling fan with light · White',w:158,h:158,group:'fans',artFamily:'ceilingFan',form:'light',visualKind:'fan'},
     {type:'fans-five-blade-fan-white',label:'Five-blade ceiling fan · White',w:160,h:160,group:'fans',artFamily:'ceilingFan',form:'five',visualKind:'fan'}
@@ -85,7 +88,7 @@ function boot(savedProject, dashboardRequest, options = {}) {
     removeItem(key) { data.delete(key); }
   };
   runInNewContext(source, {
-    document, window, location, URL, localStorage, Image: ImageStub,
+    document, window, location, URL, localStorage, Image: ImageStub, FileReader: FileReaderStub,
     setTimeout(fn, delay) {
       const id = ++timerId;
       if (options.deferAutosave && delay === 250) timers.set(id, fn);
@@ -127,6 +130,170 @@ test('optional terrain survives legacy project normalization and an undoable edi
   assert.deepEqual(editor.read().terrain, {road:'winding', cells:[{col:1, row:-2, height:8}]});
   assert.equal(api.setTerrain({road:'coastal'}), true);
   assert.equal(Object.hasOwn(editor.read(), 'terrain'), false);
+});
+
+function safetyFixture() {
+  return {version:2, editableReferenceVersion:10, hotspots:[],
+    rooms:[{id:'room', name:'Room', surface:'oak', points:[
+      {x:300,y:300}, {x:500,y:300}, {x:500,y:500}, {x:300,y:500}]}],
+    walls:[{id:'wall', x1:850, y1:300, x2:1050, y2:300, finish:'plaster'}],
+    items:[{id:'chair', type:'chair', name:'Chair', x:700, y:400, w:48, h:48, rotation:0,
+      entityId:'switch.example'}]};
+}
+
+function beginCrossedRoom(editor) {
+  editor.dispatch('tool:room', 'click', {});
+  editor.pointer('pointerdown', 400, 400);
+  editor.pointer('pointerup', 400, 400);
+  editor.pointer('pointerdown', 300, 300);
+  editor.pointer('pointermove', 550, 400);
+}
+
+test('a crossed room gesture restores the whole last safe edit without consuming Undo', () => {
+  const editor = boot(safetyFixture());
+  const api = editor.window.RoomcraftEditorViewport;
+  const original = editor.read();
+  assert.equal(api.moveItem('chair', 740, 400), true);
+  const safe = editor.read();
+  beginCrossedRoom(editor);
+  assert.equal(api.getProject().rooms[0].points[0].x, 550, 'gesture actually previews the unsafe boundary');
+  editor.pointer('pointerup', 550, 400);
+  assert.deepEqual(editor.read(), safe);
+  assert.deepEqual(JSON.parse(JSON.stringify(api.getProject())), safe);
+  assert.equal(api.getSafetyState().kind, 'blocked');
+  assert.equal(editor.window.RoomcraftEditorEngine.inspect().commandCount, 1);
+  assert.match(editor.elements.get('statusText').textContent, /Previous layout restored/);
+  editor.dispatch('undoButton', 'click', {});
+  assert.deepEqual(editor.read(), original, 'Undo reaches the earlier valid move, not a rejected edit');
+  editor.dispatch('redoButton', 'click', {});
+  assert.deepEqual(editor.read(), safe);
+});
+
+test('rejecting a room edit preserves an existing Redo branch', () => {
+  const editor = boot(safetyFixture());
+  assert.equal(editor.window.RoomcraftEditorViewport.moveItem('chair', 740, 400), true);
+  const moved = editor.read();
+  editor.dispatch('undoButton', 'click', {});
+  const safe = editor.read();
+  beginCrossedRoom(editor);
+  editor.pointer('pointerup', 550, 400);
+  assert.deepEqual(editor.read(), safe);
+  assert.equal(editor.elements.get('redoButton').disabled, false);
+  editor.dispatch('redoButton', 'click', {});
+  assert.deepEqual(editor.read(), moved);
+});
+
+for (const cancel of ['pointercancel', 'Escape', 'Undo', 'Redo']) {
+  test(`${cancel} discards an unfinished room edit and preserves Redo without journaling a change`, async () => {
+    const editor = boot(safetyFixture());
+    await new Promise(resolve => setImmediate(resolve));
+    const api = editor.window.RoomcraftEditorViewport;
+    api.moveItem('chair', 740, 400);
+    const moved = editor.read();
+    editor.dispatch('undoButton', 'click', {});
+    const before = editor.read();
+    const commands = editor.window.RoomcraftEditorEngine.inspect().commandCount;
+    beginCrossedRoom(editor);
+    assert.equal(api.getProject().rooms[0].points[0].x, 550);
+    if (cancel === 'pointercancel') editor.pointer('pointercancel', 550, 400);
+    else editor.dispatch('window', 'keydown', {
+      key:cancel === 'Escape' ? 'Escape' : cancel === 'Undo' ? 'z' : 'y',
+      ctrlKey:cancel !== 'Escape', preventDefault(){}
+    });
+    assert.deepEqual(editor.read(), before);
+    assert.deepEqual(JSON.parse(JSON.stringify(api.getProject())), before);
+    assert.equal(editor.window.RoomcraftEditorEngine.inspect().commandCount, commands);
+    assert.equal(editor.elements.get('redoButton').disabled, false);
+    editor.dispatch('redoButton', 'click', {});
+    assert.deepEqual(editor.read(), moved);
+  });
+}
+
+test('a malformed JSON structure import leaves both the current draft and Redo intact', () => {
+  const scene = safetyFixture();
+  const editor = boot(scene);
+  editor.window.RoomcraftEditorViewport.moveItem('chair', 740, 400);
+  const moved = editor.read();
+  editor.dispatch('undoButton', 'click', {});
+  const before = editor.read();
+  const malformed = {...scene, rooms:[{...scene.rooms[0], points:[
+    {x:550,y:400}, {x:500,y:300}, {x:500,y:500}, {x:300,y:500}]}]};
+  editor.dispatch('importFile', 'change', {target:{files:[{content:JSON.stringify(malformed)}]}});
+  assert.deepEqual(editor.read(), before);
+  assert.match(editor.elements.get('viewportToast').textContent, /Could not import/);
+  assert.equal(editor.elements.get('redoButton').disabled, false);
+  editor.dispatch('redoButton', 'click', {});
+  assert.deepEqual(editor.read(), moved);
+});
+
+test('a wall Inspector edit cannot collapse a segment or create an undo entry', () => {
+  const editor = boot(safetyFixture());
+  const before = editor.read();
+  editor.dispatch('structureList', 'change', {target:{value:'wall'}});
+  editor.dispatch('inspectorContent', 'change', {target:{closest:selector =>
+    selector === '[data-prop]' ? {dataset:{prop:'x2'}, value:'850'} : null}});
+  assert.deepEqual(editor.read(), before);
+  assert.match(editor.elements.get('viewportToast').textContent, /ends farther apart/);
+  assert.equal(editor.window.RoomcraftEditorEngine.inspect().commandCount, 0);
+  assert.equal(editor.elements.get('undoButton').disabled, true);
+});
+
+test('terrain spike repair is one undoable transaction and preserves authored paint', async () => {
+  const editor = boot(safetyFixture());
+  await new Promise(resolve => setImmediate(resolve));
+  const api = editor.window.RoomcraftEditorViewport;
+  const original = editor.read();
+  const terrain = {coast:'rugged', cells:[{col:3, row:2, height:64, cover:'scrub', prop:'sage'}]};
+  assert.equal(api.setTerrain(terrain), true, JSON.stringify(api.getSafetyState()));
+  const repaired = editor.read();
+  assert.deepEqual(repaired.terrain, {coast:'rugged', cells:[{col:3, row:2, height:24, cover:'scrub', prop:'sage'}]});
+  assert.equal(api.getSafetyState().kind, 'repaired');
+  assert.equal(editor.window.RoomcraftEditorEngine.inspect().commandCount, 1);
+  editor.dispatch('undoButton', 'click', {});
+  assert.deepEqual(editor.read(), original);
+  editor.dispatch('redoButton', 'click', {});
+  assert.deepEqual(editor.read(), repaired);
+});
+
+test('the menu repair action cleans existing terrain and can be undone without repairing it again', async () => {
+  const scene = {...safetyFixture(), terrain:{cells:[{col:3, row:2, height:64}]}};
+  const editor = boot(scene);
+  await new Promise(resolve => setImmediate(resolve));
+  const before = editor.read();
+  assert.equal(before.terrain.cells[0].height, 64, 'opening a saved layout does not silently reshape its terrain');
+  assert.equal(editor.dispatch('repairLayoutButton', 'click', {}), true,
+    editor.elements.get('statusText').textContent);
+  const repaired = editor.read();
+  assert.equal(repaired.terrain.cells[0].height, 24);
+  assert.equal(editor.window.RoomcraftEditorEngine.inspect().commandCount, 1);
+  assert.equal(editor.dispatch('repairLayoutButton', 'click', {}), false, 'a repeated repair is a no-op');
+  assert.equal(editor.window.RoomcraftEditorEngine.inspect().commandCount, 1);
+  editor.dispatch('undoButton', 'click', {});
+  assert.deepEqual(editor.read(), before);
+  editor.dispatch('redoButton', 'click', {});
+  assert.deepEqual(editor.read(), repaired);
+});
+
+test('Save never posts an unsafe drag preview and works after the rejected edit restores the draft', async () => {
+  const scene = safetyFixture();
+  const calls = [];
+  const editor = boot(scene, async (method, payload) => {
+    calls.push({method, payload});
+    if (method === 'GET') return {project:scene, revision:'current', hotspots:[]};
+    return {revision:'published', imageUrl:'/api/image/serve/fixture/original'};
+  });
+  await new Promise(resolve => setImmediate(resolve));
+  const before = editor.read();
+  beginCrossedRoom(editor);
+  await editor.dispatch('exportDashboardButton', 'click', {});
+  assert.deepEqual(calls.map(call => call.method), ['GET']);
+  assert.deepEqual(editor.read(), before);
+  assert.match(editor.elements.get('viewportToast').textContent, /Finish the current edit/);
+  editor.pointer('pointerup', 550, 400);
+  await editor.dispatch('exportDashboardButton', 'click', {});
+  assert.deepEqual(calls.map(call => call.method), ['GET', 'POST']);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[1].payload.project.rooms)), before.rooms);
+  assert.equal(calls[1].payload.revision, 'current');
 });
 
 test('the 3D mutation bridge preserves bindings and records one undoable move', () => {

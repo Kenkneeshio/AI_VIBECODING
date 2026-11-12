@@ -1,5 +1,9 @@
 # Decision log
 
+## Repair only what preserves the author's intent
+
+Use a pure bounded guard at the completed-edit boundary and again before publication. Remove redundant room points and reduce excessive authored terrain steps, while preserving IDs, paint, props and existing landscape settings. Reject an ambiguous structural change as one transaction rather than guessing a new floor plan. Restore history and selection with the previous draft. Keep repairs undoable, and preserve older valid terrain until the user edits it or explicitly requests repair. [Safe-editing contract](edit-safety.md)
+
 ## Keep the builder foundation shared and auditable
 
 Retain the common authored model and Home/Studio renderer. Add executable dependency checks and accurate architecture documentation before extracting more code. Reject malformed ordinary object geometry at the shared publication boundary because editor checks alone cannot protect API callers. Move toward a recipe/property registry and domain commands in independently verifiable stages, preserving current layouts and undo behavior. [Architecture audit](architecture-audit-2026-11-12.md)

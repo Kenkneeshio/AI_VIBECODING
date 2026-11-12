@@ -5,6 +5,7 @@ import test from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {buildSync} from 'esbuild';
 import {storybookPreview} from './storybook-state.mjs';
+import {invalidStructureProjects, validStructureProject} from '../tests/structure-safety-fixtures.mjs';
 
 const {outputFiles: [{text: code}]} = buildSync({
   entryPoints: [fileURLToPath(new URL('./roomcraft-card.js', import.meta.url))],
@@ -1756,4 +1757,36 @@ test('embedded editor returns to the dashboard through the signed-in Home Assist
     context.window.removeEventListener('location-changed', onLocationChanged);
     delete context.window.history;
   }
+});
+
+test('LAN publication blocks unsafe structure before reads/uploads/saves and accepts valid geometry intact',async()=>{
+  const saved=dashboard(), before=structuredClone(saved);
+  let calls=0, uploads=0;
+  const card=new Card();
+  card.hass={
+    connected:true,user:{is_admin:true},
+    callWS:async request=>{
+      calls++;
+      if(request.type==='lovelace/config/save') Object.assign(saved,structuredClone(request.config));
+      return structuredClone(saved);
+    },
+    fetchWithAuth:async()=>{
+      uploads++;
+      return {ok:true,json:async()=>({id:'b'.repeat(32)})};
+    },
+  };
+  const imported=await card._readDashboard(), afterImport=calls;
+  const write=project=>card._writeDashboard({
+    revision:imported.revision,project,pngDataUrl:pngDataUrl(),
+  });
+  for(const {label,project:invalid,message} of invalidStructureProjects()){
+    await assert.rejects(write(invalid),message,label);
+  }
+  assert.equal(uploads,0);
+  assert.equal(calls,afterImport,'rejected structure must not read or write the HA dashboard');
+  assert.deepEqual(saved,before);
+  const valid=validStructureProject();
+  await write(valid);
+  assert.equal(uploads,1);
+  assert.deepEqual(saved.roomcraft_layout,valid);
 });

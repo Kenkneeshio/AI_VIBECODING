@@ -96,6 +96,7 @@ The pure engine must not import adapters or read DOM, network, storage, device s
 | Render contract | Layers, ordered operations, assets, environment evidence | [render-contract.js](../site/public/engine/render-contract.js), [verification facade](../site/public/engine/verification-harness.js) |
 | Structure | Connected walls, floors, railings, starter corrections | [wall joins](../site/public/engine/wall-joins.js), [reference geometry](../site/public/engine/reference-geometry.js), [3D structure](../site/ha-local/storybook-structure.mjs) |
 | Terrain | Settings, sparse cells, brushes, normalization and limits | [terrain.js](../site/public/engine/terrain.js) |
+| Edit protection | Bounded geometry audit, conservative repair and transaction acceptance | [edit-safety.js](../site/public/engine/edit-safety.js), [safe-editing contract](edit-safety.md) |
 | Catalog and models | Types, variants, footprints, finishes, placement roles | [inventory](../site/public/inventory.js), [variants](../site/public/catalog-variants.js), [furniture](../site/ha-local/storybook-furniture.mjs), [devices](../site/ha-local/storybook-devices.mjs) |
 | Editor | Selection, Inspector, gestures, drafts, Save, Undo | [app](../site/public/app.js), [3D adapter](../site/ha-local/storybook-editor.mjs), [terrain UI](../site/ha-local/storybook-terrain-editor.mjs) |
 | Scene composition | Combine geometry, models, lighting and effects | [storybook-scene.mjs](../site/ha-local/storybook-scene.mjs) |
@@ -165,6 +166,8 @@ The HA path uses [iframe messaging](../site/public/ha-iframe-bridge.js) and the 
 Lovelace has no atomic compare-and-swap. Rechecks reduce conflicts but leave a short read-to-write race. Use one active publisher during planned recovery. A rejected layout must never reach upload/save.
 
 Editor history currently stores gesture snapshots and journals `scene.replace`. Terrain records one completed stroke as one undoable change. Fine-grained commands such as `terrain.stroke` and `item.move` are future incremental work.
+
+Completed edits pass through a pure safety guard before draft persistence. Safe room cleanup and terrain-step repair stay in the same undo unit. An unsafe candidate restores the checkpoint, including history and selection. Both publication transports audit geometry before uploads or dashboard writes. [Safe editing](edit-safety.md) defines the repairs, compatibility rules and limits.
 
 ## Live control flow
 

@@ -5,6 +5,8 @@
   if (!Engine) throw new Error('RoomcraftEngine must load before app.js');
   const SceneSettings = window.RoomcraftSceneSettings;
   const Terrain = window.RoomcraftTerrain;
+  const EditSafety = window.RoomcraftEditSafety;
+  if (!EditSafety) throw new Error('RoomcraftEditSafety must load before app.js');
   const clone = Engine.clone;
   const projectFingerprint = value => Engine.canonicalStringify(value);
   let idAllocator = null;
@@ -287,7 +289,9 @@
     if (terrain) next.terrain = terrain;
     else delete next.terrain;
     next.version=2;
-    return Engine.normalizeScene(next);
+    const checked = EditSafety.repair(next);
+    if (!checked.ok) throw new Error(checked.issues[0]?.message || 'The layout has invalid structure.');
+    return Engine.normalizeScene(checked.project);
   }
   let project = loadProject();
   initializeIdAllocator(project);
@@ -315,6 +319,9 @@
   let interaction = null;
   let spaceHeld = false;
   let history = [], future = [];
+  let editCheckpoint = null;
+  let lastValidProject = clone(project);
+  let safetyState = {kind:'ready', message:'Edit protection is on.', repairs:[], issues:[]};
   let saveTimer = null, toastTimer = null;
   let pendingDraft = null;
   let currentView = { scale: 1, tx: 0, ty: 0 };
@@ -375,12 +382,38 @@
       return false;
     }
   }
-  function snapshot() { history.push(clone(project)); if (history.length > 70) history.shift(); future = []; updateHistoryButtons(); }
-  function undo() { if (!history.length) return; future.push(clone(project)); project = history.pop(); selected = null; afterChange('Undid last change',{resetIdentity:true}); }
-  function redo() { if (!future.length) return; history.push(clone(project)); project = future.pop(); selected = null; afterChange('Redid change',{resetIdentity:true}); }
+  function checkpointEdit() { editCheckpoint={project:clone(project),history:history.slice(),future:future.slice(),selected:selected?{...selected}:null}; }
+  function snapshot() { checkpointEdit(); history.push(clone(project)); if (history.length > 70) history.shift(); future = []; updateHistoryButtons(); }
+  function undo() { if(interaction){cancelGesture();return;} if (!history.length) return; checkpointEdit(); future.push(clone(project)); project = history.pop(); selected = null; afterChange('Undid last change',{resetIdentity:true}); }
+  function redo() { if(interaction){cancelGesture();return;} if (!future.length) return; checkpointEdit(); history.push(clone(project)); project = future.pop(); selected = null; afterChange('Redid change',{resetIdentity:true}); }
   function updateHistoryButtons() { document.getElementById('undoButton').disabled = !history.length; document.getElementById('redoButton').disabled = !future.length; }
+  function rejectEdit(issues) {
+    project=clone(editCheckpoint?.project ?? lastValidProject);
+    if(editCheckpoint){history=editCheckpoint.history;future=editCheckpoint.future;selected=editCheckpoint.selected;}
+    editCheckpoint=null;
+    initializeIdAllocator(project);
+    sceneOrderCache=null;
+    const message='Edit kept safe. '+(issues[0]?.message || 'This change could not be applied.')+' Previous layout restored.';
+    safetyState={kind:'blocked',message,repairs:[],issues};
+    draw();renderInspector();renderRoomList();renderStructureList();updateHistoryButtons();
+    setStatus(message);showToast(message);
+    window.dispatchEvent?.(new CustomEvent('roomcraft-editor-change'));
+    return false;
+  }
   function afterChange(message,options={}) {
-    project=Engine.normalizeScene(project);
+    let checked;
+    try {
+      const previous=editCheckpoint?.project ?? lastValidProject;
+      const terrainRepair=options.repairTerrain===true || (!options.authoritative&&!options.resetIdentity &&
+        JSON.stringify(project.terrain)!==JSON.stringify(previous.terrain));
+      checked=EditSafety.repair(project,{previous,terrainRepair});
+      if(!checked.ok)return rejectEdit(checked.issues);
+      const next=Engine.normalizeScene(checked.project);
+      if(!validProject(next))return rejectEdit([{code:'invalid-project',message:'The changed layout contains unsupported values.'}]);
+      project=next;
+    } catch {
+      return rejectEdit([{code:'invalid-project',message:'The changed layout could not be validated.'}]);
+    }
     if(options.authoritative||options.resetIdentity)initializeIdAllocator(project);
     else registerProjectIds(project);
     if(options.authoritative){
@@ -391,8 +424,23 @@
       if(journalCommandCount>=70){editorJournal=createEditorJournal(project);journalCommandCount=0;journalCheckpointCount++;}
       else{editorJournal.dispatch('scene.replace',{project,reason:message||'editor change'});journalCommandCount++;}
     }
+    lastValidProject=clone(project);editCheckpoint=null;
+    const safetyMessage=checked.repaired?'Auto-repaired the edit. Undo is available.':'Edit protection is on.';
+    safetyState={kind:checked.repaired?'repaired':'ready',message:safetyMessage,repairs:checked.repairs,issues:[]};
+    if(checked.repaired){message=(message?message+'. ':'')+safetyMessage;showToast(safetyMessage);}
     projectChangeSerial++;sceneOrderCache=null;saveSoon();draw();renderInspector();renderRoomList();renderStructureList();renderHotspotList();updateClearObjectsButton();updateRecoveryButton();updateHistoryButtons();if(message)setStatus(message);
     window.dispatchEvent?.(new CustomEvent('roomcraft-editor-change'));
+    return true;
+  }
+  function repairLayout() {
+    if(dashboardTransferBusy||interaction){showToast('Finish the current edit before checking the layout.');return false;}
+    const checked=EditSafety.repair(project,{previous:lastValidProject,terrainRepair:true});
+    if(!checked.ok){setStatus(checked.issues[0]?.message||'The layout needs attention.');return false;}
+    if(!checked.repaired){safetyState={kind:'ready',message:'Terrain and structure checks passed.',repairs:[],issues:[]};setStatus(safetyState.message);showToast(safetyState.message);return false;}
+    snapshot();project=checked.project;
+    const applied=afterChange('Repaired terrain and structure');
+    if(applied){safetyState={kind:'repaired',message:'Terrain and structure repaired. Undo is available.',repairs:checked.repairs,issues:[]};setStatus(safetyState.message);showToast(safetyState.message);}
+    return applied;
   }
   function setStatus(message) { document.getElementById('statusText').textContent = message; }
   function showToast(message) { const t = document.getElementById('viewportToast'); t.textContent = message; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2800); }
@@ -769,7 +817,7 @@
     }
     return nearest&&nearest.distance<=75?nearest:null;
   }
-  function hitRoomVertex(p){if(selected?.kind!=='room')return null;const r=project.rooms.find(r=>r.id===selected.id);if(!r)return null;return r.points.findIndex(q=>Math.hypot(q.x-p.x,q.y-p.y)<12/viewScale());}
+  function hitRoomVertex(p){if(selected?.kind!=='room')return -1;const r=project.rooms.find(r=>r.id===selected.id);if(!r)return -1;return r.points.findIndex(q=>Math.hypot(q.x-p.x,q.y-p.y)<12/viewScale());}
   function hitWallEndpoint(p,w){if(Math.hypot(p.x-w.x1,p.y-w.y1)<14/viewScale())return 1;if(Math.hypot(p.x-w.x2,p.y-w.y2)<14/viewScale())return 2;return 0;}
   function select(kind,id){selected={kind,id};renderInspector();renderRoomList();renderStructureList();renderHotspotList();draw();window.dispatchEvent?.(new CustomEvent('roomcraft-editor-change'));}
   function clearPlacement(){pendingTemplate=null;pendingEntityId="";pendingSurface=null;pendingWallFinish=null;pendingSegment=null;document.querySelectorAll('.palette-item,.surface-item,.wall-finish-item').forEach(el=>el.classList.remove('placing','active'));viewport.classList.remove('placing');renderSurfacePalette();renderWallPalette();}
@@ -995,11 +1043,17 @@
   }
   function onPointerCancel(e) {
     if(!interaction||(interaction.pointerId!==undefined&&e.pointerId!==interaction.pointerId))return;
-    if(interaction.kind==='wall-move'&&interaction.snapshot&&history.length){project=history.pop();updateHistoryButtons();}
-    if(interaction.kind==='wall-draw'||interaction.kind==='wall-move'){
-      interaction=null;
-      draw();
-    }else onPointerUp(e);
+    cancelGesture();
+  }
+  function cancelGesture() {
+    if(interaction?.snapshot&&editCheckpoint){
+      project=clone(editCheckpoint.project);history=editCheckpoint.history;future=editCheckpoint.future;selected=editCheckpoint.selected;
+      editCheckpoint=null;initializeIdAllocator(project);sceneOrderCache=null;
+    }
+    interaction=null;viewport.classList.remove('dragging');
+    renderInspector();renderRoomList();renderStructureList();updateHistoryButtons();draw();
+    setStatus('Canceled edit. Previous layout restored.');
+    window.dispatchEvent?.(new CustomEvent('roomcraft-editor-change'));
   }
 
   function htmlEscape(s){return String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
@@ -1621,7 +1675,7 @@
     download('roomcraft-home-assistant.yaml','text/yaml',yaml);
     showToast('Home Assistant YAML with object buttons and menu downloaded');
   }
-  function importProject(file){if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(String(reader.result));if(!validProject(parsed))throw new Error('Invalid project format');snapshot();project=normalizeProject(parsed);selected=null;clearPlacement();afterChange('Imported project',{authoritative:true});showToast('Project imported');fitView();}catch(err){showToast('Could not import this project JSON');}};reader.readAsText(file);}
+  function importProject(file){if(!file)return;const reader=new FileReader();reader.onload=()=>{try{const parsed=JSON.parse(String(reader.result));if(!validProject(parsed))throw new Error('Invalid project format');const normalized=normalizeProject(parsed);snapshot();project=normalized;selected=null;clearPlacement();if(afterChange('Imported project',{authoritative:true})){showToast('Project imported');fitView();}}catch(err){showToast('Could not import this project JSON');}};reader.readAsText(file);}
 
   function setDashboardStatus(message,isError=false){const status=document.getElementById('dashboardTransferStatus');status.textContent=message;status.classList.toggle('error',isError);setStatus(message);}
   function setDashboardBusy(busy){
@@ -1761,6 +1815,9 @@
   }
   async function saveToDashboard(){
     if(dashboardTransferBusy)return;
+    if(interaction){showToast('Finish the current edit before saving.');return;}
+    const issues=EditSafety.audit(project);
+    if(issues.length){const message='Save blocked. '+issues[0].message+' Use Undo or Check & repair layout.';setDashboardStatus(message,true);showToast(message);return;}
     const importMessage='Import the current dashboard before saving this browser draft.';
     if(dashboardNeedsImport||!dashboardRevision){
       setDashboardStatus(importMessage,true);showToast(importMessage);return;
@@ -1864,6 +1921,7 @@
     document.getElementById('fitButton').addEventListener('click',fitView);
     document.getElementById('zoomValue').addEventListener('click',fitView);
     document.getElementById('undoButton').addEventListener('click',undo);document.getElementById('redoButton').addEventListener('click',redo);
+    document.getElementById('repairLayoutButton').addEventListener('click',repairLayout);
     document.getElementById('importDashboardButton').addEventListener('click',importFromDashboard);
     document.getElementById('exportDashboardButton').addEventListener('click',saveToDashboard);
     document.getElementById('backDashboardButton').addEventListener('click',backToDashboard);
@@ -1900,7 +1958,7 @@
         if(e.key==='Escape'){e.preventDefault();showMenu(false);menuButton.focus();}
         return;
       }
-      if(dashboardTransferBusy)return;const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo();return;}if(e.key===' '){if(tag==='BUTTON')return;e.preventDefault();spaceHeld=true;return;}if(e.key==='Escape'){const canceled=interaction;interaction=null;viewport.classList.remove('dragging');if(canceled?.snapshot&&history.length){project=history.pop();future=[];afterChange('Canceled drag',{resetIdentity:true});}clearPlacement();selected=null;renderInspector();renderStructureList();updateHistoryButtons();draw();return;}if((e.key==='Delete'||e.key==='Backspace')&&selected){e.preventDefault();deleteSelected();return;}const shortcuts={v:'select',h:'pan',r:'room',w:'wall',f:'fence',t:'terrain',e:'erase'};const shortcut=shortcuts[e.key.toLowerCase()];if(shortcut){setTool(shortcut);}});
+      if(dashboardTransferBusy)return;const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo();return;}if(e.key===' '){if(tag==='BUTTON')return;e.preventDefault();spaceHeld=true;return;}if(e.key==='Escape'){cancelGesture();clearPlacement();selected=null;renderInspector();renderStructureList();updateHistoryButtons();draw();return;}if((e.key==='Delete'||e.key==='Backspace')&&selected){e.preventDefault();deleteSelected();return;}const shortcuts={v:'select',h:'pan',r:'room',w:'wall',f:'fence',t:'terrain',e:'erase'};const shortcut=shortcuts[e.key.toLowerCase()];if(shortcut){setTool(shortcut);}});
     window.addEventListener('keyup',e=>{if(e.key===' ')spaceHeld=false;});
     window.addEventListener('resize',fitView);
     window.addEventListener('pagehide',flushPendingDraft);
@@ -1910,6 +1968,8 @@
   window.addEventListener('roomcraft-asset-loaded',()=>{draw();paintPalettePreviews();});
   window.RoomcraftEditorViewport = Object.freeze({
     getProject: () => clone(project),
+    getSafetyState: () => clone(safetyState),
+    repairLayout,
     getPreview: () => dashboardPreview,
     setTerrain(next, message = 'Updated terrain') {
       if (dashboardTransferBusy || interaction || !Terrain.valid(next)) return false;
@@ -1918,8 +1978,7 @@
       snapshot();
       if (normalized) project.terrain = normalized;
       else delete project.terrain;
-      afterChange(message);
-      return true;
+      return afterChange(message);
     },
     canBeginTerrain: event => tool === 'terrain' && event?.button === 0 && !spaceHeld && !interaction && !dashboardTransferBusy,
     useTerrainTool() {

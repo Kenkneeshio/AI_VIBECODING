@@ -1,6 +1,6 @@
 # Roomcraft user manual
 
-Roomcraft Studio edits the layout used by Roomcraft Home. Use the 3D view to arrange objects, or the 2D plan to edit rooms and walls, then export to Home Assistant. You can also download the image, editable project, or Home Assistant YAML separately.
+Roomcraft Studio edits the layout used by Roomcraft Home from directly above the shared 3D scene. Arrange objects, rooms, walls and terrain, then choose **Save** to publish. You can also download the image, editable project, or Home Assistant YAML separately.
 
 ## Use the live dashboard
 
@@ -274,6 +274,14 @@ Tap a bound robot vacuum in Roomcraft Home to open its state and map panel. The 
 **Menu → Manage → Devices and sensors** opens the device drawer on Home. The drawer includes **On plan**, **All entities**, search with registry availability and curated groups for planning, weather and air quality, lighting, security, energy and the robot vacuum. [Main Dashboard map](main-dashboard-map.md)
 
 ## Undo and recovery
+
+### Automatic edit protection
+
+Studio checks each completed edit. It softens abrupt terrain steps and removes exactly repeated room corners when that is safe. Paint, terrain props and valid hills remain in place. A crossed room boundary, collapsed wall or other unsafe geometry restores the preceding draft and reports why. A rejected edit preserves Undo and Redo.
+
+Choose **Main menu → Check & repair layout** to check the current draft. Repairs are one undoable change and stay local until **Save**. If nothing needs repair, Studio reports that the checks passed. Existing terrain is not resculpted just by opening a layout or moving furniture. The [safe-editing guide](edit-safety.md) explains the supported checks and limits.
+
+### Undo and browser recovery
 
 - **Undo** and **Redo** step through the current editing session.
 - **Reset to starting plan** restores the initial furnished design; export JSON first if you want the current state later.

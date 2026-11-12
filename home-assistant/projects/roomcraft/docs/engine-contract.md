@@ -34,6 +34,12 @@ Exact PNG byte equality is guaranteed only for the same supported browser/runtim
 8. **Safe repeated execution.** Validation, normalization, migration, element derivation, custom-card registration, and readback checks are idempotent. Running them twice must not duplicate objects, controls, cards, or reference migrations.
 9. **No secret-bearing artifacts.** Tests, fixtures, hashes, screenshots, examples, and release records use synthetic IDs and public-safe images. Private dashboard backups, bindings, camera media, tokens, addresses, and calibration data stay outside Git.
 
+## Edit safety boundary
+
+Completed editor changes must pass the pure `RoomcraftEditSafety` audit/repair before they become the next persisted draft. Repairs are limited to unambiguous redundant room points and explicitly requested terrain-step correction. Any remaining issue rejects the entire candidate. The editor restores the pre-edit project, history and selection, so a rejected edit neither consumes Undo nor discards Redo. Repairs share the originating edit's undo unit.
+
+Both publish transports call the same geometry audit before side effects. They reject unsafe input without silently repairing the published design. Existing valid steep terrain remains compatible on import, history replay and publication. Terrain slope correction runs on ordinary terrain edits or an explicit Check & repair action. See [safe editing](edit-safety.md) for ownership, bounds, compatibility and acceptance fixtures.
+
 ## Customer solution and acceptance
 
 Engineering work begins with the customer outcome, then moves from system behavior to modules, data, and individual code changes. A release record must answer these questions in this order:
