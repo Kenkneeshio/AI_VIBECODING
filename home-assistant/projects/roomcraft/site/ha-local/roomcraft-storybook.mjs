@@ -12,7 +12,7 @@ import {storybookWeather, storybookWeatherMarkup, storybookWeatherStyles, update
 import {COASTAL_SKY_STYLE, COASTAL_SKY_MARKUP, updateCoastalSky} from './storybook-coastal-sky.mjs';
 import {sceneDockAlignment, sceneFeatureEnabled, sceneWind} from './storybook-scene-settings.mjs';
 import {bindStorybookDisplaySettings, DISPLAY_SETTINGS_MARKUP, DISPLAY_SETTINGS_STYLE,
-  STORYBOOK_GRAPHICS_DEFAULTS, storybookDisplaySceneSettings} from './storybook-display-settings.mjs';
+  storybookDisplaySceneSettings} from './storybook-display-settings.mjs';
 import {readStorybookUtilities, utilityReading} from './storybook-utilities.mjs';
 import {bindStorybookPower, POWER_PANEL_MARKUP, POWER_PANEL_STYLE} from './storybook-power-panel.mjs';
 import {bindStorybookLightPanel, STORYBOOK_LIGHT_PANEL, STORYBOOK_LIGHT_PANEL_STYLES} from './storybook-light-panel.mjs';
@@ -26,6 +26,8 @@ const CONTROL_TAG = 'roomcraft-object-control';
 const CAMERA_TAG = 'roomcraft-camera-thumbnail';
 const EDITOR_TAG = 'roomcraft-editor-card';
 const FRAME_DEADLINE_TOLERANCE = .5;
+const CAMERA_SETTLE_MS = 180;
+const FPS_WINDOW_MS = 1000;
 const DETAIL_VISIBILITY_EVENT = 'roomcraft-detail-visibility';
 const DETECTION_ZONE_KEY = 'roomcraft.show-detection-zone.v1';
 const CAMERA_TILES_KEY = 'roomcraft.show-camera-tiles.v1';
@@ -78,10 +80,12 @@ class RoomcraftStorybookCard extends HTMLElement {
         .default-status:empty{display:none}
         .main-menu-wrap{position:relative}
         .menu-glyph{width:14px;height:2px;border-radius:2px;background:currentColor;box-shadow:0 5px 0 currentColor,0 -5px 0 currentColor}
-        .main-menu{position:absolute;right:0;bottom:calc(100% + 9px);width:min(328px,calc(100vw - 26px));max-height:min(68dvh,570px);
-          box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:7px;border:1px solid #cfbfa2;border-radius:15px;
-          color-scheme:light;background:#fffaf0;color:#393831;box-shadow:0 9px 30px #18213250}
+        .main-menu{position:absolute;right:0;bottom:calc(100% + 9px);width:min(620px,calc(100vw - 26px));
+          max-height:min(76dvh,630px);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:8px;
+          box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:10px;border:1px solid #b9a58a;border-radius:18px;
+          color-scheme:light;background:#eee4d3;color:#312f29;box-shadow:0 14px 44px #0c182977}
         .main-menu[hidden]{display:none}
+        @media(max-width:650px){.main-menu{width:min(375px,calc(100vw - 26px));grid-template-columns:minmax(0,1fr)}}
         .world[data-dock=left] .bar{justify-content:flex-start}
         .world[data-dock=center] .bar{justify-content:center}
         .world:is([data-dock=left],[data-dock=center]) .main-menu-wrap{position:static}
@@ -91,11 +95,10 @@ class RoomcraftStorybookCard extends HTMLElement {
         .bar .main-menu :is(button,a){width:100%;justify-content:flex-start;text-align:left;border-radius:7px}
         .main-menu button:disabled{opacity:.35;cursor:default}
         .main-menu button:hover:not(:disabled),.main-menu a:hover{background:#f2e9d9;text-decoration:none}
-        .menu-group{display:grid;gap:1px;padding:4px}
-        .menu-group+.menu-group{border-top:1px solid #e8dfce}
-        .menu-heading{margin:4px 8px 1px;color:#706550;font-size:11px;font-weight:700;letter-spacing:.045em}
-        .more-options summary{box-sizing:border-box;min-height:44px;padding:12px 8px;cursor:pointer;border-radius:7px}
-        .more-options summary:hover{background:#f2e9d9}
+        .menu-group{min-width:0;display:grid;gap:1px;padding:5px;border:1px solid #d8c7ae;border-radius:11px;background:#fffaf1}
+        .menu-heading{margin:4px 8px 2px;color:#665641;font-size:12px;font-weight:750}
+        .bar .main-menu .menu-primary{background:#e0ece1;color:#1d4f42;font-weight:700}
+        .bar .main-menu .menu-primary:hover{background:#cfe2d2}
         .camera-steps{display:grid;grid-template-columns:1fr 1fr;gap:2px}
         .utility-menu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px}
         .bar .main-menu .camera-steps button{justify-content:center}
@@ -169,6 +172,11 @@ class RoomcraftStorybookCard extends HTMLElement {
         a:hover,.bar button:hover{text-decoration:underline}
         :focus-visible{outline:2px solid #74516f;outline-offset:2px}
         .stage{position:relative;min-height:0;isolation:isolate}
+        .menu-shade{position:absolute;inset:0;z-index:4;background:#11223550}
+        .scene-fps{position:absolute;z-index:5;top:10px;right:12px;pointer-events:none;
+          padding:4px 8px;border:1px solid #d8e0e95c;border-radius:8px;background:#192938e6;color:#fff8e6;
+          font-size:12px;font-variant-numeric:tabular-nums}
+        .scene-fps[hidden]{display:none}
         canvas{display:block;width:100%;height:100%}
         canvas[data-free-view]{cursor:grab;touch-action:none}
         canvas[data-free-view]:active{cursor:grabbing}
@@ -222,6 +230,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         ${COASTAL_SKY_MARKUP}
         <div class="stage">
           <canvas role="img" aria-label="Three-dimensional cutaway of the second floor"></canvas>
+          <output class="scene-fps" aria-label="Scene frame rate" aria-live="off" hidden>— FPS</output>
           <span id="free-view-hint" class="free-view-hint" hidden>Drag or use arrow keys to orbit. Pinch, scroll, or use +/− to zoom.</span>
           <svg class="tethers" aria-hidden="true"></svg>
           <div class="overlay"></div>
@@ -250,6 +259,7 @@ class RoomcraftStorybookCard extends HTMLElement {
             <span class="demo-weather-detail" hidden></span>
             <div class="demo-progress" aria-hidden="true"><span></span></div>
           </div>
+          <div class="menu-shade" aria-hidden="true" hidden></div>
         </div>
         <footer class="bar">
           <nav aria-label="Roomcraft controls">
@@ -261,21 +271,21 @@ class RoomcraftStorybookCard extends HTMLElement {
             <div class="main-menu-wrap">
               <button type="button" class="dock-button main-menu-button" aria-label="Main menu" aria-expanded="false" aria-controls="storybook-main-menu"><span class="menu-glyph" aria-hidden="true"></span> Menu</button>
               <div class="main-menu" id="storybook-main-menu" hidden>
-                <section class="menu-group" aria-label="Dashboard tour">
-                  <button type="button" class="demo-start" disabled>45-second demo</button>
-                </section>
-                <section class="menu-group" aria-label="Household">
-                  <button type="button" data-link-dialog="planner" aria-haspopup="dialog">Calendar &amp; to-dos</button>
-                  <button type="button" data-link-dialog="location" aria-haspopup="dialog">Location sharing</button>
-                  <button type="button" data-link-dialog="commute" aria-haspopup="dialog">Commute traffic</button>
+                <section class="menu-group" aria-label="Display">
+                  <p class="menu-heading" aria-hidden="true">Display</p>
+                  <button type="button" class="menu-primary open-display-settings" aria-haspopup="dialog">Display settings</button>
+                  <button type="button" class="map-toggle toggle-fps" aria-pressed="false">FPS display <span class="menu-toggle" aria-hidden="true"></span></button>
+                  <button type="button" class="map-toggle toggle-camera-tiles" aria-pressed="true" hidden>Camera tiles <span class="menu-toggle" aria-hidden="true"></span></button>
+                  <button type="button" class="map-toggle toggle-reduced-motion" aria-pressed="false">Reduce motion <span class="menu-toggle" aria-hidden="true"></span></button>
                 </section>
                 <section class="menu-group" aria-label="On the map">
                   <p class="menu-heading" aria-hidden="true">On the map</p>
+                  <a class="menu-primary" href="/roomcraft-home/studio#lidar-alignment" data-lidar-alignment-link>Align LiDAR map</a>
+                  ${VACUUM_MAP_TOGGLE}
                   <button type="button" class="map-toggle toggle-object-details" aria-pressed="false">Object details <span class="menu-toggle" aria-hidden="true"></span></button>
                   <button type="button" class="open-tracking" hidden>Presence tracking</button>
                   <button type="button" class="map-toggle toggle-detection-zone" aria-controls="detection-zone-legend" aria-pressed="false" hidden>Detection zone <span class="menu-toggle" aria-hidden="true"></span></button>
                   ${HEAT_MAP_TOGGLE}
-                  ${VACUUM_MAP_TOGGLE}
                 </section>
                 <section class="menu-group" aria-label="View controls">
                   <p class="menu-heading" aria-hidden="true">View controls</p>
@@ -293,7 +303,6 @@ class RoomcraftStorybookCard extends HTMLElement {
                   <button type="button" data-camera="reset">Reset to Top down</button>
                   <button type="button" data-camera="save-default" hidden>Save as default</button>
                   <button type="button" data-camera="clear-default" hidden>Use Top down as default</button>
-                  <button type="button" class="open-display-settings" aria-haspopup="dialog">Display settings</button>
                 </section>
                 <section class="menu-group" aria-label="Manage">
                   <p class="menu-heading" aria-hidden="true">Manage</p>
@@ -307,11 +316,13 @@ class RoomcraftStorybookCard extends HTMLElement {
                     <button type="button" data-utility="health" aria-haspopup="dialog" hidden>System health</button>
                   </div>
                 </section>
-                <details class="menu-group more-options">
-                  <summary>More options</summary>
-                  <button type="button" class="map-toggle toggle-camera-tiles" aria-pressed="true" hidden>Camera tiles <span class="menu-toggle" aria-hidden="true"></span></button>
-                  <button type="button" class="map-toggle toggle-reduced-motion" aria-pressed="false">Reduce motion <span class="menu-toggle" aria-hidden="true"></span></button>
-                </details>
+                <section class="menu-group" aria-label="Household">
+                  <p class="menu-heading" aria-hidden="true">Household</p>
+                  <button type="button" data-link-dialog="planner" aria-haspopup="dialog">Calendar &amp; to-dos</button>
+                  <button type="button" data-link-dialog="location" aria-haspopup="dialog">Location sharing</button>
+                  <button type="button" data-link-dialog="commute" aria-haspopup="dialog">Commute traffic</button>
+                  <button type="button" class="demo-start" disabled>45-second demo</button>
+                </section>
               </div>
             </div>
           </nav>
@@ -374,7 +385,12 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.cameraView = resolveDefaultCameraView(null);
     this.menuButton = this.shadowRoot.querySelector('.main-menu-button');
     this.mainMenu = this.shadowRoot.querySelector('.main-menu');
+    this.menuShade = this.shadowRoot.querySelector('.menu-shade');
     this.displaySettings = bindStorybookDisplaySettings(this, settings => this.applyDisplaySettings(settings));
+    this.fpsDisplay = this.shadowRoot.querySelector('.scene-fps');
+    this.fpsButton = this.shadowRoot.querySelector('.toggle-fps');
+    this.fpsButton.addEventListener('click', () =>
+      this.displaySettings.setShowFps(!this.displaySettings.value.showFps));
     this.demoButton = this.shadowRoot.querySelector('.demo-start');
     this.demo = this.shadowRoot.querySelector('.demo');
     this.demoTitle = this.demo.querySelector('.demo-title');
@@ -460,7 +476,9 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.menuButton.addEventListener('click', () => this.setMainMenu(this.mainMenu.hidden));
     this.onMenuPointerDown = event => {
       const path = event.composedPath();
-      if (!path.includes(this.menuButton) && !path.includes(this.mainMenu)) this.setMainMenu(false);
+      if (!path.includes(this.menuButton) && !path.includes(this.mainMenu)) {
+        this.setMainMenu(false, path.includes(this.menuShade));
+      }
     };
     this.shadowRoot.addEventListener('keydown', event => {
       if (event.key !== 'Escape' || this.mainMenu.hidden) return;
@@ -479,7 +497,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     });
     for (const button of this.shadowRoot.querySelectorAll('[data-camera]')) {
       button.addEventListener('click', () => {
-        const current = this.scene?.getView() || this.cameraView;
+        const current = this.cameraView;
         switch (button.dataset.camera) {
           case 'left': this.changeView({...current, azimuth: current.azimuth - 15}); break;
           case 'right': this.changeView({...current, azimuth: current.azimuth + 15}); break;
@@ -538,6 +556,8 @@ class RoomcraftStorybookCard extends HTMLElement {
         cancelAnimationFrame(this.animationFrame);
         this.animationFrame = undefined;
         this.nextRenderAt = undefined;
+        this.lastSceneRenderAt = undefined;
+        this.resetFpsSample();
       } else this.refresh();
     };
     this.weather.addEventListener('click', () => {
@@ -577,6 +597,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.snapshots.sync();
     for (const link of this.shadowRoot.querySelectorAll('[data-studio-link]')) link.href = this.studioPath;
     this.shadowRoot.querySelector('[data-scene-settings-link]').href = this.studioPath + '#scene-settings';
+    this.shadowRoot.querySelector('[data-lidar-alignment-link]').href = this.studioPath + '#lidar-alignment';
     this.shadowRoot.querySelector('.tracking-calibration').href = this.studioPath + '#tracking-range-correction';
     this.load();
   }
@@ -612,13 +633,14 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   setMainMenu(open, returnFocus = false) {
     this.mainMenu.hidden = !open;
+    this.menuShade.hidden = !open;
     this.menuButton.setAttribute('aria-expanded', String(open));
     if (returnFocus) this.menuButton.focus();
   }
 
   startDemo() {
     if (!this.scene || !this.frame || this.demoRun || this.demoButton.disabled) return;
-    const view = this.scene.getView();
+    const view = this.cameraView;
     const scenario = createStorybookDemoScenario(this.model.layout);
     const timeline = createStorybookDemo(view, target => this.scene.getDemoFocus(
       ['beach', 'coast', 'road'].includes(target) ? target : scenario.targets[target]));
@@ -699,7 +721,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.overlay.inert = this.dock.inert = false;
     this.demo.hidden = true;
     delete this.world.dataset.demoBeat;
-    this.scene?.setView(run.view);
+    this.pendingCameraView = run.view;
     this.syncDetectionZones();
     if (this.frame) this.paintWeather(this.frame.environment, this.session?.connected === false);
     this.syncFreeViewMode();
@@ -1029,7 +1051,8 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.cameraView = view === 'default'
       ? resolveDefaultCameraView(this.savedStartupView)
       : normalizeCameraView(view);
-    this.scene?.setView(this.cameraView);
+    this.pendingCameraView = this.cameraView;
+    this.cameraMotionUntil = performance.now() + CAMERA_SETTLE_MS;
     if (announce) {
       this.freeViewGestures?.cancel();
       this.viewSelect.value = this.cameraView.preset;
@@ -1057,6 +1080,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.width = width;
     this.height = height;
     this.scene.resize(width, height);
+    this.cameraMotionUntil = performance.now() + CAMERA_SETTLE_MS;
     this.anchorDirty = true;
     this.schedule();
   }
@@ -1089,15 +1113,43 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   applyDisplaySettings(settings) {
-    const interval = 1000 / settings.frameRate;
-    if (interval !== this.renderInterval) this.nextRenderAt = undefined;
-    this.renderInterval = interval;
+    const hideFps = !settings.showFps;
+    if (this.fpsDisplay.hidden !== hideFps) this.resetFpsSample();
+    this.fpsDisplay.hidden = hideFps;
+    this.fpsButton.setAttribute('aria-pressed', String(settings.showFps));
     this.world.dataset.dock = sceneDockAlignment(storybookDisplaySceneSettings(this.model?.layout.sceneSettings, settings));
     this.scene?.setDisplaySettings?.(settings);
     this.scene?.setGraphicsSettings(settings);
     if (this.frame && !this.demoRun) this.paintSky(this.frame.environment, this.session?.connected === false);
     this.anchorDirty = true;
     this.schedule();
+  }
+
+  resetFpsSample(label = '— FPS') {
+    clearTimeout(this.fpsIdleTimer);
+    this.fpsIdleTimer = undefined;
+    this.fpsSampleAt = undefined;
+    this.fpsFrameCount = 0;
+    this.fpsDisplay.textContent = label;
+  }
+
+  recordSceneFrame(at, continuing) {
+    if (this.fpsDisplay.hidden) return;
+    if (this.fpsSampleAt === undefined) this.fpsSampleAt = at;
+    else {
+      const elapsed = at - this.fpsSampleAt;
+      this.fpsFrameCount++;
+      if (elapsed >= FPS_WINDOW_MS) {
+        this.fpsDisplay.textContent = `${Math.round(this.fpsFrameCount * 1000 / elapsed)} FPS`;
+        this.fpsSampleAt = at;
+        this.fpsFrameCount = 0;
+      }
+    }
+    if (this.fpsIdleTimer !== undefined) {
+      clearTimeout(this.fpsIdleTimer);
+      this.fpsIdleTimer = undefined;
+    }
+    if (!continuing) this.fpsIdleTimer = setTimeout(() => this.resetFpsSample('0 FPS'), FPS_WINDOW_MS);
   }
 
   paintSky(environment, offline) {
@@ -1169,18 +1221,28 @@ class RoomcraftStorybookCard extends HTMLElement {
     if (this.animationFrame !== undefined || !this.scene || !this.frame || document.hidden) return;
     this.animationFrame = requestAnimationFrame(at => {
       this.animationFrame = undefined;
+      const {frameRate, cameraFrameRate} = this.displaySettings.value;
+      const movingCamera = this.demoRun || at < this.cameraMotionUntil;
+      const interval = 1000 / Math.min(frameRate, (movingCamera ? cameraFrameRate : null) ?? frameRate);
+      if (interval !== this.renderInterval) {
+        this.renderInterval = interval;
+        this.nextRenderAt = this.lastSceneRenderAt === undefined ? undefined : this.lastSceneRenderAt + interval;
+      }
       const deadline = this.nextRenderAt ?? at;
       if (at + FRAME_DEADLINE_TOLERANCE < deadline) {
         this.schedule();
         return;
       }
-      const interval = this.renderInterval ?? 1000 / STORYBOOK_GRAPHICS_DEFAULTS.frameRate;
       // Keep the cadence across vsync boundaries and skip deadlines missed by a slow draw.
       const elapsed = at + FRAME_DEADLINE_TOLERANCE - deadline;
       this.nextRenderAt = deadline + (1 + Math.floor(elapsed / interval)) * interval;
       const reduceMotion = this.motionReduced;
       const motion = (this.frame.moving || this.scene.hasAmbientMotion || this.frame.people.length) && !reduceMotion;
       try {
+        if (!this.demoRun && this.pendingCameraView) {
+          this.scene.setView(this.pendingCameraView);
+          this.pendingCameraView = undefined;
+        }
         this.updateDemo(at);
         const demo = this.demoRun;
         const frame = demo?.frame ?? this.frame;
@@ -1188,6 +1250,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         const options = {reduceMotion, transientTelemetry: Boolean(demo)};
         this.scene.setPeople(frame.people, time, options);
         this.scene.render(time, frame.states, {...frame.environment, reduceMotion}, options);
+        this.lastSceneRenderAt = at;
         if (this.anchorDirty || (!demo && this.scene.trackedControlChanged)) {
           if (!demo) this.positionControls();
           this.anchorDirty = false;
@@ -1196,7 +1259,9 @@ class RoomcraftStorybookCard extends HTMLElement {
         this.fail('The storybook renderer stopped.');
         return;
       }
-      if (motion || this.demoRun || this.scene?.hasPendingReacquisition) this.schedule();
+      const continuing = motion || this.demoRun || this.scene?.hasPendingReacquisition;
+      this.recordSceneFrame(at, continuing);
+      if (continuing) this.schedule();
     });
   }
 
@@ -1275,6 +1340,10 @@ class RoomcraftStorybookCard extends HTMLElement {
     clearTimeout(this.frameExpiryTimer);
     this.animationFrame = undefined;
     this.nextRenderAt = undefined;
+    this.lastSceneRenderAt = undefined;
+    this.cameraMotionUntil = undefined;
+    this.pendingCameraView = undefined;
+    this.resetFpsSample();
     this.loading = undefined;
     this.model = undefined;
     this.frame = undefined;

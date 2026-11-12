@@ -2,7 +2,8 @@ import {sceneFeatures} from './storybook-scene-settings.mjs';
 
 export const DISPLAY_SETTINGS_KEY = 'roomcraft.display-settings.v1';
 export const STORYBOOK_GRAPHICS_DEFAULTS = Object.freeze({
-  frameRate: 24, renderScale: 1, shadowQuality: 'high',
+  frameRate: 24, cameraFrameRate: null, renderScale: 1, shadowQuality: 'high', showFps: false,
+  limitOffscreenScenery: false,
 });
 const TABLET_PERFORMANCE = {frameRate:20, renderScale:.67, shadowQuality:'off'};
 const FRAME_RATES = [12, 20, 24, 30, 60];
@@ -19,8 +20,11 @@ export function normalizeStorybookDisplaySettings(input) {
   return {
     features,
     frameRate: FRAME_RATES.includes(input?.frameRate) ? input.frameRate : STORYBOOK_GRAPHICS_DEFAULTS.frameRate,
+    cameraFrameRate: FRAME_RATES.includes(input?.cameraFrameRate) ? input.cameraFrameRate : STORYBOOK_GRAPHICS_DEFAULTS.cameraFrameRate,
     renderScale: RENDER_SCALES.includes(input?.renderScale) ? input.renderScale : STORYBOOK_GRAPHICS_DEFAULTS.renderScale,
     shadowQuality: SHADOW_QUALITIES.includes(input?.shadowQuality) ? input.shadowQuality : STORYBOOK_GRAPHICS_DEFAULTS.shadowQuality,
+    showFps: input?.showFps === true,
+    limitOffscreenScenery: input?.limitOffscreenScenery === true,
     headlightBrightness: bounded(input?.headlightBrightness, .35, 1.6),
     heatMapOpacity: bounded(input?.heatMapOpacity, .25, 1),
     showAvatars: input?.showAvatars !== false,
@@ -53,6 +57,12 @@ export const DISPLAY_SETTINGS_MARKUP = `
           ${FRAME_RATES.map(rate => `<option value="${rate}">${rate} FPS</option>`).join('')}
         </select>
       </label>
+      <label class="display-setting-row">Camera movement limit
+        <select data-display-camera-frame-rate>
+          <option value="">Main limit</option>
+          ${FRAME_RATES.map(rate => `<option value="${rate}">${rate} FPS</option>`).join('')}
+        </select>
+      </label>
       <label class="display-setting-row">Render resolution
         <select data-display-render-scale>
           ${RENDER_SCALES.map(scale => `<option value="${scale}">${Math.round(scale * 100)}%</option>`).join('')}
@@ -63,6 +73,7 @@ export const DISPLAY_SETTINGS_MARKUP = `
           ${SHADOW_QUALITIES.map(quality => `<option value="${quality}">${quality[0].toUpperCase() + quality.slice(1)}</option>`).join('')}
         </select>
       </label>
+      <label class="display-toggle-row"><input type="checkbox" data-display-limit-offscreen> Limit off-screen scenery</label>
     </fieldset>
     <fieldset><legend>Scene layers</legend>
       ${sceneFeatures.map(({key, label}) => `
@@ -127,8 +138,10 @@ export function bindStorybookDisplaySettings(card, onChange, host = window) {
   const headlight = byName('headlight');
   const heat = byName('heat');
   const frameRate = byName('frame-rate');
+  const cameraFrameRate = byName('camera-frame-rate');
   const renderScale = byName('render-scale');
   const shadowQuality = byName('shadow-quality');
+  const limitOffscreen = byName('limit-offscreen');
   const graphicsStatus = byName('graphics-status');
   let value;
   try { value = parseStored(host.localStorage.getItem(DISPLAY_SETTINGS_KEY)); }
@@ -146,8 +159,10 @@ export function bindStorybookDisplaySettings(card, onChange, host = window) {
     headlight.value = String(value.headlightBrightness);
     heat.value = String(value.heatMapOpacity);
     frameRate.value = String(value.frameRate);
+    cameraFrameRate.value = value.cameraFrameRate === null ? '' : String(value.cameraFrameRate);
     renderScale.value = String(value.renderScale);
     shadowQuality.value = value.shadowQuality;
+    limitOffscreen.checked = value.limitOffscreenScenery;
     byName('headlight-value').value = `${Math.round(value.headlightBrightness * 100)}%`;
     byName('heat-value').value = `${Math.round(value.heatMapOpacity * 100)}%`;
   }
@@ -170,9 +185,11 @@ export function bindStorybookDisplaySettings(card, onChange, host = window) {
     for (const select of fields) {
       if (select.value !== 'layout') features[select.dataset.displayFeature] = select.value === 'show';
     }
-    apply({features, dockAlignment: dock.value, headlightBrightness: headlight.valueAsNumber,
+    apply({...value, features, dockAlignment: dock.value, headlightBrightness: headlight.valueAsNumber,
       heatMapOpacity: heat.valueAsNumber, showAvatars: avatars.checked, seatedPoses: seats.checked,
-      frameRate:Number(frameRate.value), renderScale:Number(renderScale.value), shadowQuality:shadowQuality.value});
+      frameRate:Number(frameRate.value), cameraFrameRate:cameraFrameRate.value ? Number(cameraFrameRate.value) : null,
+      renderScale:Number(renderScale.value), shadowQuality:shadowQuality.value,
+      limitOffscreenScenery:limitOffscreen.checked});
   }
 
   const syncStorage = event => {
@@ -189,7 +206,7 @@ export function bindStorybookDisplaySettings(card, onChange, host = window) {
     apply({...value, ...TABLET_PERFORMANCE});
     graphicsStatus.textContent = 'Tablet performance applied.';
   });
-  for (const control of [...fields, dock, avatars, seats, frameRate, renderScale, shadowQuality]) {
+  for (const control of [...fields, dock, avatars, seats, frameRate, cameraFrameRate, renderScale, shadowQuality, limitOffscreen]) {
     control.addEventListener('change', edit);
   }
   for (const control of [headlight, heat]) control.addEventListener('input', edit);
@@ -197,6 +214,7 @@ export function bindStorybookDisplaySettings(card, onChange, host = window) {
 
   return {
     get value() { return value; },
+    setShowFps(showFps) { apply({...value, showFps}); },
     connect() {
       host.addEventListener('storage', syncStorage);
       try { apply(parseStored(host.localStorage.getItem(DISPLAY_SETTINGS_KEY)), 'none'); }

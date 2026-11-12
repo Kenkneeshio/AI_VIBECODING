@@ -1433,14 +1433,18 @@
     if (!dashboardRevision || !applyModelCommand(command)) openModelLibrary();
   }
 
-  function openTrackingSwitch(id) {
-    const item = project.items.find(entry => entry.type === 'presenceSwitch' && entry.id === id);
-    if (!item) return;
+  function showItemInspector(item) {
     setFocusCanvas(false);
     window.RoomcraftEditorViewport.useSelectTool();
     select('item', item.id);
     const toggle = document.getElementById('inspectorToggle');
     if (window.matchMedia('(max-width:900px)').matches && toggle.getAttribute('aria-expanded') !== 'true') toggle.click();
+  }
+
+  function openTrackingSwitch(id) {
+    const item = project.items.find(entry => entry.type === 'presenceSwitch' && entry.id === id);
+    if (!item) return;
+    showItemInspector(item);
     const heading = document.getElementById('trackingRangeSettings');
     heading?.scrollIntoView({block:'start', inline:'nearest'});
     heading?.focus({preventScroll:true});
@@ -1465,13 +1469,44 @@
     choice.focus();
   }
 
-  function shouldOpenTrackingRange() {
-    const anchor = '#tracking-range-correction';
-    if (window.location.hash === anchor) return true;
-    if (!window.RoomcraftDashboardBridge) return false;
+  function vacuumItems() {
+    return project.items.filter(item => window.RoomcraftObjectControls.visualKind(item) === 'vacuum');
+  }
+
+  function openVacuumSurvey(id) {
+    const item = vacuumItems().find(vacuum => vacuum.id === id);
+    if (!item) return;
+    showItemInspector(item);
+    document.querySelector('#inspectorContent [data-vacuum-alignment]')?.click();
+  }
+
+  function openVacuumAlignment() {
+    const vacuums = vacuumItems();
+    if (!vacuums.length) {
+      showToast('Place a robot vacuum to align its LiDAR map.');
+      return;
+    }
+    if (vacuums.length === 1) {
+      openVacuumSurvey(vacuums[0].id);
+      return;
+    }
+    const dialog = document.getElementById('vacuumPickerDialog');
+    if (dialog.open) return;
+    const choice = document.getElementById('vacuumPickerChoice');
+    choice.replaceChildren(...vacuums.map(item => new Option(item.name || 'Robot vacuum', item.id)));
+    const current = selected?.kind === 'item' && vacuums.find(item => item.id === selected.id);
+    const preferred = current || vacuums.find(item => item.vacuumMapEntityId);
+    if (preferred) choice.value = preferred.id;
+    dialog.showModal();
+    choice.focus();
+  }
+
+  function studioShortcut() {
+    if (window.location.hash) return window.location.hash;
+    if (!window.RoomcraftDashboardBridge) return '';
     const owner = window.parent === window ? window.opener : window.parent;
-    try { return owner?.location.hash === anchor; }
-    catch { return false; }
+    try { return owner?.location.hash ?? ''; }
+    catch { return ''; }
   }
 
   function updateVariant(type,kind='finish'){
@@ -1794,9 +1829,14 @@
     document.getElementById('backDashboardButton').addEventListener('click',backToDashboard);
     const menu=document.getElementById('exportMenu'),menuButton=document.getElementById('exportButton');
     const trackingRangeDialog = document.getElementById('trackingRangeDialog');
+    const vacuumPickerDialog = document.getElementById('vacuumPickerDialog');
     document.getElementById('openTrackingSwitch').addEventListener('click', () => {
       trackingRangeDialog.close();
       openTrackingSwitch(document.getElementById('trackingRangeSwitch').value);
+    });
+    document.getElementById('openVacuumSurvey').addEventListener('click', () => {
+      vacuumPickerDialog.close();
+      openVacuumSurvey(document.getElementById('vacuumPickerChoice').value);
     });
     const showMenu=open=>{menu.hidden=!open;menuButton.setAttribute('aria-expanded',String(open));};
     menuButton.addEventListener('click',()=>showMenu(menu.hidden));
@@ -1806,6 +1846,7 @@
       showMenu(false);
       if(!button.hasAttribute('data-open-models'))menuButton.focus();
       if(button.id==='trackingRangeButton')openTrackingRange();
+      if(button.id==='vacuumAlignmentButton')openVacuumAlignment();
       if(button.dataset.export==='png')exportPng();
       if(button.dataset.export==='json')exportJson();
       if(button.dataset.export==='yaml')exportHaYaml();
@@ -1814,7 +1855,7 @@
     document.getElementById('importButton').addEventListener('click',()=>document.getElementById('importFile').click());document.getElementById('importFile').addEventListener('change',e=>{importProject(e.target.files[0]);e.target.value='';});
     document.getElementById('resetButton').addEventListener('click',async()=>{if(!await askConfirmation('Reset layout','Load the current Home Assistant layout? Your current browser draft can be exported as JSON first, and this change is undoable in this session.','Load current layout'))return;snapshot();project=normalizeProject(clone(dashboardDefaultProject||STARTER));selected=null;clearPlacement();afterChange(dashboardDefaultProject?'Loaded current Home Assistant layout':'Loaded starting furnished plan',{authoritative:true});fitView();});
     window.addEventListener('keydown',e=>{
-      if(modelLibrary?.isOpen || trackingRangeDialog.open)return;
+      if(modelLibrary?.isOpen || trackingRangeDialog.open || vacuumPickerDialog.open)return;
       if(!menu.hidden){
         if(e.key==='Escape'){e.preventDefault();showMenu(false);menuButton.focus();}
         return;
@@ -1942,8 +1983,11 @@
     renderPlan:()=>Engine.render.partitionSceneItems(project.items,window.RoomcraftInventory?.byType).plan
   });
   renderCategoryOptions();bindEvents();renderPalette();renderSurfacePalette();renderWallPalette();renderStructureList();renderRoomList();renderHotspotList();renderInspector();updateRestoreButton();updateRecoveryButton();updateHistoryButtons();setTool('select');fitView();draw();
-  loadDashboardDefault().finally(() => {
-    if (shouldOpenTrackingRange()) openTrackingRange();
+  const studioReady = new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve, {once:true}));
+  Promise.all([loadDashboardDefault(), studioReady]).then(() => {
+    const shortcut = studioShortcut();
+    if (shortcut === '#tracking-range-correction') openTrackingRange();
+    else if (shortcut === '#lidar-alignment') openVacuumAlignment();
     else if (window.location.search) openModelHandoff();
   });
 })();

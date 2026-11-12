@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
+import {storybookSceneryView} from '../ha-local/storybook-scene.mjs';
 import {buildStorybookStreet} from '../ha-local/storybook-street.mjs';
 import {createStorybookTraffic, createTrafficMotion} from '../ha-local/storybook-traffic.mjs';
 import {STORYBOOK_VEHICLES} from '../ha-local/storybook-vehicles.mjs';
@@ -125,6 +126,40 @@ test('instanced cars sit on the rendered road and disappear when a feed is unava
   assert.ok(road.lanes.some(z => Math.abs(z - position.z) < .001));
   traffic.update(1, undefined);
   assert.equal(traffic.root.visible, false);
+  traffic.dispose();
+});
+
+test('viewport pruning follows camera zoom and keeps night headlight geometry at the edge', () => {
+  const traffic = createStorybookTraffic(road);
+  const ambient = {...profile('ambient'), vehicleStyle:'seafoam-sedan'};
+  const centerZ = (road.lanes[0] + road.lanes[1]) / 2;
+  const camera = new THREE.OrthographicCamera(-1000, 1000, 430, -430, 1, 1800);
+  camera.up.set(0, 0, -1);
+  function placeCamera(x, zoom) {
+    camera.position.set(x, 750, centerZ);
+    camera.lookAt(x, road.surfaceY, centerZ);
+    camera.zoom = zoom;
+    camera.updateMatrixWorld();
+    camera.updateProjectionMatrix();
+    return storybookSceneryView(camera);
+  }
+  const shadows = traffic.root.children[0];
+  const countInView = (inView, night = false) => {
+    traffic.update(0, ambient, {reduceMotion:true, night, inView});
+    return shadows.count;
+  };
+  const total = countInView();
+  const wide = countInView(placeCamera(road.centerX, 1));
+  const narrow = countInView(placeCamera(road.centerX, 2.5));
+  assert.ok(total > wide && wide > narrow && narrow > 0);
+  const car = createTrafficMotion(road).update(0, ambient, true)[0];
+  // The car's body is outside, while a forward headlight reaches the view.
+  const atBeamEdge = placeCamera(car.x + 475, 2.5);
+  assert.equal(atBeamEdge(car.x, road.surfaceY, car.z, 45), false);
+  assert.ok(countInView(atBeamEdge, true) > countInView(atBeamEdge));
+  assert.equal(countInView(placeCamera(10000, 2.5)), 0);
+  assert.equal(traffic.root.visible, false);
+  assert.equal(countInView(), total);
   traffic.dispose();
 });
 

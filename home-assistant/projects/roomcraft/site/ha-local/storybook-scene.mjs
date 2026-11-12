@@ -59,6 +59,19 @@ const WALL_LOOKS = {
 const WET = new Set(['lightning-rainy', 'pouring', 'rainy', 'snowy-rainy']);
 const SNOW = new Set(['snowy', 'snowy-rainy']);
 const MOUNT_HEIGHT = { presenceSwitch: 39, wallSconce: 40, wallUnit: 48, thermostat: 42, artwork: 38, mirror: 39 };
+
+// Snapshot the projection so a new zoom or orbit invalidates the sidewalk's cached pose.
+export function storybookSceneryView(camera) {
+  const projection = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  const frustum = new THREE.Frustum().setFromProjectionMatrix(projection);
+  const sphere = new THREE.Sphere();
+  return (x, y, z, radius) => {
+    sphere.center.set(x, y, z);
+    sphere.radius = radius;
+    return frustum.intersectsSphere(sphere);
+  };
+}
+
 function seededRandom(seed) {
   let value = seed >>> 0;
   return () => {
@@ -1171,14 +1184,20 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
   let currentWidth = 0;
   let currentHeight = 0;
   let renderScale = 1;
+  let limitOffscreenScenery = false;
+  let inSceneryView;
   let cameraView = normalizeCameraView();
   let cameraFraming;
   const raycaster = new THREE.Raycaster();
   const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   const projected = new THREE.Vector3();
   const defaultState = Object.freeze({ state: 'unavailable', attributes: Object.freeze({}), presence: 'off', active: false });
+  function updateSceneryView() {
+    inSceneryView = limitOffscreenScenery && currentWidth > 0 && currentHeight > 0 ? storybookSceneryView(camera) : undefined;
+  }
   function updateCamera() {
     fitStorybookCamera(camera, cameraBounds, currentWidth, currentHeight, cameraView, cameraFraming);
+    updateSceneryView();
     const haze = storybookHorizonFog(cameraView.tilt);
     scene.fog = haze ? horizonFog : null;
     horizonForeground.visible = Boolean(haze);
@@ -1201,9 +1220,13 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
     resizeDrawingBuffer();
     updateCamera();
   }
-  function setGraphicsSettings({renderScale: nextScale, shadowQuality} = {}) {
+  function setGraphicsSettings({renderScale: nextScale, shadowQuality, limitOffscreenScenery: limitScenery} = {}) {
     if (disposed) return;
     lighting.setShadowQuality(shadowQuality);
+    if ((limitScenery === true) !== limitOffscreenScenery) {
+      limitOffscreenScenery = limitScenery === true;
+      updateSceneryView();
+    }
     const scale = Number.isFinite(nextScale) ? THREE.MathUtils.clamp(nextScale, .5, 1) : 1;
     if (scale === renderScale) return;
     renderScale = scale;
@@ -1290,7 +1313,7 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
   function updateWaterfront(timeSeconds, environment, transientTelemetry = false) {
     const activity = environment.beachActivity ?? (environment.night ? 'overnight' : 'day');
     const options = {reduceMotion: environment.reduceMotion === true, night: environment.night === true,
-      condition: environment.condition, transientTelemetry, activity};
+      condition: environment.condition, transientTelemetry, activity, inView:inSceneryView};
     sidewalk.root.visible = activity !== 'overnight' &&
       (transientTelemetry || sceneFeatureEnabled(sceneSettings, 'sidewalk'));
     boats.root.visible = transientTelemetry || sceneFeatureEnabled(sceneSettings, 'boats');
@@ -1322,6 +1345,7 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
       traffic.root.visible = showTraffic;
       if (showTraffic) traffic.update(timeSeconds, environment.traffic, {reduceMotion,
         night: environment.night === true, transientTelemetry,
+        inView:inSceneryView,
         headlightBrightness: transientTelemetry ? 1 : displaySettings.headlightBrightness});
     }
     updatePrecipitation(telemetryTime, transientTelemetry || sceneFeatureEnabled(sceneSettings, 'precipitation')

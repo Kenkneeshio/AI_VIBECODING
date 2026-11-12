@@ -198,7 +198,7 @@ export function createStorybookSidewalk(road) {
   let previousLiveTime;
   let lastPose;
   let lastPalette;
-  function update(seconds, {reduceMotion = false, night = false, transientTelemetry = false, activity} = {}) {
+  function update(seconds, {reduceMotion = false, night = false, transientTelemetry = false, activity, inView} = {}) {
     const dark = night || activity === 'evening' || activity === 'overnight';
     if (dark !== lastNight) {
       for (const layers of bikes.values()) for (const {role, mesh} of layers) {
@@ -215,11 +215,13 @@ export function createStorybookSidewalk(road) {
     }
     const time = transientTelemetry ? (reduceMotion ? 0 : seconds) : liveSeconds;
     if (lastPose?.time === time && lastPose?.reduceMotion === reduceMotion &&
-        lastPose?.transientTelemetry === transientTelemetry && lastPose?.night === night && lastPose?.activity === activity) return;
-    lastPose = {time, reduceMotion, transientTelemetry, night, activity};
+        lastPose?.transientTelemetry === transientTelemetry && lastPose?.night === night && lastPose?.activity === activity &&
+        lastPose?.inView === inView) return;
+    const previouslyCulled = Boolean(lastPose?.inView);
+    lastPose = {time, reduceMotion, transientTelemetry, night, activity, inView};
     const frame = paths.sample(time, reduceMotion, {night, activity});
     const palette = frame.walkers.length === paths.walkers.length ? 'day' : frame.walkers[0]?.id;
-    const recolor = palette !== lastPalette;
+    const recolor = Boolean(inView) || previouslyCulled || palette !== lastPalette;
     lastPalette = palette;
     let partIndex = 0;
     let shadowIndex = 0;
@@ -232,6 +234,8 @@ export function createStorybookSidewalk(road) {
     }
     for (const actor of frame.walkers) {
       const {direction, scale} = actor;
+      // The body, moving limbs, and painted contact shadow all fit inside this envelope.
+      if (inView && !inView(actor.x, actor.y + 12 * scale, actor.z, 15 * scale)) continue;
       const yaw = direction > 0 ? 0 : Math.PI;
       paintWalker(actor, reduceMotion, (shade, x, y, z, width, height, depth, lean = 0) => {
         transform.position.set(actor.x + x * scale * direction, actor.y + y * scale,
@@ -246,6 +250,8 @@ export function createStorybookSidewalk(road) {
     }
     const bikeCounts = new Map();
     for (const actor of frame.cyclists) {
+      if (inView && !inView(actor.x, actor.y + 11 * actor.scale, actor.z,
+        Math.hypot(actor.style.length * .6, 20) * actor.scale)) continue;
       const index = bikeCounts.get(actor.style.id) ?? 0;
       transform.position.set(actor.x, actor.y, actor.z);
       transform.rotation.set(0, actor.direction > 0 ? 0 : Math.PI, 0);
@@ -258,13 +264,18 @@ export function createStorybookSidewalk(road) {
     }
     for (const [style, layers] of bikes) for (const {mesh} of layers) {
       mesh.count = bikeCounts.get(style) ?? 0;
-      mesh.instanceMatrix.needsUpdate = true;
+      mesh.visible = mesh.count > 0;
+      if (mesh.visible) mesh.instanceMatrix.needsUpdate = true;
     }
     walkers.count = partIndex;
     shadows.count = shadowIndex;
-    if (recolor && walkers.instanceColor) walkers.instanceColor.needsUpdate = true;
-    walkers.instanceMatrix.needsUpdate = true;
-    shadows.instanceMatrix.needsUpdate = true;
+    walkers.visible = partIndex > 0;
+    shadows.visible = shadowIndex > 0;
+    if (walkers.visible) {
+      if (recolor && walkers.instanceColor) walkers.instanceColor.needsUpdate = true;
+      walkers.instanceMatrix.needsUpdate = true;
+    }
+    if (shadows.visible) shadows.instanceMatrix.needsUpdate = true;
   }
 
   function dispose() {

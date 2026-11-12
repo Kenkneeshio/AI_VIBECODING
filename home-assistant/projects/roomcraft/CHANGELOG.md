@@ -1,5 +1,11 @@
 # Changelog
 
+## Show live frame rate and surface alignment tools
+
+- Home adds an **FPS display** toggle and a camera movement frame limit. An optional current-view filter reduces road and sidewalk draws while zooming or changing the framing.
+- The Home menu groups display settings, map tools, camera, management and household actions. The Power popout gives the current reading and history clearer emphasis.
+- **Align LiDAR map** opens the existing vacuum alignment survey from both the Home and Studio menus.
+
 ## Tune Roomcraft graphics per screen
 
 - **Display settings → Graphics** adds a frame rate limit, render resolution, and shadow quality. **Tablet performance** sets 20 FPS, 67% resolution, and shadows off on the current browser.

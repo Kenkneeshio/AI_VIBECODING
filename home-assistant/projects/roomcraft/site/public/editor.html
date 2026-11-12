@@ -7,7 +7,7 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <title>Roomcraft — Second Floor Builder</title>
   <meta name="description" content="A detailed illustrated room builder based on the second-floor home plan.">
-  <link rel="stylesheet" href="styles.css?v=9f0a489b4f0cf464">
+  <link rel="stylesheet" href="styles.css?v=1c958b22b11f1fcf">
 </head>
 <body>
   <div class="app-shell">
@@ -28,6 +28,7 @@
             <button type="button" data-open-models>Object models</button>
             <button type="button" id="sceneSettingsButton" aria-haspopup="dialog">Scene settings</button>
             <button type="button" id="trackingRangeButton">Tracking range correction</button>
+            <button type="button" id="vacuumAlignmentButton" aria-haspopup="dialog">Align LiDAR map</button>
             <button type="button" id="backDashboardButton">Dashboard</button>
             <button type="button" id="focusCanvasButton" aria-pressed="false" title="Expand the artwork for a closer look">Focus canvas</button>
             <button type="button" id="undoButton" data-keep-menu-open title="Undo (Ctrl+Z)">Undo</button>
@@ -60,7 +61,7 @@
         </div>
 
         <div class="reference-card">
-          <div class="reference-thumb"><img src="assets/floorplan.png?v=9f0a489b4f0cf464" alt="The original furnished second-floor reference"></div>
+          <div class="reference-thumb"><img src="assets/floorplan.png?v=1c958b22b11f1fcf" alt="The original furnished second-floor reference"></div>
           <div class="reference-copy"><strong>Starting reference</strong><span>Original furnished image</span></div>
           <button type="button" class="text-button" id="showReferenceButton">View</button>
         </div>
@@ -229,6 +230,13 @@
       <button type="button" class="primary-button" data-survey="apply">Apply to draft</button>
     </div>
   </dialog>
+  <dialog id="vacuumPickerDialog" class="app-dialog scene-settings-dialog" aria-labelledby="vacuumPickerTitle">
+    <form method="dialog"><button type="submit" class="dialog-close" aria-label="Close vacuum selection">×</button></form>
+    <h2 id="vacuumPickerTitle">Choose a vacuum</h2>
+    <label for="vacuumPickerChoice">Robot vacuum</label>
+    <select id="vacuumPickerChoice"></select>
+    <button type="button" class="primary-button" id="openVacuumSurvey">Open alignment</button>
+  </dialog>
   <dialog id="vacuumAlignmentDialog" class="app-dialog scene-settings-dialog vacuum-alignment" aria-labelledby="vacuumAlignmentTitle">
     <form method="dialog"><button type="submit" class="dialog-close" aria-label="Close vacuum alignment">×</button></form>
     <h2 id="vacuumAlignmentTitle">Align and scale the LiDAR map</h2>
@@ -285,25 +293,25 @@
       <button type="button" class="primary-button" id="confirmationAccept">Continue</button>
     </div>
   </dialog>
-  <script src="editor-assets.js?v=9f0a489b4f0cf464" defer></script>
-  <script src="engine/deterministic-core.js?v=9f0a489b4f0cf464" defer></script>
-  <script src="engine/project-runtime.js?v=9f0a489b4f0cf464" defer></script>
-  <script src="engine/render-contract.js?v=9f0a489b4f0cf464" defer></script>
-  <script src="engine/verification-harness.js?v=9f0a489b4f0cf464" defer></script>
-  <script src="engine/wall-joins.js?v=9f0a489b4f0cf464" defer></script>
-  <script src="engine/reference-geometry.js?v=9f0a489b4f0cf464" defer></script>
-  <script src="engine/scene-settings.js?v=9f0a489b4f0cf464" defer></script>
-  <script src="ha-iframe-bridge.js?v=9f0a489b4f0cf464" defer></script>
-  <script src="inventory.js?v=9f0a489b4f0cf464" defer></script>
-  <script src="model-library.js?v=9f0a489b4f0cf464" defer></script>
-  <script src="catalog-variants.js?v=9f0a489b4f0cf464" defer></script>
-  <script src="raster-renderer.js?v=9f0a489b4f0cf464" defer></script>
-  <script src="object-art.js?v=9f0a489b4f0cf464" defer></script>
-  <script src="control-actions.js?v=9f0a489b4f0cf464" defer></script>
-  <script src="light-capabilities.js?v=9f0a489b4f0cf464" defer></script>
-  <script src="object-controls.js?v=9f0a489b4f0cf464" defer></script>
-  <script src="app.js?v=9f0a489b4f0cf464" defer></script>
-  <script src="responsive-inspector.js?v=9f0a489b4f0cf464" defer></script>
-  <script src="storybook-editor.js?v=9f0a489b4f0cf464" defer></script>
+  <script src="editor-assets.js?v=1c958b22b11f1fcf" defer></script>
+  <script src="engine/deterministic-core.js?v=1c958b22b11f1fcf" defer></script>
+  <script src="engine/project-runtime.js?v=1c958b22b11f1fcf" defer></script>
+  <script src="engine/render-contract.js?v=1c958b22b11f1fcf" defer></script>
+  <script src="engine/verification-harness.js?v=1c958b22b11f1fcf" defer></script>
+  <script src="engine/wall-joins.js?v=1c958b22b11f1fcf" defer></script>
+  <script src="engine/reference-geometry.js?v=1c958b22b11f1fcf" defer></script>
+  <script src="engine/scene-settings.js?v=1c958b22b11f1fcf" defer></script>
+  <script src="ha-iframe-bridge.js?v=1c958b22b11f1fcf" defer></script>
+  <script src="inventory.js?v=1c958b22b11f1fcf" defer></script>
+  <script src="model-library.js?v=1c958b22b11f1fcf" defer></script>
+  <script src="catalog-variants.js?v=1c958b22b11f1fcf" defer></script>
+  <script src="raster-renderer.js?v=1c958b22b11f1fcf" defer></script>
+  <script src="object-art.js?v=1c958b22b11f1fcf" defer></script>
+  <script src="control-actions.js?v=1c958b22b11f1fcf" defer></script>
+  <script src="light-capabilities.js?v=1c958b22b11f1fcf" defer></script>
+  <script src="object-controls.js?v=1c958b22b11f1fcf" defer></script>
+  <script src="app.js?v=1c958b22b11f1fcf" defer></script>
+  <script src="responsive-inspector.js?v=1c958b22b11f1fcf" defer></script>
+  <script src="storybook-editor.js?v=1c958b22b11f1fcf" defer></script>
 </body>
 </html>

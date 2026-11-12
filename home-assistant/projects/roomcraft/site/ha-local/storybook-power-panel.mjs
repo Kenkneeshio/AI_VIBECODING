@@ -16,55 +16,59 @@ export const POWER_PANEL_MARKUP = `
   <dialog class="power-dialog" aria-labelledby="power-title">
     <header class="power-heading">
       <h2 id="power-title"><span class="power-emblem" aria-hidden="true"><i class="power-glyph"></i></span> Power</h2>
-      <button type="button" class="power-close" aria-label="Close Power" autofocus>×</button>
+      <button type="button" class="power-close" aria-label="Close Power" autofocus>Close</button>
     </header>
-    <div class="power-grid">
-      <div class="power-meter" data-flow="unavailable">
-        <div class="power-meter-top">
-          ${readingMarkup('power-main')}
-          <div class="power-house-art" aria-hidden="true">
-            <i class="power-orbit"></i><i class="power-orbit power-orbit-inner"></i>
-            <i class="power-light"></i><i class="power-house"></i><i class="power-window"></i>
+    <div class="power-content">
+      <div class="power-grid">
+        <div class="power-meter" data-flow="unavailable">
+          <div class="power-meter-top">
+            ${readingMarkup('power-main')}
+            <div class="power-house-art" aria-hidden="true">
+              <i class="power-orbit"></i><i class="power-orbit power-orbit-inner"></i>
+              <i class="power-light"></i><i class="power-house"></i><i class="power-window"></i>
+            </div>
           </div>
+          <section class="power-history" aria-labelledby="power-history-title">
+            <div class="power-chart-head"><h3 id="power-history-title">Power over the last hour</h3><span class="power-peak" hidden></span></div>
+            <div class="power-graph">
+              <canvas role="img" aria-label="Recorded power over the last hour" hidden></canvas>
+              <p class="power-history-status" role="status">Loading history…</p>
+            </div>
+            <div class="power-time" aria-hidden="true"><span>1h ago</span><span>Now</span></div>
+          </section>
         </div>
-        <section class="power-history" aria-labelledby="power-history-title">
-          <div class="power-chart-head"><h3 id="power-history-title">Last hour</h3><span class="power-peak" hidden></span></div>
-          <div class="power-graph">
-            <canvas role="img" aria-label="Recorded power over the last hour" hidden></canvas>
-            <p class="power-history-status" role="status">Loading history…</p>
-          </div>
-          <div class="power-time" aria-hidden="true"><span>1h ago</span><span>Now</span></div>
-        </section>
+        <div class="power-periods">
+          <div data-period="today">${readingMarkup('power-period', '<span class="power-day-art" aria-hidden="true"></span>')}</div>
+          <div data-period="month">${readingMarkup('power-period', '<span class="power-month-art" aria-hidden="true"></span>')}</div>
+        </div>
       </div>
-      <div class="power-periods">
-        <div data-period="today">${readingMarkup('power-period', '<span class="power-day-art" aria-hidden="true"></span>')}</div>
-        <div data-period="month">${readingMarkup('power-period', '<span class="power-month-art" aria-hidden="true"></span>')}</div>
-      </div>
+      ${ENERGY_EXPLORER_MARKUP}
+      <section class="power-other" hidden aria-label="Other readings">
+        <h3>Other readings</h3><div class="power-other-rows"></div>
+      </section>
     </div>
-    ${ENERGY_EXPLORER_MARKUP}
-    <section class="power-other" hidden aria-label="Other readings">
-      <h3>Other readings</h3><div class="power-other-rows"></div>
-    </section>
   </dialog>`;
 
 export const POWER_PANEL_STYLE = `
-  .power-dialog{box-sizing:border-box;width:min(680px,calc(100% - 24px));max-height:calc(100dvh - 24px);
-    padding:clamp(12px,2.5vw,20px);border:1px solid #ad9678;border-radius:21px;overflow:auto;
-    background:radial-gradient(ellipse at 86% 4%,#fff8e9 0,transparent 55%),#f3e9d8;
-    color:#312b2d;box-shadow:0 18px 75px #121b2590;color-scheme:light}
-  .power-dialog::backdrop{background:#14202ba6}
+  .power-dialog{--power-space:clamp(12px,2.5vw,20px);box-sizing:border-box;width:min(720px,calc(100% - 24px));
+    max-height:calc(100dvh - 24px);padding:0;border:1px solid #b3a28c;border-radius:18px;overflow:auto;
+    overscroll-behavior:contain;scroll-padding-top:66px;background:#f6eee1;color:#2b3035;
+    box-shadow:0 20px 70px #101923a8;color-scheme:light}
+  .power-dialog::backdrop{background:#101922c7}
   .power-heading,.power-chart-head,.power-time{display:flex;align-items:center;justify-content:space-between;gap:10px}
-  .power-heading{margin-bottom:12px}
+  .power-heading{position:sticky;top:0;z-index:3;padding:10px var(--power-space);background:#fff8eb;border-bottom:1px solid #d4c3a8}
+  .power-content{padding:var(--power-space)}
   .power-heading h2,.power-chart-head h3,.power-other h3{margin:0}
-  .power-heading h2{display:flex;align-items:center;gap:10px;font-size:22px;letter-spacing:-.035em}
+  .power-heading h2{display:flex;align-items:center;gap:10px;color:#25323a;font-size:24px;letter-spacing:-.03em}
   .power-emblem{display:grid;place-items:center;width:33px;height:33px;border-radius:11px;
     background:#e3c495;color:#523529;border:1px solid #b88f60;box-shadow:inset 0 1px #ffe5bf}
   .power-dialog button{box-sizing:border-box;font:inherit;min-height:44px;color:inherit;cursor:pointer}
   .power-dialog button:focus-visible{outline:2px solid currentColor;outline-offset:2px}
   .power-dialog button:disabled{cursor:default}
-  .power-dialog .power-close{min-width:44px;border:1px solid #c0aa8f;border-radius:12px;background:#fff8eb;font-size:24px;line-height:1}
-  .power-close:hover{background:#e7d6bc}
-  .power-grid{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);gap:10px}
+  .power-dialog .power-close{min-width:44px;padding:0 13px;border:1px solid #a99477;border-radius:10px;
+    background:#fffdf7;color:#273842;font-size:14px;font-weight:700}
+  .power-dialog .power-close:hover{background:#f0e2cb}
+  .power-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:12px}
   .power-grid:has(.power-periods[hidden]){grid-template-columns:minmax(0,1fr)}
   .power-meter{min-width:0;overflow:hidden;padding:clamp(12px,2.4vw,18px);border:1px solid #6c6a59;border-radius:17px;
     background:radial-gradient(ellipse at 92% 10%,#435452 0,transparent 58%),linear-gradient(156deg,#283b42,#202b34 70%);
@@ -75,14 +79,14 @@ export const POWER_PANEL_STYLE = `
   .power-main{border:1px solid transparent;border-radius:10px;padding:6px 21px 6px 7px;margin-inline-start:-7px;background:transparent}
   .power-main:not(:disabled):hover{border-color:#cdb18d8c;background:#ffe7bb12}
   .power-label{font-weight:700}
-  .power-main .power-label{color:#e8d8bd;font-size:13px}
+  .power-main .power-label{color:#fff0d7;font-size:14px}
   .power-reading{display:flex;align-items:baseline;flex-wrap:wrap;column-gap:6px;font-variant-numeric:tabular-nums}
-  .power-value{font-weight:800;letter-spacing:-.048em;line-height:1.04;font-size:clamp(24px,4vw,38px)}
-  .power-main .power-value{font-size:clamp(34px,6vw,54px);color:#ffdda6}
+  .power-value{font-weight:800;letter-spacing:-.035em;line-height:1.08;font-size:clamp(24px,4vw,38px)}
+  .power-main .power-value{font-size:clamp(34px,6vw,56px);color:#ffe2ac}
   .power-main[data-available=false] .power-value{font-size:clamp(20px,4vw,32px);color:#e0d6c7}
-  .power-main .power-unit{color:#edd5ae}
-  .power-unit{font-size:13px;font-weight:650}
-  .power-link{position:absolute;right:9px;top:8px;font-weight:700;font-size:15px;opacity:.75}
+  .power-main .power-unit{color:#f5e1c3}
+  .power-unit{font-size:14px;font-weight:650}
+  .power-link{position:absolute;right:9px;top:8px;font-weight:700;font-size:15px}
   .power-dialog button:disabled .power-link,.power-dialog [hidden]{display:none}
   .power-house-art{position:relative;isolation:isolate;flex:0 0 auto;width:clamp(65px,13vw,105px);aspect-ratio:1;pointer-events:none}
   .power-orbit{position:absolute;inset:9%;border-radius:50%;border:1px solid #e9be7a83;
@@ -104,22 +108,24 @@ export const POWER_PANEL_STYLE = `
   @keyframes power-glow{50%{opacity:.38}}
   .power-dialog[data-reduced-motion] .power-light{animation:none}
   @media(prefers-reduced-motion:reduce){.power-meter[data-flow] .power-light{animation:none}}
-  .power-history{margin-top:9px;padding-top:9px;border-top:1px solid #e0c8a13c}
-  .power-chart-head h3,.power-other h3{font-size:13px}
-  .power-peak,.power-time{font-size:11px;color:#edd5b3}
+  .power-history{margin-top:10px;padding-top:11px;border-top:1px solid #e0c8a16b}
+  .power-chart-head{flex-wrap:wrap;gap:5px 10px}
+  .power-chart-head h3,.power-other h3{font-size:15px}
+  .power-peak,.power-time{font-size:12px;color:#f6e2c6}
+  .power-peak{padding:3px 7px;border:1px solid #e0c8a16b;border-radius:6px;font-variant-numeric:tabular-nums}
   .power-graph{display:grid;grid-template-columns:minmax(0,1fr);place-items:center;min-height:82px}
   .power-graph canvas{display:block;width:100%;height:88px}
-  .power-history-status{margin:6px 0;color:#ded6c9;font-size:12px;text-align:center}
+  .power-history-status{margin:6px 0;color:#f6e2c6;font-size:13px;text-align:center}
   .power-time{margin-top:2px}
-  .power-periods{display:grid;grid-auto-rows:1fr;gap:9px}
+  .power-periods{display:grid;grid-auto-rows:1fr;gap:12px}
   .power-periods:has(> [hidden]){grid-auto-rows:auto}
   .power-period{width:100%;height:100%;min-height:104px;overflow:hidden;isolation:isolate;padding:12px 25px 11px 12px;
-    border:1px solid #c4a77f;border-radius:15px;background:linear-gradient(148deg,#fff7e5,#ead1a8)}
-  [data-period=month] .power-period{background:linear-gradient(148deg,#f9efe4,#dbc7bd);border-color:#c0a398}
+    border:1px solid #c4a77f;border-radius:15px;background:#fff4dc}
+  [data-period=month] .power-period{background:#f5e6dd;border-color:#c0a398}
   .power-period:not(:disabled):hover{box-shadow:inset 0 0 0 2px #98714b7a}
-  .power-period .power-label,.power-period .power-unit{color:#544137}
+  .power-period .power-label,.power-period .power-unit{color:#4b392f}
   .power-period[data-available=false] .power-value{font-size:clamp(16px,3vw,22px);letter-spacing:-.025em}
-  .power-day-art,.power-month-art{position:absolute;z-index:-1;right:0;bottom:0;width:68px;height:60px;opacity:.48;
+  .power-day-art,.power-month-art{position:absolute;z-index:-1;right:0;bottom:0;width:68px;height:60px;opacity:.26;
     background:radial-gradient(ellipse at 65% 65%,#c5824e8f 0 15%,transparent 16%),
       repeating-radial-gradient(ellipse at 65% 100%,transparent 0 10px,#b77d4a5b 11px 12px,transparent 13px 15px)}
   .power-month-art{width:58px;height:41px;right:9px;bottom:8px;border:1px solid #896960;border-radius:6px;
@@ -138,6 +144,8 @@ export const POWER_PANEL_STYLE = `
     .power-period{min-height:82px}
   }
   ${ENERGY_EXPLORER_STYLE}
+  .power-dialog .energy-heading h3{font-size:19px}
+  .power-dialog .energy-period-status{font-size:13px}
 `;
 
 function makeReadingButton(button, onDetails) {

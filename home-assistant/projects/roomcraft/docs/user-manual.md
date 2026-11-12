@@ -38,9 +38,9 @@ Sign in as a Home Assistant administrator and choose **Menu → Manage → Layou
 
 Roomcraft keeps up to three distinct previous layouts from successful Studio publishes and restores. Each snapshot includes the layout, object bindings, and the published plan image reference. If a snapshot's image is unavailable, choose another snapshot. If Roomcraft reports a new dashboard change, review the refreshed list before restoring. Layout history covers the design. Use the [deployment recovery guide](deployment.md) for software or resource rollback.
 
-Open **Menu → More options** to show or hide **Camera tiles** or turn on **Reduce motion**. These settings are saved in the current browser.
+Open **Menu → Display** to toggle **FPS display**, **Camera tiles**, or **Reduce motion**. The FPS counter reports actual 3D scene draws and reads zero when the scene is idle. These choices save in the current browser.
 
-Choose **Menu → View controls → Display settings → Graphics** to adjust the frame rate limit, render resolution, and shadows. **Tablet performance** sets 20 FPS, 67% render resolution, and turns shadows off. Set the frame rate limit to 12 FPS or render resolution to 50% for a lighter setting. The frame rate is an upper limit and depends on how fast the device can draw. Settings save on the screen where you change them. To restore graphics defaults, select 24 FPS, 100%, and High shadows.
+Choose **Menu → Display → Display settings → Graphics** to adjust the frame rate limit, render resolution, and shadows. **Camera movement limit** lowers the cap while you reframe the scene. **Limit off-screen scenery** skips traffic, walkers, and cyclists outside the current view. **Tablet performance** sets 20 FPS, 67% render resolution, and turns shadows off. The frame rate is an upper limit and depends on how fast the device can draw. To restore graphics defaults, select 24 FPS, 100%, and High shadows.
 
 Display settings also controls headlight intensity, heat-map opacity, presence characters, character interactions, and the dock position. Each scenery layer can follow the published layout or use a browser override. **Reset display settings** restores the graphics defaults and clears the other browser overrides.
 
@@ -80,7 +80,7 @@ Each browser has its own **Show Google shared locations on this screen** prefere
 
 ## Align the vacuum’s LiDAR map
 
-In **Layout Studio**, select the vacuum and choose **Align LiDAR map** in its Inspector. The Home Assistant editor loads the selected vacuum map. Match three or more landmarks spread across the scan and the plan. Pick fixed corners that the vacuum could see. Use **Undo last pair** to correct a point.
+Choose **Home → Menu → On the map → Align LiDAR map**, or **Main menu → Align LiDAR map** in Studio. You can also select the vacuum and open the tool from its Inspector. Home Assistant Studio loads the linked vacuum map. Match three or more landmarks spread across the scan and the plan. Pick fixed corners that the vacuum could see. Use **Undo last pair** to correct a point.
 
 Compare the distance between the first two landmarks in metres. Enter a tape measurement if available. Check the independent error and turn the preview overlay on and off before selecting **Apply to draft**. **Undo alignment** restores the previous draft alignment. **Export to dashboard** publishes the new calibration. The **LiDAR map overlay** under **Home → Menu → On the map** shows the current saved alignment without moving the vacuum.
 
@@ -94,7 +94,7 @@ An administrator enables detailed reporting for the compatible switch in Home As
 
 From Home, choose **Menu → On the map → Presence tracking → Tracking range correction**. In Studio, choose **Main menu → Tracking range correction** or select the presence switch directly. If you have several switches, choose which one to adjust. Use **Forward scale** for depth, **Lateral scale** for width, **Rotation offset** for direction, and **Skew** or **Flip radar left and right** to align the axes. Use **Apply alignment** to keep the fitted origin or **Use switch position** to reset the origin to the placed switch. **Export to dashboard** publishes the draft. The advanced transform field accepts six affine coefficients.
 
-Characters walk around furniture and walls on the second-floor condo, upper landing and authored stair treads. The floor ring stays at the measured radar point as the character takes a clear path. Three seconds of fresh, steady readings near a reachable object can start a pose such as sitting, reading, cooking, watching fish or playing on a mat. These are illustrated guesses based on position. Use **Menu → View controls → Display settings → Allow character interactions** to turn them off on this screen. **Reduce motion** keeps each pose still.
+Characters walk around furniture and walls on the second-floor condo, upper landing and authored stair treads. The floor ring stays at the measured radar point as the character takes a clear path. Three seconds of fresh, steady readings near a reachable object can start a pose such as sitting, reading, cooking, watching fish or playing on a mat. These are illustrated guesses based on position. Use **Menu → Display → Display settings → Allow character interactions** to turn them off on this screen. **Reduce motion** keeps each pose still.
 
 While the linked occupancy sensor is on, a character remains at the last usable point after coordinate reports stop. If there is no point yet, Roomcraft marks an approximate area. A small person symbol marks the character if the view is blocked. The amber floor ring and **Presence tracking** menu identify held or approximate placements. The character clears on vacancy. Each switch tracks independently, so overlapping coverage can show the same target twice. [Home Assistant presence setup](../ha-presence/README.md)
 

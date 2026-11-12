@@ -1,5 +1,11 @@
 # Decision log
 
+## Measure actual scene draws and limit camera work
+
+Measure the FPS badge at the Home render loop, so it reports scene draws instead of the browser's refresh rate. The main cap always applies. Camera movement can use a lower limit, and each rendered frame applies the latest requested camera position. The optional scene optimization checks road and sidewalk actor bounds against the camera frustum, including a margin for their visible effects.
+
+Group display controls together and place LiDAR alignment next to the map overlay. Both editor shortcuts use the existing vacuum survey and draft publication flow.
+
 ## Set graphics quality per screen
 
 Store the frame rate limit, render resolution, and shadow quality with Home's display preferences. One preset updates all three while keeping other display choices. The Home render loop applies the cap to live updates and camera motion and skips deadlines missed by slow draws. The shared renderer sizes its drawing buffer independently from the layout and controls. Shadow quality sets the directional shadow map size and filter. Turning shadows off releases the map.

@@ -10,6 +10,7 @@ const AMBIENT = {stride: 4, crossingSeconds: 3.2};
 const SLOT_SPACING = 242;
 const DENSITY_CYCLE = 12;
 const TRANSITION_SECONDS = .38;
+const MAX_HEADLIGHT_LENGTH = 86;
 const VEHICLES = new Map(STORYBOOK_VEHICLES.map(vehicle => [vehicle.id, vehicle]));
 const NEIGHBORHOOD_FLEET = [
   'seafoam-sedan', 'blue-wagon', 'butter-compact', 'ruby-motorcycle',
@@ -229,7 +230,7 @@ export function createStorybookTraffic(road) {
   }
 
   function update(time, profile, {reduceMotion = false, night = false, transientTelemetry = false,
-    headlightBrightness = 1} = {}) {
+    headlightBrightness = 1, inView} = {}) {
     if (transientTelemetry) demoMotion ??= createTrafficMotion(road);
     const clock = transientTelemetry ? demoMotion : motion;
     const slots = clock.update(time, profile, reduceMotion, transientTelemetry);
@@ -249,9 +250,13 @@ export function createStorybookTraffic(road) {
     const selected = VEHICLES.get(profile?.vehicleStyle);
     let beamIndex = 0;
     let haloIndex = 0;
-    for (const [index, slot] of slots.entries()) {
+    let shadowCount = 0;
+    for (const slot of slots) {
       // Keep a car's silhouette stable across wraps and changes in traffic mode.
       const vehicle = selected ?? neighborhoodVehicle(slot);
+      // Include painted shadows, the headlight projection, and camera-facing lamp halos.
+      const reach = vehicle.length * .6 + (night ? MAX_HEADLIGHT_LENGTH : 0);
+      if (inView && !inView(slot.x, road.surfaceY, slot.z, Math.hypot(reach, vehicle.width, 45))) continue;
       const model = modelFor(vehicle);
       transform.position.set(slot.x, road.surfaceY, slot.z);
       transform.rotation.y = slot.lane ? Math.PI : 0;
@@ -261,10 +266,10 @@ export function createStorybookTraffic(road) {
       model.count++;
       transform.scale.set(vehicle.length * .55, 1, vehicle.width * .62);
       transform.updateMatrix();
-      shadows.setMatrixAt(index, transform.matrix);
+      shadows.setMatrixAt(shadowCount++, transform.matrix);
       if (!night) continue;
       const direction = slot.lane ? -1 : 1;
-      const length = THREE.MathUtils.clamp(vehicle.length * 1.10, 53, 86);
+      const length = THREE.MathUtils.clamp(vehicle.length * 1.10, 53, MAX_HEADLIGHT_LENGTH);
       for (const lamp of model.headlamps) {
         const width = Math.max(5, Math.min(16, laneHalf - Math.abs(lamp.z) - 1));
         transform.position.set(slot.x + direction * (lamp.x + 1), road.surfaceY, slot.z + direction * lamp.z);
@@ -281,8 +286,9 @@ export function createStorybookTraffic(road) {
       beams.instanceMatrix.needsUpdate = halos.instanceMatrix.needsUpdate = true;
       halos.instanceColor.needsUpdate = true;
     }
-    shadows.count = slots.length;
-    shadows.instanceMatrix.needsUpdate = true;
+    root.visible = shadowCount > 0;
+    shadows.count = shadowCount;
+    if (shadowCount) shadows.instanceMatrix.needsUpdate = true;
     for (const {group, layers, count} of models.values()) {
       group.visible = count > 0;
       for (const {mesh} of layers) {

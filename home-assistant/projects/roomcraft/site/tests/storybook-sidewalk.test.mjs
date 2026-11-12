@@ -113,6 +113,23 @@ test('scenic instancing, reduced motion and replay leave the live sidewalk clock
   reference.dispose();
 });
 
+test('zoom and pan update viewport pruning when the sidewalk clock is stationary', () => {
+  const sidewalk = createStorybookSidewalk(road);
+  const shadows = sidewalk.root.getObjectByName('sidewalk-contact-shadows');
+  const options = {reduceMotion:true};
+  sidewalk.update(0, options);
+  const total = shadows.count;
+  const original = snapshot(sidewalk);
+  sidewalk.update(0, {...options, inView:x => Math.abs(x - road.centerX) < 550});
+  assert.ok(shadows.count > 0 && shadows.count < total);
+  sidewalk.update(0, {...options, inView:() => false});
+  assert.equal(shadows.count, 0);
+  assert.ok(sidewalk.root.children.every(mesh => !mesh.visible));
+  sidewalk.update(0, options);
+  assert.deepEqual(snapshot(sidewalk), original);
+  sidewalk.dispose();
+});
+
 test('the sidewalk owns and disposes its geometry, materials and instance buffers', () => {
   const scene = new THREE.Scene();
   const sidewalk = createStorybookSidewalk(road);
