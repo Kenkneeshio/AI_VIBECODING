@@ -1,10 +1,10 @@
 # Changelog
 
-## Connect exterior buildings with a straight side road — pending release
+## Connect exterior buildings with a straight side road — 12 November 2026
 
 - Align the side-road spine with the home’s plan grid while preserving its curved main-street junction.
-- Extend the existing shared road and derive a clear approach to the office’s parking entrance, retaining both ranch driveways and all existing objects.
-- Editing, acceptance, evidence and rollback are tracked in the [road connections record](docs/road-connections.md).
+- Extend the existing shared road and place the office close beside it with a short parking entrance, retaining both ranch driveways and all existing objects.
+- Deployed runtime `6419875c`, HA `b9409959a1d19a3e` and private Studio 108; 642 tests, runtime CI, built editor, exact HA asset/project readback and tablet inspection passed. Editing, target verification and rollback are tracked in the [road connections record](docs/road-connections.md).
 
 ## Editable office campus — 12 November 2026
 
