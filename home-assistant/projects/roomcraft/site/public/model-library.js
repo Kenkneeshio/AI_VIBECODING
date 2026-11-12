@@ -485,6 +485,49 @@
     return conflict;
   }
 
+  // The compatibility raster is overhead: fully enclosed garage contents are
+  // occluded by an opaque full roof. This never removes authored objects.
+  function underGarageRoof(item, items) {
+    if (!['garagePriusBlue','garageCeilingLight'].includes(item.type)) return false;
+    const angle=(item.rotation||0)*Math.PI/180;
+    const corners=[[-1,-1],[-1,1],[1,-1],[1,1]].map(([u,v])=>({
+      x:item.x+u*item.w/2*Math.cos(angle)-v*item.h/2*Math.sin(angle),
+      y:item.y+u*item.w/2*Math.sin(angle)+v*item.h/2*Math.cos(angle)
+    }));
+    return items.some(garage=>{
+      if(garage.type!=='garageDoor'||garage.garageRoof==='cutaway')return false;
+      const turn=(garage.rotation||0)*Math.PI/180;
+      return corners.every(point=>{
+        const dx=point.x-garage.x,dy=point.y-garage.y;
+        return Math.abs(dx*Math.cos(turn)+dy*Math.sin(turn))<=garage.w*.52&&
+          Math.abs(-dx*Math.sin(turn)+dy*Math.cos(turn))<=garage.h*.43;
+      });
+    });
+  }
+
+  function drawWithGarageRoofOcclusion(context, item, items, draw) {
+    if (!['garagePriusBlue','garageCeilingLight'].includes(item.type)) return draw();
+    if (underGarageRoof(item,items)) return;
+    const roofs=items.filter(garage=>garage.type==='garageDoor'&&garage.garageRoof!=='cutaway');
+    if(!roofs.length)return draw();
+    context.save();
+    try {
+      // Clip each roof separately so overlapping footprints never cancel out.
+      // Partial doorway protrusions stay visible without painting through roofs.
+      for(const garage of roofs) {
+        const turn=(garage.rotation||0)*Math.PI/180;
+        context.beginPath();context.rect(-1e6,-1e6,2e6,2e6);
+        [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([u,v],index)=>{
+          const x=garage.x+u*garage.w*.52*Math.cos(turn)-v*garage.h*.43*Math.sin(turn);
+          const y=garage.y+u*garage.w*.52*Math.sin(turn)+v*garage.h*.43*Math.cos(turn);
+          if(index)context.lineTo(x,y);else context.moveTo(x,y);
+        });
+        context.closePath();context.clip('evenodd');
+      }
+      return draw();
+    } finally {context.restore();}
+  }
+
   function orderMountedObjects(items) {
     // Cutaway floors are drawn before independently editable parked vehicles.
     // Keep this stable even after the author reorders the object collection.
@@ -691,5 +734,5 @@
 
   root.RoomcraftModels = Object.freeze({catalog, canMap, canBind, canReplace, suggestions, supportsHeight, resizeFootprint, resizeCornerFootprint,
     splitDiningFurniture, placementRole, kitchenTopOpening, specialtyBarrierSections, walkingObstacleBoxes, blockingPlacement,
-    orderMountedObjects, mount, handoffKey});
+    orderMountedObjects, underGarageRoof, drawWithGarageRoofOcclusion, mount, handoffKey});
 })(typeof window === 'undefined' ? globalThis : window);

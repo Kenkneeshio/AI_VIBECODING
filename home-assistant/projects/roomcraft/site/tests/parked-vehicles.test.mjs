@@ -27,7 +27,7 @@ test('parked Prius has exact editable footprint, ground support, +Z nose and ina
     assert.ok(Math.abs(span.z-h)<.00001);
     assert.ok(Math.abs(bounds.min.y)<.00001);
     assert.ok(model.anchorY>0&&model.anchorY<span.y);
-    assert.equal(model.root.children.length,3,'merged layers bound rendering work');
+    assert.equal(model.root.children.length,4,'paint, glazing and lamp layers bound rendering work');
     const lamps=model.root.getObjectByName('prius-headlamp');
     assert.ok(lamps.geometry.boundingBox.min.z>h*.35);
     const normals=lamps.geometry.getAttribute('normal').array;
@@ -35,7 +35,11 @@ test('parked Prius has exact editable footprint, ground support, +Z nose and ina
     assert.ok(model.root.getObjectByName('prius-taillamp').geometry.boundingBox.max.z<0);
     assert.ok(model.root.children.every(mesh=>mesh.material.emissiveIntensity===0));
     const triangleCount=model.root.children.reduce((sum,mesh)=>sum+mesh.geometry.getAttribute('position').count/3,0);
-    assert.ok(triangleCount<800);
+    assert.ok(triangleCount<2500,'the detailed parked car remains under its static mesh budget');
+    const glazing=model.root.getObjectByName('prius-glazing');
+    assert.equal(glazing.material.isMeshPhysicalMaterial,true);
+    assert.equal(glazing.material.transparent,false,'opaque glazing never leaks through the garage roof');
+    assert.ok(glazing.material.clearcoat>.5);
     dispose(model.root);
   }
 });

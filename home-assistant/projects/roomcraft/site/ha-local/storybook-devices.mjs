@@ -363,8 +363,12 @@ function garage(item, w, h) {
   const trim = material(color.cream);
   const roof = material(color.plum);
   const shingles = [material(color.tile), material(color.paleTile)];
-  const bay = material(color.dark);
   box(root, w, 5, h * GARAGE_PAD_DEPTH, trim, 0, 2.5, h * GARAGE_PAD_CENTER);
+  // A real interior stays behind the opening. A dark placeholder plane here
+  // would conceal separately authored contents even when the shutter is open.
+  const concrete = material(0xc3c2b6, {roughness: .91});
+  box(root, w * .74, .18, depth - 7, concrete, 0, 5.12, 0).name = 'Garage interior floor';
+  box(root, .34, .07, depth - 7, material(0xa8a99f), 0, 5.25, 0);
   const wallHeight = cutaway ? Math.min(18, frameH * .42) : frameH + 4;
   box(root, w * 0.88, wallHeight, 5, siding, 0, wallHeight / 2, -front + 2);
   for (const x of [-w * 0.42, w * 0.42]) {
@@ -375,14 +379,11 @@ function garage(item, w, h) {
     // A sectioned view preserves the garage's independent door control while
     // exposing its authored contents. Caps finish the cut edges without a roof
     // or opaque bay plane concealing the car and separately mapped ceiling lamp.
-    const concrete = material(0xc3c2b6, {roughness: .91});
-    box(root, w * .74, .18, depth - 7, concrete, 0, 5.12, 0).name = 'Garage interior floor';
     box(root, w * .88, 1.5, 5.6, trim, 0, wallHeight + .75, -front + 2);
     for (const side of [-1, 1]) {
       box(root, w * .095, 1.5, depth, trim, side * w * .42, wallHeight + .75);
       softBox(root, w * .14, 2, 3, material(color.muted), side * w * .17, 6.2, -front + 9, .5);
     }
-    box(root, .34, .07, depth - 7, material(0xa8a99f), 0, 5.25, 0);
   } else {
     const roofGroup = child(root);
     roofGroup.name = 'Garage roof';
@@ -415,9 +416,12 @@ function garage(item, w, h) {
       parts.forEach(part => part.dispose());
     });
     softBox(roofGroup, 4, 4.5, depth + 12, roof, 0, frameH + roofH + 5.6, 0, 1.5);
-    box(root, frameW, frameH, 1.5, bay, 0, frameH / 2 + 4, front - 4);
   }
   box(root, w * 0.95, 3.5, 3.5, trim, 0, frameH + 4, front + 5.5);
+  box(root, frameW + 3, 3.5, 3.5, trim, 0, frameH + 2.8, front + 1);
+  for (const side of [-1, 1]) {
+    box(root, 2.6, frameH, 4.2, trim, side * (frameW / 2 - .4), frameH / 2 + 3.6, front + .4);
+  }
   // The pad and shell cast a ground shadow while the shutter animates independently.
   root.traverse(node => { if (node.isMesh) node.castShadow = true; });
   const doorSurface = material(color.mint);
@@ -426,6 +430,9 @@ function garage(item, w, h) {
   const panelStep = doorHeight / 6;
   const panels = Array.from({ length: 6 }, (_, i) => {
     const panel = child(root, 0, frameH - (i + 0.5) * panelStep + 2, front + 0.5);
+    // Decorative ribs have bevel gaps; this contiguous backing closes them
+    // without a permanent wall that would survive the opening animation.
+    box(panel, frameW - 1, panelStep + .08, 1.3, doorSurface, 0, 0, -.8).name = 'Garage shutter panel';
     softBox(panel, frameW - 2, panelStep - 0.7, 3.4, doorSurface, 0, 0, 0, 1.2);
     box(panel, frameW * .91, .68, .7, doorInset, 0, panelStep * .23, 1.8);
     if (i === 5) softBox(panel, frameW * .13, 2, 2.2, trim, 0, 0, 2.3, .55);
@@ -458,7 +465,7 @@ function garage(item, w, h) {
 function garageCeilingLight(w, h) {
   const root = new THREE.Group();
   root.name = 'Garage overhead light';
-  const bodyHeight = 50;
+  const bodyHeight = 46;
   const casing = material(0x65767c, {roughness:.48, metalness:.35});
   const trim = material(0xe4e8df, {roughness:.42});
   const idle = new THREE.Color(0xaab3b0);
@@ -468,15 +475,16 @@ function garageCeilingLight(w, h) {
   softBox(root, width, 3.2, depth, casing, 0, bodyHeight, 0, 1.3);
   for (const x of [-width * .38, width * .38]) {
     softBox(root, 2.2, 1.1, depth + 1.5, trim, x, bodyHeight + 2, 0, .4);
+    box(root, 1.3, 3.1, 1.3, casing, x, 50.15, 0);
   }
   for (const z of [-depth * .23, depth * .23]) {
-    const panel = softBox(root, width * .82, 1.4, depth * .31, diffuser, 0, bodyHeight + 1.9, z, .65);
+    const panel = softBox(root, width * .82, 1.4, depth * .31, diffuser, 0, bodyHeight - 1.9, z, .65);
     panel.name = 'Garage light diffuser';
   }
   const pool = lightPool(root, Math.min(48, Math.max(w, h) * 1.25), 5.4);
   root.traverse(node => { if (node.isMesh && node.material !== diffuser && !node.material.isShaderMaterial) node.castShadow = true; });
   return {
-    root, anchorY:bodyHeight + 2,
+    root, anchorY:52,
     animate(state) {
       // Explicit on/off owns the illustration. Inferred activity, stale sensor
       // states and an unbound decoration must never invent a powered lamp.

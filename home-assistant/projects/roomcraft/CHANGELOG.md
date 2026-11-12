@@ -1,5 +1,13 @@
 # Changelog
 
+## Keep the garage roof and home-facing entrance
+
+- Restore the full roof and home-facing entrance; route the driveway around the garage side.
+- Replace the false dark doorway panel with a true opening. The car is visible only through the open doorway and remains hidden by the roof, walls and closed shutter.
+- Add detailed Prius bodywork, panel seams, glazing, rims, grille and lighting lenses; keep its headlights off.
+- Keep the overhead fixture under the roof and suppress enclosed contents in the overhead PNG export.
+- See the [garage correction record](docs/garage-driveway.md#full-roof-correction-release) for verified release status.
+
 ## Connect and furnish the detached garage
 
 - Added an opt-in garage driveway with adjustable width, shared curved-street alignment, a matching curb ramp and planting clearance.

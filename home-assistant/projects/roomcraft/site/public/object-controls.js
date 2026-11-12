@@ -543,7 +543,7 @@
         + selectField('garageRoof','Roof view',item.garageRoof||'full',[['full','Full roof'],['cutaway','Cutaway · show interior']])
         + selectField('garageDriveway','Connect driveway to street',String(item.garageDriveway===true),[['false','Off'],['true','On']])
         + field('Driveway width (32–200 plan units)','garageDrivewayWidth',item.garageDrivewayWidth??'','number','min="32" max="200" step="1"')
-        + '<p class="field-hint">Leave width blank for automatic sizing. Point the door toward the street; blocked routes are omitted. Car and overhead light are separate models at ground level.</p></div>' : '')
+        + '<p class="field-hint">Leave width blank for automatic sizing. The driveway follows the entrance and can wrap around a garage side; blocked routes are omitted. Car and overhead light are separate models at ground level.</p></div>' : '')
       + (item.type === 'presenceSwitch' ? trackingInspector(item, escape, entityOptions) : '')
       + link + '<button type="button" class="danger-button" data-action="delete">Remove object</button>';
   }

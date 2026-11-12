@@ -1,20 +1,20 @@
 # Garage driveway, parked car and overhead light
 
-The detached garage can connect to the street with a graded driveway. A blue Prius and an overhead light are separate catalog objects, and the optional cutaway roof makes the interior visible. Home and Studio use the same scene implementation.
+The detached garage can connect to the street with a graded driveway. A detailed blue Prius and an overhead light are separate catalog objects. The household garage keeps its opaque roof and faces the home: the car is visible through the doorway when the actual door is open, and is hidden by the shutter when closed. The optional cutaway roof remains an authoring choice. Home and Studio use the same scene implementation.
 
 ## Customer outcome and acceptance
 
 **Customer:** the household member arranging the detached garage in Studio.
 
-**Problem:** the garage has no road connection and its full roof hides the parked car and ceiling fixture.
+**Problem:** the first garage arrangement turned the entrance away from the home and removed the roof to expose the car. The customer wants the original orientation and roof, a usable road connection, and a more detailed Prius visible naturally through the opening.
 
-**Outcome:** a visible, coherent first-floor garage with a driveway to the existing street, a blue Prius inside, and an independently editable overhead fixture.
+**Outcome:** a home-facing first-floor garage with an opaque roof, a driveway curving around its side to the street, detailed parked Prius and separate ceiling fixture. Visibility respects the real door state and camera angle.
 
 | Need | Observable acceptance | Owner |
 | --- | --- | --- |
 | Connect the garage to the road | Paving starts on the garage pad, crosses a matching sidewalk/curb cut and meets the actual curved asphalt | Driveway compiler and street renderer |
 | Keep the entrance usable | No generated shrubs or trees occupy the driveway; no house, stair, wall or other garage is crossed | Shared corridor exclusion and obstacle checks |
-| Show the parked car | The blue Prius is visible with the roof cut away and remains separately movable, resizable and removable | Model catalog and shared vehicle renderer |
+| Show the parked car | The blue Prius is visible through the open doorway from an oblique view, hidden by the roof from above and hidden by the closed shutter; it remains separately editable | Model catalog and shared vehicle renderer |
 | Add an overhead fixture | The fixture sits at garage elevation, has its own editor selection and can be mapped to a real light or switch | Catalog, device renderer and existing control mapping |
 | Preserve the building level | Garage, car and fixture use the first-floor scene origin while the condo remains upstairs | Shared scene placement |
 | Preserve authored choices | Save/import and Undo retain roof, driveway and dimension settings | Version 2 project and existing editor transaction |
@@ -24,23 +24,29 @@ Automatic parent-child movement, car telemetry, simulated driving into the garag
 ## Use it in Studio
 
 1. Select the detached **Garage door control** object.
-2. In its appearance settings, choose **Roof view → Cutaway · show interior**.
-3. Set **Connect driveway to street → On**. Face the garage entrance toward the street. The entrance is the shutter side; rotating the garage also rotates the connector's starting direction.
+2. In its appearance settings, choose **Roof view → Full roof**. The roof remains opaque; use an oblique live view to see through the doorway when the real door is open.
+3. Set **Connect driveway to street → On**. Keep the garage entrance facing the home. A clear side corridor lets the driveway wrap around the building to reach the street. The entrance is the shutter side; rotating the garage also rotates the connector's starting direction.
 4. Leave **Driveway width** blank for automatic sizing, or enter 32–200 plan units. The route follows the actual street profile and includes a sidewalk ramp.
 5. Open **Main menu → Object models** and search for **Blue Prius hatchback** and **Garage overhead light**. Place them inside the garage, then adjust their dimensions and rotation in the Inspector.
 6. Choose **Save** to publish and **Return to live dashboard** to review the result.
 
-Use **Full roof** to restore the covered building. The objects remain in the saved layout when the roof hides them. Turn the driveway setting off to remove its derived paving and restore the continuous sidewalk.
+Use **Cutaway · show interior** only as an optional authoring view; the household layout uses **Full roof**. The objects remain in the saved layout when the roof hides them. Turn the driveway setting off to remove its derived paving and restore the continuous sidewalk.
 
 The garage, car and light are independent objects. Moving or rotating the garage does not move its contents. Reposition the car and fixture after a building move. The driveway is a garage property, so it recomputes from the garage and street rather than requiring individual paving pieces to be dragged.
 
 For the overhead fixture, choose its actual **State entity**, **Tap** and **Hold** actions using the existing object-control workflow. Keep the garage shutter binding on the garage object. Do not reuse the shutter's state as a light state. A real physical command is sent only through the configured object action.
 
-If the entrance faces away from the street, is too close or too far away, or all tested approaches cross a structure, the connector is omitted. Reposition or rotate the garage; the engine does not guess a path through the home. [Safe editing](edit-safety.md) continues to protect committed geometry changes.
+If the entrance is too close or too far away, or all tested direct/side approaches cross a structure, the connector is omitted. Reposition or rotate the garage; the engine does not guess a path through the home. [Safe editing](edit-safety.md) continues to protect committed geometry changes.
 
 ![Synthetic Studio example with the garage selected, driveway connected and separate car and fixture](images/garage-studio-guide.png)
 
-*Studio demonstration using a synthetic test layout; no household camera imagery or bindings are included.*
+*Synthetic Studio demonstration. The updated full-roof view intentionally conceals the car from above; use the object list or optional Cutaway mode to select enclosed objects. No household camera imagery or bindings are included.*
+
+![Full opaque roof and true doorway: closed, open and overhead views](images/garage-full-roof.png)
+
+![Detailed Prius recipe from three angles and matching canvas artwork](images/garage-prius-detail.png)
+
+*These synthetic model checks use supplied open/closed states and do not actuate a household device.*
 
 ## Persisted contract and units
 
@@ -84,7 +90,13 @@ flowchart LR
 
 The route uses a bounded set of deterministic candidate curves. Its start follows the rotated garage pad and its end samples the street's current curve. Paving stays above the meadow triangles, reaches the garage slab, and grades through the removed sidewalk section into asphalt. The same corridor predicate prevents generated plants and terrain tools from occupying the road. The compiler does not read time, live state, browser storage or Home Assistant credentials.
 
-## Verification and release record
+## Full-roof correction release
+
+This release preserves layout version 2 and all existing bindings. No new persisted fields are needed: roof, rotation, driveway width and individual car/light objects already exist. Art adds deterministic blue bodywork, glazing, panel seams and wheel/light details; it does not add telemetry or turn on parked headlights. The full-roof shell has a real doorway rather than a painted dark blocker. Side-driveway recipes check actual floor boundaries, the garage shell, stairs and walls. The overhead fixture is physically beneath the roof.
+
+Verification and deployment evidence will be recorded after the complete source gate and live readback. The previous garage release below is the rollback baseline.
+
+## Previous garage release verification
 
 Released on 12 November 2026. The initial implementation is `755c351880c2644bc0fcf76198f0abec6abd03db`; the final verified runtime is `1bb5c502af60651eb3222a88732fce679bda3aaa`. The final correction excludes complete shrub canopies from garage and stair footprints, after a tablet check revealed a previously hidden plant inside the cutaway garage.
 

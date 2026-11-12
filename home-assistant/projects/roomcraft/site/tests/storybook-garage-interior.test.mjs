@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {Box3, Raycaster, Vector3} from 'three';
+import {Box3, Group, Raycaster, Vector3} from 'three';
 import {makeStorybookDevice} from '../ha-local/storybook-devices.mjs';
+import {makeStorybookParkedVehicle} from '../ha-local/storybook-parked-vehicles.mjs';
 
 const fixture = {id:'garage', type:'garageDoor', w:132, h:120, rotation:180};
 const allMeshes = root => {
@@ -48,6 +49,44 @@ test('cutaway shutter still represents closed, open and unavailable door reports
   model.animate({state:'open'}, 0, false, true);
   model.animate({state:'unavailable'});
   assert.equal(count(), closed, 'demo state does not leak into unavailable live state');
+});
+
+test('full opaque garage reveals Prius only through its real open doorway', () => {
+  const shell = makeStorybookDevice({...fixture,garageRoof:'full'});
+  const car = makeStorybookParkedVehicle({type:'garagePriusBlue',w:34,h:70});
+  car.root.position.y = 5.21;
+  const scene = new Group();
+  scene.add(shell.root,car.root);
+  const hit = (origin, direction) => {
+    scene.updateMatrixWorld(true);
+    const meshes = [];
+    scene.traverseVisible(node => { if (node.isMesh) meshes.push(node); });
+    return new Raycaster(new Vector3(...origin),new Vector3(...direction).normalize()).intersectObjects(meshes,false)[0];
+  };
+  const frontRays = [12,18,24].flatMap(y => [-8,0,8].map(x => [x,y,150]));
+  const carHit = result => result?.object.name.startsWith('prius-');
+  shell.animate({state:'closed'});
+  assert.ok(frontRays.every(origin => !carHit(hit(origin,[0,0,-1]))), 'closed shutter hides every sampled car sightline');
+  shell.animate({state:'open'});
+  assert.ok(frontRays.some(origin => carHit(hit(origin,[0,0,-1]))), 'opening removes the shutter and exposes the real model');
+  assert.ok(!carHit(hit([0,150,0],[0,-1,0])), 'full roof remains opaque even while the door is open');
+  assert.ok(!carHit(hit([150,18,0],[-1,0,0])), 'side walls remain opaque');
+  assert.ok(!carHit(hit([0,18,-150],[0,0,1])), 'back wall remains opaque');
+  shell.animate({state:'closed'});
+  assert.ok(frontRays.every(origin => !carHit(hit(origin,[0,0,-1]))), 'closing conceals the contents again');
+  assert.ok(allMeshes(shell.root).every(mesh => mesh.material.transparent === false && mesh.material.opacity === 1));
+});
+
+test('garage overhead fixture hangs beneath the opaque roof and points its diffusers down', () => {
+  const light = makeStorybookDevice({type:'garageCeilingLight',w:32,h:18});
+  const fixtures = allMeshes(light.root).filter(mesh => !mesh.material.isShaderMaterial);
+  const bounds = new Box3();
+  for (const mesh of fixtures) bounds.expandByObject(mesh);
+  assert.ok(bounds.max.y < 52, 'fixture hardware remains below the garage ceiling');
+  assert.ok(bounds.min.y > 40, 'fixture remains overhead');
+  for (const diffuser of fixtures.filter(mesh => mesh.name === 'Garage light diffuser')) {
+    assert.ok(diffuser.position.y < 46, 'light is emitted from the underside rather than into the roof');
+  }
 });
 
 test('independent garage light only glows for explicit on state and respects brightness', () => {

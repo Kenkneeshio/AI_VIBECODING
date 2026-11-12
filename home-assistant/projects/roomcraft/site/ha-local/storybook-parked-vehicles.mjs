@@ -26,8 +26,10 @@ export function makeStorybookParkedVehicle(item) {
   const scaleX = width / span.x, scaleZ = depth / span.z;
   const scaleY = Math.min(scaleX,scaleZ);
   for (const mesh of root.children) {
-    mesh.geometry.translate(-center.x,-bounds.min.y,-center.z);
-    mesh.geometry.scale(scaleX,scaleY,scaleZ);
+    // One transform avoids two Float32 rounding passes at the authored bounds.
+    const transform=new THREE.Matrix4().makeScale(scaleX,scaleY,scaleZ);
+    transform.setPosition(-center.x*scaleX,-bounds.min.y*scaleY,-center.z*scaleZ);
+    mesh.geometry.applyMatrix4(transform);
     mesh.geometry.computeBoundingBox();
   }
   root.userData.parkedVehicle = true;

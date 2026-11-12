@@ -652,7 +652,7 @@
         if(clean&&validEntityId(o.entityId)&&(isFixtureControl(o)||
           ['ceilingFan','robotVacuum'].includes(templateByType[o.type]?.artFamily)||
           ['humidifier','airPurifier'].includes(o.type)))return;
-        drawObject(c,o);
+        Models.drawWithGarageRoofOcclusion(c,o,project.items,()=>drawObject(c,o));
       };
       if(raster)raster.draw(c,project,drawDynamicObject);
       else{

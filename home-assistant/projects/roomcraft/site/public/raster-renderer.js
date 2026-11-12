@@ -492,18 +492,23 @@
     const mounts = new Map((plan?.placements || []).filter(placement => placement.window && placement.item.type === 'window')
       .map(({item, x, z, window: glazing}) => [item.id, {...glazing, x, y: z}]));
     const layers = Engine.render.orderSceneItems(project.items, window.RoomcraftInventory?.byType);
+    const drawVisible = item => {
+      const draw = () => drawItem(c,item,fallback);
+      if(window.RoomcraftModels?.drawWithGarageRoofOcclusion) window.RoomcraftModels.drawWithGarageRoofOcclusion(c,item,project.items,draw);
+      else draw();
+    };
     yard(c);
     drawFloors(c, project.rooms, plan?.floorStructure);
     const stairs = new Map((plan?.stairs || []).map(stair => [stair.item.id, stair]));
     for (const item of project.items) if (item.type === 'stairs') drawStairs(c, item, stairs.get(item.id));
     for (const item of layers.floorItems) drawItem(c, item, fallback);
     for (const item of window.RoomcraftModels?.orderMountedObjects(layers.regularItems) ?? layers.regularItems) {
-      if (item.type !== 'stairs') drawItem(c, item, fallback);
+      if (item.type !== 'stairs') drawVisible(item);
     }
     drawWalls(c, walls, plan?.wallStructure);
     drawFences(c, plan?.fences ?? walls.filter(wall => wall.kind === 'fence'));
     for (const item of layers.windowItems) drawItem(c, mounts.get(item.id) || item, fallback);
-    for (const item of layers.ceilingItems) drawItem(c, item, fallback);
+    for (const item of layers.ceilingItems) drawVisible(item);
     return true;
   }
 

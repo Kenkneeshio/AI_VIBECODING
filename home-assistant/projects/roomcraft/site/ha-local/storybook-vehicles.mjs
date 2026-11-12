@@ -159,11 +159,26 @@ function createArt(recipe) {
     for (const axle of [-.323, .323]) {
       const x = length * axle;
       const z = side * (outer + .05);
-      add(new THREE.CylinderGeometry(tire, tire, 2.9, 10).rotateX(Math.PI / 2).translate(x, tire, z), DETAILS.tire);
-      add(new THREE.CircleGeometry(tire * .57, 8).rotateY(side < 0 ? Math.PI : 0)
+      add(new THREE.CylinderGeometry(tire, tire, 2.9, detail === 'prius' ? 20 : 10).rotateX(Math.PI / 2).translate(x, tire, z), DETAILS.tire);
+      add(new THREE.CircleGeometry(tire * .57, detail === 'prius' ? 20 : 8).rotateY(side < 0 ? Math.PI : 0)
         .translate(x, tire, z + side * 1.46), DETAILS.rim);
       add(new THREE.CircleGeometry(tire * .28, 6).rotateY(side < 0 ? Math.PI : 0)
         .translate(x, tire, z + side * 1.48), DETAILS.hub);
+      if (detail === 'prius') {
+        const faceZ = z + side * 1.51;
+        add(new THREE.CircleGeometry(tire * .47,20).rotateY(side < 0 ? Math.PI : 0)
+          .translate(x,tire,faceZ), '#3e4f61');
+        for(let spoke=0;spoke<5;spoke++){
+          const angle=spoke*Math.PI*2/5;
+          const cs=Math.cos(angle),sn=Math.sin(angle);
+          const points=[[-.20,-.065],[.20,-.065],[.20,.065],[-.20,.065]].map(([u,v])=>
+            [x+(cs*(u+.27)-sn*v)*tire,tire+(sn*(u+.27)+cs*v)*tire,faceZ+side*.06]);
+          add(quad(side<0?points.reverse():points),'#d5e1e6');
+        }
+        add(new THREE.CircleGeometry(tire*.17,12).rotateY(side < 0 ? Math.PI : 0)
+          .translate(x,tire,faceZ+side*.13),'#c6d6df');
+        add(new THREE.TorusGeometry(tire*.57,.13,4,16).translate(x,tire,faceZ+side*.06),'#c3d5de');
+      }
     }
   }
 
@@ -540,12 +555,66 @@ export function buildStorybookVehicle(id) {
   return vehicleLayers(bodyParts, lamps(1, frontY - 1.75), lamps(-1, shoulder - 2.65));
 }
 
+function addParkedPriusDetails(art) {
+  const {add,box,length,outer,nose,shoulder,frontY,recipe} = art;
+  const floor=recipe.tire*.78;
+  const seam='#315d87', bright='#b6d0e1', dark='#273b4e';
+  const rod=(from,to,radius,shade)=>{
+    const a=new THREE.Vector3(...from), b=new THREE.Vector3(...to);
+    const direction=b.clone().sub(a);
+    const rotation=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),direction.clone().normalize());
+    add(new THREE.CylinderGeometry(radius,radius,direction.length(),5,1)
+      .applyQuaternion(rotation).translate(...a.lerp(b,.5).toArray()),shade);
+  };
+  const frontDisc=(radius,x,y,z,shade)=>add(new THREE.CircleGeometry(radius,16)
+    .rotateY(Math.PI/2).translate(x,y,z),shade);
+  // Trapezoid lower grille, intake bars, inset fog lenses and blue hybrid badge
+  // remain legible when the car is viewed only through the garage opening.
+  add(quad([[nose+.42,floor+1.2,-outer*.67],[nose+.42,floor+1.2,outer*.67],
+    [nose+.42,floor+4.0,outer*.53],[nose+.42,floor+4.0,-outer*.53]].reverse()),dark);
+  for(const level of [floor+1.8,floor+2.6,floor+3.4])box(nose+.47,level,0,.18,.18,outer*1.1,'#6d8da1');
+  box(nose+.53,floor+1.08,0,.32,.36,outer*1.48,'#9cb4c6');
+  add(new THREE.TorusGeometry(.95,.16,4,16).scale(1,.66,1).rotateY(Math.PI/2)
+    .translate(nose+.57,frontY-1,0),'#c6dbe8');
+  frontDisc(.54,nose+.60,frontY-1,0,'#3c749c');
+  // Exact mirrored seams and five-door handles are physical mesh details,
+  // independent from antialiasing, textures or any external asset.
+  for(const side of [-1,1]){
+    const z=side*(outer+.14);
+    for(const x of [-length*.23,length*.015,length*.265]){
+      rod([x,shoulder-2.2,z],[x-.38,floor+1.6,z],.075,seam);
+    }
+    rod([-length*.23,floor+1.6,z],[length*.265,floor+1.6,z],.10,bright);
+    rod([length*.30,shoulder+.14,side*outer*.49],[nose-3,frontY+.37,side*outer*.51],.09,bright);
+    const mirrorX=length*.32-3;
+    box(mirrorX,shoulder+.94,side*(outer+1.13),2.7,1.5,.18,dark);
+    box(mirrorX+.12,shoulder+1.14,side*(outer+1.24),2.1,.74,.08,'#bad8e1');
+    box(mirrorX+.6,shoulder+.55,side*(outer+.96),1.6,.22,.22,'#e6d7ae');
+    frontDisc(1.15,nose+.57,floor+2.75,side*outer*.75,dark);
+    frontDisc(.62,nose+.60,floor+2.75,side*outer*.75,'#dce8db');
+    // Lens reflector and projector cap sit above the swept headlight glazing.
+    add(new THREE.CircleGeometry(.94,16).rotateX(-Math.PI/2).rotateZ(-.15)
+      .translate(nose-2.8,shoulder+.49,side*outer*.60),'#cedee4');
+    add(new THREE.CircleGeometry(.43,12).rotateX(-Math.PI/2).rotateZ(-.15)
+      .translate(nose-2.8,shoulder+.52,side*outer*.60),'#6a8d9d');
+    box(-nose+.6,shoulder-1.1,side*outer*.745,1.6,.49,2.0,'#f8dbc7');
+    // Rear bumper reflectors and a tiny hybrid-blue side badge.
+    box(-nose+.12,floor+1.6,side*outer*.64,.40,.55,1.9,'#b56462');
+    box(length*.19,shoulder-2.8,z+.04*side,1.8,.58,.12,'#9bbfd3');
+  }
+  // A restrained split hatch band and wipers reinforce the Prius silhouette.
+  rod([-length*.355,shoulder+2.8,-outer*.51],[-length*.345,shoulder+3.1,outer*.12],.13,dark);
+  rod([length*.29,shoulder+1.1,-outer*.55],[length*.285,shoulder+1.4,-outer*.03],.11,dark);
+  rod([length*.29,shoulder+1.1,outer*.03],[length*.285,shoulder+1.4,outer*.53],.11,dark);
+}
+
 /** Parked-only blue Prius hatchback. It never changes the seeded traffic fleet. */
 export function buildStorybookParkedPrius() {
   const recipe = {length:68, width:28, height:22.5, tire:4.6,
     cabin:[-.43,-.14,.065,.32], body:'#4b83ba', roof:'#76a3cf', detail:'prius', windows:3};
   const art = createArt(recipe);
   addDetails(art);
+  addParkedPriusDetails(art);
   const {outer,nose,frontY,shoulder,bodyParts} = art;
   const headlights = [-1,1].map(side => {
     const points = [
@@ -558,7 +627,16 @@ export function buildStorybookParkedPrius() {
   });
   const tail = [-1,1].map(side =>
     [new THREE.BoxGeometry(1.4,3.9,2.7).translate(-nose+.55,shoulder-1.3,side*outer*.73),'#ffffff']);
-  const layers = vehicleLayers(bodyParts,paintedLayer(headlights),paintedLayer(tail));
+  const glassColors=new Set([DETAILS.window,DETAILS.glass,DETAILS.glassGlow]);
+  const glass=bodyParts.filter(([,shade])=>glassColors.has(shade));
+  const paint=bodyParts.filter(([,shade])=>!glassColors.has(shade));
+  const layers = vehicleLayers(paint,paintedLayer(headlights),paintedLayer(tail));
+  layers[0].material.dispose();
+  layers[0].material=new THREE.MeshPhysicalMaterial({vertexColors:true,roughness:.38,metalness:.18,
+    clearcoat:.52,clearcoatRoughness:.26});
+  layers.push({role:'glazing',geometry:paintedLayer(glass),
+    material:new THREE.MeshPhysicalMaterial({vertexColors:true,roughness:.24,metalness:.15,
+      clearcoat:.75,clearcoatRoughness:.18})});
   // Parked art carries no inferred ignition state or automatic headlights.
   for (const {material} of layers) material.emissiveIntensity = 0;
   return layers;

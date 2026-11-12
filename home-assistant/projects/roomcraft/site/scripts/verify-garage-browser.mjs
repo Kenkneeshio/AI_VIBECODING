@@ -121,25 +121,34 @@ try {
   };
   const result=await evaluate(`(() => {
     const w=${wd},api=w.RoomcraftEditorViewport,doc=w.document;
+    const occlusion=doc.createElement('canvas');occlusion.width=occlusion.height=220;
+    const paint=occlusion.getContext('2d');paint.fillStyle='#ff0000';paint.fillRect(0,0,220,220);
+    w.RoomcraftModels.drawWithGarageRoofOcclusion(paint,
+      {type:'garagePriusBlue',x:100,y:135,w:20,h:40,rotation:0},
+      [{type:'garageDoor',x:100,y:100,w:100,h:100,rotation:0,garageRoof:'full'}],
+      ()=>{paint.fillStyle='#0000ff';paint.fillRect(90,115,20,40);});
+    const pixel=(x,y)=>Array.from(paint.getImageData(x,y,1,1).data).join(',');
+    if(pixel(100,125)!=='255,0,0,255'||pixel(100,150)!=='0,0,255,255')throw new Error('Roof raster clipping failed');
     const before=api.getProject();
     const field=(key,value)=>{const input=doc.getElementById('prop-'+key);if(!input)throw new Error('Missing '+key);input.value=String(value);input.dispatchEvent(new Event('change',{bubbles:true}));};
     api.selectItem('fixture-garage');
     const lock=doc.querySelector('[data-lock-dimensions]');lock.checked=false;lock.dispatchEvent(new Event('change',{bubbles:true}));
-    field('h',120);field('rotation',180);field('garageRoof','cutaway');field('garageDriveway','true');field('garageDrivewayWidth',86);
+    field('h',120);field('rotation',0);field('garageRoof','cutaway');field('garageRoof','full');field('garageDriveway','true');field('garageDrivewayWidth',60);
     const garage=api.getProject().items.find(i=>i.id==='fixture-garage');
-    if(garage.h!==120||garage.garageRoof!=='cutaway'||garage.garageDriveway!==true)throw new Error('Garage edit failed');
+    if(garage.h!==120||(garage.garageRoof||'full')!=='full'||garage.garageDriveway!==true)throw new Error('Garage edit failed');
     if(!api.applyModelCommand({kind:'place',modelId:'garagePriusBlue'})||!api.placeAt(306,112))throw new Error('Car placement failed');
-    field('rotation',180);
+    field('rotation',0);
     const car=api.getProject().items.find(i=>i.type==='garagePriusBlue');
     if(!api.moveItem(car.id,300,112))throw new Error('Car move failed');
     doc.getElementById('undoButton').click();
     if(api.getProject().items.find(i=>i.id===car.id).x!==306)throw new Error('Car Undo failed');
     if(!api.applyModelCommand({kind:'place',modelId:'garageCeilingLight'})||!api.placeAt(338,112))throw new Error('Light placement failed');
-    field('rotation',180);
+    field('rotation',0);
     const after=api.getProject();
     for(const k of ['rooms','walls','hotspots'])if(JSON.stringify(after[k])!==JSON.stringify(before[k]))throw new Error('Unrelated structure changed');
     const placements=w.RoomcraftPlanStructure(after).placements;
     const ground=placements.filter(p=>['garageDoor','garagePriusBlue','garageCeilingLight'].includes(p.item.type));
+    doc.querySelector('[data-tool="select"]').click();
     api.selectItem('fixture-garage');
     return {count:after.items.length,beforeCount:before.items.length,ground:ground.map(p=>[p.item.type,p.baseY]),unbound:after.items.find(i=>i.type==='garageCeilingLight').entityId===''};
   })()`);
@@ -152,9 +161,11 @@ try {
   const body=await until(()=>evaluate("window.ops.find(([method])=>method==='POST')?.[1]"),'mock Save');
   assert.ok(body.project.items.some(i=>i.type==='garagePriusBlue'));
   assert.equal(body.project.items.find(i=>i.id==='fixture-garage').garageDriveway,true);
+  assert.equal(body.project.items.find(i=>i.id==='fixture-garage').garageRoof||'full','full');
+  assert.equal(body.project.items.find(i=>i.id==='fixture-garage').rotation,0);
   assert.ok(body.pngDataUrl.startsWith('data:image/png;base64,'));
   assert.deepEqual(errors,[]);
-  console.log('PASS: Studio garage Inspector, independent Prius/light catalog placement, movement, Undo, correct first-floor elevations, unassigned light, mock Save; no physical actions');
+  console.log('PASS: Studio home-facing full-roof garage Inspector, independent Prius/light catalog placement, movement, Undo, correct first-floor elevations, unassigned light, mock Save; no physical actions');
   console.log(qa);
 } finally {
   ws?.close();

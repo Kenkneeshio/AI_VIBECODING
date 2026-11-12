@@ -68,7 +68,7 @@ Use **Center X**, **Center Y**, and **Rotation** for precise placement. The dini
 
 ### Connect and furnish a garage
 
-Select **Garage door control** in Studio and choose **Roof view → Cutaway · show interior** to expose its contents. Turn **Connect driveway to street** on, face the entrance toward the road, and leave **Driveway width** blank for automatic sizing or enter 32–200 plan units. The road follows the garage and current street; it is omitted when no clear entrance route is available.
+Select **Garage door control** in Studio and keep **Roof view → Full roof** for the home-facing garage. The car appears through the doorway from an oblique view when the real garage door is open; the roof and closed shutter conceal it. Use the object list to select enclosed contents, or temporarily choose **Cutaway · show interior** while arranging them. Turn **Connect driveway to street** on and enter a width from 32–200 plan units, or leave it blank for automatic sizing. The driveway can wrap around the building to reach the street; it is omitted if no clear route exists. The current side corridor uses a width of 60.
 
 Search **Blue Prius hatchback** and **Garage overhead light** in **Main menu → Object models** to add them. Both can be moved, resized and removed independently. Moving the garage does not automatically move its contents. Map the overhead fixture to its actual light/switch using **State entity** and its own actions; an unassigned fixture is decorative. **Save** publishes the arrangement. [Garage editing details and limits](garage-driveway.md)
 

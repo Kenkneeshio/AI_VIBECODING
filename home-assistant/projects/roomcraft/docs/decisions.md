@@ -1,5 +1,9 @@
 # Decision log
 
+## Preserve the garage orientation and let real openings reveal contents
+
+Keep the home-facing garage entrance and full opaque roof. Derive a safe side driveway instead of rotating the building toward the street. Replace the decorative dark doorway plane with an actual interior and a contiguous state-driven shutter. Only an open doorway and an appropriate viewing angle reveal the independently editable Prius; neither the roof nor the real door state is overridden to display it. The overhead fixture stays below the ceiling. Add detail to the parked vehicle recipe without changing traffic models or inventing telemetry. [Garage contract](garage-driveway.md)
+
 ## Derive the driveway and keep garage contents editable
 
 Attach the road connection and roof view to the garage's existing authored object. Derive the route from its entrance and the shared street profile, with matching sidewalk cuts and one corridor for planting clearance. Keep the Prius and overhead fixture separate catalog objects so they can be selected, moved, resized, removed and mapped without painting them into the building. Preserve first-floor elevation and existing garage state; leave the overhead control unassigned until a real entity is known. Parent-child transforms and vehicle telemetry remain separate future work. [Garage contract](garage-driveway.md)

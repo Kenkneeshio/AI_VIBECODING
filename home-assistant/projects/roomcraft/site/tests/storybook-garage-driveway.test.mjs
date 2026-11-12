@@ -14,7 +14,7 @@ function capture(routes,heightAt=()=>ground) {
   const geometries=[],materials={};
   const count=buildStorybookGarageDriveways({
     material:color=>materials[color]??=( {} ),
-    add(geometry,color){geometries.push({color,positions:points(geometry),normals:Array.from(geometry.attributes.normal.array)});geometry.dispose();},
+    add(geometry,color){geometries.push({color,positions:points(geometry),normals:Array.from(geometry.attributes.normal.array),colors:Array.from(geometry.attributes.color.array)});geometry.dispose();},
   },routes,heightAt,ground);
   return {count,geometries,materials};
 }
@@ -88,4 +88,63 @@ test('street cuts remove only the affected near-side sidewalk and curb',()=>{
   assert.equal(meshes.filter(m=>m.color==='#73767c').length,1,'street driving surface stays continuous');
   const pavement=meshes.filter(m=>m.color==='#c0b6a7');
   assert.equal(pavement.length,3);
+});
+
+const rearGarage={x:300,z:110,angle:0,item:{id:'rear-fixture',type:'garageDoor',w:132,h:120,garageDriveway:true,garageDrivewayWidth:60}};
+const rect=(x,z,w,h)=>({points:[{x,y:z},{x:x+w,y:z},{x:x+w,y:z+h},{x,y:z+h}]});
+const rearPlan={placements:[rearGarage],walls:[],fences:[],
+  houseBounds:{minX:145,maxX:1000,minZ:185,maxZ:740},
+  rooms:[rect(395,185,605,555),rect(145,245,250,190)],
+  stairs:[{x:90,z:490,angle:0,apronDepth:40,item:{type:'stairs',w:90,h:600}}]};
+
+test('a home-facing garage uses a smooth side driveway without crossing its pad or the balcony',()=>{
+  const snapshot=JSON.stringify(rearPlan);
+  const routes=compileStorybookGarageDriveways(rearPlan,street);
+  assert.equal(routes.length,1);
+  assert.equal(routes[0].wrapped,true);
+  assert.ok(routes[0].cut.maxX<rearGarage.x);
+  assert.equal(JSON.stringify(rearPlan),snapshot);
+  const result=capture(routes);
+  assert.equal(result.geometries.length,1,'one colored paving mesh has no overlapping inset layer that can z-fight');
+  assert.equal(result.materials[result.geometries[0].color].vertexColors,true);
+  for(const mesh of result.geometries) {
+    assert.ok(mesh.positions.every(Number.isFinite));
+    assert.equal(mesh.colors.length,mesh.positions.length);
+    assert.ok(new Set(mesh.colors).size>3,'the shoulder is shaded within the same surface');
+    assert.ok(mesh.normals.filter((_,i)=>i%3===1).every(value=>value>.45));
+    for(let i=0;i<mesh.positions.length;i+=3) {
+      const [x,,z]=mesh.positions.slice(i,i+3);
+      assert.ok(!(x>234&&x<366&&z>63.2&&z<153.2),'road stays outside its own garage body');
+      assert.ok(!(x>=145&&x<=395&&z>=245&&z<=435),'road never crosses the balcony');
+    }
+  }
+  assert.deepEqual(capture(compileStorybookGarageDriveways(rearPlan,street)),result);
+});
+
+test('a mirrored home-facing garage chooses the clear opposite side and refuses a blocked apron',()=>{
+  const mirror=p=>({...p,x:1200-p.x});
+  const mirrored={...rearPlan,
+    placements:rearPlan.placements.map(mirror),stairs:rearPlan.stairs.map(mirror),
+    houseBounds:{minX:200,maxX:1055,minZ:185,maxZ:740},
+    rooms:rearPlan.rooms.map(room=>({...room,points:room.points.map(mirror)}))};
+  const routes=compileStorybookGarageDriveways(mirrored,street);
+  assert.equal(routes.length,1);
+  assert.ok(routes[0].cut.minX>mirrored.placements[0].x);
+  const blocked={...rearPlan,rooms:[...rearPlan.rooms,rect(130,175,330,60)]};
+  assert.equal(compileStorybookGarageDriveways(blocked,street).length,0);
+});
+
+test('wrapped road tessellation clears a broad hill at triangle interiors as well as edges',()=>{
+  const routes=compileStorybookGarageDriveways(rearPlan,street);
+  const hill=(x,z)=>ground+10*Math.exp(-(((x-199)/70)**2+((z-105)/70)**2));
+  const meshes=capture(routes,hill).geometries;
+  let interiors=0;
+  for(const {positions} of meshes)for(let i=0;i<positions.length;i+=9) {
+    const p=positions.slice(i,i+3),q=positions.slice(i+3,i+6),r=positions.slice(i+6,i+9);
+    const x=(p[0]+q[0]+r[0])/3,z=(p[2]+q[2]+r[2])/3,y=(p[1]+q[1]+r[1])/3;
+    if(z<=street.sample(x,street.nearZ).z)continue;
+    assert.ok(y>=hill(x,z),`paving triangle covers terrain at ${x}, ${z}`);
+    interiors++;
+  }
+  assert.ok(interiors>150,'the long unioned polygon is sampled throughout its interior');
 });

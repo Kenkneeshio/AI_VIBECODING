@@ -93,3 +93,32 @@ test('catalog exposes independent car and light, and raster ordering keeps the c
   assert.deepEqual(Array.from(ordered,item => item.id),['garage','prius','overhead']);
   assert.deepEqual(rearranged,original,'render ordering does not reorder the saved collection');
 });
+
+
+test('opaque garage roofs hide contained car and fixture only in overhead compatibility rendering', () => {
+  const roof={...garage,garageRoof:'full',rotation:0};
+  const parked={...car,rotation:0};
+  const fixture={...lamp,rotation:0};
+  const before=structuredClone([roof,parked,fixture]);
+  assert.equal(Models.underGarageRoof(parked,before),true);
+  assert.equal(Models.underGarageRoof(fixture,before),true);
+  assert.equal(Models.underGarageRoof(parked,[{...roof,garageRoof:'cutaway'}]),false);
+  assert.equal(Models.underGarageRoof({...parked,x:500},before),false);
+  assert.equal(Models.underGarageRoof({...parked,type:'table'},before),false);
+  assert.equal(Models.underGarageRoof({...parked,rotation:90},[{...roof,rotation:90}]),true);
+  assert.deepEqual(before,[roof,parked,fixture],'occlusion never mutates the saved inventory');
+});
+
+
+test('partly exposed car is clipped at opaque roofs without disappearing or leaking through overlapping roofs', () => {
+  const roofs=[{...garage,garageRoof:'full',rotation:0},{...garage,id:'other',garageRoof:'full',rotation:30}];
+  const partial={...car,y:130,rotation:0};
+  const ops=[];
+  const context=Object.fromEntries(['save','restore','beginPath','rect','moveTo','lineTo','closePath','clip']
+    .map(key=>[key,(...args)=>ops.push([key,...args])]));
+  Models.drawWithGarageRoofOcclusion(context,partial,roofs,()=>ops.push(['draw']));
+  assert.equal(ops.filter(([key])=>key==='clip').length,2,'intersect exclusions independently');
+  assert.ok(ops.filter(([key])=>key==='clip').every(([,rule])=>rule==='evenodd'));
+  assert.deepEqual(ops.slice(-2),[['draw'],['restore']]);
+  assert.equal(ops.filter(([key])=>key==='lineTo').length,6,'each rotated roof has a closed quadrilateral');
+});

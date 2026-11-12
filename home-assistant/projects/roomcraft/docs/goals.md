@@ -2,6 +2,7 @@
 
 | Goal | Reason | Evidence of completion |
 | --- | --- | --- |
+| Preserve a home-facing roofed garage with natural visibility | The customer wants the actual building orientation and a detailed Prius visible only through the doorway | Opaque roof/shutter occlusion, clear real opening, side-route driveway and detailed parked-car recipe; see [correction release](garage-driveway.md#full-roof-correction-release) |
 | Connect and furnish an editable detached garage | The exterior needs a believable street entrance, visible parked car and separate light without more hard-painted objects | Shared driveway/curb geometry, optional cutaway roof and independent car/light catalog entries; release evidence belongs in the [garage record](garage-driveway.md) |
 | Keep terrain and structure experimentation recoverable | A malformed edit should not replace a usable layout or destroy its undo history | Pure audit/repair, completed-edit checkpoints, manual Check & repair and shared save validation; release evidence belongs in the [safe-editing record](edit-safety.md) |
 | Make the builder engine understandable and reproducible for another team | Configuration and development should not depend on chat history or undocumented code paths | Current architecture guide, source ownership inventory, enforced shared boundaries and publication rejection tests; full recipe editing remains staged in the roadmap |
