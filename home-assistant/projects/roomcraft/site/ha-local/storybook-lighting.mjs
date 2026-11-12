@@ -136,7 +136,9 @@ export function createStorybookLighting(renderer, scene, bounds) {
       }
       previousStates = states;
     }
-    if ((drawShadow || placementChanged) && direct > 0) {
+    // Shadow-casting materials need a valid texture on the first frame even
+    // when darkness makes the directional shadow invisible.
+    if (drawShadow || (placementChanged && direct > 0)) {
       renderer.shadowMap.needsUpdate = true;
       drawShadow = false;
     }

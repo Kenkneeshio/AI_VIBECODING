@@ -71,3 +71,20 @@ test('realistic shadow direction and cloud attenuation preserve the state-driven
   assert.equal(accent.intensity, 0);
   lighting.dispose();
 });
+
+test('a cold scene allocates its shadow texture in twilight and darkness', () => {
+  for (const elevation of [-3, -20]) {
+    const renderer = {shadowMap: {}, capabilities: {maxTextureSize: 2048}};
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color();
+    const ground = {color: new THREE.Color()};
+    const lighting = createStorybookLighting(renderer, scene, {minX: 0, maxX: 1500, minZ: 0, maxZ: 850});
+    const environment = {solar: sample(elevation, 252, false)};
+    lighting.update(environment, {}, ground);
+    assert.equal(renderer.shadowMap.needsUpdate, true);
+    renderer.shadowMap.needsUpdate = false;
+    lighting.update(environment, {}, ground);
+    assert.equal(renderer.shadowMap.needsUpdate, false);
+    lighting.dispose();
+  }
+});
