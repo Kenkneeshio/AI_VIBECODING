@@ -41,11 +41,17 @@ test('custom Studio weather covers daylight, wind and lunar phase without a live
     windSpeed: 10, windBearing: 90}), {
     condition: 'snowy', night: true, daylightKnown: true, sunElevation: -16, sunAzimuth: 290,
     traffic: {severity: 'ambient'}, moonPhase: 'last_quarter', windSpeed: 10, windBearing: 90,
-    beachActivity: 'evening',
+    beachActivity: 'evening', sunRising: false,
   });
   assert.equal(studioWeatherPreview({condition: 'clear-night', daylight: 'day'}).night, true);
   assert.equal(studioWeatherPreview({condition: 'sunny', daylight: 'morning'}).beachActivity, 'morning');
   assert.equal(studioWeatherPreview({condition: 'clear-night', daylight: 'overnight'}).beachActivity, 'overnight');
+  const dawn = studioWeatherPreview({condition: 'sunny', daylight: 'dawn'});
+  const sunrise = studioWeatherPreview({condition: 'sunny', daylight: 'sunrise'});
+  const sunset = studioWeatherPreview({condition: 'sunny', daylight: 'sunset'});
+  assert.ok(dawn.night && dawn.sunRising && dawn.sunElevation < 0);
+  assert.ok(!sunrise.night && sunrise.sunRising && sunrise.sunAzimuth < 180);
+  assert.ok(!sunset.night && !sunset.sunRising && sunset.sunAzimuth > 180);
 });
 
 test('authored camera frame dimensions change the shared tile while bounds preserve tap access', () => {

@@ -6,6 +6,7 @@ import { makeStorybookFurniture } from './storybook-furniture.mjs';
 import { garagePadContains, makeStorybookDevice } from './storybook-devices.mjs';
 import { compileFloorStructure, compileWallStructure, isOutdoorRoom } from './storybook-structure.mjs';
 import { createStorybookLighting } from './storybook-lighting.mjs';
+import { createStorybookSolarFade, storybookSolar } from './storybook-solar.mjs';
 import { fitStorybookCamera, normalizeCameraView } from './storybook-camera.mjs';
 import { applyModelHeight } from './storybook-size.mjs';
 import { createStorybookPeople } from './storybook-people.mjs';
@@ -933,6 +934,7 @@ export function createStorybookScene(canvas, layout) {
   const treeMeshes = scene.children.slice(firstTreeMesh);
   const structureMeshes = scene.children.filter(node => node.isMesh);
   const lighting = createStorybookLighting(renderer, scene, plan.bounds);
+  const fadeSolar = createStorybookSolarFade();
   lighting.markStructure();
   const ocean = createStorybookOcean(water);
   const sidewalk = createStorybookSidewalk(road);
@@ -1105,6 +1107,8 @@ export function createStorybookScene(canvas, layout) {
     if (!transientTelemetry) environment = sceneWind(environment, sceneSettings);
     const reduceMotion = environment.reduceMotion === true;
     const time = !reduceMotion && Number.isFinite(timeSeconds) ? timeSeconds : 0;
+    const solar = storybookSolar(environment);
+    environment = {...environment, solar: transientTelemetry ? solar : fadeSolar(solar, time, reduceMotion)};
     const telemetryTime = animateTelemetry ? time : 0;
     const showTraffic = transientTelemetry || sceneFeatureEnabled(sceneSettings, 'traffic');
     if (showTraffic && !traffic && environment.traffic) {

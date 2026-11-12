@@ -12,7 +12,7 @@ test('received celestial angles control position, with deterministic arcs for a 
   const east = coastalSkyFrame({...daytime, sunAzimuth: 90, sunElevation: 3});
   const south = coastalSkyFrame({...daytime, sunAzimuth: 180, sunElevation: 63});
   const west = coastalSkyFrame({...daytime, sunAzimuth: 270, sunElevation: 4});
-  assert.deepEqual([east.sunX, south.sunX, west.sunX], [12, 50, 88]);
+  assert.deepEqual([east.sunX, south.sunX, west.sunX].map(Math.round), [88, 50, 12]);
   assert.ok(east.sunY > south.sunY && west.sunY > south.sunY);
   assert.equal(east.light, 'twilight');
   assert.equal(south.light, 'regular');
@@ -20,11 +20,31 @@ test('received celestial angles control position, with deterministic arcs for a 
   assert.ok(sample(0, crescent).moonX < sample(.5, crescent).moonX);
   assert.ok(sample(.5, crescent).moonY < sample(1, crescent).moonY);
   assert.deepEqual(sample(.5, crescent), sample(.5, crescent));
-  assert.equal(coastalSkyFrame({...crescent, moonAzimuth: 270, moonElevation: 3, skyProgress: 0}).moonX, 88);
+  assert.equal(coastalSkyFrame({...crescent, moonAzimuth: 270, moonElevation: 3, skyProgress: 0}).moonX, 12);
   assert.equal(coastalSkyFrame(crescent).moonMotion, 'ambient');
   assert.equal(sample(.5, crescent).moonMotion, 'fixed');
   assert.ok(coastalSkyFrame({...crescent, skyTimeSeconds: 20}).moonX <
     coastalSkyFrame({...crescent, skyTimeSeconds: 90}).moonX);
+});
+
+test('live elevation and bearing distinguish sunrise, sunset, and low-sun visibility', () => {
+  const beforeDawn = {...nighttime, sunElevation: -5, sunAzimuth: 75, sunRising: true};
+  const dawn = coastalSkyFrame(beforeDawn);
+  const afterDawn = coastalSkyFrame({...daytime, sunElevation: 4, sunAzimuth: 82, sunRising: true});
+  const evening = coastalSkyFrame({...nighttime, sunElevation: -5, sunAzimuth: 285, sunRising: false});
+  const midday = coastalSkyFrame({...daytime, sunElevation: 45, sunAzimuth: 170, sunRising: false});
+  const dark = coastalSkyFrame({...nighttime, sunElevation: -20, sunAzimuth: 300, sunRising: false});
+  assert.deepEqual([dawn.solarPhase, evening.solarPhase, midday.solarPhase, dark.solarPhase],
+    ['sunrise', 'sunset', 'day', 'night']);
+  assert.ok(dawn.sunX > 50 && evening.sunX < 50);
+  assert.equal(dawn.solarDisc, 0);
+  assert.equal(afterDawn.solarDisc, 1);
+  assert.ok(dawn.twilightGlow > 0 && evening.horizonHaze > 0);
+  assert.ok(dawn.solarDaylight < afterDawn.solarDaylight && afterDawn.solarDaylight < midday.solarDaylight);
+  assert.equal(dark.twilightGlow, 0);
+  assert.equal(dark.starOpacity, 1);
+  const storm = coastalSkyFrame({...beforeDawn, condition: 'pouring', cloudCoverage: 99});
+  assert.ok(storm.twilightGlow < dawn.twilightGlow && storm.horizonHaze > dawn.horizonHaze);
 });
 
 test('all named moon phases retain distinct geometry and daytime never shows the moon', () => {
@@ -126,6 +146,7 @@ test('reduced motion freezes demo positions, and offline clears visible telemetr
   assert.equal(element.dataset.meteor, 'off');
   updateCoastalSky(element, environment, true);
   assert.equal(element.dataset.sky, 'unknown');
+  assert.equal(element.dataset.solarPhase, 'unknown');
   assert.equal(element.dataset.cloud, 'none');
   assert.equal(element.dataset.moon, '');
   assert.equal(element.dataset.stars, 'hidden');

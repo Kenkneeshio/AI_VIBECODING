@@ -1,5 +1,9 @@
 # Decision log
 
+## Use the home's solar position to light the miniature
+
+Use Home Assistant's solar elevation and clockwise-from-north azimuth as the live inputs. Derive a single solar frame for the sky, water and scene lights, with separate dawn and dusk colors and cloud attenuation. Keep the north-up world orientation and bound very long shadows so the miniature stays legible. Ease successive readings over a short interval when motion is enabled. Studio provides fixed preview readings. No coordinates, sunset estimates, or solar readings enter saved layouts or the source repository.
+
 ## Set waterfront activity by the home's local time
 
 Use Home Assistant's configured time zone and sun state to choose the beach activity. Morning runs from sunrise or 5 a.m., whichever is later, to 11 a.m. Evening starts at sunset and runs until 11 p.m. Keep the overnight beach empty. Home and Studio use the same scene renderer, and Studio can preview each period. The animated traffic and waterfront figures are scenery. Keep their timing, positions, and the illustrated star patterns outside the saved layout.

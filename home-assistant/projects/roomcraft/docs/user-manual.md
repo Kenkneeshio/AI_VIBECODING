@@ -30,6 +30,8 @@ The mixed fleet includes semis and motorcycles. Choose **Waterfront** under **Vi
 
 Surfers come out from sunrise (5 a.m. at the earliest) until 11 a.m. The beach has games during the day and bonfires from sunset to 11 p.m. The beach and sidewalks empty overnight. Clear night skies show constellations and occasional shooting stars. In 3D Studio, open **Scene settings**, choose **Preview weather** under **Appearance**, and change **Time of day**. **Reduce motion** holds the scenery still and keeps the stars visible.
 
+The sun follows the home location configured in Home Assistant, including seasonal changes. In **Top down**, east is on the right and west is on the left. The sun’s angle changes the direction and length of the house and yard shadows. Clouds soften the sunlight and water reflections. To see the lighting at any time, choose **Dawn**, **Sunrise**, **Sunset**, or **Dusk** in Studio’s weather preview. Choose **Match dashboard** to return to live lighting. [Home Assistant Sun integration](https://www.home-assistant.io/integrations/sun/)
+
 ### Restore a previous layout
 
 Sign in as a Home Assistant administrator and choose **Menu → Manage → Layout snapshots**. Select a saved date and choose **Restore layout**. Roomcraft reloads Home with the restored design and keeps the design you just replaced so you can switch back. Studio reads the same restored design the next time you open it or select **Import from dashboard**.

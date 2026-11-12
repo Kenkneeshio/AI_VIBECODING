@@ -1,7 +1,6 @@
 import * as THREE from 'three';
+import {storybookSolar} from './storybook-solar.mjs';
 
-const OVERCAST = new Set(['cloudy', 'fog', 'hail', 'lightning', 'lightning-rainy',
-  'pouring', 'rainy', 'snowy', 'snowy-rainy', 'windy-variant']);
 const LIGHTS = 3;
 const LIGHT_PALETTES = {
   night: ['#a8b8f5', '#5b536e', '#a7b8ed', '#97a5c5', '#343951'],
@@ -10,7 +9,12 @@ const LIGHT_PALETTES = {
 };
 const DAYLIGHT_COLORS = Object.fromEntries(Object.entries(LIGHT_PALETTES)
   .map(([kind, colors]) => [kind, colors.map(color => new THREE.Color(color))]));
-const LOW_SUN_COLOR = new THREE.Color('#ffc38b');
+const LOW_SUN_COLORS = {
+  sunrise: ['#f6bfc2', '#947b96', '#ffd29d', '#f0c7b7', '#767d9c'],
+  sunset: ['#f1ad90', '#8d647a', '#ffaf71', '#eab290', '#80677f'],
+};
+const HORIZON_COLORS = Object.fromEntries(Object.entries(LOW_SUN_COLORS)
+  .map(([kind, colors]) => [kind, colors.map(color => new THREE.Color(color))]));
 const {clamp, lerp, smoothstep} = THREE.MathUtils;
 
 export function createStorybookLighting(renderer, scene, bounds) {
@@ -44,9 +48,11 @@ export function createStorybookLighting(renderer, scene, bounds) {
 
   const candidates = [];
   let previousEnvironment;
+  let previousDirection;
   let previousStates;
   let drawShadow = true;
   const rgb = new THREE.Color();
+  const dayColor = new THREE.Color();
 
   function markStructure() {
     for (const node of scene.children) {
@@ -70,26 +76,39 @@ export function createStorybookLighting(renderer, scene, bounds) {
   }
 
   function update(environment, states, ground, placementChanged = false) {
-    const night = environment.night === true;
-    const overcast = OVERCAST.has(environment.condition);
-    const elevation = Number.isFinite(environment.sunElevation)
-      ? Math.round(environment.sunElevation * 2) / 2 : night ? -12 : 35;
-    const daylight = smoothstep(elevation, -8, 19);
-    const profile = `${overcast}:${clamp(elevation, -8, 35)}`;
+    const {elevation, azimuth, rising, daylight, twilight, lowSun, cloud} = environment.solar ?? storybookSolar(environment);
+    const dayElevation = clamp(elevation, -12, 35);
+    const profile = `${rising}:${Math.round(dayElevation * 4)}:${Math.round(cloud * 32)}`;
+    const direct = smoothstep(elevation, -.85, 9);
     if (profile !== previousEnvironment) {
-      const dayColors = DAYLIGHT_COLORS[overcast ? 'overcast' : 'clear'];
       const surfaces = [sky.color, sky.groundColor, key.color, ground.color, scene.background];
+      const horizon = HORIZON_COLORS[rising ? 'sunrise' : 'sunset'];
       for (const [index, color] of surfaces.entries()) {
-        color.lerpColors(DAYLIGHT_COLORS.night[index], dayColors[index], daylight);
+        dayColor.lerpColors(DAYLIGHT_COLORS.clear[index], DAYLIGHT_COLORS.overcast[index], cloud);
+        color.lerpColors(DAYLIGHT_COLORS.night[index], dayColor, daylight);
+        const warmth = index === 2 ? lowSun * .76 : twilight * (index === 4 ? .55 : .43);
+        color.lerp(horizon[index], warmth * (1 - cloud * .73));
       }
-      const lowSun = daylight * (1 - smoothstep(elevation, 8, 34));
-      if (!overcast) key.color.lerp(LOW_SUN_COLOR, lowSun * .8);
-      sky.intensity = lerp(.75, overcast ? 1.33 : 1.12, daylight);
-      key.intensity = lerp(.28, overcast ? .86 : 2.14, daylight);
-      fill.intensity = lerp(.12, .23, daylight);
-      key.shadow.intensity = lerp(.65, overcast ? .39 : .84, daylight);
+      sky.intensity = lerp(.63, 1.13 + cloud * .17, daylight) + twilight * .17;
+      key.intensity = .23 + direct * lerp(1.91, .48, cloud) * lerp(.46, 1, daylight);
+      fill.intensity = lerp(.17, .23, daylight) + twilight * .08;
+      key.shadow.intensity = direct * lerp(.83, .21, cloud);
       previousEnvironment = profile;
       previousStates = undefined;
+    }
+    // Quantized direction avoids rebuilding the shadow texture on animation frames
+    // where the sun is effectively stationary. Low angles are bounded for the miniature.
+    const bearing = Math.round(azimuth / 2) * 2;
+    const altitude = Math.max(10, Math.round(elevation));
+    const direction = `${bearing}:${altitude}`;
+    if (direct > 0 && direction !== previousDirection) {
+      const heading = THREE.MathUtils.degToRad(bearing);
+      const angle = THREE.MathUtils.degToRad(altitude);
+      const horizontal = Math.cos(angle) * 1600;
+      key.position.set(x + Math.sin(heading) * horizontal, Math.sin(angle) * 1600,
+        z - Math.cos(heading) * horizontal);
+      previousDirection = direction;
+      drawShadow = true;
     }
     if (previousStates !== states || placementChanged) {
       const lit = candidates.flatMap(({item, object}) => {
@@ -117,7 +136,7 @@ export function createStorybookLighting(renderer, scene, bounds) {
       }
       previousStates = states;
     }
-    if (drawShadow) {
+    if ((drawShadow || placementChanged) && direct > 0) {
       renderer.shadowMap.needsUpdate = true;
       drawShadow = false;
     }

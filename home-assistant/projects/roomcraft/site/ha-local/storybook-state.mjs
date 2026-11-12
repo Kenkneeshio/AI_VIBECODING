@@ -118,6 +118,8 @@ export function storybookFrame(model, snapshot = {}, now = 0, timeZone) {
     windSpeed: windSpeed(weatherAttributes.wind_speed, weatherAttributes.wind_speed_unit),
     windBearing: bearing(weatherAttributes.wind_bearing),
   };
+  if (Number.isFinite(weatherAttributes.cloud_coverage) && weatherAttributes.cloud_coverage >= 0 &&
+      weatherAttributes.cloud_coverage <= 100) environment.cloudCoverage = weatherAttributes.cloud_coverage;
   const {activity, nextHour} = beachClock(now, timeZone, environment.night);
   environment.beachActivity = activity;
   if (environment.daylightKnown) {

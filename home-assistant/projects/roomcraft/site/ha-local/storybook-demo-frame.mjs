@@ -10,7 +10,7 @@ const SEARCH_OFFSETS = Array.from({length: 17}, (_, y) =>
   .flat().sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y));
 
 const DAY = {night: false, daylightKnown: true, condition: 'partlycloudy', sunElevation: 31};
-const GOLDEN_HOUR = {...DAY, condition: 'sunny', sunElevation: 13, sunRising: false};
+const GOLDEN_HOUR = {...DAY, condition: 'sunny', sunElevation: 13, sunAzimuth: 253, sunRising: false};
 const MOON = {...DAY, night: true, condition: 'clear-night', moonPhase: 'full_moon', sunElevation: -16};
 const WEATHER_CONDITIONS = [
   ['sunny', 'Sun and high cirrus clouds', 2, 80],
@@ -161,7 +161,11 @@ function demoEnvironment(beat, time) {
   if (beat === 'weather') return sampleDemoWeather(time);
   if (beat === 'traffic') return {...GOLDEN_HOUR,
     traffic: time < 1250 ? {severity: 'clear', speedFactor: 1} : {severity: 'heavy', speedFactor: .32}};
-  if (beat === 'finale') return {...GOLDEN_HOUR, traffic: {severity: 'slow', speedFactor: .55}};
+  if (beat === 'finale') {
+    const sunElevation = 8 - 14 * Math.min(1, time / 2000);
+    return {...GOLDEN_HOUR, sunElevation, night: sunElevation < -.83,
+      traffic: {severity: 'slow', speedFactor: .55}};
+  }
   return {...DAY};
 }
 
@@ -170,9 +174,11 @@ export function sampleDemoWeather(time) {
   if (elapsed < MOON_START_MS) {
     const [condition, weatherCaption, windSpeed, windBearing] = WEATHER_CONDITIONS[Math.floor(elapsed / CONDITION_MS)];
     const skyProgress = Math.min(1, elapsed / 2400);
-    return {...DAY, condition, weatherCaption, windSpeed, windBearing, skyProgress,
+    const sunElevation = -2 + 55 * Math.sin(skyProgress * Math.PI / 2);
+    return {...DAY, condition, weatherCaption, windSpeed, windBearing, skyProgress, sunElevation,
+      night: sunElevation < -.83, sunAzimuth: 98 + skyProgress * 66, sunRising: true,
       beachActivity: elapsed < CONDITION_MS ? 'morning' : 'day',
-      skyTimeSeconds: elapsed / 1000, sunElevation: 9 + 44 * Math.sin(skyProgress * Math.PI)};
+      skyTimeSeconds: elapsed / 1000};
   }
   const nightTime = elapsed - MOON_START_MS;
   const index = Math.min(MOON_PHASES.length - 1, Math.floor(nightTime / PHASE_MS));

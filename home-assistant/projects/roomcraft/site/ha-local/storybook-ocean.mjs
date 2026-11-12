@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {storybookSolar} from './storybook-solar.mjs';
 
 const OVERCAST = new Set(['cloudy', 'fog', 'hail', 'lightning', 'lightning-rainy',
   'pouring', 'rainy', 'snowy', 'snowy-rainy', 'windy-variant']);
@@ -16,8 +17,13 @@ const PALETTES = Object.fromEntries(Object.entries({
   clear: ['#b7c8a9', '#79c6b9', '#32768c', '#e5f4ea', '#dcf1ec', '#fff1bd'],
   overcast: ['#a5b9a9', '#76aca8', '#456e7f', '#d0e4df', '#b5ced0', '#ffe4b0'],
   night: ['#415b66', '#2b6678', '#16354d', '#91b7bf', '#68899f', '#e4f0f5'],
+  sunrise: ['#a9aa9e', '#71aaa8', '#536f9b', '#d9dce8', '#e5b7bc', '#ffe0ae'],
+  sunset: ['#b3a08f', '#7296a1', '#635879', '#f0cbc4', '#d39a9b', '#ffae80'],
 }).map(([kind, colors]) => [kind, colors.map(color => new THREE.Color(color))]));
-const LOW_SUN = new THREE.Color('#ffd59e');
+const SOLAR_BANDS = {
+  sunrise: ['#efad92', '#8baac6'].map(shade => new THREE.Color(shade)),
+  sunset: ['#e58968', '#907fa6'].map(shade => new THREE.Color(shade)),
+};
 const COLOR_UNIFORMS = ['shoreTint', 'shallowTint', 'deepTint', 'foamTint', 'cloudTint', 'bodyTint'];
 const {clamp, smoothstep} = THREE.MathUtils;
 
@@ -60,15 +66,19 @@ const fragmentShader = `
   uniform float roughness;
   uniform float cloudCover;
   uniform float bodyVisibility;
+  uniform float solarBand;
   uniform float moon;
   uniform vec2 moonLight;
   uniform vec2 bodyPosition;
+  uniform vec2 solarPosition;
   uniform vec3 shoreTint;
   uniform vec3 shallowTint;
   uniform vec3 deepTint;
   uniform vec3 foamTint;
   uniform vec3 cloudTint;
   uniform vec3 bodyTint;
+  uniform vec3 solarWarmTint;
+  uniform vec3 solarCoolTint;
 
   float softEllipse(vec2 point, vec2 center, vec2 radius, float softness) {
     vec2 delta = (point - center) / radius;
@@ -100,19 +110,33 @@ const fragmentShader = `
 
     // The artistically reflected sky follows the water and shifts as the camera orbits.
     if (offshore < 700.0 && abs(coastPoint.x) < 800.0) {
+      float reflectionEdge = (1.0 - smoothstep(550.0, 785.0, abs(coastPoint.x)))
+        * (1.0 - smoothstep(540.0, 685.0, offshore));
       vec2 rippleOffset = vec2(rippleA * 4.5, rippleB * 3.8) * roughness;
       vec2 mirror = coastPoint + rippleOffset + vec2(toCamera.x, -toCamera.z) * 18.0;
+      // The twilight band follows the local bearing even when the sun's disc is below the horizon.
+      if (solarBand > 0.0) {
+        float along = mirror.y - solarPosition.y;
+        float spread = mix(62.0, 168.0, smoothstep(-35.0, 145.0, along));
+        float sunward = mirror.x - solarPosition.x - clamp(along, -45.0, 165.0) * solarPosition.x * 0.0021;
+        float falloff = (1.0 - smoothstep(42.0, 270.0, abs(along))) * reflectionEdge;
+        float ribbon = exp(-1.82 * (sunward / spread) * (sunward / spread));
+        float coolEdge = smoothstep(36.0, 260.0, abs(sunward));
+        color = mix(color, solarCoolTint, solarBand * falloff * coolEdge * (0.14 + depth * 0.14));
+        color = mix(color, solarWarmTint, solarBand * falloff * ribbon * (0.24 + waveLight * 0.25));
+      }
       float drift = sin(waterTime * 0.064) * 26.0 + reflectedWind;
       float nearCloud = cloud(mirror, vec2(-186.0 + drift, 49.0), 1.32);
       float farCloud = cloud(mirror, vec2(182.0 + drift * 0.74, 69.0), 1.18);
       float bank = softEllipse(mirror, vec2(drift, 72.0), vec2(372.0, 62.0), 0.86);
       float clouds = max(max(nearCloud, farCloud * 0.9) * cloudCover, bank * max(0.0, cloudCover - 0.5));
-      color = mix(color, cloudTint, clouds * (0.66 + slant * 0.12));
+      color = mix(color, cloudTint, clouds * reflectionEdge * (0.66 + slant * 0.12));
 
       if (bodyVisibility > 0.0) {
         vec2 bodyDistance = mirror - bodyPosition;
         if (abs(bodyDistance.x) < 126.0 && abs(bodyDistance.y) < 73.0) {
-          vec2 disc = bodyDistance / vec2(33.0, 14.0 + slant * 5.0);
+          float lowSolar = solarBand * (1.0 - moon);
+          vec2 disc = bodyDistance / vec2(33.0 + lowSolar * 6.0, 14.0 + slant * 5.0 - lowSolar * 2.5);
           float discRadius = dot(disc, disc);
           float hemisphere = sqrt(max(0.0, 1.0 - discRadius));
           float terminator = disc.x * moonLight.x + hemisphere * moonLight.y;
@@ -123,7 +147,7 @@ const fragmentShader = `
 
           // Shallow, staggered crests scatter the reflection along a tapered path toward shore.
           float towardShore = -bodyDistance.y;
-          float pathWidth = mix(24.0, 55.0 + slant * 12.0, smoothstep(0.0, 38.0, towardShore));
+          float pathWidth = mix(24.0, 55.0 + slant * 12.0 + lowSolar * 8.0, smoothstep(0.0, 38.0, towardShore));
           float pathX = bodyDistance.x - towardShore * toCamera.x * 0.32 + rippleB * 6.4;
           float path = (1.0 - smoothstep(0.05, 1.0, abs(pathX) / pathWidth))
             * smoothstep(-14.0, 2.0, towardShore) * (1.0 - smoothstep(26.0, 61.0, towardShore))
@@ -167,9 +191,13 @@ export function createStorybookOcean({y, farZ, shoreline, focusX}) {
     roughness: {value: 1},
     cloudCover: {value: 0.24},
     bodyVisibility: {value: 0},
+    solarBand: {value: 0},
     moon: {value: 0},
     moonLight: {value: new THREE.Vector2(0, 1)},
     bodyPosition: {value: new THREE.Vector2()},
+    solarPosition: {value: new THREE.Vector2()},
+    solarWarmTint: {value: SOLAR_BANDS.sunrise[0]},
+    solarCoolTint: {value: SOLAR_BANDS.sunrise[1]},
   };
   for (const [index, name] of COLOR_UNIFORMS.entries()) {
     uniforms[name] = {value: PALETTES.clear[index].clone()};
@@ -180,22 +208,25 @@ export function createStorybookOcean({y, farZ, shoreline, focusX}) {
   mesh.position.set(focusX, y, farZ);
 
   function update(timeSeconds, environment = {}) {
-    const {night, daylightKnown, condition, moonPhase, sunElevation, sunRising,
-      sunAzimuth, moonAzimuth, moonElevation, skyProgress, windSpeed, windBearing, reduceMotion, reflections = true} = environment;
+    const {night, daylightKnown, condition, moonPhase, moonAzimuth, moonElevation,
+      skyProgress, windSpeed, windBearing, reduceMotion, reflections = true} = environment;
+    const solar = environment.solar ?? storybookSolar(environment);
     const overcast = OVERCAST.has(condition);
-    const altitude = Number.isFinite(sunElevation) ? sunElevation : night ? -19 : 42;
-    const sunlight = smoothstep(altitude, -8, 17);
     const dayPalette = PALETTES[overcast ? 'overcast' : 'clear'];
+    const transition = solar.phase === 'sunset' || solar.rising === false ? 'sunset' : 'sunrise';
+    const lowLight = Math.max(solar.twilight, solar.lowSun);
     for (const [index, name] of COLOR_UNIFORMS.entries()) {
-      uniforms[name].value.lerpColors(PALETTES.night[index], dayPalette[index], sunlight);
+      uniforms[name].value.lerpColors(PALETTES.night[index], dayPalette[index], solar.daylight)
+        .lerp(PALETTES[transition][index], lowLight * (overcast ? .24 : .46));
     }
     const phaseAngle = Object.hasOwn(MOON_ANGLES, moonPhase) ? MOON_ANGLES[moonPhase] : undefined;
-    const sunVisible = daylightKnown ? !night : condition === 'sunny';
-    const moonVisible = night && phaseAngle !== undefined;
-    const elevation = clamp(altitude / 75, 0, 1);
-    const lowSun = sunlight * (1 - smoothstep(altitude, 8, 34));
-    if (sunVisible) uniforms.bodyTint.value.lerp(LOW_SUN, lowSun * 0.7);
-    if (moonVisible) uniforms.bodyTint.value.copy(PALETTES.night[5]);
+    const sunKnown = daylightKnown || Number.isFinite(environment.sunElevation) || condition === 'sunny';
+    const sunOpacity = sunKnown ? solar.disc * (.97 - solar.cloud * .42) : 0;
+    const moonOpacity = (night || solar.phase === 'night') && phaseAngle !== undefined
+      ? .93 * (1 - smoothstep(solar.elevation, -12, -3)) : 0;
+    const showMoon = moonOpacity > sunOpacity;
+    if (showMoon) uniforms.bodyTint.value.copy(PALETTES.night[5]);
+    else uniforms.bodyTint.value.lerp(PALETTES[transition][5], lowLight * .52);
     const raining = RAIN.has(condition);
     const time = Number.isFinite(timeSeconds) && !reduceMotion ? timeSeconds : 0;
     uniforms.waterTime.value = time;
@@ -207,20 +238,21 @@ export function createStorybookOcean({y, farZ, shoreline, focusX}) {
     const choppy = raining || condition === 'windy' || condition === 'windy-variant';
     uniforms.roughness.value = 1 + Math.max(choppy ? .65 : 0, breeze * .65);
     uniforms.cloudCover.value = !reflections ? 0 : overcast ? 0.94 : condition === 'partlycloudy' ? 0.64 : night ? 0.32 : 0.24;
-    uniforms.bodyVisibility.value = !reflections || overcast ? 0 : moonVisible ? 0.93 : sunVisible ? 0.97 : 0;
-    uniforms.moon.value = moonVisible ? 1 : 0;
+    uniforms.bodyVisibility.value = !reflections || overcast ? 0 : Math.max(moonOpacity, sunOpacity);
+    uniforms.solarBand.value = reflections && sunKnown ? lowLight * (overcast ? .30 : 1 - solar.cloud * .48) : 0;
+    [uniforms.solarWarmTint.value, uniforms.solarCoolTint.value] = SOLAR_BANDS[transition];
+    uniforms.moon.value = showMoon ? 1 : 0;
+    uniforms.solarPosition.value.set(solar.east * 154, 38 + clamp(solar.elevation / 75, 0, 1) * 20);
     const progress = Number.isFinite(skyProgress) ? clamp(skyProgress, 0, 1) : undefined;
     const arc = progress === undefined ? undefined : THREE.MathUtils.lerp(-145, 145, progress);
-    const azimuthX = value => clamp((value - 180) * 1.08, -180, 180);
-    if (moonVisible) {
+    if (showMoon) {
       uniforms.moonLight.value.set(Math.sin(phaseAngle), Math.cos(phaseAngle));
-      const x = arc ?? (Number.isFinite(moonAzimuth) ? azimuthX(moonAzimuth) : 46 + Math.sin(time * .014) * 27);
+      const x = arc ?? (Number.isFinite(moonAzimuth) ? clamp((moonAzimuth - 180) * 1.08, -180, 180)
+        : 46 + Math.sin(time * .014) * 27);
       const y = Number.isFinite(moonElevation) ? 32 + clamp(moonElevation / 75, 0, 1) * 24 : 42;
       uniforms.bodyPosition.value.set(x, y);
     } else {
-      const sunSide = sunRising === true ? -107 : sunRising === false ? 118 : -31;
-      const x = arc ?? (Number.isFinite(sunAzimuth) ? azimuthX(sunAzimuth) : sunSide * (1 - elevation));
-      uniforms.bodyPosition.value.set(x, 38 + elevation * 20);
+      uniforms.bodyPosition.value.copy(uniforms.solarPosition.value);
     }
   }
 

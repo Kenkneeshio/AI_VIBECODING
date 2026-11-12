@@ -80,6 +80,11 @@ test('weather and traffic cues work without any linked sensors or placed models'
     'snowy', 'snowy-rainy', 'exceptional']);
   assert.deepEqual(day.slice(4, 6).map(({windBearing}) => windBearing), [270, 90]);
   assert.ok(weather(1200).sunElevation > weather(0).sunElevation);
+  assert.ok(weather(0).night && weather(0).sunRising);
+  assert.ok(!weather(600).night && weather(600).sunAzimuth < 180);
+  const finish = beatTimeMs => empty.sampleFrame({beat: 'finale', beatTimeMs}).environment;
+  assert.ok(!finish(0).night && !finish(0).sunRising);
+  assert.ok(finish(1900).night && finish(1900).sunAzimuth > 180);
   const night = Array.from({length: 8}, (_, index) => weather(11200 + index * 600));
   assert.ok(night.every(({condition, night}) => condition === 'clear-night' && night));
   assert.deepEqual(night.map(({moonPhase}) => moonPhase), ['new_moon', 'waxing_crescent', 'first_quarter',

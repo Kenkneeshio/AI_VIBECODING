@@ -1,5 +1,10 @@
 # Changelog
 
+## Sunrise and sunset at home
+
+- Home uses Home Assistant's live solar elevation and compass bearing to light the miniature. Low sunlight casts directional shadows, sunrise gives the sky and water a cooler glow, and sunset warms the horizon and reflections before fading into night.
+- Studio can match the live dashboard or preview Dawn, Sunrise, Sunset and Dusk. Cloud cover softens direct sun, and reduced motion skips the short fade between solar readings.
+
 ## A beach that changes through the day
 
 - Morning surfers ride the breakers. Daytime keeps beach play and evening brings glowing bonfires. The beach and sidewalks clear at 11 p.m., and surfers return after sunrise and 5 a.m. Home and 3D Studio share the schedule.

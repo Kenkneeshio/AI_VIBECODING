@@ -1,5 +1,7 @@
 # Roomcraft engineering handoff
 
+`storybook-solar.mjs` maps Home Assistant's solar elevation and bearing to the north-up world, horizon phase, lighting strength, and cloud cover. The sky and shared 3D scene use that contract. `storybook-lighting.mjs` caches its shadow map by quantized solar direction. `storybook-ocean.mjs` shades the water from the same direction and follows the scene's reflections setting. The fade is skipped in reduced motion and the elapsed-clock demo. No layout migration is required. Roll back by rebuilding and reinstalling `3b345fc711b0e8ad77326339de09b5076f2bc2fc` or restoring private Studio version 80. See the [deployment recovery guide](deployment.md).
+
 `storybook-state.mjs` derives the beach period from live sun and the Home Assistant time zone. Native Studio and the private Site call the same preview contract. `storybook-scene.mjs` passes the period and motion preference to the beach, sidewalk and boat layers. `storybook-coastal-sky.mjs` owns the illustrated stars, constellations and meteor timing. `storybook-vehicles.mjs` owns the road catalog and `storybook-traffic.mjs` places the mixed fleet in existing lanes. These changes require no layout migration or new Home Assistant entities.
 
 For a software rollback, rebuild and reinstall the preceding Roomcraft source at `d58ccd156598b549a401f98d82ae0104b3d70b5f` or restore private Studio version 78. Use the [deployment recovery guide](deployment.md) for resource and dashboard backup recovery.
