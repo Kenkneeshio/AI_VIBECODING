@@ -1076,8 +1076,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     Math.abs(point.x - water.focusX) < Math.abs(closest.x - water.focusX) ? point : closest);
   const sceneryFocus = {
     road: {x: road.centerX, y: road.surfaceY + 8, z: (road.lanes[0] + road.lanes[1]) / 2},
-    coast: {x: (coastalFrames.waterfront.minX + coastalFrames.waterfront.maxX) / 2,
-      y: water.y + 9, z: shoreCenter.z - 20},
+    coast: {x: water.cove.x, y: water.y + 9, z: water.cove.z - 20},
     beach: {x: water.focusX, y: water.y + 8, z: shoreCenter.z + 37},
   };
   buildYard(batch, plan, street, treeWind);

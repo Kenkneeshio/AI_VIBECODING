@@ -1,5 +1,10 @@
 # Changelog
 
+## Refine the La Jolla shoreline
+
+- The Cove sits to the left of the Shores in the overhead view. The two coastal camera presets and the demo follow the updated landmarks.
+- The headlands taper into the beach, the park edges meet the sand and sidewalk, and the surf follows the bends in the shoreline.
+
 ## Rebuild the La Jolla waterfront
 
 - Rebuilt the coastline with connected sandstone headlands, coastal scrub, a landscaped La Vereda promenade, and a longer Scripps Pier.

@@ -40,11 +40,14 @@ test('Scripps Pier has a diagonal raised deck and repeats its deterministic supp
   const deck = landmarks.boxes.find(([w,h,d,,,,,angle]) => w > 12 && h < 2 && d > 110 && angle);
   assert.ok(deck);
   const [, , length, , x, y, z, angle] = deck;
-  assert.ok(Math.abs(Math.sin(angle)) > .5);
+  assert.ok(Math.sin(angle) > .5);
+  const landX = x + Math.sin(angle) * length / 2;
+  const farX = x - Math.sin(angle) * length / 2;
   const landSide = z + Math.cos(angle) * length / 2;
   const farSide = z - Math.cos(angle) * length / 2;
-  const shore = site.shoreZ(x - site.focusX);
-  assert.ok(y > site.groundY + 12 && landSide > shore && farSide < shore - 65);
+  assert.ok(landX > farX && farX > site.focusX);
+  assert.ok(y > site.groundY + 12 && landSide > site.shoreZ(landX - site.focusX) &&
+    farSide < site.shoreZ(farX - site.focusX) - 65);
   const piers = landmarks.meshes.filter(({min,max,vertices}) => vertices === 24 &&
     max[1] - min[1] > 15 && min[1] < site.groundY && max[2] < site.farZ - 75);
   assert.equal(piers.length, 24);
@@ -54,6 +57,7 @@ test('Kellogg Park adds a curved lawn, mature trees and bounded static batches',
   const landmarks = collectLandmarks(site);
   const lawn = landmarks.meshes.find(mesh => mesh.colored);
   assert.ok(lawn && lawn.upward && lawn.vertices > 200 && lawn.max[2] - lawn.min[2] > 52);
+  assert.ok(lawn.min[0] > site.focusX && lawn.max[2] >= site.farZ - 2);
   assert.equal(landmarks.materials.get(lawn.color).vertexColors, true);
   assert.ok(landmarks.meshes.filter(({max}) => max[1] > site.groundY + 57).length > 12);
   assert.ok(landmarks.colors.size < 32);

@@ -30,27 +30,38 @@ const {clamp, smoothstep} = THREE.MathUtils;
 function oceanGeometry({shoreline, farZ, focusX}) {
   const position = [];
   const coordinates = [];
+  const scales = [];
   const index = [];
   for (const [i, {x, z}] of shoreline.entries()) {
+    const before = shoreline[Math.max(i - 1, 0)];
+    const after = shoreline[Math.min(i + 1, shoreline.length - 1)];
+    const dx = after.x - before.x;
+    const dz = after.z - before.z;
+    const scale = dx === 0 ? 1 : Math.abs(dx) / Math.hypot(dx, dz);
     const next = i * 2;
     position.push(x - focusX, 0, z - farZ, x - focusX, 0, 0);
     coordinates.push(x - focusX, 0, x - focusX, z - farZ);
+    scales.push(scale, scale);
     if (next > 0) index.push(next - 2, next, next - 1, next, next + 1, next - 1);
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(position, 3));
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(coordinates, 2));
+  geometry.setAttribute('shoreNormalScale', new THREE.Float32BufferAttribute(scales, 1));
   geometry.setIndex(index);
   return geometry;
 }
 
 const vertexShader = `
+  attribute float shoreNormalScale;
+  varying float shoreScale;
   varying vec2 coastPoint;
   varying vec3 surfacePoint;
   #include <fog_pars_vertex>
 
   void main() {
     coastPoint = uv;
+    shoreScale = shoreNormalScale;
     vec4 worldPoint = modelMatrix * vec4(position, 1.0);
     surfacePoint = worldPoint.xyz;
     vec4 mvPosition = viewMatrix * worldPoint;
@@ -60,6 +71,7 @@ const vertexShader = `
 `;
 
 const fragmentShader = `
+  varying float shoreScale;
   varying vec2 coastPoint;
   varying vec3 surfacePoint;
   uniform float waterTime;
@@ -118,6 +130,8 @@ const fragmentShader = `
 
   void main() {
     float offshore = coastPoint.y;
+    // Use approximate normal distance for a consistent wash width on slanted cove flanks.
+    float shoreDistance = offshore * mix(shoreScale, 1.0, smoothstep(22.0, 124.0, offshore));
     // Wind waves cross the bay in world space. Only the break bends with the shore.
     vec2 sea = surfacePoint.xz * vec2(1.0, -1.0);
     float windTime = waterTime * mix(0.88, 1.16, roughness - 1.0);
@@ -141,7 +155,9 @@ const fragmentShader = `
     }
     float depth = smoothstep(17.0, 325.0, offshore + (basin - 0.5) * 42.0);
     vec3 color = mix(shallowTint, deepTint, depth);
-    color = mix(color, shoreTint, 1.0 - smoothstep(0.0, 24.0 + basin * 13.0, offshore));
+    float shorelineTint = (1.0 - smoothstep(0.0, 20.0 + basin * 12.0, shoreDistance)) * (0.60 + basin * 0.30);
+    color = mix(color, shoreTint, shorelineTint);
+    color *= 0.93 + 0.07 * smoothstep(0.0, 14.0, shoreDistance);
     // Green-blue pockets in the shallows suggest reef and kelp under moving water.
     float seabed = smoothstep(0.56, 0.91, basin + crossSwell * 0.075)
       * smoothstep(8.0, 26.0, offshore) * (1.0 - smoothstep(95.0, 252.0, offshore));
@@ -206,22 +222,23 @@ const fragmentShader = `
       }
     }
 
-    if (offshore < 94.0) {
+    if (shoreDistance < 94.0) {
       float shoreTurn = sin(coastPoint.x * 0.026 + 0.6 * swell) * 2.8
         + sin(coastPoint.x * 0.082 + windTime * 0.34) * 1.32;
       // The top of the crest brightens first; the foam thins and fragments behind it.
-      float passage = (offshore + shoreTurn + (basin - 0.5) * 4.0) / 31.0 + windTime * 0.19;
+      float passage = (shoreDistance + shoreTurn + (basin - 0.5) * 4.0) / 31.0 + windTime * 0.19;
       float phase = fract(passage);
       float softEdge = clamp(fwidth(passage), 0.010, 0.055);
       float rim = crestProfile(phase, 0.018, softEdge);
       float trail = smoothstep(0.48, 0.81, phase) * (1.0 - smoothstep(0.79, 0.85, phase));
-      float breakers = (1.0 - smoothstep(24.0, 92.0, offshore)) * smoothstep(0.4, 7.0, offshore);
-      float breakPattern = waterNoise(vec2(sea.x * 0.087, offshore * 0.21) + vec2(windTime * 0.11, 0.0));
+      float breakers = (1.0 - smoothstep(24.0, 92.0, shoreDistance)) * smoothstep(0.4, 7.0, shoreDistance);
+      float breakPattern = waterNoise(vec2(sea.x * 0.087, shoreDistance * 0.21) + vec2(windTime * 0.11, 0.0));
       float scallop = smoothstep(0.36, 0.79, breakPattern + crossSwell * 0.18);
       float net = smoothstep(0.31, 0.70, breakPattern + rippleA * 0.17);
-      float swashEdge = 1.0 - smoothstep(0.35, 2.6 + basin * 2.4, offshore);
-      float swash = swashEdge * (0.06 + scallop * 0.41)
-        + (1.0 - smoothstep(2.0, 12.0, offshore)) * net * 0.12;
+      float washCenter = 2.15 + basin * 1.65 + rippleA * 0.85;
+      float swashEdge = 1.0 - smoothstep(0.35, 2.8, abs(shoreDistance - washCenter));
+      float swash = swashEdge * scallop * 0.34
+        + (1.0 - smoothstep(2.0, 12.0, shoreDistance)) * net * 0.085;
       color *= 1.0 - trail * breakers * 0.09;
       color = mix(color, foamTint, clamp(swash + breakers * (rim * (0.035 + scallop * 0.86) +
         trail * net * 0.27), 0.0, 0.96));

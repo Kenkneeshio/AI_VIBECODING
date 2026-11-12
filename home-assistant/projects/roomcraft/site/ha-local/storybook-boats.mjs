@@ -45,7 +45,8 @@ export function createStorybookBoatRoutes(water) {
   return RECIPES.map(recipe => {
     const radius = Math.min(recipe.radius, (right - left) / 5);
     const reach = radius + recipe.length;
-    const center = clamp(focusX + recipe.center, left + reach, right - reach);
+    const authored = water.boatCenters?.[recipe.id];
+    const center = clamp(focusX + (Number.isFinite(authored) ? authored : recipe.center), left + reach, right - reach);
     function point(angle) {
       const x = center + Math.cos(angle) * radius;
       const z = Math.max(farZ + 65, shoreAt(shoreline, x) - recipe.offshore - Math.sin(angle) * recipe.drift);

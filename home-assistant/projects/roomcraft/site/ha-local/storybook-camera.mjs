@@ -17,8 +17,8 @@ export const CAMERA_PRESETS = Object.freeze({
   east: cameraPreset('From east', 90, 42),
   south: cameraPreset('From south', 0, 42),
   west: cameraPreset('From west', 270, 42),
-  waterfront: cameraPreset('Waterfront · La Jolla Cove', 154, 50),
-  shores: cameraPreset('La Jolla Shores', 208, 49),
+  waterfront: cameraPreset('Waterfront · La Jolla Cove', 206, 50),
+  shores: cameraPreset('La Jolla Shores', 152, 49),
   free: cameraPreset('Free view', 0, 25),
 });
 

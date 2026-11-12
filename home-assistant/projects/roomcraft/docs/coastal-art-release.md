@@ -4,16 +4,20 @@ The wall dashboard should evoke La Jolla from its everyday overhead view. A gues
 
 | Customer outcome | Acceptance |
 | --- | --- |
-| Recognize La Jolla from the wall display | The overhead view shows the pier and the cove alongside the entire house. |
+| Recognize La Jolla from the wall display | The overhead view shows the Cove on the left and Shores and the pier on the right, above the entire house. |
 | See the coast in depth | The Cove shot faces exposed sandstone and planted headlands. The Shores shot frames the pier deck, pilings and landscaped promenade. House controls and camera tiles stay with the house views. |
 | Keep the water alive | Animated shore break, reflections and rainfall follow the camera and the current weather. Reduced motion, manual quality, and the Insane graphics recovery remain available. |
 | Maintain the release | Authored curves, seeded vegetation, camera bounds and verified artwork bytes can be reproduced and restored independently of the saved home. |
 
 `storybook-street.mjs` supplies the shoreline, sand grade, play sites and separate camera frames. `storybook-la-jolla-bluffs.mjs` owns the continuous bluff surface and plantings. `storybook-la-jolla-shores.mjs` owns Scripps Pier, the promenade and Kellogg Park. `storybook-ocean.mjs` maps surf to the shared coast and uses world-space wind swells offshore. `storybook-camera.mjs` fits the two seaward views independently.
 
-![Roomcraft's Cove camera shows the exposed sandstone headlands and pocket beach.](images/la-jolla-cove-v2.png)
+The two headlands share the beach's sampled height and color along their edges. Their rock, vegetation and slope fade into the same sand surface. The promenade connects to the sidewalk at both ends, and the surf width follows the shoreline through the Cove's bends.
 
-![Roomcraft's Shores camera shows the Scripps Pier pilings and La Vereda promenade.](images/la-jolla-shores-v2.png)
+![The overhead view has the Cove on the left and the pier on the right.](images/la-jolla-overhead-v3.png)
+
+![Roomcraft's Cove camera shows the sandstone headlands blending into the beach.](images/la-jolla-cove-v3.png)
+
+![Roomcraft's Shores camera shows the Scripps Pier pilings and La Vereda promenade.](images/la-jolla-shores-v3.png)
 
 ## Material provenance
 
@@ -25,7 +29,7 @@ Built-in ImageGen supplied `site/public/la-jolla-sandstone-v1.png`, a 1254 × 12
 
 The live renderer maps the texture onto exposed rock in world coordinates. The sand, surf, planted caps and shadows are rendered independently of the texture. The numbered filename keeps the old Home Assistant cache compatible with a rollback.
 
-## Verification and rollback
+## Initial art release verification and rollback
 
 - Runtime revision `1ddfbca03023821b3bd46479a4a4d8169d3ee98f` passed 477 JavaScript and 38 Python tests, TypeScript, lint with existing warnings, and the production build. The exact source manifest was `sha256:990a0ca4bb35c404408567b341adc52c42630c069990a49906010f6f5680f3cb`.
 - Chromium rendered overhead, Cove, and Shores with simulated daylight. Cove also rendered at night, in rain, and with Insane graphics. The signed-in Home Assistant check loaded the texture, switched to both coastal cameras, verified that their home controls were hidden, and confirmed the controls returned with Default. LAN and Nabu Casa served nine byte-identical release assets. The Home Assistant layout and projection matched the backup.

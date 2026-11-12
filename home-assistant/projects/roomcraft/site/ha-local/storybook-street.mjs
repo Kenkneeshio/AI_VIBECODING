@@ -8,7 +8,7 @@ const CURB_WIDTH = 4;
 const VERGE_WIDTH = 18;
 const BEACH_VIEW_DEPTH = 236;
 const SAND_MATERIAL = '#fffbec';
-const SHORE_LANDMARKS = Object.freeze({point: .145, cove: .29, eastBluff: .43});
+const SHORE_LANDMARKS = Object.freeze({point: -.145, cove: -.29, westBluff: -.43});
 
 export function storybookStreetBounds(plan) {
   const {minZ, maxZ} = plan.houseBounds;
@@ -101,8 +101,8 @@ function beachChair(batch, x, z, groundY, fabric, rotation) {
 
 function placeBeachSets(batch, centerX, farZ, span, groundY) {
   for (const [fraction, offsetZ, shade, trim, rotation] of [
-    [-.49, -82, '#b46350', '#f6e5bc', -.17],
-    [-.10, -88, '#548e8f', '#e8dfbf', .19],
+    [.49, -89, '#b46350', '#f6e5bc', .17],
+    [.108, -91, '#548e8f', '#e8dfbf', -.19],
     [SHORE_LANDMARKS.cove, -58, '#c69158', '#f5e8cc', .11],
   ]) {
     const x = centerX + fraction * span;
@@ -116,28 +116,28 @@ function placeBeachSets(batch, centerX, farZ, span, groundY) {
 
 function shoreProminence(fraction, center, radius) {
   const distance = Math.abs(fraction - center) / radius;
-  return distance >= 1 ? 0 : (.5 + .5 * Math.cos(distance * Math.PI));
+  return 1 - THREE.MathUtils.smootherstep(distance, 0, 1);
 }
 
 function shoreZ(farZ, offset, span) {
   const fraction = offset / span;
-  const broadShores = 21 * shoreProminence(fraction, -.46, .68);
+  const broadShores = 21 * shoreProminence(fraction, .46, .68);
   const point = 78 * shoreProminence(fraction, SHORE_LANDMARKS.point, .165);
   const cove = 37 * shoreProminence(fraction, SHORE_LANDMARKS.cove, .125);
-  const bluff = 61 * shoreProminence(fraction, SHORE_LANDMARKS.eastBluff, .18);
-  const irregularity = 4.1 * Math.sin((offset - 38) * .017) + 2.5 * Math.cos(offset * .033);
+  const bluff = 61 * shoreProminence(fraction, SHORE_LANDMARKS.westBluff, .18);
+  const irregularity = 4.1 * Math.sin((-offset - 38) * .017) + 2.5 * Math.cos(offset * .033);
   return farZ - 128 - broadShores - point + cove - bluff + irregularity;
 }
 
 function addTidalShelves(batch, {focusX, span, groundY, shoreZ: coast}) {
   const weathered = ['#aa8667', '#9d785b', '#b9946f'];
   const wet = '#86725d';
-  for (const [group, fraction] of [.087, .161, .213, .386, .465, .519].entries()) {
+  for (const [group, fraction] of [-.087, -.161, -.213, -.386, -.465, -.519].entries()) {
     for (let stone = 0; stone < 6; stone++) {
       const angle = stone * 2.39996 + group * .71;
       const reach = 3 + stone * 3.25;
       const offset = fraction * span + Math.cos(angle) * reach;
-      const depth = coast(offset) - 10.5 + Math.sin(angle) * reach * .57;
+      const depth = coast(offset) - 5.5 + Math.sin(angle) * reach * .48;
       const radius = 2.1 + (1 + Math.sin((group + 1) * (stone + 3) * 4.19)) * 2.3;
       const rise = .94 + radius * .14;
       const shelf = new THREE.IcosahedronGeometry(1, 0);
@@ -155,12 +155,20 @@ const SAND_PROFILE = [
   [-29, .14, 'wet'], [-4, .32, 'wet'], [4, .42, 'damp'], [11, .49, 'damp'],
   [23, .67, 'dry'], [34, .73, 'dry'], [48, .68, 'dry'], [64, .59, 'dry'], [null, .27, 'backshore'],
 ];
+const SAND_TINTS = Object.fromEntries(Object.entries({
+  wet:'#bb9976', damp:'#d8b994', dry:'#f2d7a7', backshore:'#d8b78a',
+}).map(([name, tint]) => [name, new THREE.Color(tint)]));
+
+function sandRowColor(x, row, result = new THREE.Color()) {
+  const striation = .97 + .022 * Math.sin(x * .023 + row * .64) + .017 * Math.sin(x * .054 - row);
+  return result.copy(SAND_TINTS[SAND_PROFILE[row][2]]).multiplyScalar(striation);
+}
 
 function sandProfileZ(shore, farZ, offset) {
   return offset === null ? farZ + .35 : Math.min(farZ - 1, shore + offset);
 }
 
-function sandHeight(shore, farZ, depth) {
+function sampleSand(x, shore, farZ, depth, groundY) {
   for (let row = 1; row < SAND_PROFILE.length; row++) {
     const [offset, height] = SAND_PROFILE[row];
     const next = sandProfileZ(shore, farZ, offset);
@@ -168,24 +176,19 @@ function sandHeight(shore, farZ, depth) {
     const [before, base] = SAND_PROFILE[row - 1];
     const prior = sandProfileZ(shore, farZ, before);
     const fraction = THREE.MathUtils.clamp((depth - prior) / Math.max(.001, next - prior), 0, 1);
-    return THREE.MathUtils.lerp(base, height, fraction);
+    return {height:groundY + THREE.MathUtils.lerp(base, height, fraction),
+      color:sandRowColor(x, row - 1).lerp(sandRowColor(x, row), fraction)};
   }
-  return SAND_PROFILE.at(-1)[1];
+  return {height:groundY + SAND_PROFILE.at(-1)[1], color:sandRowColor(x, SAND_PROFILE.length - 1)};
 }
 
 function sandSurface(batch, shoreline, farZ, groundY) {
-  const wet = new THREE.Color('#bb9976');
-  const damp = new THREE.Color('#d8b994');
-  const dry = new THREE.Color('#f2d7a7');
-  const backshore = new THREE.Color('#d8b78a');
-  const tints = {wet, damp, dry, backshore};
   const position = [], colors = [], faces = [], uv = [];
   const shade = new THREE.Color();
   for (const [index, {x, z}] of shoreline.entries()) {
-    for (const [row, [offset, y, tint]] of SAND_PROFILE.entries()) {
+    for (const [row, [offset, y]] of SAND_PROFILE.entries()) {
       const depth = sandProfileZ(z, farZ, offset);
-      const striation = .97 + .022 * Math.sin(x * .023 + row * .64) + .017 * Math.sin(x * .054 - row);
-      shade.copy(tints[tint]).multiplyScalar(striation);
+      sandRowColor(x, row, shade);
       position.push(x, groundY + y, depth);
       colors.push(shade.r, shade.g, shade.b);
       uv.push(x / 80, depth / 80);
@@ -244,7 +247,8 @@ export function buildStorybookNeighborhood(batch, {farZ}, groundY, {minX, maxX},
     const x = left + groundWidth * index / segments;
     return {x, z: edge(x - focusX)};
   });
-  const coast = {focusX, span, farZ, groundY, shoreZ:edge, sandstone};
+  const sandAt = (offset, z) => sampleSand(focusX + offset, edge(offset), farZ, z, groundY);
+  const coast = {focusX, span, farZ, groundY, shoreZ:edge, sandstone, sampleSand:sandAt};
   sandSurface(batch, shoreline, farZ, groundY);
   buildLaJollaShores(batch, coast);
   buildLaJollaBluffs(batch, coast);
@@ -253,16 +257,18 @@ export function buildStorybookNeighborhood(batch, {farZ}, groundY, {minX, maxX},
   return {
     water: {
       y: groundY + 1.05, farZ: farZ - 1850, shoreline, focusX,
-      playSites: {court: focusX - span * .64, castle: focusX - span * .042},
-      sandHeight: (x, z) => groundY + sandHeight(edge(x - focusX), farZ, z),
+      playSites: {court: focusX + span * .69, castle: focusX + span * .042},
+      cove: {x: focusX + span * SHORE_LANDMARKS.cove, z: edge(span * SHORE_LANDMARKS.cove)},
+      boatCenters: {cabin: span * .58},
+      sandHeight: (x, z) => sandAt(x - focusX, z).height,
     },
     coastalFrames: {
       waterfront: {
-        minX: focusX + span * .045, maxX: focusX + span * .54,
+        minX: focusX - span * .54, maxX: focusX - span * .045,
         minZ: farZ - 223, maxZ: farZ - 48, minY: groundY, maxY: groundY + 82,
       },
       shores: {
-        minX: focusX - span * .61, maxX: focusX - span * .068,
+        minX: focusX + span * .068, maxX: focusX + span * .65,
         minZ: farZ - 229, maxZ: farZ - 22, minY: groundY, maxY: groundY + 63,
       },
     },

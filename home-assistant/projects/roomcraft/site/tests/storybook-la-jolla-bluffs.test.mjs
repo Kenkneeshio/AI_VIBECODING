@@ -1,61 +1,83 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {Color, Vector3} from 'three';
 import {buildLaJollaBluffs} from '../ha-local/storybook-la-jolla-bluffs.mjs';
 
+const sandColor = new Color('#eac893');
 const options = {
   focusX:800,
   span:1000,
   farZ:-245,
   groundY:-111,
-  shoreZ:offset => -370 - 25 * Math.cos((offset - 130) / 120),
+  shoreZ:offset => -370 - 25 * Math.cos((offset + 130) / 120),
+  sampleSand: (offset, z) => ({height:-110.45 + offset * .001 + z * .003, color:sandColor}),
 };
 
 function captureBluffs() {
-  const bands = [], scrub = [];
+  const headlands = [], scrub = [];
   buildLaJollaBluffs({
-    add(geometry, color, x, y, z) {
-      if (x === 0 && y === 0 && z === 0 && geometry.attributes.stoneExposure) {
-        const positions = Array.from(geometry.attributes.position.array);
-        const {array:normals} = geometry.attributes.normal;
-        assert.ok(normals.every(Number.isFinite));
-        assert.equal(geometry.attributes.color.count, geometry.attributes.position.count);
-        bands.push({color, positions, exposure: Array.from(geometry.attributes.stoneExposure.array)});
+    add(geometry) {
+      if (geometry.attributes.stoneExposure) {
+        const attributes = Object.fromEntries(Object.entries(geometry.attributes)
+          .map(([name, attribute]) => [name, Array.from(attribute.array)]));
+        headlands.push({...attributes, index:Array.from(geometry.index.array)});
       }
       geometry.dispose();
     },
     box() {},
     ball(...shape) { scrub.push(shape); },
   }, options);
-  return {bands, scrub};
+  return {headlands, scrub};
 }
 
-function edge({positions}, inland = false) {
-  const vertices = [];
-  for (let i = inland ? 3 : 0; i < positions.length; i += 6) {
-    vertices.push(positions.slice(i, i + 3));
+function rows(positions) {
+  const grid = [[]];
+  for (let i = 0; i < positions.length; i += 3) {
+    if (i > 0 && positions[i] < positions[i - 3]) grid.push([]);
+    grid.at(-1).push(positions.slice(i, i + 3));
   }
-  return vertices;
+  return grid;
 }
 
-test('both headlands are deterministic, stitched landforms with open pocket beach between them', () => {
+const close = (actual, expected) => Math.abs(actual - expected) < .0001;
+
+test('the two indexed headlands stay left of the house with a pocket beach between them', () => {
   const built = captureBluffs();
   assert.deepEqual(captureBluffs(), built);
-  const toes = built.bands.reduce((found, band, index) =>
-    index === 0 || edge(band)[0][0] !== edge(built.bands[index - 1])[0][0] ? [...found, index] : found, []);
-  assert.equal(toes.length, 2);
-  assert.ok(edge(built.bands[toes[0]]).at(-1)[0] < edge(built.bands[toes[1]])[0][0]);
-
-  for (const [headland, start] of toes.entries()) {
-    const last = (toes[headland + 1] ?? built.bands.length) - 1;
-    assert.ok(last - start > 16);
-    assert.ok(built.bands[start].exposure.every(value => value === 1));
-    assert.ok(built.bands[last].exposure.every(value => value === 0));
-    for (let index = start; index < last; index++) {
-      assert.deepEqual(edge(built.bands[index], true), edge(built.bands[index + 1]));
-    }
-    const terrain = built.bands.slice(start, last + 1).flatMap(band => edge(band, true));
-    assert.ok(Math.max(...terrain.map(([, y]) => y)) > options.groundY + 40);
-    assert.ok(terrain.every(([, , z]) => z < options.farZ - 14));
+  assert.equal(built.headlands.length, 2);
+  const [west, east] = built.headlands.map(({position}) => rows(position)[0]);
+  assert.ok(west.at(-1)[0] < east[0][0]);
+  assert.ok(east.at(-1)[0] < options.focusX);
+  for (const headland of built.headlands) {
+    const grid = rows(headland.position);
+    const stride = grid[0].length;
+    assert.ok(grid.length > 20);
+    assert.ok(grid.every(row => row.length === stride));
+    assert.equal(headland.index.length, (grid.length - 1) * (stride - 1) * 6);
+    assert.ok(headland.normal.every(Number.isFinite));
+    assert.ok(Math.max(...grid.flat().map(([, y]) => y)) > options.groundY + 40);
+    assert.ok(grid.flat().every(([, , z]) => z < options.farZ - 14));
+    assert.ok(headland.stoneExposure.some(value => value > .95));
   }
   assert.ok(built.scrub.every(([, , , , , y]) => y > options.groundY));
+});
+
+test('all toes, sides, and landward skirts taper beneath the adjacent sand with its normals and tint', () => {
+  const expectedNormal = new Vector3(-.001, 1, -.003).normalize().toArray();
+  for (const headland of captureBluffs().headlands) {
+    const grid = rows(headland.position);
+    for (const [row, points] of grid.entries()) for (const [col, [x, y, z]] of points.entries()) {
+      if (row > 0 && row < grid.length - 1 && col > 0 && col < points.length - 1) continue;
+      const index = row * points.length + col;
+      assert.ok(close(options.sampleSand(x - options.focusX, z).height - y, .19));
+      assert.equal(headland.stoneExposure[index], 0);
+      assert.equal(headland.sandBlend[index], 1);
+      for (const [channel, value] of expectedNormal.entries()) {
+        assert.ok(close(headland.normal[index * 3 + channel], value));
+      }
+      for (const [channel, value] of sandColor.toArray().entries()) {
+        assert.ok(close(headland.color[index * 3 + channel], value));
+      }
+    }
+  }
 });

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 import {buildStorybookNeighborhood} from '../ha-local/storybook-street.mjs';
+import {createStorybookBoatRoutes} from '../ha-local/storybook-boats.mjs';
 import {createStorybookBeachPlay, planStorybookBeachPlay, sampleStorybookBeachPlay} from '../ha-local/storybook-beach-play.mjs';
 
 const street = {farZ:-254};
@@ -31,18 +32,21 @@ test('La Jolla shares the sculpted shore between the sand, water, and cinematic 
     const x = coast.water.focusX + fraction * (room.maxX - room.minX);
     return Math.abs(point.x - x) < Math.abs(nearest.x - x) ? point : nearest;
   }).z;
-  assert.ok(shoreAt(.29) > shoreAt(.145) + 50, 'the pocket retreats from Point La Jolla');
-  assert.ok(shoreAt(.29) > shoreAt(.43) + 50, 'sandstone headlands enclose the pocket');
-  assert.ok(Math.abs(shoreAt(-.36) - shoreAt(-.49)) < 10, 'Shores remains a broad gentle beach');
+  assert.ok(shoreAt(-.29) > shoreAt(-.145) + 50, 'the pocket retreats from Point La Jolla');
+  assert.ok(shoreAt(-.29) > shoreAt(-.43) + 50, 'sandstone headlands enclose the pocket');
+  assert.ok(Math.abs(shoreAt(.36) - shoreAt(.49)) < 10, 'Shores remains a broad gentle beach');
   assert.equal(coast.sand.vertices, coast.water.shoreline.length * 9);
   assert.equal(coast.sand.vertices, coast.sand.coloredVertices);
   assert.ok(coast.sandGrade.every(y => y > -111 && y < coast.water.y));
-  assert.ok(coast.coastalFrames.waterfront.minX > coast.coastalFrames.shores.maxX);
+  assert.ok(coast.water.cove.x < coast.water.focusX);
+  assert.ok(coast.coastalFrames.waterfront.maxX < coast.coastalFrames.shores.minX);
+  const cabin = createStorybookBoatRoutes(coast.water).find(route => route.id === 'cabin');
+  assert.ok(cabin.point(Math.PI).x > coast.water.focusX + (room.maxX - room.minX) * .335 + cabin.beam);
 });
 
 test('the authored shoreline gives the volleyball and sandcastle groups distinct dry-sand patches', () => {
   assert.ok(layout.court && layout.castle);
-  assert.ok(layout.court.x + layout.court.halfWidth < layout.castle.x - layout.castle.halfWidth);
+  assert.ok(Math.abs(layout.court.x - layout.castle.x) > layout.court.halfWidth + layout.castle.halfWidth);
   for (const area of Object.values(layout)) {
     assert.ok(area.z + area.halfDepth <= street.farZ - 39 + 1e-6);
     const nearest = water.shoreline.filter(({x}) => Math.abs(x - area.x) < area.halfWidth);
