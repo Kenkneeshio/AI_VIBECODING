@@ -129,6 +129,27 @@ test('the authored shoreline gives the volleyball and sandcastle groups distinct
   empty.dispose();
 });
 
+test('wide coast scenery extends beyond the actor routes and responds to landscape presets', () => {
+  const house = {minX:220, maxX:1450, minZ:210, maxZ:820};
+  const plan = {houseBounds:house, bounds:house, editableStructure:true};
+  const batch = {box() {}, ball() {}, add(geometry) { geometry.dispose(); }};
+  const standard = storybookStreetBounds(plan);
+  const terrain = {road:'straight', coast:'rugged', roadSetback:180, beachWidth:130};
+  const straight = storybookStreetBounds(plan, terrain);
+  assert.ok(straight.nearZ < standard.nearZ - 130);
+  const road = buildStorybookStreet(batch, straight, -111, 6200, 835, {renderWidth:16568});
+  assert.equal(road.width, 6200);
+  assert.equal(road.sample(45, straight.nearZ).z, straight.nearZ);
+  const {water:wide} = buildStorybookNeighborhood(batch, straight, -111, house, 6200, 835, {renderWidth:16568, terrain});
+  assert.equal(wide.shoreline.at(-1).x - wide.shoreline[0].x, 6200);
+  assert.equal(wide.renderShoreline.at(-1).x - wide.renderShoreline[0].x, 16568);
+  assert.ok(wide.renderFarZ < wide.farZ - 10000);
+  assert.ok(wide.renderShoreline.every(({z}) => z <= straight.farZ - 65));
+  const {water:narrow} = buildStorybookNeighborhood(batch, straight, -111, house, 6200, 835,
+    {terrain:{...terrain, beachWidth:70}});
+  assert.ok(wide.cove.z < narrow.cove.z - 50);
+});
+
 test('the ball crosses both sides above the net while the family works around its sandcastle', () => {
   const start = sampleStorybookBeachPlay(layout, 0);
   const crest = sampleStorybookBeachPlay(layout, 1.125);

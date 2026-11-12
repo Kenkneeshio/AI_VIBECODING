@@ -7,7 +7,7 @@ import { compileStorybookPlan } from '../ha-local/storybook-scene.mjs';
 
 const source = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
 const controlsSource = readFileSync(new URL('../public/object-controls.js', import.meta.url), 'utf8');
-const wallSources = ['wall-joins.js', 'reference-geometry.js', 'scene-settings.js'].map(name =>
+const editorEngineSources = ['wall-joins.js', 'reference-geometry.js', 'scene-settings.js', 'terrain.js'].map(name =>
   readFileSync(new URL(`../public/engine/${name}`, import.meta.url), 'utf8'));
 const storageKey = 'roomcraft.second-floor.v2';
 const crop = { x: 0, y: 80, width: 1536, height: 864 };
@@ -73,7 +73,7 @@ function boot(savedProject, dashboardRequest, options = {}) {
     ...(dashboardRequest ? { RoomcraftDashboardBridge: { request: dashboardRequest } } : {}) };
   window.top = window;
   installRoomcraftEngine(window);
-  for (const wallSource of wallSources) runInNewContext(wallSource, { window });
+  for (const engineSource of editorEngineSources) runInNewContext(engineSource, { window });
   runInNewContext(readFileSync(new URL('../public/control-actions.js', import.meta.url), 'utf8'), {window});
   runInNewContext(controlsSource, { window });
   if (options.fullInventory) runInNewContext(readFileSync(new URL('../public/inventory.js', import.meta.url), 'utf8'), {window});
@@ -104,6 +104,30 @@ function boot(savedProject, dashboardRequest, options = {}) {
   return { pointer, read, elements, storage: data, navigation, window,
     dispatch: (id, kind, event) => listeners.get(`${id}:${kind}`)(event) };
 }
+
+test('optional terrain survives legacy project normalization and an undoable editor transaction', async () => {
+  const terrain = {coast:'rugged', beachWidth:100, cells:[{col:3, row:2, height:9}, {col:-1, row:0, cover:'scrub', prop:'sage'}]};
+  const editor = boot({version:2, editableReferenceVersion:9, rooms:[], walls:[], items:[], hotspots:[], terrain});
+  const api = editor.window.RoomcraftEditorViewport;
+  const before = {coast:'rugged', cells:[{col:-1, row:0, cover:'scrub', prop:'sage'}, {col:3, row:2, height:9}]};
+  assert.deepEqual(JSON.parse(JSON.stringify(api.getProject().terrain)), before);
+  assert.equal(api.canBeginTerrain({button:0}), false);
+  api.useTerrainTool();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(api.canBeginTerrain({button:0}), true);
+  assert.equal(api.canBeginTerrain({button:1}), false);
+  assert.equal(api.setTerrain({beachWidth:146}), false);
+  assert.equal(api.setTerrain(terrain), false);
+  assert.equal(api.setTerrain({road:'winding', cells:[{col:1, row:-2, height:8}]}), true);
+  assert.deepEqual(editor.read().terrain, {road:'winding', cells:[{col:1, row:-2, height:8}]});
+  assert.equal(editor.window.RoomcraftEditorEngine.inspect().commandCount, 1);
+  editor.dispatch('undoButton', 'click');
+  assert.deepEqual(editor.read().terrain, before);
+  editor.dispatch('redoButton', 'click');
+  assert.deepEqual(editor.read().terrain, {road:'winding', cells:[{col:1, row:-2, height:8}]});
+  assert.equal(api.setTerrain({road:'coastal'}), true);
+  assert.equal(Object.hasOwn(editor.read(), 'terrain'), false);
+});
 
 test('the 3D mutation bridge preserves bindings and records one undoable move', () => {
   const scene = {version: 2, editableReferenceVersion: 6, rooms: [], walls: [], hotspots: [],

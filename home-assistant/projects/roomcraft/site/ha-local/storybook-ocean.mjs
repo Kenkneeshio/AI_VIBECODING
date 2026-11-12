@@ -134,6 +134,8 @@ const fragmentShader = `
     float shoreDistance = offshore * mix(shoreScale, 1.0, smoothstep(22.0, 124.0, offshore));
     // Wind waves cross the bay in world space. Only the break bends with the shore.
     vec2 sea = surfacePoint.xz * vec2(1.0, -1.0);
+    float pixelWorld = max(length(dFdx(sea)), length(dFdy(sea)));
+    float visibleRipples = 1.0 - smoothstep(1.0, 3.5, pixelWorld);
     float windTime = waterTime * mix(0.88, 1.16, roughness - 1.0);
     float swell = sin(dot(sea, vec2(0.015, 0.022)) - windTime * 0.19);
     float crossSwell = sin(dot(sea, vec2(-0.037, 0.016)) + windTime * 0.23);
@@ -153,16 +155,24 @@ const fragmentShader = `
       float visibleDetail = 1.0 - smoothstep(.6, 2.3, max(fwidth(fold.x), fwidth(fold.y)));
       caustic = smoothstep(0.69, 1.49, abs(ripples.x + ripples.y)) * visibleDetail;
     }
-    float depth = smoothstep(17.0, 325.0, offshore + (basin - 0.5) * 42.0);
+    // Long submerged sandbanks set the bay's color at a broader scale than the waves.
+    float shelf = 0.5;
+    if (offshore < 630.0) {
+      float banks = waterNoise(sea * vec2(0.0038, 0.0026) + vec2(9.2, 3.7));
+      shelf = mix(0.5, banks, 1.0 - smoothstep(290.0, 620.0, offshore));
+    }
+    float depth = smoothstep(12.0, mix(245.0, 495.0, shelf), offshore + (basin - 0.5) * 26.0);
     vec3 color = mix(shallowTint, deepTint, depth);
     float shorelineTint = (1.0 - smoothstep(0.0, 20.0 + basin * 12.0, shoreDistance)) * (0.60 + basin * 0.30);
     color = mix(color, shoreTint, shorelineTint);
     color *= 0.93 + 0.07 * smoothstep(0.0, 14.0, shoreDistance);
     // Green-blue pockets in the shallows suggest reef and kelp under moving water.
-    float seabed = smoothstep(0.56, 0.91, basin + crossSwell * 0.075)
-      * smoothstep(8.0, 26.0, offshore) * (1.0 - smoothstep(95.0, 252.0, offshore));
-    color *= 0.94 + basin * 0.12 + (swell * 0.019 + crossSwell * 0.012) - seabed * 0.23;
-    color = mix(color, cloudTint, waveLight * mix(0.115, 0.035, depth));
+    float seabed = smoothstep(0.49, 0.83, basin * 0.44 + shelf * 0.56 + crossSwell * 0.045)
+      * smoothstep(12.0, 46.0, offshore) * (1.0 - smoothstep(110.0, 327.0, offshore));
+    color *= 0.965 + basin * 0.07 + (swell * 0.019 + crossSwell * 0.012) * visibleRipples - seabed * 0.25;
+    float distantRipples = mix(0.24, 1.0, 1.0 - smoothstep(146.0, 615.0, offshore));
+    float surfaceGlints = waveLight * distantRipples * mix(0.16, 1.0, visibleRipples);
+    color = mix(color, cloudTint, surfaceGlints * mix(0.11, 0.039, depth));
     color = mix(color, foamTint, caustic * (1.0 - smoothstep(8.0, 128.0, offshore)) * 0.064);
     color = mix(color, cloudTint, slant * slant * 0.15);
 
@@ -240,8 +250,8 @@ const fragmentShader = `
       float swash = swashEdge * scallop * 0.34
         + (1.0 - smoothstep(2.0, 12.0, shoreDistance)) * net * 0.085;
       color *= 1.0 - trail * breakers * 0.09;
-      color = mix(color, foamTint, clamp(swash + breakers * (rim * (0.035 + scallop * 0.86) +
-        trail * net * 0.27), 0.0, 0.96));
+      float foam = swash + breakers * (rim * (0.035 + scallop * 0.86) + trail * net * 0.27);
+      color = mix(color, foamTint, clamp(foam * mix(0.72, 1.0, visibleRipples), 0.0, 0.96));
     }
     if (rain > 0.0) {
       vec2 grid = sea / vec2(17.0, 19.0);
@@ -261,7 +271,7 @@ const fragmentShader = `
   }
 `;
 
-export function createStorybookOcean({y, farZ, shoreline, focusX}) {
+export function createStorybookOcean({y, farZ, renderFarZ, shoreline, renderShoreline, focusX}) {
   const uniforms = {
     ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog),
     waterTime: {value: 0},
@@ -284,9 +294,10 @@ export function createStorybookOcean({y, farZ, shoreline, focusX}) {
     uniforms[name] = {value: PALETTES.clear[index].clone()};
   }
   const material = new THREE.ShaderMaterial({uniforms, vertexShader, fragmentShader, toneMapped: false, fog: true});
-  const mesh = new THREE.Mesh(oceanGeometry({shoreline, farZ, focusX}), material);
+  const meshFarZ = Number.isFinite(renderFarZ) ? Math.min(farZ, renderFarZ) : farZ;
+  const mesh = new THREE.Mesh(oceanGeometry({shoreline:renderShoreline ?? shoreline, farZ:meshFarZ, focusX}), material);
   mesh.name = 'Ocean and shore wash';
-  mesh.position.set(focusX, y, farZ);
+  mesh.position.set(focusX, y, meshFarZ);
 
   function update(timeSeconds, environment = {}) {
     const {night, daylightKnown, condition, moonPhase, moonAzimuth, moonElevation,

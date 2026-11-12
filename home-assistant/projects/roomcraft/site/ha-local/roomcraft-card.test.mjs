@@ -1590,6 +1590,38 @@ test('LAN scene settings publish only the documented boolean keys', async () => 
   assert.deepEqual(saved.roomcraft_layout.sceneSettings, {wind:false, traffic:true});
 });
 
+test('LAN Studio round-trips canonical terrain and rejects invalid terrain before upload', async () => {
+  let saved = dashboard();
+  let uploads = 0;
+  const card = new Card();
+  card.hass = {
+    connected:true, user:{is_admin:true},
+    async callWS(command) {
+      if (command.type === 'lovelace/config/save') saved = command.config;
+      return saved;
+    },
+    async fetchWithAuth() {
+      uploads++;
+      return {ok:true, json:async () => ({id:'a'.repeat(32)})};
+    },
+  };
+  const initial = await card._readDashboard();
+  const write = terrain => card._writeDashboard({revision:initial.revision,
+    project:{...initial.project, terrain}, pngDataUrl:pngDataUrl()});
+  await assert.rejects(write({cells:[{col:0, row:0, height:65}]}), /invalid terrain/);
+  await assert.rejects(write({road:'unknown'}), /invalid terrain/);
+  await assert.rejects(write({cells:[{col:0, row:0, prop:'unknown'}]}), /invalid terrain/);
+  assert.equal(uploads, 0);
+  await write({coast:'gentle', planting:100, cells:[
+    {col:2, row:2, height:3}, {col:-1, row:-1, cover:'grass', prop:'pine'},
+  ]});
+  const expected = {coast:'gentle', cells:[{col:-1, row:-1, cover:'grass', prop:'pine'}, {col:2, row:2, height:3}]};
+  assert.equal(uploads, 1);
+  const read = await card._readDashboard();
+  assert.deepEqual(JSON.parse(JSON.stringify(read.project.terrain)), expected);
+  assert.notEqual(read.revision, initial.revision);
+});
+
 test('iframe permits an appearance read and only accepts the expected Home Assistant host reply', async () => {
   const origin = context.location.origin;
   const posts = [];

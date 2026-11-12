@@ -43,6 +43,12 @@ function rows(positions) {
 
 const close = (actual, expected) => Math.abs(actual - expected) < .0001;
 
+function columnAt(toe, fraction) {
+  const target = options.focusX + fraction * options.span;
+  return toe.reduce((closest, [x], i) =>
+    Math.abs(x - target) < Math.abs(toe[closest][0] - target) ? i : closest, 0);
+}
+
 test('one indexed bluff stays left of the house and backs the crescent pocket beach', () => {
   const built = captureBluffs();
   assert.deepEqual(captureBluffs(), built);
@@ -60,13 +66,7 @@ test('one indexed bluff stays left of the house and backs the crescent pocket be
   assert.ok(headland.stoneExposure.some(value => value > .95));
   assert.ok(built.scrub.every(([, , , , , y]) => y > options.groundY));
 
-  function offsetAt(fraction) {
-    return toe.reduce((closest, [x], i) => {
-      const target = options.focusX + fraction * options.span;
-      return Math.abs(x - target) < Math.abs(toe[closest][0] - target) ? i : closest;
-    }, 0);
-  }
-  const [west, center, east] = [-.43, -.29, -.145].map(offsetAt);
+  const [west, center, east] = [-.43, -.29, -.145].map(fraction => columnAt(toe, fraction));
   const sandWidth = index => toe[index][2] - options.shoreZ(toe[index][0] - options.focusX);
   assert.ok(sandWidth(center) > 22 && sandWidth(center) < 32);
   assert.ok(sandWidth(west) < 12 && sandWidth(east) < 12);
@@ -122,8 +122,7 @@ test('the bluff grades gently into the wet sand before the first rock ledge', ()
   const grid = rows(headlands[0].position);
   const [toe] = grid;
   for (const fraction of [-.43, -.29, -.145]) {
-    const target = options.focusX + fraction * options.span;
-    const col = toe.findIndex(([x]) => x >= target);
+    const col = columnAt(toe, fraction);
     const transition = grid.slice(0, 4).map(row => row[col]);
     for (let i = 1; i < transition.length; i++) {
       const [, y0, z0] = transition[i - 1];
@@ -133,4 +132,19 @@ test('the bluff grades gently into the wet sand before the first rock ledge', ()
       assert.ok((y1 - y0) / (z1 - z0) < .72);
     }
   }
+});
+
+test('the rock shelves are localized and the beds dip across the continuous face', () => {
+  const {headlands} = captureBluffs();
+  const grid = rows(headlands[0].position);
+  const [toe] = grid;
+  const [west, center, east] = [-.43, -.29, -.145].map(fraction => columnAt(toe, fraction));
+  const crown = grid[19];
+  const shelfWidth = (column, from, to) => (grid[to][column][2] - grid[from][column][2]) /
+    (crown[column][2] - toe[column][2]);
+  assert.ok(shelfWidth(west, 4, 5) > shelfWidth(center, 4, 5) + .04);
+  assert.ok(shelfWidth(east, 11, 12) > shelfWidth(center, 11, 12) + .006);
+  const bedElevation = column => (grid[10][column][1] - toe[column][1]) /
+    (crown[column][1] - toe[column][1]);
+  assert.ok(bedElevation(west) > bedElevation(center) + .07);
 });

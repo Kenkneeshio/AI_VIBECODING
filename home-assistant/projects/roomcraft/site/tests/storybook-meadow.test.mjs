@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {Mesh, MeshBasicMaterial, Raycaster, Vector3} from 'three';
 import {createStorybookMeadow} from '../ha-local/storybook-meadow.mjs';
+import '../public/engine/terrain.js';
 
 const garage = {item:{type:'garageDoor', w:134, h:92}, x:220, z:300, angle:.48};
 const stairs = {item:{type:'stairs', w:84, h:142}, x:244, z:712, angle:-.31, apronDepth:39};
@@ -52,11 +53,11 @@ test('meadow relief stays within the terrain budget and planting samples match r
   assert.equal(uv.count, position.count);
   let highest = 0;
   for (let index = 0; index < position.count; index++) {
-    assert.ok(position.getY(index) >= 0 && position.getY(index) <= 15);
-    assert.ok(normal.getY(index) > .9);
+    assert.ok(position.getY(index) >= 0 && position.getY(index) <= 63);
+    assert.ok(normal.getY(index) > Math.cos(Math.PI / 6));
     highest = Math.max(highest, position.getY(index));
   }
-  assert.ok(highest > 10);
+  assert.ok(highest > 36);
   const mesh = new Mesh(geometry, new MeshBasicMaterial());
   mesh.position.set(inputs.centerX, inputs.groundY, inputs.centerZ);
   mesh.updateMatrixWorld(true);
@@ -71,4 +72,30 @@ test('meadow relief stays within the terrain budget and planting samples match r
   mesh.material.dispose();
   geometry.dispose();
   again.dispose();
+});
+
+test('local terrain edits lower the actual mesh and carry cover to the painted vertices', () => {
+  const {createSampler} = globalThis.RoomcraftTerrain;
+  const terrain = {cells:[
+    {col:-5,row:20,height:-24,cover:'sand'},
+    {col:15,row:13,height:32,cover:'stone'},
+  ]};
+  const unsculpted = {cells:terrain.cells.map(({col,row,cover}) => ({col,row,cover}))};
+  const original = createStorybookMeadow({...inputs, terrain:unsculpted, terrainSampler:createSampler(unsculpted)});
+  const changed = createStorybookMeadow({...inputs, terrain, terrainSampler:createSampler(terrain)});
+  assert.ok(changed.canEditTerrain(-160,640));
+  assert.ok(Math.abs(changed.heightAt(-160,640) - original.heightAt(-160,640) + 24) < .35);
+  assert.equal(changed.heightAt(480,416), inputs.groundY);
+  assert.equal(changed.canEditTerrain(480,416), false);
+  const positions = changed.geometry.attributes.position;
+  const paint = changed.geometry.attributes.terrainPaint;
+  let painted = 0;
+  for (let i = 0; i < positions.count; i++) {
+    if (paint.getW(i) < .01) continue;
+    assert.ok(positions.getX(i) + inputs.centerX < -128);
+    painted++;
+  }
+  assert.ok(painted > 0);
+  original.geometry.dispose();
+  changed.geometry.dispose();
 });

@@ -4,6 +4,8 @@ The [La Jolla art release](coastal-art-release.md) covers the world geometry, sa
 
 `storybook-meadow.mjs` owns inland relief, flat pads for built objects, and the sampler used to ground plantings on its rendered triangles. `storybook-street.mjs` supplies the dune grades and shared sand sampler. The Cove and Shores recipes use that sampler to join the exposed terrain. The [coastal terrain release](coastal-art-release.md#coastal-elevation-and-planting) records the design and verification.
 
+`public/engine/terrain.js` owns the portable terrain grid, validation, and brush operations. `storybook-terrain-editor.mjs` owns Studio's controls and stroke gestures. The terrain settings and edits travel through the existing layout revision and undo workflows. The [wide map and terrain release](coastal-art-release.md#wide-map-and-editable-terrain) documents the editor workflow and renderer boundaries.
+
 The [overhead Studio and room controls release](studio-overhead-release.md) records the editor, LiDAR scale and third Home Assistant view. Studio publishes through the existing revision check. Home's LiDAR ruler uses the authenticated scan and the same physical coordinate contract as the alignment panel.
 
 The [wall-tablet performance audit](tablet-performance-audit.md) records foreground and background evidence, rendering options, release checks, and rollback. Home measures scene draws in its scheduler. The traffic and sidewalk layers accept conservative camera-frustum checks. Studio's LiDAR shortcut opens the existing vacuum survey.

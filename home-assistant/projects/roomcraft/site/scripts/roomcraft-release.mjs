@@ -21,7 +21,8 @@ const REQUIRED_ENGINE_GLOBALS = Object.freeze([
   'RoomcraftEngine',
   'RoomcraftWallJoins',
   'RoomcraftReferenceGeometry',
-  'RoomcraftSceneSettings'
+  'RoomcraftSceneSettings',
+  'RoomcraftTerrain'
 ]);
 export const REQUIRED_ENGINE_SOURCES = Object.freeze([
   'engine/deterministic-core.js',
@@ -30,7 +31,8 @@ export const REQUIRED_ENGINE_SOURCES = Object.freeze([
   'engine/verification-harness.js',
   'engine/wall-joins.js',
   'engine/reference-geometry.js',
-  'engine/scene-settings.js'
+  'engine/scene-settings.js',
+  'engine/terrain.js'
 ]);
 const ALLOWED_RUNTIME_EXTENSIONS = new Set([
   '.css', '.html', '.js', '.json', '.md', '.mjs', '.mp3', '.mts', '.png', '.ps1', '.py', '.sh', '.svg', '.ts', '.tsx'
@@ -110,6 +112,7 @@ function runtimeCandidates(siteRoot = SITE_ROOT, projectRoot = PROJECT_ROOT) {
     join(siteRoot, 'ha-local', 'storybook-street.mjs'),
     join(siteRoot, 'ha-local', 'storybook-coastal-planting.mjs'),
     join(siteRoot, 'ha-local', 'storybook-meadow.mjs'),
+    join(siteRoot, 'ha-local', 'storybook-yard-access.mjs'),
     join(siteRoot, 'ha-local', 'storybook-la-jolla-bluffs.mjs'),
     join(siteRoot, 'ha-local', 'storybook-la-jolla-shores.mjs'),
     join(siteRoot, 'ha-local', 'storybook-sidewalk.mjs'),
@@ -152,6 +155,7 @@ function runtimeCandidates(siteRoot = SITE_ROOT, projectRoot = PROJECT_ROOT) {
     join(siteRoot, 'ha-local', 'storybook-camera.mjs'),
     join(siteRoot, 'ha-local', 'storybook-orbit.mjs'),
     join(siteRoot, 'ha-local', 'storybook-editor.mjs'),
+    join(siteRoot, 'ha-local', 'storybook-terrain-editor.mjs'),
     join(siteRoot, 'ha-local', 'storybook-lighting.mjs'),
     join(siteRoot, 'ha-local', 'storybook-light-panel.mjs'),
     join(siteRoot, 'ha-local', 'storybook-structure.mjs'),

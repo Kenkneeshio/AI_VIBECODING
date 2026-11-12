@@ -4,6 +4,7 @@
   const Engine = window.RoomcraftEngine;
   if (!Engine) throw new Error('RoomcraftEngine must load before app.js');
   const SceneSettings = window.RoomcraftSceneSettings;
+  const Terrain = window.RoomcraftTerrain;
   const clone = Engine.clone;
   const projectFingerprint = value => Engine.canonicalStringify(value);
   let idAllocator = null;
@@ -253,6 +254,7 @@
   function validProject(p) {
     return p && Array.isArray(p.rooms) && Array.isArray(p.walls) && Array.isArray(p.items)
       && SceneSettings.valid(p.sceneSettings)
+      && Terrain.valid(p.terrain)
       && p.rooms.every(r => typeof r.id === 'string' && !!surfaceById[r.surface] &&
         (r.outdoor === undefined || typeof r.outdoor === 'boolean') &&
         Array.isArray(r.points) && r.points.length >= 3 && r.points.every(q => Number.isFinite(q.x) && Number.isFinite(q.y)))
@@ -281,6 +283,9 @@
     next=clone(Engine.migrations.run(next,REFERENCE_MIGRATIONS,10,{versionKey:'editableReferenceVersion'}).project);
     if(!Array.isArray(next.hotspots))next.hotspots=clone(DEFAULT_HOTSPOTS);
     for(const o of next.items)clampLinkedItem(o);
+    const terrain = Terrain.normalize(next.terrain);
+    if (terrain) next.terrain = terrain;
+    else delete next.terrain;
     next.version=2;
     return Engine.normalizeScene(next);
   }
@@ -882,7 +887,7 @@
     draw();
   }
   function onPointerDown(e, {itemId, placementPoint, captureTarget=e.currentTarget||canvas}={}){
-    if(e.button>1||interaction?.pointerId!==undefined)return;
+    if(e.button>1||interaction?.pointerId!==undefined||(tool==='terrain'&&!spaceHeld&&e.button!==1))return;
     e.preventDefault();captureTarget.focus({preventScroll:true});captureTarget.setPointerCapture(e.pointerId);
     const p=worldPoint(e),s=screenPoint(e);currentPointer=p;
     if(tool==='pan'||spaceHeld||e.button===1){
@@ -1154,9 +1159,17 @@
       button.setAttribute('aria-pressed',String(active));
     });
     viewport.dataset.tool=tool;
+    const help = document.getElementById('miniHelp');
+    if (help) help.textContent = tool === 'terrain'
+      ? 'Drag to brush the ground or tap to place scenery. Hold Space to pan.'
+      : 'Drag an object to move it. Use Pan to explore the layout.';
     canvas.style.cursor='';
     document.getElementById('sceneCanvas').style.cursor='';
     if(drawSegmentTool()||tool==='structure')setPanel('walls');
+    if(tool==='terrain'){
+      setPanel('terrain');
+      if(selected){selected=null;renderInspector();renderStructureList();}
+    }
     const instructions={
       select:'Select and drag objects, controls, walls, or rooms',
       pan:'Drag to pan the plan',
@@ -1164,11 +1177,12 @@
       wall:'Drag to draw a wall or tap its two ends',
       fence:'Drag to draw a fence or tap its two ends',
       structure:'Tap a wall or fence to select it. Drag either end to reshape it.',
+      terrain:'Drag over outdoor ground to sculpt or paint terrain',
       erase:'Tap an object, control, wall, or fence to remove it'
     };
     draw();setStatus(instructions[tool]);
   }
-  function setPanel(panel){document.querySelectorAll('.panel-tab').forEach(b=>{const active=b.dataset.panel===panel;b.classList.toggle('active',active);b.setAttribute('aria-selected',String(active));});for(const name of ['objects','floors','rooms','walls'])document.getElementById(`${name}Panel`).hidden=name!==panel;}
+  function setPanel(panel){document.querySelectorAll('.panel-tab').forEach(b=>{const active=b.dataset.panel===panel;b.classList.toggle('active',active);b.setAttribute('aria-selected',String(active));});for(const name of ['objects','floors','rooms','walls','terrain'])document.getElementById(`${name}Panel`).hidden=name!==panel;}
 
   function updateStructureProperty(segment,key,value) {
     if(key==='kind'){
@@ -1786,8 +1800,12 @@
     document.querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click',()=>{setTool(b.dataset.tool);}));
     document.querySelectorAll('.panel-tab').forEach(button=>button.addEventListener('click',()=>{
       const panel=button.dataset.panel;
-      setPanel(panel);
-      if(panel==='walls'){setTool('structure');}
+      if(panel==='walls')setTool('structure');
+      else if(panel==='terrain')setTool('terrain');
+      else {
+        setPanel(panel);
+        if(tool==='terrain')setTool('select');
+      }
     }));
     for (const button of document.querySelectorAll('[data-open-models]')) {
       button.addEventListener('click', () => {
@@ -1882,7 +1900,7 @@
         if(e.key==='Escape'){e.preventDefault();showMenu(false);menuButton.focus();}
         return;
       }
-      if(dashboardTransferBusy)return;const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo();return;}if(e.key===' '){if(tag==='BUTTON')return;e.preventDefault();spaceHeld=true;return;}if(e.key==='Escape'){const canceled=interaction;interaction=null;viewport.classList.remove('dragging');if(canceled?.snapshot&&history.length){project=history.pop();future=[];afterChange('Canceled drag',{resetIdentity:true});}clearPlacement();selected=null;renderInspector();renderStructureList();updateHistoryButtons();draw();return;}if((e.key==='Delete'||e.key==='Backspace')&&selected){e.preventDefault();deleteSelected();return;}const shortcuts={v:'select',h:'pan',r:'room',w:'wall',f:'fence',e:'erase'};const shortcut=shortcuts[e.key.toLowerCase()];if(shortcut){setTool(shortcut);}});
+      if(dashboardTransferBusy)return;const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo();return;}if(e.key===' '){if(tag==='BUTTON')return;e.preventDefault();spaceHeld=true;return;}if(e.key==='Escape'){const canceled=interaction;interaction=null;viewport.classList.remove('dragging');if(canceled?.snapshot&&history.length){project=history.pop();future=[];afterChange('Canceled drag',{resetIdentity:true});}clearPlacement();selected=null;renderInspector();renderStructureList();updateHistoryButtons();draw();return;}if((e.key==='Delete'||e.key==='Backspace')&&selected){e.preventDefault();deleteSelected();return;}const shortcuts={v:'select',h:'pan',r:'room',w:'wall',f:'fence',t:'terrain',e:'erase'};const shortcut=shortcuts[e.key.toLowerCase()];if(shortcut){setTool(shortcut);}});
     window.addEventListener('keyup',e=>{if(e.key===' ')spaceHeld=false;});
     window.addEventListener('resize',fitView);
     window.addEventListener('pagehide',flushPendingDraft);
@@ -1893,6 +1911,20 @@
   window.RoomcraftEditorViewport = Object.freeze({
     getProject: () => clone(project),
     getPreview: () => dashboardPreview,
+    setTerrain(next, message = 'Updated terrain') {
+      if (dashboardTransferBusy || interaction || !Terrain.valid(next)) return false;
+      const normalized = Terrain.normalize(next);
+      if (projectFingerprint(normalized ?? null) === projectFingerprint(project.terrain ?? null)) return false;
+      snapshot();
+      if (normalized) project.terrain = normalized;
+      else delete project.terrain;
+      afterChange(message);
+      return true;
+    },
+    canBeginTerrain: event => tool === 'terrain' && event?.button === 0 && !spaceHeld && !interaction && !dashboardTransferBusy,
+    useTerrainTool() {
+      if (tool !== 'terrain') setTool('terrain');
+    },
     setRadarCalibration(id, entity, transform) {
       const item = project.items.find(entry => entry.id === id && entry.type === 'presenceSwitch');
       const change = window.RoomcraftObjectControls.propertyUpdate('presenceTrackTransform', transform.join(', '));

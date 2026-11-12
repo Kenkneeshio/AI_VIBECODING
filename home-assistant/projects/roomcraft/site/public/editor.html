@@ -7,7 +7,7 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <title>Roomcraft — Second Floor Builder</title>
   <meta name="description" content="A detailed illustrated room builder based on the second-floor home plan.">
-  <link rel="stylesheet" href="styles.css?v=242d4e16f8faba32">
+  <link rel="stylesheet" href="styles.css?v=fd33c18d1b7a072a">
 </head>
 <body>
   <div class="app-shell">
@@ -56,6 +56,7 @@
           <button type="button" class="panel-tab" data-panel="floors" role="tab" aria-selected="false">Floors</button>
           <button type="button" class="panel-tab" data-panel="rooms" role="tab" aria-selected="false">Rooms</button>
           <button type="button" class="panel-tab" data-panel="walls" role="tab" aria-selected="false">Walls</button>
+          <button type="button" class="panel-tab" data-panel="terrain" role="tab" aria-selected="false" aria-controls="terrainPanel">Terrain</button>
         </div>
 
         <section class="panel-content" id="objectsPanel" aria-label="Objects palette">
@@ -96,6 +97,64 @@
           <div id="wallPalette" class="surface-list"></div>
         </section>
 
+        <section class="panel-content terrain-panel" id="terrainPanel" aria-label="Terrain tools" hidden>
+          <fieldset id="terrainBrush" class="terrain-brush" aria-describedby="terrainBrushHint" disabled>
+            <legend>Ground brush</legend>
+            <div class="terrain-modes" role="group" aria-label="Brush mode">
+              <button type="button" data-terrain-mode="raise" aria-pressed="true">Raise</button>
+              <button type="button" data-terrain-mode="lower" aria-pressed="false">Lower</button>
+              <button type="button" data-terrain-mode="smooth" aria-pressed="false">Smooth</button>
+              <button type="button" data-terrain-mode="paint" aria-pressed="false">Paint</button>
+              <button type="button" data-terrain-mode="place" aria-pressed="false">Place</button>
+              <button type="button" data-terrain-mode="erase" aria-pressed="false">Erase</button>
+            </div>
+            <label class="terrain-range" id="terrainRadiusLabel" for="terrainRadius">Radius <output id="terrainRadiusValue" for="terrainRadius">80</output></label>
+            <input id="terrainRadius" type="range" min="24" max="256" step="1" value="80">
+            <label class="terrain-range" id="terrainStrengthLabel" for="terrainStrength">Strength <output id="terrainStrengthValue" for="terrainStrength">4</output></label>
+            <input id="terrainStrength" type="range" min="1" max="16" step="1" value="4">
+            <label class="terrain-field" id="terrainCoverLabel" for="terrainCover" hidden>Ground cover
+              <select id="terrainCover">
+                <option value="grass">Grass</option><option value="sand">Sand</option><option value="soil">Soil</option>
+                <option value="stone">Stone</option><option value="scrub">Coastal scrub</option>
+              </select>
+            </label>
+            <label class="terrain-field" id="terrainPropLabel" for="terrainProp" hidden>Scenery
+              <select id="terrainProp">
+                <option value="pine">Shore pine</option><option value="oak">Coast oak</option><option value="cypress">Cypress</option>
+                <option value="palm">Palm</option><option value="sage">Sage</option><option value="rock">Rock</option>
+                <option value="">Remove placed object</option>
+              </select>
+            </label>
+          </fieldset>
+          <p class="terrain-hint" id="terrainBrushHint">Drag over outdoor ground. Release to apply one edit.</p>
+          <details class="terrain-landscape">
+            <summary>Landscape</summary>
+            <label class="terrain-field">Coast shape
+              <select data-terrain-setting="coast">
+                <option value="la-jolla">La Jolla</option><option value="gentle">Gentle bay</option><option value="rugged">Rugged coast</option>
+              </select>
+            </label>
+            <label class="terrain-field">Road shape
+              <select data-terrain-setting="road">
+                <option value="coastal">Coastal bend</option><option value="straight">Straight</option><option value="winding">Winding</option>
+              </select>
+            </label>
+            <label class="terrain-range" for="terrainBeachWidth">Beach width <output for="terrainBeachWidth">100%</output></label>
+            <input id="terrainBeachWidth" data-terrain-setting="beachWidth" type="range" min="70" max="145" step="1" value="100">
+            <label class="terrain-range" for="terrainRoadSetback">Road setback <output for="terrainRoadSetback">0</output></label>
+            <input id="terrainRoadSetback" data-terrain-setting="roadSetback" type="range" min="0" max="180" step="1" value="0">
+            <label class="terrain-range" for="terrainHillHeight">Hill height <output for="terrainHillHeight">100%</output></label>
+            <input id="terrainHillHeight" data-terrain-setting="hillHeight" type="range" min="0" max="150" step="1" value="100">
+            <label class="terrain-range" for="terrainPlanting">Outer planting <output for="terrainPlanting">100%</output></label>
+            <input id="terrainPlanting" data-terrain-setting="planting" type="range" min="0" max="150" step="1" value="100">
+            <div class="terrain-toggles">
+              <label><input type="checkbox" data-terrain-setting="cove" checked> Cove bluffs</label>
+              <label><input type="checkbox" data-terrain-setting="shores" checked> Shores park and pier</label>
+              <label><input type="checkbox" data-terrain-setting="yardAccess" checked> Path from the stairs</label>
+            </div>
+          </details>
+        </section>
+
         <div class="panel-footer">
           <div class="dashboard-transfer-actions" aria-label="Home Assistant dashboard transfer">
             <button type="button" class="dashboard-transfer-button" id="importDashboardButton">↓ Import from dashboard</button>
@@ -116,6 +175,7 @@
             <button type="button" class="tool" data-tool="room" title="Edit rooms (R)" aria-label="Edit rooms"><span>▦</span><small>Room</small></button>
             <button type="button" class="tool" data-tool="wall" title="Draw wall (W)" aria-label="Draw wall"><span>╱</span><small>Wall</small></button>
             <button type="button" class="tool" data-tool="fence" title="Draw fence (F)" aria-label="Draw fence"><span>▥</span><small>Fence</small></button>
+            <button type="button" class="tool" data-tool="terrain" title="Edit terrain (T)" aria-label="Edit terrain"><span aria-hidden="true">⌁</span><small>Terrain</small></button>
             <button type="button" class="tool" data-tool="erase" title="Erase object, wall or fence (E)" aria-label="Erase"><span>⌫</span><small>Erase</small></button>
           </div>
           <div class="toolbar-right">
@@ -269,25 +329,26 @@
       <button type="button" class="primary-button" id="confirmationAccept">Continue</button>
     </div>
   </dialog>
-  <script src="editor-assets.js?v=242d4e16f8faba32" defer></script>
-  <script src="engine/deterministic-core.js?v=242d4e16f8faba32" defer></script>
-  <script src="engine/project-runtime.js?v=242d4e16f8faba32" defer></script>
-  <script src="engine/render-contract.js?v=242d4e16f8faba32" defer></script>
-  <script src="engine/verification-harness.js?v=242d4e16f8faba32" defer></script>
-  <script src="engine/wall-joins.js?v=242d4e16f8faba32" defer></script>
-  <script src="engine/reference-geometry.js?v=242d4e16f8faba32" defer></script>
-  <script src="engine/scene-settings.js?v=242d4e16f8faba32" defer></script>
-  <script src="ha-iframe-bridge.js?v=242d4e16f8faba32" defer></script>
-  <script src="inventory.js?v=242d4e16f8faba32" defer></script>
-  <script src="model-library.js?v=242d4e16f8faba32" defer></script>
-  <script src="catalog-variants.js?v=242d4e16f8faba32" defer></script>
-  <script src="raster-renderer.js?v=242d4e16f8faba32" defer></script>
-  <script src="object-art.js?v=242d4e16f8faba32" defer></script>
-  <script src="control-actions.js?v=242d4e16f8faba32" defer></script>
-  <script src="light-capabilities.js?v=242d4e16f8faba32" defer></script>
-  <script src="object-controls.js?v=242d4e16f8faba32" defer></script>
-  <script src="app.js?v=242d4e16f8faba32" defer></script>
-  <script src="responsive-inspector.js?v=242d4e16f8faba32" defer></script>
-  <script src="storybook-editor.js?v=242d4e16f8faba32" defer></script>
+  <script src="editor-assets.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="engine/deterministic-core.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="engine/project-runtime.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="engine/render-contract.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="engine/verification-harness.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="engine/wall-joins.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="engine/reference-geometry.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="engine/scene-settings.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="engine/terrain.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="ha-iframe-bridge.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="inventory.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="model-library.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="catalog-variants.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="raster-renderer.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="object-art.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="control-actions.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="light-capabilities.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="object-controls.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="app.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="responsive-inspector.js?v=fd33c18d1b7a072a" defer></script>
+  <script src="storybook-editor.js?v=fd33c18d1b7a072a" defer></script>
 </body>
 </html>

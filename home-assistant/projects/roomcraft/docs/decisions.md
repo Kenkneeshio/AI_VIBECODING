@@ -1,5 +1,9 @@
 # Decision log
 
+## Author the landscape in Studio
+
+Save optional terrain settings and sparse, world-aligned brush edits with the layout. Keep one undo entry per stroke, preserve the edit in browser drafts and shared saves, and have the same terrain sampler in Home and Studio. Keep render extents separate from traffic and sailing routes so the wider map does not change their timing.
+
 ## Grade the coast around the built surfaces
 
 Use sampled terrain for planting and beach furniture. Keep the surf and the road as elevation anchors, and leave level pads under authored stairs, buildings, and their foundations. Spend the added geometry on static dunes, meadows, and park slopes so it does not need to be rebuilt for weather or traffic.

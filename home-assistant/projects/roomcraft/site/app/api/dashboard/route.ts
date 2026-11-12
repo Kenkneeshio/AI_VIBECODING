@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { keepPreviousDashboardDesign, stableDashboardJson as stableStringify } from "../../../ha-local/dashboard-snapshots.mjs";
 import { storybookLightControlLabels, storybookPreview } from "../../../ha-local/storybook-state.mjs";
-import { dashboardProjectProblem, isDashboardLayout } from "../../../ha-local/dashboard-project.mjs";
+import { dashboardProjectProblem, isDashboardLayout, normalizeDashboardTerrain } from "../../../ha-local/dashboard-project.mjs";
 import { SCENE_HEIGHT, SCENE_WIDTH, editableDashboardHotspots, roomcraftPlanCard, validCameraThumbnail, validObjectControl, withUpdatedPlanCard } from "../../../lib/dashboard-elements";
 
 const ROOMCRAFT_DASHBOARD = "roomcraft-home";
@@ -144,7 +144,7 @@ function absoluteImageUrl(haOrigin: string, image: unknown): string | null {
 function validateProject(value: unknown): LayoutProject {
   const problem = dashboardProjectProblem(value, {validCameraThumbnail, validObjectControl});
   if (problem) throw new BridgeError(400, "invalid_project", problem);
-  return value as LayoutProject;
+  return normalizeDashboardTerrain(value) as LayoutProject;
 }
 
 function decodePng(dataUrl: unknown): Uint8Array {

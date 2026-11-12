@@ -24,6 +24,7 @@
       },
       "additionalProperties": false
     },
+    "terrain": { "$ref": "#/$defs/terrain" },
     "rooms": {
       "type": "array",
       "items": { "$ref": "#/$defs/room" },
@@ -47,6 +48,45 @@
   },
   "additionalProperties": true,
   "$defs": {
+    "terrain": {
+      "type": "object",
+      "description": "Optional settings and local edits for the outdoor terrain shared by Home and Studio. Omitted values preserve the default scenery.",
+      "properties": {
+        "coast": { "enum": ["la-jolla", "gentle", "rugged"] },
+        "road": { "enum": ["coastal", "straight", "winding"] },
+        "beachWidth": { "type": "integer", "minimum": 70, "maximum": 145 },
+        "roadSetback": { "type": "integer", "minimum": 0, "maximum": 180 },
+        "hillHeight": { "type": "integer", "minimum": 0, "maximum": 150 },
+        "planting": { "type": "integer", "minimum": 0, "maximum": 150 },
+        "cove": { "type": "boolean" },
+        "shores": { "type": "boolean" },
+        "yardAccess": { "type": "boolean" },
+        "cells": {
+          "type": "array",
+          "maxItems": 4096,
+          "uniqueItems": true,
+          "contains": { "required": ["prop"] },
+          "minContains": 0,
+          "maxContains": 96,
+          "description": "Sparse edits on a 32-unit project grid. Each column and row pair must be unique.",
+          "items": { "$ref": "#/$defs/terrainCell" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "terrainCell": {
+      "type": "object",
+      "required": ["col", "row"],
+      "properties": {
+        "col": { "type": "integer", "minimum": -256, "maximum": 256 },
+        "row": { "type": "integer", "minimum": -256, "maximum": 256 },
+        "height": { "type": "integer", "minimum": -32, "maximum": 64 },
+        "cover": { "enum": ["grass", "sand", "soil", "stone", "scrub"] },
+        "prop": { "enum": ["pine", "oak", "cypress", "palm", "sage", "rock"] }
+      },
+      "anyOf": [{ "required": ["height"] }, { "required": ["cover"] }, { "required": ["prop"] }],
+      "additionalProperties": false
+    },
     "point": {
       "type": "object",
       "required": ["x", "y"],

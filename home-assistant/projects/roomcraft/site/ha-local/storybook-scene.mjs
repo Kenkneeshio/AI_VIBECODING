@@ -24,12 +24,14 @@ import { createStorybookOcean } from './storybook-ocean.mjs';
 import { buildStorybookNeighborhood, buildStorybookStreet, storybookStreetBounds } from './storybook-street.mjs';
 import { createStorybookMeadow } from './storybook-meadow.mjs';
 import { addCoastalPlanting } from './storybook-coastal-planting.mjs';
+import { buildStorybookYardAccess } from './storybook-yard-access.mjs';
+import '../public/engine/terrain.js';
 import { createStorybookTraffic } from './storybook-traffic.mjs';
 import { createStorybookSidewalk } from './storybook-sidewalk.mjs';
 import { createStorybookBoats } from './storybook-boats.mjs';
 import { createStorybookBeachPlay } from './storybook-beach-play.mjs';
 import { createStorybookPlacement } from './storybook-placement.mjs';
-import { createStorybookTreeWind, STORYBOOK_TREE_SPECIES } from './storybook-trees.mjs';
+import { addStorybookTree, createStorybookTreeWind, STORYBOOK_TREE_SPECIES } from './storybook-trees.mjs';
 
 const DEG = Math.PI / 180;
 const WALL_WIDTH = 14;
@@ -712,7 +714,7 @@ function meadowTexture(document) {
   return texture;
 }
 
-function buildYard(batch, plan, street, treeWind, heightAt, sandHeight) {
+function buildYard(batch, groveBatch, plan, street, treeWind, heightAt, sandHeight, density) {
   const { minX, maxX, minZ, maxZ } = plan.houseBounds;
   const width = maxX - minX;
   const depth = maxZ - minZ;
@@ -727,7 +729,9 @@ function buildYard(batch, plan, street, treeWind, heightAt, sandHeight) {
   }
   const bushes = [[0.06, -0.075], [0.32, -0.09], [0.63, -0.11], [0.92, -0.075], [1.045, 0.32],
     [1.035, 0.74], [0.84, 1.085], [0.51, 1.08], [0.23, 1.075], [-0.135, 0.55]];
-  for (const [fx, fz] of bushes) {
+  const keepPlant = index => density >= 1 || Math.floor((index + 1) * density) > Math.floor(index * density);
+  for (const [index, [fx, fz]] of bushes.entries()) {
+    if (!keepPlant(index)) continue;
     const x = minX + fx * width;
     const z = minZ + fz * depth;
     const size = 21 + rand() * 24;
@@ -777,6 +781,7 @@ function buildYard(batch, plan, street, treeWind, heightAt, sandHeight) {
     });
   };
   for (const [seed, [kind, fx, fz, height]] of treeSites.entries()) {
+    if (!keepPlant(seed)) continue;
     const radius = height * STORYBOOK_TREE_SPECIES[kind].radius + 7;
     const x = minX + fx * width;
     const z = minZ + fz * depth;
@@ -798,6 +803,7 @@ function buildYard(batch, plan, street, treeWind, heightAt, sandHeight) {
   const kinds = ['stone', 'sage', 'grass', 'grass', 'iceplant', 'yucca', 'sage'];
   for (const [site, [fx, fz]] of plantingSites.entries()) {
     for (const [i, kind] of kinds.entries()) {
+      if (!keepPlant(site + i)) continue;
       const phase = site * 1.47 + i * 2.399963;
       const spread = Math.sqrt(i / kinds.length);
       const x = minX + fx * width + Math.cos(phase) * spread * 49;
@@ -807,12 +813,74 @@ function buildYard(batch, plan, street, treeWind, heightAt, sandHeight) {
       addCoastalPlanting(batch, kind, x, heightAt(x, z), z, size, phase);
     }
   }
-  for (const [seed, kind, fx, shoreOffset] of [
+  const groves = [
+    [-.56, .05, 'shore-pine', 5], [-.46, .77, 'coast-oak', 4], [-.09, 1.50, 'olive', 4],
+    [.60, 1.58, 'coast-oak', 5], [1.25, .97, 'olive', 4], [1.47, .21, 'shore-pine', 5],
+  ];
+  for (const [group, [fx, fz, species, count]] of groves.entries()) {
+    const treeCount = Math.round(count * density);
+    for (let i = 0; i < treeCount; i++) {
+      const angle = group * 1.69 + i * 2.399963;
+      const reach = Math.sqrt(i / Math.max(count, treeCount));
+      const x = minX + fx * width + Math.cos(angle) * reach * 132;
+      const z = minZ + fz * depth + Math.sin(angle) * reach * 121;
+      const height = 66 + rand() * 54;
+      const kind = i % 3 ? species : 'cypress';
+      const radius = height * STORYBOOK_TREE_SPECIES[kind].radius + 6;
+      if (!clearsBuiltArea(x, z, radius)) continue;
+      addStorybookTree(groveBatch, {kind, x, z, height, groundY:heightAt(x, z), seed:4683 + group * 273 + i * 39});
+    }
+  }
+  for (const [index, [seed, kind, fx, shoreOffset]] of [
     [5633, 'date-palm', .065, 21], [2081, 'fan-palm', .93, 20], [7313, 'date-palm', .985, 32],
-  ]) {
+  ].entries()) {
+    if (!keepPlant(index)) continue;
     const x = minX + fx * width;
     const z = street.sample(x, street.farZ).z - shoreOffset;
     treeWind.add({kind, x, z, groundY: sandHeight(x, z), seed});
+  }
+}
+
+function distantMeadowGeometry(width, depth) {
+  const edge = 80000;
+  const left = -width / 2, right = width / 2, top = -depth / 2, bottom = depth / 2;
+  const position = [], uv = [], index = [];
+  for (const [x1, z1, x2, z2] of [
+    [-edge,-edge,edge,top], [-edge,bottom,edge,edge], [-edge,top,left,bottom], [right,top,edge,bottom],
+  ]) {
+    const start = position.length / 3;
+    for (const [x,z] of [[x1,z1],[x1,z2],[x2,z1],[x2,z2]]) {
+      position.push(x,0,z);
+      uv.push(x / width + .5, .5 - z / depth);
+    }
+    index.push(start,start+1,start+2, start+2,start+1,start+3);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(position,3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv,2));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(position.length).fill(1),3));
+  geometry.setAttribute('terrainPaint', new THREE.Float32BufferAttribute(new Float32Array(position.length / 3 * 4),4));
+  geometry.setIndex(index);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function buildPlacedLandscape(batch, groveBatch, terrain, gridSize, heightAt, canEdit) {
+  const trees = {
+    pine:['shore-pine', 108], oak:['coast-oak', 94], cypress:['cypress', 114], palm:['fan-palm', 103],
+  };
+  for (const {col,row,prop} of terrain?.cells ?? []) {
+    if (!prop) continue;
+    const x = col * gridSize, z = row * gridSize;
+    if (!canEdit(x, z)) continue;
+    const groundY = heightAt(x, z);
+    const seed = (Math.imul(col, 10037) ^ Math.imul(row, 17431)) >>> 0;
+    if (Object.hasOwn(trees, prop)) {
+      const [kind, height] = trees[prop];
+      addStorybookTree(groveBatch, {kind,x,z,groundY,height,seed});
+    } else {
+      addCoastalPlanting(batch, prop === 'rock' ? 'stone' : 'sage', x, groundY, z, 21, seed % 314 / 50);
+    }
   }
 }
 
@@ -1081,25 +1149,44 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   const horizonFog = new THREE.Fog(scene.background);
   const camera = new THREE.OrthographicCamera(-800, 800, 450, -450, 1, STORYBOOK_CAMERA_FAR);
   const { minX, maxX, minZ, maxZ } = plan.bounds;
-  const street = storybookStreetBounds(plan);
+  const terrainEngine = globalThis.RoomcraftTerrain;
+  const terrain = terrainEngine.valid(layout.terrain) ? terrainEngine.normalize(layout.terrain) : undefined;
+  const terrainSampler = terrain?.cells?.some(cell => cell.height || cell.cover) ? terrainEngine.createSampler(terrain) : null;
+  const street = storybookStreetBounds(plan, terrain);
   const meadow = createStorybookMeadow({plan, street, width:6200, depth:4200,
-    centerX:(minX + maxX) / 2, centerZ:(minZ + maxZ) / 2, groundY:GROUND_Y});
+    centerX:(minX + maxX) / 2, centerZ:(minZ + maxZ) / 2, groundY:GROUND_Y, terrain, terrainSampler});
   const groundMaterial = new THREE.MeshStandardMaterial({
     color: '#e8e8d2', map: meadowTexture(canvas.ownerDocument), roughness: 0.95, vertexColors:true,
   });
   let lightingLutUniform;
-  groundMaterial.onBeforeCompile = ({uniforms}) => { lightingLutUniform = uniforms.dfgLUT; };
+  groundMaterial.onBeforeCompile = shader => {
+    lightingLutUniform = shader.uniforms.dfgLUT;
+    if (!terrainSampler) return;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute vec4 terrainPaint; varying vec4 paintedGround;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\npaintedGround = terrainPaint;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec4 paintedGround;')
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        float paintTexture = .84 + .21 * diffuseColor.g;
+        diffuseColor.rgb = diffuseColor.rgb * (1.0 - paintedGround.a) + paintedGround.rgb * paintTexture;`);
+  };
+  groundMaterial.customProgramCacheKey = () => terrainSampler ? 'roomcraft-meadow-painted' : 'roomcraft-meadow-base';
   const ground = new THREE.Mesh(meadow.geometry, groundMaterial);
   ground.position.set((minX + maxX) / 2, GROUND_Y, (minZ + maxZ) / 2);
   scene.add(ground);
   const batch = makeStaticBatch(scene);
   const treeBatch = makeStaticBatch(scene);
+  const groveBatch = makeStaticBatch(scene);
   const treeWind = createStorybookTreeWind(treeBatch);
-  const road = buildStorybookStreet(batch, street, GROUND_Y, ground.geometry.parameters.width, ground.position.x);
+  const renderWidth = 16568;
+  const road = buildStorybookStreet(batch, street, GROUND_Y, ground.geometry.parameters.width, ground.position.x, {renderWidth});
   let traffic;
   const sandstone = loadCoastSandstone(canvas.ownerDocument, assetBase);
-  const {water, coastalFrames} = buildStorybookNeighborhood(batch, street, GROUND_Y, plan.houseBounds,
-    ground.geometry.parameters.width, ground.position.x, {sandstone});
+  const coast = buildStorybookNeighborhood(batch, street, GROUND_Y, plan.houseBounds,
+    ground.geometry.parameters.width, ground.position.x, {sandstone, renderWidth, terrain, terrainSampler});
+  const {water, coastalFrames} = coast;
+  const canEditTerrain = (x,z) => meadow.canEditTerrain(x,z) || coast.canEditTerrain(x,z);
   const shoreCenter = water.shoreline.reduce((closest, point) =>
     Math.abs(point.x - water.focusX) < Math.abs(closest.x - water.focusX) ? point : closest);
   const sceneryFocus = {
@@ -1107,7 +1194,10 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     coast: {x: water.cove.x, y: water.y + 9, z: water.cove.z - 20},
     beach: {x: water.focusX, y: water.y + 8, z: shoreCenter.z + 37},
   };
-  buildYard(batch, plan, street, treeWind, meadow.heightAt, water.sandHeight);
+  buildYard(batch, groveBatch, plan, street, treeWind, meadow.heightAt, water.sandHeight, (terrain?.planting ?? 100) / 100);
+  buildPlacedLandscape(batch, groveBatch, terrain, terrainEngine.GRID_SIZE,
+    (x,z) => coast.canEditTerrain(x,z) ? water.sandHeight(x,z) : meadow.heightAt(x,z), canEditTerrain);
+  if (terrain?.yardAccess !== false) buildStorybookYardAccess(batch, plan, street, meadow.heightAt, GROUND_Y);
   buildReferenceLanding(batch, plan);
   buildFloors(scene, batch, plan, canvas.ownerDocument);
   const surfaceAnisotropy = new Map(scene.children.flatMap(node => {
@@ -1120,26 +1210,18 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   batch.finish();
   const firstTreeMesh = scene.children.length;
   treeBatch.finish();
+  groveBatch.finish();
   const treeMeshes = scene.children.slice(firstTreeMesh);
   const structureMeshes = scene.children.filter(node => node.isMesh);
   const lighting = createStorybookLighting(renderer, scene, plan.bounds);
   const fadeSolar = createStorybookSolarFade();
   lighting.markStructure();
   ground.castShadow = false;
-  const foregroundGeometry = new THREE.PlaneGeometry(160000, 160000);
-  const {position:foregroundPoints, uv:foregroundUv} = foregroundGeometry.attributes;
-  foregroundGeometry.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(12).fill(1), 3));
-  for (let i = 0; i < foregroundUv.count; i++) {
-    foregroundUv.setXY(i, foregroundPoints.getX(i) / ground.geometry.parameters.width + .5,
-      foregroundPoints.getY(i) / ground.geometry.parameters.height + .5);
-  }
+  const foregroundGeometry = distantMeadowGeometry(ground.geometry.parameters.width, ground.geometry.parameters.height);
   const horizonForeground = new THREE.Mesh(foregroundGeometry, groundMaterial);
   horizonForeground.name = 'Horizon foreground';
-  horizonForeground.rotation.x = -Math.PI / 2;
   horizonForeground.position.copy(ground.position);
-  horizonForeground.position.y -= .12;
   horizonForeground.receiveShadow = true;
-  horizonForeground.visible = false;
   scene.add(horizonForeground);
   const ocean = createStorybookOcean(water);
   const sidewalk = createStorybookSidewalk(road);
@@ -1290,7 +1372,6 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     updateSceneryView();
     const haze = storybookHorizonFog(cameraView.tilt);
     scene.fog = haze ? horizonFog : null;
-    horizonForeground.visible = Boolean(haze);
     if (haze) {
       const offset = camera.far - STORYBOOK_CAMERA_FAR;
       horizonFog.near = haze.near + offset;
@@ -1578,6 +1659,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     setDetectionZones: coverage.setZones, setHeatMap: heatMap.setHistory,
     get trackedControlChanged() { return trackedControlChanged; },
     get hasPendingReacquisition() { return [...roots.values()].some(object => object.liveMotion?.pendingReacquisition); },
+    canEditTerrain,
     canPlacePerson: (x, y) => Number.isFinite(floorForPerson(x, y)),
     personFloorAt: floorForPerson,
     nearestPersonPoint: (x, y, maxDistance = 128) => nearestSupportedFloorPoint(x, y, maxDistance,

@@ -15,6 +15,32 @@ function sampleOcean(environment, time = 3) {
   return sample;
 }
 
+test('the visual ocean extends offshore while preserving the shoreline and fixed boat bounds', () => {
+  const renderFarZ = -16250;
+  const water = {...bounds, renderFarZ};
+  const baseline = createStorybookOcean(bounds);
+  const extended = createStorybookOcean(water);
+  const renderShoreline = [{x:-12000, z:-470}, ...bounds.shoreline, {x:12000, z:-450}];
+  const wider = createStorybookOcean({...water, renderShoreline});
+  const {position, uv} = wider.mesh.geometry.attributes;
+  assert.equal(extended.mesh.position.z, renderFarZ);
+  assert.equal(water.farZ, bounds.farZ);
+  assert.equal(extended.mesh.geometry.index.count, baseline.mesh.geometry.index.count);
+  assert.equal(wider.mesh.geometry.index.count, extended.mesh.geometry.index.count + 12);
+  for (const [index, {x, z}] of renderShoreline.entries()) {
+    const vertex = index * 2;
+    assert.equal(position.getX(vertex) + wider.mesh.position.x, x);
+    assert.equal(position.getZ(vertex) + wider.mesh.position.z, z);
+    assert.equal(position.getZ(vertex + 1) + wider.mesh.position.z, renderFarZ);
+    assert.equal(uv.getY(vertex), 0);
+    assert.equal(uv.getY(vertex + 1), z - renderFarZ);
+  }
+  for (const {mesh} of [baseline, extended, wider]) {
+    mesh.geometry.dispose();
+    mesh.material.dispose();
+  }
+});
+
 test('local bearings move the reflected sun and its twilight band to the same side of the north-up ocean', () => {
   const dawn = sampleOcean({sunElevation:1, sunAzimuth:94, sunRising:true, skyProgress:.9});
   const dusk = sampleOcean({sunElevation:1, sunAzimuth:266, sunRising:false, skyProgress:.1});

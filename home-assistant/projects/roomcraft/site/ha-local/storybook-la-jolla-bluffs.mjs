@@ -105,9 +105,11 @@ function layeredMaterial(batch, sandstone) {
         vec2 weather = p.xz + p.y * vec2(.39,.17);
         float patches = .65 * bluffNoise(weather * .082) + .35 * bluffNoise(weather * .25);
         float grit = bluffNoise(weather * .63);
-        float beds = sin(p.y * 1.52 + p.x * .082 + .61 * sin(p.x * .32));
+        float bedBend = .96 * bluffNoise(weather * .046) + .71 * sin(p.x * .060 + p.z * .029);
+        float bedLine = sin(p.y * 1.47 + p.x * .063 + p.z * .055 + bedBend);
+        float bedExposure = smoothstep(.22, .69, bluffNoise(weather * .11));
         float detail = 1.0 - smoothstep(.8, 2.9, length(fwidth(p)));
-        float bluffFinish = .84 + .32 * patches + detail * (.135 * (grit - .42) + .043 * beds * bluffStone);
+        float bluffFinish = .84 + .32 * patches + detail * (.135 * (grit - .42) + .048 * bedLine * bedExposure * bluffStone);
         float sandPixel = max(length(dFdx(p.xz)),length(dFdy(p.xz)));
         if (bluffSand > .001) {
           float sandPatches = coastGrain(p.xz * .041);
@@ -173,6 +175,28 @@ function inlandDepth(toe, run, end, depth) {
   return entry + length * ease + t * (1 - t) * ((1 - t) * slopeIn - t * slopeOut);
 }
 
+function shelfWeight(u, center, inner, outer) {
+  return 1 - MathUtils.smootherstep(Math.abs(u - center), inner, outer);
+}
+
+function faceProfile(u, height, depth, phase) {
+  // Wave-cut platforms hold the west point at low tide. The east shoulder
+  // preserves smaller upper ledges, with worn faces between the two.
+  const west = shelfWeight(u, -.49, .09, .29) * (1 - MathUtils.smoothstep(height, .30, .67));
+  const east = shelfWeight(u, .52, .075, .27) * MathUtils.smoothstep(height, .07, .24) *
+    (1 - MathUtils.smoothstep(height, .58, .90));
+  const seam = shelfWeight(u, -.18, .045, .24) * MathUtils.smoothstep(height, .32, .45) *
+    (1 - MathUtils.smoothstep(height, .56, .78));
+  const face = MathUtils.smootherstep(height, .047, .112) * (1 - MathUtils.smootherstep(height, .79, .98));
+  const grade = .028 + .409 * height;
+  const shelves = MathUtils.clamp(west + east + seam, 0, 1);
+  const shift = (.51 + .49 * Math.sin(u * 6.3 + height * 7.2 + phase)) * (.08 + .16 * (1 - shelves));
+  const graded = MathUtils.lerp(depth, grade, face * (.82 - .71 * shelves + shift * .2));
+  const drift = -.049 * u + .047 * Math.sin(u * 8.6 + depth * 8.2 + phase) +
+    .024 * Math.sin(u * 21.1 - depth * 10.7);
+  return {depth:graded, dip:drift * face};
+}
+
 function form(spec, offset, coast, roadEdge, sampleSand, focusX, u, row) {
   const [height, depth] = CROSS_SECTION[row];
   const phase = spec.phase;
@@ -194,12 +218,14 @@ function form(spec, offset, coast, roadEdge, sampleSand, focusX, u, row) {
   const taper = Math.min(1, relief * 2.8);
   const apron = MathUtils.smoothstep(depth, .74, 1.34);
   const end = Math.min(roadEdge - 16, toe + run * (1.31 + .055 * Math.sin(u * 12 + phase)));
+  const beds = faceProfile(u, height, depth, phase);
   const strataReach = MathUtils.smootherstep(height, .015, .12);
-  const flutes = ridge * Math.sin(row * .48) * strataReach * .69;
-  const z = inlandDepth(toe, run, end, depth) + (cave + erosion + flutes) * taper * (1 - apron);
+  const flutes = ridge * Math.sin(row * .38 + u * 3.8) * strataReach * .69;
+  const z = inlandDepth(toe, run, end, beds.depth) + (cave + erosion + flutes) * taper * (1 - apron);
   const beach = sampleSand(offset, z);
   const strata = grain * MathUtils.smoothstep(height, 0, .10) * (1 - apron);
-  const rise = relief * spec.height * (height + strata) - erosion * .24 - .19;
+  const grading = 1 - apron * (.16 + .09 * Math.cos(u * 9.8 + phase));
+  const rise = relief * spec.height * (height * grading + strata + beds.dip) - erosion * .24 - .19;
   const border = Math.max(MathUtils.smootherstep(Math.abs(u), .68, .985), MathUtils.smootherstep(depth, .88, 1.29));
   const blend = 1 - (1 - border) * MathUtils.smootherstep(rise, .05, 6.8);
   return {

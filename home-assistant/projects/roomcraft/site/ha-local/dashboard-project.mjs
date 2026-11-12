@@ -1,10 +1,12 @@
 import {validSceneSettings} from './storybook-scene-settings.mjs';
+import '../public/engine/terrain.js';
 
 const PLAN_WIDTH = 1536;
 const PLAN_HEIGHT = 1024;
 const INTERFACE_ITEMS = new Set(['uiWeatherOrb', 'uiMenu', 'uiTime', 'uiEdit', 'uiStatusAir', 'uiStatusElectrical']);
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const finite = (...values) => values.every(Number.isFinite);
+const terrainContract = (typeof window === 'undefined' ? globalThis : window).RoomcraftTerrain;
 
 export function isDashboardLayout(project) {
   return object(project) && project.version === 2 &&
@@ -21,6 +23,7 @@ export function dashboardProjectProblem(project, {validCameraThumbnail, validObj
     return 'The layout exceeds supported limits.';
   }
   if (!validSceneSettings(project.sceneSettings)) return 'The layout has invalid scene settings.';
+  if (!terrainContract.valid(project.terrain)) return 'The layout has invalid terrain settings or cells.';
   if (project.rooms.some(room => !object(room) || !Array.isArray(room.points) || room.points.length < 3 ||
       room.points.some(point => !object(point) || !finite(point.x, point.y)))) {
     return 'The layout has an invalid room.';
@@ -51,4 +54,14 @@ export function dashboardProjectProblem(project, {validCameraThumbnail, validObj
       return 'The layout has an invalid object control.';
     }
   }
+}
+
+/** Normalize optional terrain after the shared publication validator has accepted it. */
+export function normalizeDashboardTerrain(project) {
+  if (!Object.hasOwn(project, 'terrain')) return project;
+  const next = {...project};
+  const terrain = terrainContract.normalize(project.terrain);
+  if (terrain) next.terrain = terrain;
+  else delete next.terrain;
+  return next;
 }

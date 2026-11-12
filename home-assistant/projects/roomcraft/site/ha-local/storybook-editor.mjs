@@ -5,6 +5,7 @@ import {createPersonPresence, personSource, readDetectionZones, readPersonTracks
 import {mountStorybookStudioLook} from './storybook-studio-look.mjs';
 import {mountRadarCalibration} from './storybook-calibration-panel.mjs';
 import {mountVacuumAlignment} from './storybook-vacuum-alignment-panel.mjs';
+import {mountStorybookTerrainEditor} from './storybook-terrain-editor.mjs';
 
 const SELECT_RADIUS = 22;
 const AMBIENT_FRAME_INTERVAL = 1000 / 12;
@@ -115,6 +116,8 @@ export function mountStorybookEditor(document, host) {
     const box = currentSize();
     return {x: event.clientX - box.left, y: event.clientY - box.top};
   };
+  const terrain = mountStorybookTerrainEditor(document, host, {api, viewport, canvas, pointerPoint,
+    getScene: () => scene, getProjection: () => guideProjection});
   function setStatus(text) {
     api.showStatus?.(text);
   }
@@ -254,6 +257,7 @@ export function mountStorybookEditor(document, host) {
     if (Object.entries(next).every(([key, value]) => guideProjection?.[key] === value)) return;
     guideProjection = next;
     api.setOverheadView({...next, fit, pan, zoomAt, center});
+    terrain?.paint();
   }
   function draw() {
     syncAmbientAnimation();
@@ -321,6 +325,7 @@ export function mountStorybookEditor(document, host) {
     viewport.classList.remove('scene-3d');
     api.setOverheadView(null);
     updatePeople(false);
+    terrain?.projectChanged();
     setStatus('3D view is unavailable. You can edit in the overhead plan.');
   }
   function refresh() {
@@ -330,6 +335,7 @@ export function mountStorybookEditor(document, host) {
     if (!is3D()) {
       look.sync(false, nextProject.sceneSettings);
       updatePeople();
+      terrain?.projectChanged();
       return;
     }
     const nextFingerprint = JSON.stringify(nextProject);
@@ -368,6 +374,7 @@ export function mountStorybookEditor(document, host) {
       }
       updatePeople(false);
       draw();
+      terrain?.projectChanged();
     } catch { fail(); }
   }
   const onChange = () => {
@@ -384,6 +391,7 @@ export function mountStorybookEditor(document, host) {
   };
   const onPointerDown = (event, forcedId = null) => {
     if (!is3D() || !scene) return;
+    if (terrain?.pointerDown(event)) return;
     const screen = pointerPoint(event);
     const tool = api.getTool();
     const placementPoint = api.hasPlacement()
@@ -399,6 +407,9 @@ export function mountStorybookEditor(document, host) {
     }
     api.pointerDown(event, {itemId, placementPoint, captureTarget: canvas});
   };
+  const onPointerMove = event => { if (!terrain?.pointerMove(event)) api.pointerMove(event); };
+  const onPointerUp = event => { if (!terrain?.pointerUp(event)) api.pointerUp(event); };
+  const onPointerCancel = event => { if (!terrain?.pointerCancel(event)) api.pointerCancel(event); };
   const onContextLost = event => {
     event.preventDefault();
     fail();
@@ -408,10 +419,10 @@ export function mountStorybookEditor(document, host) {
   document.addEventListener('visibilitychange', onVisibility);
   motionPreference?.addEventListener('change', onMotionPreference);
   canvas.addEventListener('pointerdown', onPointerDown);
-  canvas.addEventListener('pointermove', api.pointerMove);
-  canvas.addEventListener('pointerup', api.pointerUp);
-  canvas.addEventListener('pointercancel', api.pointerCancel);
-  canvas.addEventListener('lostpointercapture', api.pointerCancel);
+  canvas.addEventListener('pointermove', onPointerMove);
+  canvas.addEventListener('pointerup', onPointerUp);
+  canvas.addEventListener('pointercancel', onPointerCancel);
+  canvas.addEventListener('lostpointercapture', onPointerCancel);
   canvas.addEventListener('webglcontextlost', onContextLost);
   host.addEventListener('roomcraft-editor-change', onChange);
   host.addEventListener('roomcraft-editor-preview', onDraft);
@@ -443,14 +454,15 @@ export function mountStorybookEditor(document, host) {
       look.dispose();
       calibrator?.dispose();
       vacuumAlignment?.dispose();
+      terrain?.dispose();
       canvas.hidden = true;
       viewport.classList.remove('scene-3d');
       api.setOverheadView(null);
       canvas.removeEventListener('pointerdown', onPointerDown);
-      canvas.removeEventListener('pointermove', api.pointerMove);
-      canvas.removeEventListener('pointerup', api.pointerUp);
-      canvas.removeEventListener('pointercancel', api.pointerCancel);
-      canvas.removeEventListener('lostpointercapture', api.pointerCancel);
+      canvas.removeEventListener('pointermove', onPointerMove);
+      canvas.removeEventListener('pointerup', onPointerUp);
+      canvas.removeEventListener('pointercancel', onPointerCancel);
+      canvas.removeEventListener('lostpointercapture', onPointerCancel);
       canvas.removeEventListener('webglcontextlost', onContextLost);
       host.removeEventListener('roomcraft-editor-change', onChange);
       host.removeEventListener('roomcraft-editor-preview', onDraft);

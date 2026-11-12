@@ -1,5 +1,5 @@
 import {keepPreviousDashboardDesign, stableDashboardJson as stableStringify} from './dashboard-snapshots.mjs';
-import {dashboardProjectProblem} from './dashboard-project.mjs';
+import {dashboardProjectProblem, normalizeDashboardTerrain} from './dashboard-project.mjs';
 import {FREE_VIEW_TILT_LIMIT} from './storybook-camera.mjs';
 import {storybookLightControlLabels} from './storybook-state.mjs';
 import {loadVacuumMap} from './storybook-vacuum-map.mjs';
@@ -388,7 +388,7 @@ function updatePlanCard(config, image, hotspots, items = []) {
 function validateProject(project) {
   const problem = dashboardProjectProblem(project, {validCameraThumbnail, validObjectControl});
   if (problem) throw new BridgeError(400, problem);
-  return project;
+  return normalizeDashboardTerrain(project);
 }
 
 function decodePng(dataUrl) {

@@ -125,6 +125,28 @@ test('hosted publication validates scene settings and preserves approved boolean
   assert.deepEqual(dashboards[canonicalPath].roomcraft_layout.sceneSettings, settings);
 });
 
+test('hosted publication round-trips canonical terrain and blocks malformed cells before uploading', async () => {
+  let uploads = 0;
+  const {route, dashboards} = harness({[canonicalPath]:home}, {onUpload:() => uploads++});
+  const before = await (await route.GET(request())).json();
+  const send = terrain => route.POST(request({revision:before.revision,
+    project:{...project, terrain}, pngDataUrl:testPng()}));
+  assert.equal((await send({cells:[{col:0, row:1, height:4}, {col:0, row:1, cover:'stone'}]})).status, 400);
+  assert.equal((await send({roadSetback:181})).status, 400);
+  assert.equal((await send({cells:[{col:0, row:1, prop:null}]})).status, 400);
+  assert.equal(uploads, 0);
+  const terrain = {road:'winding', hillHeight:100, cells:[
+    {col:4, row:2, height:10}, {col:1, row:-1, prop:'oak'}, {col:0, row:0, height:0},
+  ]};
+  const expected = {road:'winding', cells:[{col:1, row:-1, prop:'oak'}, {col:4, row:2, height:10}]};
+  assert.equal((await send(terrain)).status, 200);
+  assert.equal(uploads, 1);
+  assert.deepEqual(dashboards[canonicalPath].roomcraft_layout.terrain, expected);
+  const after = await (await route.GET(request())).json();
+  assert.deepEqual(after.project.terrain, expected);
+  assert.notEqual(after.revision, before.revision);
+});
+
 test('hosted and native project constraints reject malformed plan geometry before upload', async () => {
   let uploads = 0;
   const {route, calls} = harness({[canonicalPath]:home}, {onUpload: () => uploads++});

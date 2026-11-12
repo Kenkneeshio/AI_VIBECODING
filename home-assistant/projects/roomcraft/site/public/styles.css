@@ -183,3 +183,32 @@ body.dashboard-transfer-busy .workbench{cursor:progress}body.dashboard-transfer-
   .toolbar-right{margin-left:auto}
 }
 @media(pointer:coarse){.studio-save,.back-dashboard-button,#exportButton{min-width:44px;min-height:44px}}
+
+.panel-tabs{grid-template-columns:repeat(5,minmax(0,1fr))}
+.terrain-panel{color:#384a3e;font-size:12px}
+.terrain-panel [hidden]{display:none}
+.terrain-brush{min-width:0;border:1px solid var(--line);border-radius:10px;margin:0;padding:9px}
+.terrain-brush legend{padding-inline:5px;font-weight:750}
+.terrain-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-bottom:8px}
+.terrain-modes button{min-height:34px;border:1px solid #dce4d7;border-radius:7px;background:#fffefa;color:#465d4d;font:inherit;font-weight:700;padding:2px}
+.terrain-modes button[aria-pressed="true"]{border-color:#88aa91;background:#e8f1e7;color:#284c38}
+.terrain-modes button:focus-visible,.terrain-panel select:focus-visible,.terrain-landscape summary:focus-visible{outline:2px solid #547b63;outline-offset:2px}
+.terrain-field{display:grid;gap:4px;margin:7px 0;font-weight:650}
+.terrain-field select{width:100%;min-width:0;min-height:34px;border:1px solid #dce4d7;border-radius:7px;background:#fffefa;color:inherit;padding-inline:7px;font:inherit}
+.terrain-range{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:7px;font-weight:650}
+.terrain-range output{color:#456752;font-variant-numeric:tabular-nums}
+.terrain-panel input[type="range"]{display:block;width:100%;margin:0;min-height:28px;accent-color:#537c61}
+.terrain-hint{color:#516455;margin:6px 0 10px;font-size:11px;line-height:1.4}
+.terrain-landscape{border:1px solid var(--line);border-radius:10px;padding:8px 9px}
+.terrain-landscape summary{cursor:pointer;font-weight:750}
+.terrain-toggles{display:grid;gap:3px;margin-top:5px}
+.terrain-toggles label{display:flex;align-items:center;gap:5px;min-height:26px}
+.terrain-toggles input{accent-color:#537c61}
+.viewport[data-tool="terrain"]{cursor:crosshair}
+.terrain-brush-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:3;color:#275d49}
+.terrain-brush-overlay[hidden]{display:none}
+.terrain-brush-overlay[data-blocked]{color:#933f37}
+.terrain-brush-overlay [data-brush-outline]{fill:currentColor;fill-opacity:.085;stroke:currentColor;stroke-width:2;stroke-dasharray:6 4;filter:drop-shadow(0 0 1px #fffefa)}
+.terrain-brush-overlay [data-brush-trail]{fill:none;stroke:currentColor;stroke-opacity:.16;stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:620px){#terrainPanel{overflow-y:auto;overscroll-behavior:contain}.terrain-panel .terrain-modes{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(pointer:coarse){.terrain-modes button,.terrain-panel select,.terrain-panel input[type="range"],.terrain-toggles label{min-height:44px}}

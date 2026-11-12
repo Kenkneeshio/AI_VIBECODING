@@ -1,5 +1,11 @@
 # Changelog
 
+## Edit the landscape in Studio
+
+- Studio has terrain brushes for raising, lowering, smoothing, painting, and restoring ground. Place individual trees, sage, and rocks. Edits work with Undo, Save, and layout export.
+- The Landscape controls set the coast shape, beach width, road shape and distance, hills, planting, and landmark visibility.
+- At wide zoom, the ocean, shore, road, and inland terrain continue past the camera. Outer headlands, varied shallows, and inland groves break up the parallel strips. A garden path connects the low stair apron to the sidewalk where there is room.
+
 ## Grade and plant the coastal landscape
 
 - Low dunes, grass rises, and clusters of coastal sage, grasses, succulents, and sandstone fill the outer stretches of the scene.
