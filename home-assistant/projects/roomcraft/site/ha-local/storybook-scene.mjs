@@ -1495,7 +1495,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     } else livePeople.setTracks(tracks, timeSeconds, options);
   }
   function anchor(itemId) {
-    if (cameraView.preset === 'waterfront') return null;
+    if (Object.hasOwn(coastalFrames, cameraView.preset)) return null;
     const entry = anchors.get(itemId);
     if (!entry || currentWidth < 1 || currentHeight < 1) return null;
     const { x, z, baseY, object } = entry;

@@ -5,11 +5,15 @@ The wall dashboard should evoke La Jolla from its everyday overhead view. A gues
 | Customer outcome | Acceptance |
 | --- | --- |
 | Recognize La Jolla from the wall display | The overhead view shows the pier and the cove alongside the entire house. |
-| See the coast in depth | The Cove shot faces exposed sandstone and planted headlands. The Shores shot frames the pier deck, pilings and landscaped promenade. |
+| See the coast in depth | The Cove shot faces exposed sandstone and planted headlands. The Shores shot frames the pier deck, pilings and landscaped promenade. House controls and camera tiles stay with the house views. |
 | Keep the water alive | Animated shore break, reflections and rainfall follow the camera and the current weather. Reduced motion, manual quality, and the Insane graphics recovery remain available. |
 | Maintain the release | Authored curves, seeded vegetation, camera bounds and verified artwork bytes can be reproduced and restored independently of the saved home. |
 
 `storybook-street.mjs` supplies the shoreline, sand grade, play sites and separate camera frames. `storybook-la-jolla-bluffs.mjs` owns the continuous bluff surface and plantings. `storybook-la-jolla-shores.mjs` owns Scripps Pier, the promenade and Kellogg Park. `storybook-ocean.mjs` maps surf to the shared coast and uses world-space wind swells offshore. `storybook-camera.mjs` fits the two seaward views independently.
+
+![Roomcraft's Cove camera shows the exposed sandstone headlands and pocket beach.](images/la-jolla-cove-v2.png)
+
+![Roomcraft's Shores camera shows the Scripps Pier pilings and La Vereda promenade.](images/la-jolla-shores-v2.png)
 
 ## Material provenance
 
