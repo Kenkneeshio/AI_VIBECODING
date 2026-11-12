@@ -66,6 +66,12 @@ Open **Main menu → Scene settings** in Studio or **Menu → Manage → Scene s
 
 Search **Fish Aquarium** or **Lizard Terrarium** to place the animated tanks. They animate in 3D and use a still illustration in the 2D plan, and the 3D animation respects the device's reduced-motion setting.
 
+## Show family locations from Google Maps
+
+Open **Menu → Location sharing → Connect Google Maps** on a computer. Use the Google account that already receives your family’s location shares. The community Home Assistant integration guides you through exporting a Netscape cookies file from a private browser window and uploading it directly to the authenticated Home Assistant setup form. Close the private window after export without signing out. Keep the file local until setup succeeds, then remove the exported copy. [Google Maps integration setup and cookie instructions](https://github.com/pnbruckner/ha-google-maps/tree/2.1.0#obtaining-a-cookies-file)
+
+Return to **Location sharing** and select **Show Google shared locations on this screen**. Each browser remembers its own choice. The map uses the latest available Home Assistant location for each connected Google share. The Google session can expire, and Home Assistant’s integration settings let you replace it.
+
 ## Track presence on the 3D plan
 
 Open **Menu → On the map → Presence tracking** in Roomcraft Home to see the bound switches' radar target counts and recent zone reports. A calibrated switch can show one anonymous character for each fresh target. The sensor can miss an occupant or pick up moving objects, so its count is an estimate of detected targets. It has no heart-rate or breathing-rate reading.
@@ -74,7 +80,7 @@ An administrator enables detailed reporting for the compatible switch in Home As
 
 Use **Plan pixels per metre**, **Rotation offset**, and **Flip radar left and right** to align the radar with the drawing. Select **Use switch position** to apply those settings from the placed switch. Have someone stand at two known points, preferably at different distances and on different sides of the switch, and adjust until their positions agree with the plan. Use **Export to dashboard** to publish the calibration. The advanced transform field accepts six affine coefficients when additional adjustment is needed.
 
-Characters stay on home-classified floors. They can pass through clear doorways and can disappear briefly before reacquiring on a newly reported valid floor point. A steady detection near a compatible chair, bench, or sofa can trigger a seated pose. The location ring marks the sensor reading. Positions expire when fresh coordinate reports stop. Each switch tracks independently, so overlapping coverage can show the same target twice. [Home Assistant presence setup](../ha-presence/README.md)
+Characters stay on the second-floor condo, its upper landing and the authored exterior stair treads. A character uses each tread's rendered height. The yard and detached garage are outside this tracking surface. A steady detection near a compatible chair, bench, or sofa can trigger a seated pose. While the linked occupancy sensor is on, a character remains at the last usable point after coordinate reports stop. A reading in a wall or furniture leaves the character at a safe spot. A small person symbol shows where it is if the view is blocked. If there is no point yet, Roomcraft marks an approximate area. The amber floor ring and **Presence tracking** menu identify held or approximate placements. The character clears on vacancy. Each switch tracks independently, so overlapping coverage can show the same target twice. [Home Assistant presence setup](../ha-presence/README.md)
 
 Open **Menu → On the map → Radar heat map** to see recorded position density over 15 minutes, 1 hour, 24 hours, or 7 days. Pair it with **Detection zone** to compare observations with the configured or nominal footprint. Empty cells show no recorded hits in the selected period. Use a controlled walk or sit test to assess coverage there. Native occupancy can remain on when the radar stops sending fresh coordinates. [Inovelli stationary presence and stay zones](https://help.inovelli.com/en/articles/12773613-blue-series-mmwave-presence-dimmer-switch-advanced-mmwave-configuration)
 

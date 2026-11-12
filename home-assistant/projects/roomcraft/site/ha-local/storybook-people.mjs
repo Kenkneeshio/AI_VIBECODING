@@ -6,8 +6,9 @@ const MAX_TRACKS = 24;
 const GROUND_RING_RADIUS = 17.5;
 const SIT_SECONDS = .42;
 const SEAT_HIPS = 8.9;
+export const STORYBOOK_PERSON_RADIUS = 20;
 const STYLES = [
-  {role: 'papa', scale: [1.26, 1.25, 1.22], radius:20, sweater: '#537eaa', trim: '#ffcc81', skin: '#db9f76', hair: '#4b3533'},
+  {role: 'papa', scale: [1.26, 1.25, 1.22], radius:STORYBOOK_PERSON_RADIUS, sweater: '#537eaa', trim: '#ffcc81', skin: '#db9f76', hair: '#4b3533'},
   {role: 'mama', scale: [1.09, 1.18, 1.12], radius:18, sweater: '#c86587', trim: '#ffdeaf', skin: '#e8af83', hair: '#5a3841'},
   {role: 'baby', scale: [.92, .83, .92], radius:16, sweater: '#8b78cf', trim: '#ffe492', skin: '#f1b98e', hair: '#674138'},
 ];
@@ -40,10 +41,12 @@ function animateFace(character, idle, reducedMotion, forwardTilt = 0, lookAside 
  * Route and clearance queries use the same compiled surface as floorAt.
  */
 export function createStorybookPeople(scene, floorAt = () => 0,
-  {supportsRoute, floorClearance, allowsBodyPoint, allowsBodyRoute, seats = []} = {}) {
+  {supportsRoute, floorClearance, allowsBodyPoint, allowsBodyRoute, seats = [], occlusionScene} = {}) {
   const group = new THREE.Group();
   group.name = 'tracked-people';
   scene.add(group);
+  const occlusion = new THREE.Group();
+  occlusionScene?.add(occlusion);
 
   // Initialize the resources only on first use. The normal editor scene and its
   // exports have no runtime characters or dependencies on the tracker feed.
@@ -56,11 +59,22 @@ export function createStorybookPeople(scene, floorAt = () => 0,
   let hasVisibleTracks = false;
 
   function makeArt() {
+    const head = new THREE.Shape();
+    head.absarc(0, 4, 3.5, 0, 2 * Math.PI, false);
+    const shoulders = new THREE.Shape();
+    shoulders.moveTo(-6.5, -6.5);
+    shoulders.quadraticCurveTo(-7, -.2, 0, -.2);
+    shoulders.quadraticCurveTo(7, -.2, 6.5, -6.5);
+    shoulders.closePath();
     return {
       sphere: new THREE.SphereGeometry(1, 12, 8),
       disc: new THREE.CircleGeometry(1, 24).rotateX(-Math.PI / 2),
       groundRing: new THREE.RingGeometry(13.8, GROUND_RING_RADIUS, 32).rotateX(-Math.PI / 2),
       glasses: new THREE.TorusGeometry(1, .14, 6, 16),
+      occlusionGlyph: new THREE.ShapeGeometry([head, shoulders], 12),
+      occlusionMaterial: new THREE.MeshBasicMaterial({
+        color:'#fff1cd', depthFunc:THREE.GreaterDepth, depthWrite:false, transparent:true, opacity:.90, toneMapped:false,
+      }),
       palette: STYLES.map(({sweater, trim, skin, hair}) => Object.fromEntries(
         Object.entries({sweater, trim, skin, hair}).map(([part, color]) => [part, paintedMaterial(color)]),
       )),
@@ -70,6 +84,7 @@ export function createStorybookPeople(scene, floorAt = () => 0,
       white: paintedMaterial('#fff1dc'),
       shadow: new THREE.MeshBasicMaterial({color:'#433849', transparent:true, opacity:0.22, depthWrite:false}),
       groundMark: new THREE.MeshBasicMaterial({color:'#fff1cd', depthTest:false, depthWrite:false, toneMapped:false}),
+      retainedMark: new THREE.MeshBasicMaterial({color:'#eeb660', depthTest:true, depthWrite:false, toneMapped:false}),
     };
   }
 
@@ -108,6 +123,12 @@ export function createStorybookPeople(scene, floorAt = () => 0,
     // The marker remains visible through the floor, with the character in front of it.
     groundMark.renderOrder = -1;
     group.add(groundMark);
+    const cue = occlusionScene ? new THREE.Mesh(art.occlusionGlyph, art.occlusionMaterial) : null;
+    if (cue) {
+      cue.name = 'radar-occlusion-cue';
+      cue.visible = false;
+      occlusion.add(cue);
+    }
 
     ellipse(body, sweater, 0, 15, 0, baby ? 8.2 : 7.1, 8.3, 5.4);
     if (baby) {
@@ -176,7 +197,7 @@ export function createStorybookPeople(scene, floorAt = () => 0,
     }
     if (role === 'papa') ellipse(head, art.ink, 0, 1.6, 9.35, 1.1, .28, .35);
     ellipse(head, art.ink, 0, -1.95, 9.15, 1.38, 0.45, 0.38);
-    return {root, groundMark, poseRoot, body, head, arms, legs, eyes, radius, styleIndex, baby};
+    return {root, groundMark, poseRoot, body, head, arms, legs, eyes, radius, styleIndex, baby, cue};
   }
 
   const allowsPoint = (x, z) => Number.isFinite(floorAt(x, z)) && (!floorClearance || floorClearance(x, z) > 0);
@@ -270,13 +291,15 @@ export function createStorybookPeople(scene, floorAt = () => 0,
       const clearance = floorClearance?.(x, z) ?? GROUND_RING_RADIUS;
       character.groundMark.visible = Number.isFinite(floor) && clearance > 0;
       if (character.groundMark.visible) {
+        character.groundMark.material = track.point.quality ? art.retainedMark : art.groundMark;
         character.groundMark.position.set(x, floor + .26, z);
         character.groundMark.scale.setScalar(Math.min(1, clearance / GROUND_RING_RADIUS));
       }
       const sample = track.motion.sample(lastTime, reduced);
       if (track.bodyReported && sample?.current) track.bodySuppressed = false;
       const standing = track.bodyReported && !track.bodySuppressed ? sample : null;
-      const ready = allowSeats && (!track.bodyReported || (standing?.current && !standing.walking)) &&
+      const ready = allowSeats && track.point.quality !== 'area' &&
+        (!track.bodyReported || (standing?.current && !standing.walking)) &&
         track.dwell.ready(x, z, lastTime);
       if (track.seat) {
         if (ready && fitsSeat(track.seat, x, z, character.radius, 1.18)) taken.add(track.seat.id);
@@ -289,10 +312,21 @@ export function createStorybookPeople(scene, floorAt = () => 0,
       const target = ready ? track.seat ?? nearestSeat(point.x, point.y, character.radius, taken) : undefined;
       if (target) taken.add(target.id);
       const blend = seatingBlend(track, target, point.x, point.y);
-      const sample = target ? {x:point.x, y:point.y, heading:standing?.heading ?? target.heading,
+      let sample = target ? {x:point.x, y:point.y, heading:standing?.heading ?? target.heading,
         walking:false, progress:1} : standing;
+      if (!sample && point.keepVisible) {
+        const safe = [track.lastStanding, point.fallback].find(candidate =>
+          candidate && clearBodyPoint(candidate.x, candidate.y, character.radius));
+        if (safe) sample = {...safe, heading:safe.heading ?? 0, walking:false, progress:1};
+      }
+      if (sample && !target) track.lastStanding = sample;
       character.root.visible = Boolean(sample);
+      character.root.userData.locationQuality = point.quality ?? 'measured';
       if (sample) drawCharacter(track, sample, blend);
+      if (character.cue) {
+        character.cue.visible = Boolean(sample && point.keepVisible);
+        if (character.cue.visible) character.head.getWorldPosition(character.cue.position);
+      }
       hasVisibleTracks ||= character.root.visible || character.groundMark.visible;
     }
   }
@@ -312,6 +346,7 @@ export function createStorybookPeople(scene, floorAt = () => 0,
       if (next.has(id)) continue;
       track.character.root.visible = false;
       track.character.groundMark.visible = false;
+      if (track.character.cue) track.character.cue.visible = false;
       unused[track.character.styleIndex].push(track.character);
       tracks.delete(id);
     }
@@ -341,14 +376,18 @@ export function createStorybookPeople(scene, floorAt = () => 0,
 
   function dispose() {
     group.removeFromParent();
+    occlusion.removeFromParent();
     if (!art) return;
-    for (const material of [art.ink, art.cheek, art.shoes, art.white, art.shadow, art.groundMark]) material.dispose();
+    for (const material of [art.ink, art.cheek, art.shoes, art.white, art.shadow, art.groundMark,
+      art.retainedMark, art.occlusionMaterial]) material.dispose();
     for (const style of art.palette) for (const material of Object.values(style)) material.dispose();
     art.sphere.dispose();
     art.disc.dispose();
     art.groundRing.dispose();
     art.glasses.dispose();
+    art.occlusionGlyph.dispose();
     group.clear();
+    occlusion.clear();
     for (const pool of unused) pool.length = 0;
     tracks.clear();
     art = undefined;
@@ -358,7 +397,10 @@ export function createStorybookPeople(scene, floorAt = () => 0,
     setTracks,
     render,
     dispose,
-    setVisible(visible) { group.visible = visible; },
+    setVisible(visible) { group.visible = occlusion.visible = visible; },
+    orientOcclusionCues(camera) {
+      for (const cue of occlusion.children) if (cue.visible) cue.quaternion.copy(camera.quaternion);
+    },
     get hasMotion() { return !reduced && tracks.size > 0; },
     get hasVisibleTracks() { return hasVisibleTracks; },
     get hasPendingReacquisition() { return [...tracks.values()].some(({motion}) => motion.pendingReacquisition); },

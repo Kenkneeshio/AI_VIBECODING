@@ -1,5 +1,12 @@
 # Changelog
 
+## Keep an occupant on the condo floor and stairs
+
+- Hold a character at its last usable radar position while the linked occupancy sensor remains on. Show an approximate area if the sensor has not sent a usable point, and clear the character on vacancy. The Presence tracking menu identifies held and approximate positions.
+- Use the authored second-floor condo, the upper landing and the rendered stair treads for character support. Keep characters out of the yard and detached first-floor garage. The vacuum keeps its own movement surface.
+- The radar integration holds one recent nonempty frame in memory for page reloads during an occupied interval. It excludes that frame from history and clears it on vacancy.
+- Location sharing opens the Home Assistant Google Maps setup directly. After connecting one receiving account, enable its shared locations on the current screen.
+
 ## Object inventory, device binding, and light controls
 
 - Restore 3D models for safety barriers, climbing blocks, fireplaces, soft seating, wall art and mirrors. Toys, activity pieces, mats, planters, storage, fans, lamps and vacuums show distinct models and finishes in 3D Studio and Home.

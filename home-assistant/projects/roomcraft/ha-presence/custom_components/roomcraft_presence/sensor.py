@@ -126,6 +126,7 @@ class RadarTargets(SensorEntity):
     _attr_icon = "mdi:radar"
     _unrecorded_attributes = frozenset({
         "tracks", "zones", "observed_at", "zones_observed_at", "track_status", "observation_source",
+        "last_tracks", "last_observed_at",
     })
 
     def __init__(self, ieee, device, coverage):
@@ -141,6 +142,7 @@ class RadarTargets(SensorEntity):
         self._device_available = False
         self._listening = False
         self._tracks = None
+        self._last_sample = None
         self._zones = ()
         self._observed_at = None
         self._zones_observed_at = None
@@ -171,6 +173,7 @@ class RadarTargets(SensorEntity):
     @property
     def extra_state_attributes(self):
         _, status, observed_at, observation_source = self._summary()
+        last_tracks, last_at = self._last_sample or ((), None)
         return {
             "tracking_schema": TRACKING_SCHEMA,
             "tracks": [asdict(track) for track in self._tracks or ()],
@@ -179,6 +182,8 @@ class RadarTargets(SensorEntity):
             "zones_observed_at": self._zones_observed_at,
             "track_status": status,
             "observation_source": observation_source,
+            "last_tracks": [asdict(track) for track in last_tracks],
+            "last_observed_at": last_at,
         }
 
     @callback
@@ -193,6 +198,7 @@ class RadarTargets(SensorEntity):
         self._cluster = cluster
         self._device_available = available
         self._clear_tracks()
+        self._last_sample = None
         self._observed_target_report = False
         self._native_vacant_at = None
         self._zones = ()
@@ -210,6 +216,7 @@ class RadarTargets(SensorEntity):
         self._remove_occupancy_listener()
         self._occupancy_entity = entity_id
         self._native_vacant_at = None
+        self._last_sample = None
         if self._listening:
             self._add_occupancy_listener()
             self._publish()
@@ -242,6 +249,7 @@ class RadarTargets(SensorEntity):
         if state is not None and state.state == STATE_OFF:
             self._native_vacant_at = int(state.last_changed.timestamp() * 1000)
             self._clear_tracks()
+            self._last_sample = None
 
     async def async_added_to_hass(self):
         await super().async_added_to_hass()
@@ -256,6 +264,7 @@ class RadarTargets(SensorEntity):
         self._listening = False
         self._remove_occupancy_listener()
         self._clear_tracks()
+        self._last_sample = None
         await super().async_will_remove_from_hass()
 
     @callback
@@ -271,6 +280,7 @@ class RadarTargets(SensorEntity):
             self._observed_at = time.time_ns() // 1_000_000
             self._coverage.record(self._coverage_key, self._observed_at, tracks)
             if tracks:
+                self._last_sample = (tracks, self._observed_at)
                 self._native_vacant_at = None
             self._cancel_timeout = async_call_later(self.hass, REPORT_TIMEOUT_SECONDS, self._expire_tracks)
         elif command == 0x00:
@@ -326,4 +336,5 @@ class RadarTargets(SensorEntity):
                 raise HomeAssistantError("The switch did not confirm the radar reporting setting.")
             if not enabled:
                 self._clear_tracks()
+                self._last_sample = None
                 self._publish()

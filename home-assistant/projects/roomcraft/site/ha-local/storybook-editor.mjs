@@ -2,7 +2,7 @@ import {compileStorybookPlan, createStorybookScene} from './storybook-scene.mjs'
 import {CAMERA_PRESETS, enterFreeView, populateCameraOptions, resolveDefaultCameraView, storybookCameraTileSize, studioCameraPreferences} from './storybook-camera.mjs';
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
 import {placeStorybookTargets} from './storybook-state.mjs';
-import {readDetectionZones, readPersonTracks} from './storybook-tracking.mjs';
+import {createPersonPresence, personSource, readDetectionZones, readPersonTracks} from './storybook-tracking.mjs';
 import {mountStorybookStudioLook} from './storybook-studio-look.mjs';
 import {mountRadarCalibration} from './storybook-calibration-panel.mjs';
 
@@ -133,6 +133,7 @@ export function mountStorybookEditor(document, host) {
   let trackingTimer;
   let trackingRequest = false;
   let trackSnapshots = {};
+  const personPresence = createPersonPresence();
   let displayedPeople = {key: '', scene: null, reduceMotion: false};
   let displayedCoverage = {id: null, scene: null};
 
@@ -169,7 +170,10 @@ export function mountStorybookEditor(document, host) {
   function updatePeople(redraw = true) {
     const activeScene = is3D() ? scene : null;
     const reduceMotion = reducedMotion();
-    const tracks = canTrack() ? readPersonTracks(trackingItems, trackSnapshots) : [];
+    const tracks = !canTrack() ? [] : activeScene
+      ? personPresence.read(trackingItems, trackSnapshots, Date.now(), {
+        contains: activeScene.canPlacePerson, nearest: activeScene.nearestPersonPoint,
+      }) : readPersonTracks(trackingItems, trackSnapshots);
     const key = JSON.stringify(tracks);
     if (key === displayedPeople.key && activeScene === displayedPeople.scene
       && reduceMotion === displayedPeople.reduceMotion) return;
@@ -223,10 +227,10 @@ export function mountStorybookEditor(document, host) {
   }
 
   function configureTracking(items) {
-    trackingItems = items.filter(item => item.type === 'presenceSwitch'
-      && /^sensor\.[a-z0-9_]+$/.test(item.presenceTrackEntityId)
-      && Array.isArray(item.presenceTrackTransform));
-    const ids = [...new Set(trackingItems.map(item => item.presenceTrackEntityId))].slice(0, TRACK_SOURCE_LIMIT);
+    trackingItems = items.filter(personSource).slice(0, TRACK_SOURCE_LIMIT);
+    const ids = [...new Set(trackingItems.flatMap(item => [
+      item.presenceTrackEntityId, item.presenceEntityId,
+    ]).filter(id => /^(?:sensor|binary_sensor)\.[a-z0-9_]+$/.test(id ?? '')))];
     const key = ids.join(',');
     if (key !== trackingKey) {
       trackingKey = key;

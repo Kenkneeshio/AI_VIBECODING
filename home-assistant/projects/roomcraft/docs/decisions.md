@@ -1,5 +1,13 @@
 # Decision log
 
+## Separate an occupied room from a measured position
+
+A linked occupancy sensor can remain on after the radar stops giving coordinates. Show one anonymous character at the last usable point during that interval. When the source has yet to provide a usable point, show an approximate location on reachable condo or stair geometry. Use a distinct floor ring and explain the difference in Presence tracking. Clear the held point on vacancy. Retain one raw report in memory in the radar adapter so a browser reload can recover it without writing coordinates to layout JSON or Recorder.
+
+## Connect family Google Maps shares from Home Assistant
+
+Use the receiving account’s existing share list and the community integration’s authenticated file-upload flow. Roomcraft reads the resulting Home Assistant entities. Its display switch is stored per browser, so connecting an account does not immediately expose the map on a wall screen. Keep this outdoor GPS source independent of the indoor radar.
+
 ## Give catalog choices the same meaning in Studio and Home
 
 Treat the catalog type and its finish recipe as the stable identity for an object. Both 3D surfaces build from that recipe and the saved footprint. Verify each physical entry has renderable geometry and test open areas of enclosures separately from their padded panels. Keep camera and interface tiles, invisible hit areas, and stairs in their respective overlay or structure layers.

@@ -3,6 +3,9 @@ const PROVIDERS = new Map([
   ['home_assistant', 'Home Assistant'],
 ]);
 const TRACKER_ID = /^(?:device_tracker|person)\.[a-z0-9_]+$/;
+const GOOGLE_TRACKER_ID = /^device_tracker\.[a-z0-9_]+$/;
+const GOOGLE_ATTRIBUTION = 'Data from Google Maps';
+const GOOGLE_DISPLAY_PREF = 'roomcraft.show-google-shared-locations.v1';
 const MAP_LOAD_TIMEOUT_MS = 8000;
 
 export const STORYBOOK_LOCATION_MARKUP = `
@@ -11,9 +14,14 @@ export const STORYBOOK_LOCATION_MARKUP = `
     <p class="location-status" data-location-status role="status"></p>
     <div class="location-map" data-location-map hidden></div>
     <ul class="location-sources" data-location-sources aria-label="Location sources" hidden></ul>
+    <label class="location-google-pref">
+      <input type="checkbox" data-location-google>
+      Show Google shared locations on this screen
+    </label>
+    <p class="location-google-status" data-location-google-status role="status" hidden></p>
     <div class="location-links">
       <a href="https://myaccount.google.com/locationsharing" target="_blank" rel="noopener noreferrer">Google sharing settings ↗</a>
-      <a href="https://www.home-assistant.io/integrations/google_maps/" target="_blank" rel="noopener noreferrer">Connect Google trackers ↗</a>
+      <a href="/config/integrations/dashboard/add?domain=google_maps" data-location-setup target="_blank" rel="noopener noreferrer" hidden>Connect Google Maps ↗</a>
     </div>
   </dialog>`;
 
@@ -27,6 +35,9 @@ export const STORYBOOK_LOCATION_STYLE = `
   .location-sources li{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;
     padding:7px 9px;border-radius:7px;background:#f2e6d3;overflow-wrap:anywhere}
   .location-sources li span{color:#665849;font-size:.86em}
+  .location-google-pref{display:flex;align-items:center;gap:8px;min-height:40px}
+  .location-google-pref input{width:18px;height:18px;accent-color:#286858}
+  .location-google-status{margin:0 0 8px;font-size:.9em}
   .location-links{display:flex;flex-wrap:wrap;gap:0 8px}
   @media(max-width:420px){.location-dialog .location-sources li{display:grid}}
 `;
@@ -64,6 +75,21 @@ export function locationMapConfig(sources, hass) {
     auto_fit: true, fit_zones: false, show_all: false, hours_to_show: 0};
 }
 
+function googleLocationSources(hass, configured) {
+  if (hass?.connected === false) return [];
+  const excluded = new Set(configured.map(({entity}) => entity));
+  for (const source of configured) {
+    if (source.entity.startsWith('person.') && locationState(source, hass).ready) {
+      excluded.add(hass.states[source.entity].attributes?.source);
+    }
+  }
+  return Object.keys(hass?.states ?? {}).filter(entity => {
+    const entry = hass?.entities?.[entity];
+    return GOOGLE_TRACKER_ID.test(entity) && !excluded.has(entity) && !entry?.hidden &&
+      (entry?.platform === 'google_maps' || hass.states[entity]?.attributes?.attribution === GOOGLE_ATTRIBUTION);
+  }).sort().map(entity => ({entity, provider: 'google_maps', label: ''}));
+}
+
 function withLoadTimeout(promise) {
   let timer;
   const limit = new Promise((_, reject) => {
@@ -78,7 +104,13 @@ export function createStorybookLocation(dialog) {
   const status = dialog.querySelector('[data-location-status]');
   const list = dialog.querySelector('[data-location-sources]');
   const map = dialog.querySelector('[data-location-map]');
-  let sources = [];
+  const googleToggle = dialog.querySelector('[data-location-google]');
+  const googleStatus = dialog.querySelector('[data-location-google-status]');
+  const googleSetup = dialog.querySelector('[data-location-setup]');
+  let configured = [];
+  let showGoogle = false;
+  try { showGoogle = host?.localStorage?.getItem(GOOGLE_DISPLAY_PREF) === 'true'; } catch { /* Storage may be disabled. */ }
+  googleToggle.checked = showGoogle;
   let hass;
   let visibleRows;
   let card;
@@ -97,7 +129,7 @@ export function createStorybookLocation(dialog) {
     map.hidden = true;
   }
 
-  function paintSources() {
+  function paintSources(sources) {
     const rows = sources.map(source => {
       const {name, status: state} = locationState(source, hass);
       return [source.label || name || source.entity, `${PROVIDERS.get(source.provider)} · ${state}`];
@@ -141,7 +173,13 @@ export function createStorybookLocation(dialog) {
   function update(nextHass) {
     hass = nextHass;
     if (!dialog.open) return;
-    paintSources();
+    const google = showGoogle ? googleLocationSources(hass, configured) : [];
+    const sources = [...configured, ...google];
+    const hasGoogleSource = sources.some(source => source.provider === 'google_maps');
+    googleSetup.hidden = !hass?.user?.is_admin;
+    googleStatus.hidden = !showGoogle || hass?.connected === false || hasGoogleSource;
+    googleStatus.textContent = googleStatus.hidden ? '' : 'No Google shared locations are connected yet.';
+    paintSources(sources);
     const config = locationMapConfig(sources, hass);
     if (!config) {
       clear();
@@ -162,6 +200,11 @@ export function createStorybookLocation(dialog) {
     void createMap(config, request);
   }
 
+  googleToggle.addEventListener('change', () => {
+    showGoogle = googleToggle.checked;
+    try { host?.localStorage?.setItem(GOOGLE_DISPLAY_PREF, String(showGoogle)); } catch { /* Keep the setting for this tab. */ }
+    update(hass);
+  });
   dialog.addEventListener('close', () => {
     if (dialog.open) return;
     clear();
@@ -172,7 +215,7 @@ export function createStorybookLocation(dialog) {
   });
   return {
     configure(config) {
-      sources = readLocationSources(config);
+      configured = readLocationSources(config);
       update(hass);
     },
     update,

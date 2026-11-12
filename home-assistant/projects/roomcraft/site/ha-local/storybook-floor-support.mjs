@@ -49,8 +49,8 @@ function blocksSweptEdge(edge, x, z, endX, endZ, radiusSquared) {
 }
 
 /** Ground-level wall slices include the rendered joins and the blocking window sills. */
-export function unobstructedFloor(footprint, wallStructure) {
-  const barriers = wallStructure.filter(region => region.bottom === 0).flatMap(region => region.polygons);
+export function unobstructedFloor(footprint, wallStructure, rails = []) {
+  const barriers = wallStructure.filter(region => region.bottom === 0).flatMap(region => region.polygons).concat(rails);
   return footprint.length && barriers.length ? polygonClipping.difference(footprint, barriers) : footprint;
 }
 
@@ -109,4 +109,23 @@ export function createFloorSupport(footprint) {
       !edges.some(edge => blocksSweptEdge(edge, x, z, endX, endZ, limit));
   }
   return {contains, clearance, supportsRoute};
+}
+
+/** Find a nearby standing point on the compiled floor without moving a valid report. */
+export function nearestSupportedFloorPoint(x, z, maximumDistance, accepts) {
+  if (![x, z, maximumDistance].every(Number.isFinite) || maximumDistance < 0) return null;
+  if (accepts(x, z)) return {x, y:z};
+  const stride = 4;
+  const rings = Math.ceil(maximumDistance / stride);
+  for (let ring = 1; ring <= rings; ring++) {
+    const distance = Math.min(ring * stride, maximumDistance);
+    const spokes = Math.ceil(2 * Math.PI * distance / stride);
+    for (let i = 0; i < spokes; i++) {
+      const angle = i * 2 * Math.PI / spokes;
+      const nextX = x + Math.cos(angle) * distance;
+      const nextZ = z + Math.sin(angle) * distance;
+      if (accepts(nextX, nextZ)) return {x:nextX, y:nextZ};
+    }
+  }
+  return null;
 }

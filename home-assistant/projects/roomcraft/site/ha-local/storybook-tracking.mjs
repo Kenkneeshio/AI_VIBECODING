@@ -3,6 +3,7 @@ import polygonClipping from 'polygon-clipping';
 const SCHEMA = 'roomcraft-presence-v1';
 const TRACK_MAX_AGE = 4500;
 const SENSOR_ID = /^sensor\.[a-z0-9_]+$/;
+const OCCUPANCY_ID = /^binary_sensor\.[a-z0-9_]+$/;
 const MAX_TRACKS = 4;
 const PLAN_WIDTH = 1536;
 const PLAN_HEIGHT = 1024;
@@ -80,30 +81,40 @@ export function readDetectionZones(items) {
   return zones;
 }
 
+function boundedTracks(value) {
+  const seen = new Set();
+  const tracks = [];
+  for (const track of Array.isArray(value) ? value.slice(0, MAX_TRACKS) : []) {
+    if (!Number.isInteger(track?.id) || track.id < -128 || track.id > 255 || seen.has(track.id) ||
+        ![track.x, track.y].every(value => Number.isFinite(value) && Math.abs(value) <= 800)) continue;
+    seen.add(track.id);
+    const position = {id: track.id, x: track.x, y: track.y};
+    if (Number.isFinite(track.z) && Math.abs(track.z) <= 800) position.z = track.z;
+    if (Number.isFinite(track.speed) && Math.abs(track.speed) <= 32768) position.speed = track.speed;
+    tracks.push(position);
+  }
+  return tracks;
+}
+
 export function trackingSnapshots(snapshot = {}, ids = []) {
   const result = {};
   for (const id of new Set(ids)) {
-    if (!SENSOR_ID.test(id)) continue;
     const state = snapshot[id];
-    const attrs = state?.attributes;
-    if (attrs?.tracking_schema !== SCHEMA) continue;
-    const seen = new Set();
-    const tracks = [];
-    for (const track of Array.isArray(attrs.tracks) ? attrs.tracks.slice(0, MAX_TRACKS) : []) {
-      if (!Number.isInteger(track?.id) || track.id < -128 || track.id > 255 || seen.has(track.id) ||
-          ![track.x, track.y].every(value => Number.isFinite(value) && Math.abs(value) <= 800)) continue;
-      seen.add(track.id);
-      const position = {id: track.id, x: track.x, y: track.y};
-      if (Number.isFinite(track.z) && Math.abs(track.z) <= 800) position.z = track.z;
-      if (Number.isFinite(track.speed) && Math.abs(track.speed) <= 32768) position.speed = track.speed;
-      tracks.push(position);
+    if (OCCUPANCY_ID.test(id) && ['on', 'off', 'unknown', 'unavailable'].includes(state?.state)) {
+      result[id] = {state: state.state};
+      continue;
     }
+    const attrs = state?.attributes;
+    if (!SENSOR_ID.test(id) || attrs?.tracking_schema !== SCHEMA) continue;
     result[id] = {state: state.state, attributes: {
       tracking_schema: SCHEMA,
       observed_at: Number.isFinite(attrs.observed_at) ? attrs.observed_at : null,
       zones_observed_at: Number.isFinite(attrs.zones_observed_at) ? attrs.zones_observed_at : null,
       zones: Array.isArray(attrs.zones) ? attrs.zones.slice(0, 4).map(value => typeof value === 'boolean' ? value : null) : [],
-      tracks,
+      tracks: boundedTracks(attrs.tracks),
+      ...(Number.isFinite(attrs.last_observed_at) ? {
+        last_observed_at: attrs.last_observed_at, last_tracks: boundedTracks(attrs.last_tracks),
+      } : {}),
     }};
   }
   return result;
@@ -140,4 +151,111 @@ export function readPersonTracks(items, snapshots, now = Date.now()) {
     }
   }
   return result;
+}
+
+export const personSource = item => item?.type === 'presenceSwitch'
+  ? SENSOR_ID.test(item.presenceTrackEntityId ?? '') ? item.presenceTrackEntityId
+    : OCCUPANCY_ID.test(item.presenceEntityId ?? '') ? item.presenceEntityId : null
+  : null;
+
+function approximatePoint(item, nearest) {
+  const transform = item.presenceTrackTransform;
+  const candidates = [{x: item.x, y: item.y}];
+  if (validTrackTransform(transform)) {
+    const zone = configuredRing(item.presenceTrackZone);
+    const forward = projectRadarPoint(transform, 0, 100);
+    candidates.unshift(forward);
+    if (zone) {
+      const [low, , high] = zone;
+      candidates.unshift(projectRadarPoint(transform, (low[0] + high[0]) / 2, (low[1] + high[1]) / 2));
+    }
+  }
+  for (const point of candidates) {
+    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) continue;
+    const place = nearest(point.x, point.y, 128);
+    if (place) return place;
+  }
+  return null;
+}
+
+/** Hold at most one location per occupied source when the coordinate stream falls silent. */
+export function createPersonPresence() {
+  const history = new Map();
+  return {
+    read(items, snapshots, now, {contains, nearest}) {
+      const sources = new Map();
+      for (const item of items) {
+        const id = personSource(item);
+        if (id && !sources.has(id)) sources.set(id, item);
+      }
+      for (const id of history.keys()) if (!sources.has(id)) history.delete(id);
+      const result = [];
+      for (const [id, item] of sources) {
+        const occupancy = snapshots[item.presenceEntityId]?.state;
+        const radar = trackingSnapshots(snapshots, [item.presenceTrackEntityId])[item.presenceTrackEntityId];
+        const attributes = radar?.attributes;
+        const zoneAt = attributes?.zones_observed_at;
+        const zoneRecent = radar?.state !== 'unavailable' && Number.isFinite(zoneAt) && zoneAt <= now + 1000 &&
+          now - zoneAt < TRACK_MAX_AGE;
+        const zoneOn = zoneRecent && attributes.zones.some(value => value === true);
+        if (occupancy === 'off') {
+          history.delete(id);
+          continue;
+        }
+        const occupied = occupancy === 'on' || zoneOn;
+        const observed = attributes?.observed_at;
+        const freshTarget = !['0', 'unknown', 'unavailable', undefined].includes(radar?.state) &&
+          Number.isFinite(observed) && observed <= now + 1000 && now - observed < TRACK_MAX_AGE &&
+          attributes.tracks.length > 0;
+        const expiresAt = occupancy === 'on' ? undefined : Math.max(zoneOn ? zoneAt + TRACK_MAX_AGE : 0,
+          freshTarget ? observed + TRACK_MAX_AGE : 0);
+        if (!occupied && radar?.state === '0') {
+          history.delete(id);
+          continue;
+        }
+        const transform = item.presenceTrackTransform;
+        const key = JSON.stringify([item.presenceEntityId, transform]);
+        let cached = history.get(id);
+        if (cached?.key !== key) {
+          history.delete(id);
+          cached = undefined;
+        }
+        const measured = readPersonTracks([item], snapshots, now).filter(point => contains(point.x, point.y));
+        let memory = measured[0];
+        if (!memory && occupied && radar?.state !== 'unavailable' && validTrackTransform(transform)) {
+          const time = attributes?.last_observed_at ?? attributes?.observed_at;
+          const tracks = attributes?.last_tracks ?? attributes?.tracks ?? [];
+          if (Number.isFinite(time) && time <= now + 1000 && (!cached || time > cached.observedAt)) {
+            for (const track of tracks) {
+              const point = projectRadarPoint(transform, track.x, track.y);
+              if (!inPlan(point.x, point.y) || !contains(point.x, point.y)) continue;
+              memory = {id: id + ':' + track.id, ...point, expiresAt: time + TRACK_MAX_AGE};
+              break;
+            }
+          }
+        }
+        if (memory && (!cached || memory.expiresAt - TRACK_MAX_AGE >= cached.observedAt)) {
+          cached = {key, observedAt: memory.expiresAt - TRACK_MAX_AGE, point: memory};
+          history.set(id, cached);
+        }
+        if (measured.length) {
+          for (const point of measured) {
+            result.push({...point, keepVisible: true,
+              fallback: nearest(point.x, point.y, 52) ?? approximatePoint(item, nearest)});
+          }
+        } else if (occupied || freshTarget && cached) {
+          const old = cached?.point;
+          if (old && contains(old.x, old.y)) {
+            result.push({id: old.id, x:old.x, y:old.y, quality:'last-known', keepVisible:true, expiresAt,
+              fallback: nearest(old.x, old.y, 52) ?? approximatePoint(item, nearest)});
+          } else {
+            const point = approximatePoint(item, nearest);
+            if (point) result.push({id: id + ':area', ...point, quality:'area', keepVisible:true, expiresAt});
+          }
+        }
+      }
+      return result;
+    },
+    clear() { history.clear(); },
+  };
 }

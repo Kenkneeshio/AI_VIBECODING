@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import polygonClipping from 'polygon-clipping';
 import {sceneFeatureEnabled, sceneWind} from './storybook-scene-settings.mjs';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { makeStorybookFurniture } from './storybook-furniture.mjs';
@@ -9,9 +10,11 @@ import { createStorybookLighting } from './storybook-lighting.mjs';
 import { createStorybookSolarFade, storybookSolar } from './storybook-solar.mjs';
 import { fitStorybookCamera, normalizeCameraView, storybookHorizonFog, STORYBOOK_CAMERA_FAR } from './storybook-camera.mjs';
 import { applyModelHeight } from './storybook-size.mjs';
-import { createStorybookPeople } from './storybook-people.mjs';
+import { createStorybookPeople, STORYBOOK_PERSON_RADIUS } from './storybook-people.mjs';
 import { compileStorybookSeats } from './storybook-seating.mjs';
-import { createFloorSupport, createStorybookFurnitureCollision, unobstructedFloor } from './storybook-floor-support.mjs';
+import {
+  createFloorSupport, createStorybookFurnitureCollision, nearestSupportedFloorPoint, unobstructedFloor,
+} from './storybook-floor-support.mjs';
 import { createStorybookMotion } from './storybook-motion.mjs';
 import { createStorybookCoverage } from './storybook-coverage.mjs';
 import { createStorybookRadarHeatMap } from './storybook-radar-heatmap.mjs';
@@ -33,6 +36,7 @@ const STAIR_BASE = -108;
 const DEFAULT_STEPS = 14;
 const FENCE_POST_SPACING = 28;
 const FENCE_HEIGHT = 28;
+const FENCE_RAIL_WIDTH = 7;
 const EMPTY_PLAN_BOUNDS = { minX: 0, maxX: 1536, minZ: 0, maxZ: 1024 };
 const FLOOR_LOOKS = {
   oak: ['#d8ad86', '#aa775d', 'board'],
@@ -573,7 +577,7 @@ function buildFences(batch, fences) {
   for (const fence of fences) {
     const {x1, y1, x2, y2, base1, base2, length, angle, posts, color, postColor} = fence;
     const rise = base2 - base1;
-    const rail = new THREE.BoxGeometry(Math.hypot(length, rise), 5, 7);
+    const rail = new THREE.BoxGeometry(Math.hypot(length, rise), 5, FENCE_RAIL_WIDTH);
     rail.rotateZ(Math.atan2(rise, length));
     batch.add(rail, color, (x1 + x2) / 2, (base1 + base2) / 2 + FENCE_HEIGHT, (y1 + y2) / 2, -angle);
     for (let index = 0; index <= posts; index++) {
@@ -589,14 +593,20 @@ function buildFences(batch, fences) {
   }
 }
 
-function addStairTreads(batch, width, depth, steps, x = 0, z = 0) {
+function stairTreads(depth, steps) {
   const run = depth / steps;
   const rise = -STAIR_BASE / steps;
   const noseDepth = Math.min(5.5, run * .25);
   const lipDepth = Math.min(1.8, noseDepth * .38);
+  const height = index => index === steps - 1 ? 0 : STAIR_BASE + (index + 1) * rise;
+  return {run, rise, noseDepth, lipDepth, height};
+}
+
+function addStairTreads(batch, width, depth, steps, x = 0, z = 0) {
+  const {run, noseDepth, lipDepth, height} = stairTreads(depth, steps);
   for (let step = 0; step < steps; step++) {
     const front = z - depth / 2 + run * step;
-    const y = step === steps - 1 ? 0 : STAIR_BASE + (step + 1) * rise;
+    const y = height(step);
     const coreTop = y - 3;
     batch.box(width, coreTop - GROUND_Y, run, '#a98075', x, (GROUND_Y + coreTop) / 2, front + run / 2);
     batch.box(width, 3, run - noseDepth, step % 2 ? '#e4c5a8' : '#d9b79a',
@@ -871,6 +881,75 @@ export function projectExteriorClearance(plan, camera, width, height) {
   return [...rails, ...stairs];
 }
 
+function supportedPresenceFloor(plan) {
+  const flights = [...plan.stairs];
+  if (plan.reference) {
+    const {left, deckEdge, stepTop, stepBottom} = plan.reference;
+    flights.push({x:(left + deckEdge) / 2, z:(stepTop + stepBottom) / 2, angle:0,
+      item:{w:deckEdge - left, h:stepBottom - stepTop}, steps:DEFAULT_STEPS, apronDepth:80, apronOverhang:1});
+  }
+  const snap = n => Math.round(n * 1e5) / 1e5;
+  const rectangles = flights.flatMap(stair => {
+    const {x, z, angle, item, apronDepth, apronOverhang = 0} = stair;
+    const at = (side, run) => [
+      snap(x + side * Math.cos(angle) - run * Math.sin(angle)),
+      snap(z + side * Math.sin(angle) + run * Math.cos(angle)),
+    ];
+    const rectangle = (half, start, end) => [[at(-half, start), at(half, start), at(half, end), at(-half, end)]];
+    return [rectangle(item.w / 2, -item.h / 2, item.h / 2),
+      rectangle(item.w / 2 + apronOverhang, -item.h / 2 - apronDepth, -item.h / 2)];
+  });
+  const rails = plan.fences.map(({x1, y1, x2, y2, dx, dz}) => {
+    const half = FENCE_RAIL_WIDTH / 2;
+    const corners = [[x1 - dz * half, y1 + dx * half], [x2 - dz * half, y2 + dx * half],
+      [x2 + dz * half, y2 - dx * half], [x1 + dz * half, y1 - dx * half]];
+    return [corners.map(point => point.map(snap))];
+  });
+  const levelFloor = createFloorSupport(plan.floorStructure.footprint);
+  const footprint = rectangles.length ? polygonClipping.union(plan.floorStructure.footprint, ...rectangles)
+    : plan.floorStructure.footprint;
+  const walkable = createFloorSupport(unobstructedFloor(footprint, plan.wallStructure, rails));
+  const profiles = flights.map(stair => ({stair, ...stairTreads(stair.item.h, stair.steps)}));
+  const level = {height:0, rise:0};
+
+  function surfaceAt(x, z) {
+    if (levelFloor.contains(x, z)) return level;
+    let best;
+    for (const {stair, run, rise, height} of profiles) {
+      const {item, steps, apronDepth, apronOverhang = 0} = stair;
+      const [side, along] = stairLocalPoint(stair, x, z);
+      const start = along + item.h / 2;
+      const apron = start < 0;
+      if (Math.abs(side) > item.w / 2 + (apron ? apronOverhang : 0) ||
+          start < -apronDepth || start > item.h) continue;
+      const tread = Math.min(steps - 1, Math.floor(start / run));
+      const elevation = apron ? STAIR_BASE : height(tread);
+      if (!best || elevation > best.height) best = {height:elevation, rise};
+    }
+    return best;
+  }
+
+  function supportsRoute(x, z, endX, endZ, radius) {
+    if (!walkable.supportsRoute(x, z, endX, endZ, radius)) return false;
+    if (!profiles.length) return true;
+    // Crossing two plan polygons must also cross a physically adjacent height.
+    // Check more often than the shortest tread to reject sideways jumps off a ledge.
+    const stride = Math.max(1, Math.min(8, ...profiles.map(profile => profile.run / 2)));
+    const intervals = Math.min(256, Math.ceil(Math.hypot(endX - x, endZ - z) / stride));
+    let previous = surfaceAt(x, z);
+    for (let i = 1; i <= intervals; i++) {
+      const t = i / intervals;
+      const current = surfaceAt(THREE.MathUtils.lerp(x, endX, t), THREE.MathUtils.lerp(z, endZ, t));
+      if (!previous || !current ||
+          Math.abs(previous.height - current.height) > Math.max(previous.rise, current.rise) + .01) return false;
+      previous = current;
+    }
+    return true;
+  }
+  return {...walkable, supportsRoute,
+    floorAt: (x, z) => walkable.contains(x, z) ? surfaceAt(x, z)?.height ?? null : null};
+}
+
 /** Shared classifications for Studio's placement checks, radar and vacuum. */
 export function storybookMotionSurfaces(plan) {
   const {floorStructure, wallStructure} = plan;
@@ -879,6 +958,7 @@ export function storybookMotionSurfaces(plan) {
   return {
     home: createFloorSupport(unobstructedFloor(interior, wallStructure)),
     vacuum: createFloorSupport(unobstructedFloor(floorStructure.footprint, wallStructure)),
+    presence: supportedPresenceFloor(plan),
   };
 }
 
@@ -970,10 +1050,11 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
   scene.add(ocean.mesh, sidewalk.root, boats.root, beachPlay.root);
   const updatePrecipitation = buildPrecipitation(scene, plan, street.sceneryMinZ);
   const footprint = plan.floorStructure.footprint;
-  const {home, vacuum} = storybookMotionSurfaces(plan);
-  const floorForPerson = (x, z) => home.contains(x, z) ? 0 : null;
+  const {home, vacuum, presence} = storybookMotionSurfaces(plan);
+  const floorForPerson = presence.floorAt;
   // Give avatars their own lighting while sharing the house depth and camera.
   const trackingOverlay = new THREE.Scene();
+  const trackingOcclusion = new THREE.Scene();
   const coverage = createStorybookCoverage();
   const heatMap = createStorybookRadarHeatMap(footprint);
   scene.add(heatMap.root);
@@ -1021,14 +1102,14 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
   const restFurniture = createStorybookFurnitureCollision(floorItems);
   let furniture = restFurniture;
   const peopleOptions = {
-    supportsRoute: (x, z, endX, endZ, radius = Math.min(11, home.clearance(x, z), home.clearance(endX, endZ))) =>
-      home.supportsRoute(x, z, endX, endZ, radius),
-    floorClearance: home.clearance,
+    supportsRoute: presence.supportsRoute,
+    floorClearance: presence.clearance,
     allowsBodyPoint: (x, z, radius, exceptItemId) => !furniture.blocksPoint(x, z, radius, exceptItemId),
     allowsBodyRoute: (x, z, endX, endZ, radius, exceptItemId) =>
       !furniture.blocksRoute(x, z, endX, endZ, radius, exceptItemId),
   };
   const livePeople = createStorybookPeople(trackingOverlay, floorForPerson, {
+    occlusionScene: trackingOcclusion,
     ...peopleOptions, seats: compileStorybookSeats(plan.placements, roots, home.clearance),
   });
   let demoPeople;
@@ -1139,7 +1220,13 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
     if (!showPeople && !showCoverage) return;
     renderer.autoClear = false;
     try {
-      if (showPeople) renderer.render(trackingOverlay, camera);
+      if (showPeople) {
+        if (!transientTelemetry) {
+          people.orientOcclusionCues(camera);
+          renderer.render(trackingOcclusion, camera);
+        }
+        renderer.render(trackingOverlay, camera);
+      }
       if (showCoverage) {
         renderer.clearDepth();
         renderer.render(coverage.scene, camera);
@@ -1308,7 +1395,12 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
     get trackedControlChanged() { return trackedControlChanged; },
     get hasPendingReacquisition() { return livePeople.hasPendingReacquisition ||
       [...roots.values()].some(object => object.liveMotion?.pendingReacquisition); },
-    canPlacePerson: (x, y) => home.clearance(x, y) > 0,
+    canPlacePerson: (x, y) => Number.isFinite(floorForPerson(x, y)),
+    personFloorAt: floorForPerson,
+    nearestPersonPoint: (x, y, maxDistance = 128) => nearestSupportedFloorPoint(x, y, maxDistance,
+      (nextX, nextZ) => Number.isFinite(floorForPerson(nextX, nextZ)) &&
+        presence.clearance(nextX, nextZ) >= STORYBOOK_PERSON_RADIUS &&
+        peopleOptions.allowsBodyPoint(nextX, nextZ, STORYBOOK_PERSON_RADIUS)),
     get hasPeopleMotion() { return people?.hasMotion ?? false; },
   };
 }

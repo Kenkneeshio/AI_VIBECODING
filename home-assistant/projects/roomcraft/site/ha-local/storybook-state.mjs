@@ -78,6 +78,7 @@ export function readStorybookConfig(config) {
   const televisions = new Map();
   for (const item of layout.items) {
     if (item.type === 'presenceSwitch' && item.presenceTrackEntityId) watch.add(item.presenceTrackEntityId);
+    if (item.type === 'presenceSwitch' && item.presenceEntityId) watch.add(item.presenceEntityId);
     if (item.type === 'tv' && /^media_player\.[a-z0-9_]+$/.test(item.entityId || '')) {
       televisions.set(item.id, item.entityId);
       watch.add(item.entityId);

@@ -629,8 +629,8 @@ class RoomcraftEditorCard extends HTMLElement {
         case 'CAMERA_SET': data = await RoomcraftEditorCard.writeStartupView(this._hass, this.dashboardPath, message.payload); break;
         case 'TRACK_GET': {
           const ids = message.payload;
-          if (!Array.isArray(ids) || ids.length > 12 || !ids.every(id =>
-            typeof id === 'string' && /^sensor\.[a-z0-9_]+$/.test(id))) throw new Error('Invalid tracking sources.');
+          if (!Array.isArray(ids) || ids.length > 24 || !ids.every(id =>
+            typeof id === 'string' && /^(?:sensor|binary_sensor)\.[a-z0-9_]+$/.test(id))) throw new Error('Invalid tracking sources.');
           data = customElements.get('roomcraft-storybook-card')?.trackSnapshots?.(this._hass.states || {}, ids) || {};
           break;
         }

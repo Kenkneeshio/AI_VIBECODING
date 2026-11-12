@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {readDetectionZones, readPersonTracks, trackingSnapshots, validTrackTransform} from '../ha-local/storybook-tracking.mjs';
+import {createPersonPresence, readDetectionZones, readPersonTracks, trackingSnapshots, validTrackTransform} from '../ha-local/storybook-tracking.mjs';
 
 const source = {type:'presenceSwitch', presenceTrackEntityId:'sensor.radar_a',
   presenceTrackTransform:[0,-1.1,600,1.1,0,400]};
@@ -85,4 +85,55 @@ test('only authorized tracker schema fields are passed to Studio', () => {
   assert.deepEqual(Object.keys(result), ['sensor.radar_a']);
   assert.deepEqual(result['sensor.radar_a'].attributes.tracks, [{id:1,x:20,y:100,z:5,speed:0}]);
   assert.equal(result['sensor.radar_a'].attributes.internal, undefined);
+});
+
+test('an occupied source survives empty radar frames and coordinate expiry, then clears on vacancy', () => {
+  const model = createPersonPresence();
+  const item = {...source, presenceEntityId:'binary_sensor.occupied', presenceTrackZone:[-20,20,0,80]};
+  const supports = {
+    contains: (x, y) => x >= 400 && x <= 650 && y >= 350 && y <= 550,
+    nearest: (x, y) => x >= 400 && x <= 650 && y >= 350 && y <= 550 ? {x, y} : null,
+  };
+  const read = (at, radar, state = 'on') => model.read([item], {
+    'sensor.radar_a': radar, 'binary_sensor.occupied': {state},
+  }, at, supports);
+  assert.deepEqual(read(9000, undefined).map(({x,y,quality}) => [x,y,quality]), [[556,400,'area']]);
+  const [measured] = read(9000, snapshot());
+  assert.equal(measured.quality, undefined);
+  assert.equal(measured.keepVisible, true);
+  const zero = {state:'0', attributes:{...snapshot().attributes, tracks:[], observed_at:10500}};
+  const [held] = read(14000, zero);
+  assert.deepEqual([held.id, held.x, held.y, held.quality, held.expiresAt],
+    [measured.id, measured.x, measured.y, 'last-known', undefined]);
+  const invalid = snapshot(1, -700, 150, 15000);
+  assert.deepEqual(read(15001, invalid), [held]);
+  assert.deepEqual(read(15002, zero, 'off'), []);
+  assert.equal(read(15003, zero)[0].quality, 'area');
+  assert.deepEqual(read(15004, undefined, 'unavailable'), []);
+});
+
+test('a new viewer can recover the last occupied coordinate, but stale zone flags cannot imply occupancy', () => {
+  const item = {...source, presenceEntityId:'binary_sensor.occupied'};
+  const attributes = {...snapshot().attributes, tracks:[], observed_at:null,
+    last_observed_at:8000, last_tracks:snapshot().attributes.tracks, zones_observed_at:12000};
+  const states = {'sensor.radar_a':{state:'unknown', attributes}, 'binary_sensor.occupied':{state:'on'}};
+  const supports = {contains: () => true, nearest: (x, y) => ({x, y})};
+  const bridge = trackingSnapshots(states, ['sensor.radar_a', 'binary_sensor.occupied']);
+  assert.deepEqual(bridge['binary_sensor.occupied'], {state:'on'});
+  const [restored] = createPersonPresence().read([item], bridge, 23000, supports);
+  assert.deepEqual([restored.id, restored.x, restored.y, restored.quality], ['sensor.radar_a:1',490,422,'last-known']);
+  delete bridge['binary_sensor.occupied'];
+  const model = createPersonPresence();
+  assert.equal(model.read([item], bridge, 12500, supports)[0].expiresAt, 16500);
+  assert.deepEqual(model.read([item], bridge, 16500, supports), []);
+});
+
+test('an occupancy-only switch can mark its area without inventing radar coordinates', () => {
+  const item = {type:'presenceSwitch', x:400, y:375, presenceEntityId:'binary_sensor.occupied'};
+  const model = createPersonPresence();
+  const supports = {contains: () => true, nearest: (x, y) => ({x, y})};
+  assert.deepEqual(model.read([item], {'binary_sensor.occupied':{state:'on'}}, 20000, supports), [{
+    id:'binary_sensor.occupied:area', x:400, y:375, quality:'area', keepVisible:true, expiresAt:undefined,
+  }]);
+  assert.deepEqual(model.read([item], {'binary_sensor.occupied':{state:'off'}}, 20001, supports), []);
 });

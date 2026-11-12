@@ -131,6 +131,36 @@ test('solid furniture stops the body while the radar ring follows every measured
   assert.equal(avatar().scale.x, 1);
 });
 
+test('an occupied avatar stays visible at a safe point until a blocked jump is confirmed', () => {
+  const scene = new THREE.Scene();
+  const cues = new THREE.Scene();
+  const blocks = (fromX, toX, radius) => Math.max(fromX,toX) + radius >= 58 &&
+    Math.min(fromX,toX) - radius <= 72;
+  const people = createStorybookPeople(scene, () => 0, {occlusionScene:cues,
+    allowsBodyPoint: (x, _z, radius) => !blocks(x, x, radius),
+    allowsBodyRoute: (x, _z, toX, _toZ, radius) => !blocks(x, toX, radius),
+  });
+  const report = (x, time) => people.setTracks([{id:'radar:1', x, y:40, expiresAt:time * 1000,
+    keepVisible:true, fallback:{x:30, y:40}}], time);
+  report(30, 1);
+  const avatar = scene.getObjectByName('radar-avatar-papa');
+  const cue = cues.getObjectByName('radar-occlusion-cue');
+  assert.equal(cue.material.depthFunc, THREE.GreaterDepth);
+  assert.equal(cue.material.depthWrite, false);
+  for (const [x, time] of [[69,2], [102,3], [105,3.4]]) {
+    report(x, time);
+    assert.equal(avatar.visible, true);
+    assert.deepEqual(avatar.position.toArray(), [30, 0, 40]);
+    assert.equal(cue.visible, true);
+  }
+  people.render(3.7);
+  assert.equal(avatar.visible, true);
+  assert.deepEqual(avatar.position.toArray(), [105, 0, 40]);
+  people.setTracks([], 4);
+  assert.equal(avatar.visible, false);
+  assert.equal(cue.visible, false);
+});
+
 test('the assigned cushion permits a seated body, while narrow seats and neighboring solids do not', () => {
   const geometry = {
     allowsBodyPoint: (_x, _z, _radius, except) => except === 'sofa',

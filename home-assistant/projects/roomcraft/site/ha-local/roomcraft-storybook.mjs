@@ -1,4 +1,4 @@
-import {readDetectionZones, readPersonTracks, trackingSnapshots, trackingStatus} from './storybook-tracking.mjs';
+import {createPersonPresence, personSource, readDetectionZones, trackingSnapshots, trackingStatus} from './storybook-tracking.mjs';
 import {bindLiveModelLibrary} from './storybook-library.mjs';
 import {createStorybookScene} from './storybook-scene.mjs';
 import {createStorybookDemo, DEMO_DURATION_MS, STORYBOOK_DEMO_VOICE_CUES} from './storybook-demo.mjs';
@@ -48,6 +48,7 @@ function savePreference(key, value) {
 class RoomcraftStorybookCard extends HTMLElement {
   constructor() {
     super();
+    this.personPresence = createPersonPresence();
     this.attachShadow({mode: 'open'});
     this.shadowRoot.innerHTML = `
       <style>
@@ -557,6 +558,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     const dashboard = config.dashboard || 'second-floor';
     if (!/^[a-z0-9-]+$/.test(dashboard)) throw new Error('Invalid Roomcraft dashboard.');
     if (this.dashboard && this.dashboard !== dashboard) {
+      this.personPresence.clear();
       this.startupViewRead = false;
       this.startupViewRequest = undefined;
       this.savedStartupView = null;
@@ -1049,7 +1051,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   paintTracking() {
-    const sources = this.model?.layout.items.filter(item => item.type === 'presenceSwitch' && item.presenceTrackEntityId) || [];
+    const sources = this.model?.layout.items.filter(personSource) || [];
     this.trackingList.replaceChildren();
     for (const item of sources) {
       const {count, zones} = trackingStatus(item, this.session?.connected ? this.session.states : {}, Date.now());
@@ -1057,8 +1059,12 @@ class RoomcraftStorybookCard extends HTMLElement {
       const label = document.createElement('strong');
       label.textContent = item.name;
       const status = document.createElement('small');
-      const mapped = this.frame?.mappedTargetCounts.get(item.presenceTrackEntityId) ?? 0;
-      status.textContent = count === null ? 'Awaiting a recent radar report' :
+      const source = personSource(item);
+      const mapped = this.frame?.mappedTargetCounts.get(source) ?? 0;
+      const fallback = this.frame?.occupancyFallbacks.get(source);
+      status.textContent = fallback === 'last-known' ? 'Occupied · showing the last known position' :
+        fallback === 'area' ? 'Occupied · showing the approximate area' :
+        count === null ? 'Awaiting a recent radar report' :
         `${count} ${count === 1 ? 'radar target' : 'radar targets'}${mapped < count ? ` · ${mapped} on map` : ''}`;
       row.append(label, status);
       if (zones.some(value => value !== null)) {
@@ -1104,19 +1110,23 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.frame.environment.traffic = {...(commute.profile ?? AMBIENT_TRAFFIC),
       vehicleStyle: this.commutes.vehicleStyle()};
     this.frame.moving = true;
-    this.frame.people = readPersonTracks(this.model.layout.items, states, now);
+    this.frame.people = this.personPresence.read(this.model.layout.items, states, now, {
+      contains: this.scene.canPlacePerson, nearest: this.scene.nearestPersonPoint,
+    });
     const mappedTargetCounts = new Map();
+    const occupancyFallbacks = new Map();
     for (const track of this.frame.people) {
-      if (!this.scene.canPlacePerson(track.x, track.y)) continue;
       const source = track.id.slice(0, track.id.lastIndexOf(':'));
-      mappedTargetCounts.set(source, (mappedTargetCounts.get(source) ?? 0) + 1);
+      if (track.quality) occupancyFallbacks.set(source, track.quality);
+      else mappedTargetCounts.set(source, (mappedTargetCounts.get(source) ?? 0) + 1);
     }
     this.frame.mappedTargetCounts = mappedTargetCounts;
-    this.trackingButton.hidden = !this.model.layout.items.some(item => item.type === 'presenceSwitch' && item.presenceTrackEntityId);
+    this.frame.occupancyFallbacks = occupancyFallbacks;
+    this.trackingButton.hidden = !this.model.layout.items.some(personSource);
     if (this.trackingDialog.open) this.paintTracking();
     clearTimeout(this.frameExpiryTimer);
     const expires = Math.min(this.frame.nextRefreshAt ?? Infinity, commute.expiresAt ?? Infinity,
-      ...this.frame.people.map(track => track.expiresAt));
+      ...this.frame.people.map(track => track.expiresAt ?? Infinity));
     if (Number.isFinite(expires)) {
       this.frameExpiryTimer = setTimeout(() => this.refresh(), Math.max(1, expires - now));
     }
@@ -1124,11 +1134,12 @@ class RoomcraftStorybookCard extends HTMLElement {
     for (const {config, element, camera} of this.controls) {
       if (camera && !this.cameraTilesVisible) continue;
       const item = this.model.items.get(config.roomcraft_item_id);
-      if (!camera && item.type === 'presenceSwitch' && item.presenceTrackEntityId) {
+      const source = personSource(item);
+      if (!camera && source) {
         const presence = states[config.roomcraft_presence_entity]?.state;
         const {count} = trackingStatus(item, states, now);
-        element.radarStatus = mappedTargetCounts.has(item.presenceTrackEntityId) ? 'tracking' :
-          presence === 'on' || count > 0 ? 'occupied' :
+        element.radarStatus = mappedTargetCounts.has(source) ? 'tracking' :
+          occupancyFallbacks.has(source) || presence === 'on' || count > 0 ? 'occupied' :
           count === 0 || presence === 'off' ? 'clear' : 'unavailable';
       }
       element.hass = offline ? undefined : this.session;
