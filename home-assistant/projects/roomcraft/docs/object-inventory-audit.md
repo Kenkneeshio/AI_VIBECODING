@@ -24,4 +24,11 @@ Run the [release gate](release-standard.md) after regenerating the Studio bundle
 
 Bind a simulated dimmable light and a color light to existing artwork. Verify their capability labels in Studio. In Home, hold each lamp and compare its available controls. Stage and apply changes to the simulated entity. Exercise an on/off-only light, unavailable state, an action with a different target, and two adjacent tap areas with one disabled. The published layout itself is preserved during deployment.
 
+## Verified release
+
+- Source revision `5726086dcdcfa0f0c8107d808146f71e31f5e6ba` produced the 276-input manifest `sha256:8f9e8d2bc8759e29ea3f09cabd86ee6b970ae17f6dd359f6fd7be983ff3de549`. The gate passed 423 JavaScript and 38 Python tests, TypeScript, lint with zero errors, and the production build. Lint retained 17 existing warnings.
+- Desktop and phone Chromium fixtures verified the native and hosted Studio binding flows. Touch fixtures on the built Home modules verified opening the light controls, applying eight simulated commands, and the unavailable and native details paths. Representative art families were inspected in Chromium WebGL.
+- Home Assistant served the verified modules and editor files byte-for-byte. The dashboard's saved layout and projection matched the pre-install backup. The wall tablet cold-launched Home and opened the living-room light's brightness, white temperature and color controls. Opening that panel left the mapped lights unchanged.
+- Owner-private Studio version 86 was published from hosted source `72e9851063cd6b640540c651cb029a90b967943e`. The packaged editor files matched the canonical release.
+
 For software rollback, rebuild and reinstall `f14bf8d` and restore private Studio version 85. The installer creates a private dashboard backup for each install. [Deployment and rollback](deployment.md)
