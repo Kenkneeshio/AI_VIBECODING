@@ -49,8 +49,8 @@
     { type: 'uiStatusElectrical', label: 'Electrical status', icon: 'ϟ', w: 48, h: 48, group: 'interface' },
     { type: 'plant', label: 'Flowers', icon: '✿', w: 44, h: 44, group: 'decor' },
     { type: 'floorPlant', label: 'Floor plant', icon: '❀', w: 72, h: 72, group: 'decor' },
-    { type: 'artwork', label: 'Wall art', icon: '▧', w: 94, h: 56, group: 'decor' },
-    { type: 'mirror', label: 'Mirror', icon: '◇', w: 72, h: 52, group: 'decor' },
+    { type: 'artwork', label: 'Wall art', icon: '▧', w: 94, h: 56, group: 'decor', mount: 'wall' },
+    { type: 'mirror', label: 'Mirror', icon: '◇', w: 72, h: 52, group: 'decor', mount: 'wall' },
     { type: 'window', label: 'Window', icon: '▣', w: 100, h: 28, group: 'build' },
     { type: 'stairs', label: 'Exterior stairs', icon: '▤', w: 88, h: 430, group: 'build' }
   ];
@@ -165,35 +165,69 @@
   }
 
   function canMap(id, model) {
-    if (!isEntityId(id) || typeof model?.type !== 'string' || model.legacy || isInterface(model.type) || model.type === 'stairs' || model.type === 'window') return false;
+    if (!isEntityId(id) || typeof model?.type !== 'string' || model.legacy || isInterface(model.type) || model.type === 'stairs') return false;
     if (model.type === 'cameraThumbnail') return domain(id) === 'camera';
-    if (model.type === 'garageDoor') return domain(id) === 'cover';
+    if (model.type === 'garageDoor' || model.type === 'window') {
+      return ['cover', 'binary_sensor', 'switch'].includes(domain(id));
+    }
     return domain(id) !== 'camera';
+  }
+
+  function canBind(item, id, model) {
+    if (!item || item.entityId || !canMap(id, model)) return false;
+    const minimum = item.type === 'cameraThumbnail' ? 40 : 12;
+    const {x, y, w, h} = item;
+    return x >= 0 && x <= 1536 && y >= 0 && y <= 1024 &&
+      w >= minimum && w <= 1536 && h >= minimum && h <= 1024;
   }
 
   function suggestions(entity, templates) {
     const type = domain(entity.entity_id);
     const name = key(entity.name + ' ' + entity.entity_id);
+    const words = name.replaceAll('_', ' ');
     const groupsForType = {
       light: ['lighting'], fan: ['fans'], vacuum: ['cleaning'], climate: ['systems'],
     };
     const suggested = model => {
       if (model.type === 'controlZone') return true;
       if (type === 'camera') return model.type === 'cameraThumbnail';
-      if (type === 'cover') return /garage/.test(name) && model.type === 'garageDoor';
+      if (type === 'cover') return model.type === (/garage/.test(name) ? 'garageDoor' : 'window');
       if (type === 'climate') return model.type === 'thermostat';
-      if (type === 'binary_sensor' && /presence|occupancy/.test(name)) return model.type === 'presenceSwitch';
+      if (type === 'media_player' && /\btv\b|television/.test(words)) return model.type === 'tv';
+      if (type === 'binary_sensor') {
+        if (/presence|occupancy/.test(name)) return model.type === 'presenceSwitch';
+        if (/garage/.test(name)) return model.type === 'garageDoor';
+        if (/window|blind|shade/.test(name)) return model.type === 'window';
+      }
       if (groupsForType[type]?.includes(model.group)) return true;
       if (/humidifier/.test(name) && model.type === 'humidifier') return true;
       if (/purifier/.test(name) && model.type === 'airPurifier') return true;
       if (type === 'switch') {
-        if (/fan/.test(name)) return model.group === 'fans' || model.type === 'windowFan';
         if (/light|lamp/.test(name)) return model.group === 'lighting';
+        if (/fan/.test(name)) return model.group === 'fans' || model.type === 'windowFan';
       }
       return false;
     };
     const available = templates.filter(model => canMap(entity.entity_id, model));
     return {recommended: available.filter(suggested), available};
+  }
+
+  function entityUsage(items) {
+    const usage = new Map();
+    for (const item of items) {
+      const roles = [
+        [item.entityId, 'primary'], [item.tapEntityId, 'Tap target'], [item.holdEntityId, 'Hold target'],
+        [item.presenceEntityId, 'Presence sensor'], [item.presenceTrackEntityId, 'Radar targets'],
+        [item.vacuumMapEntityId, 'Map camera'], [item.imageEntityId, 'Event image'],
+        ...(Array.isArray(item.eventEntityIds) ? item.eventEntityIds.map(id => [id, 'Camera event']) : []),
+      ];
+      for (const [id, role] of roles) {
+        if (!isEntityId(id)) continue;
+        if (!usage.has(id)) usage.set(id, []);
+        usage.get(id).push({item, role});
+      }
+    }
+    return usage;
   }
 
   function supportsHeight(item) {
@@ -213,6 +247,14 @@
     return {w:Math.round(item.w * scale * 10) / 10, h:Math.round(item.h * scale * 10) / 10};
   }
 
+  function resizeCornerFootprint(item, w, h, lock) {
+    if (![w, h, item?.w, item?.h].every(Number.isFinite) || item.w <= 0 || item.h <= 0) return null;
+    if (!lock) return {...resizeFootprint(item, 'w', w, false), ...resizeFootprint(item, 'h', h, false)};
+    // Project the dragged corner onto the diagonal defined by the original footprint.
+    const scale = (w * item.w + h * item.h) / (item.w ** 2 + item.h ** 2);
+    return resizeFootprint(item, 'w', scale * item.w, true);
+  }
+
   const SUPPORT_TYPES = new Set(['table', 'desk', 'dresser', 'nightstand', 'storageCabinet', 'coffeeTable', 'sideTable']);
   const TABLETOP_TYPES = new Set(['lamp', 'tableLamp', 'humidifier', 'plant']);
   const FLOOR_SOLIDS = new Set(['sofa', 'bed', 'armchair', 'bookcase', 'bedroomBench', 'counter', 'kitchenWorktop',
@@ -220,6 +262,52 @@
   const SURFACE_VARIANT = /^(?:living-(?:petal-dining|round-dining|rectangular-dining|lily-coffee-table|bubble-side-table)|bedroom-(?:sprout-desk|corner-desk|secretary-desk|star-nightstand|honey-dresser)|play-furniture-low-play-table)-/;
   const SOLID_VARIANT = /^(?:bedroom-|living-(?:cloud-sofa|tailored-sofa|tailored-loveseat|upholstered-chaise|acorn-armchair)-|play-furniture-bear-floor-chair-)/;
   const FOOT_SAMPLES = [[0,0],[1,0],[-1,0],[0,1],[0,-1],[.707,.707],[.707,-.707],[-.707,.707],[-.707,-.707]];
+
+  function specialtyBarrierSections(form, w, d) {
+    if (form === 'playpen' || form === 'photoPlayYard') {
+      const wall = Math.min(w, d) * .055;
+      return [
+        [0, -(d - wall) / 2, w - wall, wall, 0],
+        [0, (d - wall) / 2, w - wall, wall, 0],
+        [-(w - wall) / 2, 0, d - wall, wall, Math.PI / 2],
+        [(w - wall) / 2, 0, d - wall, wall, Math.PI / 2],
+      ];
+    }
+    const folding = form === 'folding';
+    const count = folding ? 4 : 3;
+    const height = Math.min(folding ? 39 : 29, w * .28);
+    const span = w / count;
+    const thickness = Math.min(d * (folding ? .50 : .73), height * .60);
+    const fold = folding ? Math.min(.18, thickness / span * .85) : 0;
+    return Array.from({length:count}, (_, index) =>
+      [-w / 2 + span * (index + .5), 0, span, thickness, index % 2 ? -fold : fold]);
+  }
+
+  function specialtyFootprint(item) {
+    const {w, h:d} = item;
+    const template = root.RoomcraftInventory?.byType?.[item.type];
+    if (template?.artFamily === 'foamBlock') {
+      const seam = Math.min(1.4, Math.min(w, d) * .021);
+      if (['arch', 'tunnel', 'wedge', 'ramp'].includes(template.form)) {
+        const depth = d * (template.form === 'tunnel' ? .83 : .73);
+        return [[0, 0, w * .91 + 2 * seam, depth + 2.08 * seam]];
+      }
+      return [[0, 0, w * (template.form === 'steps' ? .99 : .96), d * .96]];
+    }
+    if (template?.form === 'softPouf') return [[0, 0, w * .97, d * .97]];
+    if (template?.form === 'photoBolster') return [[0, 0, w * .96, d * .94]];
+    if (template?.artFamily !== 'paddedPanel') return null;
+    const form = template.form;
+    if (form === 'photoBearPanel') return [[0, 0, w, d * .49]];
+    if (form === 'gate' || form === 'guard') {
+      const thickness = Math.min(d * .55, Math.min(37, w * .32) * .28);
+      return [[0, 0, w * .99, thickness],
+        [-w * .46, 0, w * .08, d * .73], [w * .46, 0, w * .08, d * .73]];
+    }
+    const enclosure = form === 'playpen' || form === 'photoPlayYard';
+    return specialtyBarrierSections(form, w, d).map(([x, z, width, depth, angle]) =>
+      [x, z, width * (enclosure ? 1 : .955), depth * (enclosure ? .5 : 1.28), angle]);
+  }
 
   function placementRole(item) {
     const type = item?.type ?? '';
@@ -257,15 +345,18 @@
     return [[0, 0, w * .95, h * .95]];
   }
 
-  function orientedBoxes(item, surfaceOnly) {
+  function orientedBoxes(item, surfaceOnly, shapes) {
     if (![item?.x, item?.y, item?.w, item?.h].every(Number.isFinite) || item.w <= 0 || item.h <= 0) return [];
     const angle = (Number.isFinite(item.rotation) ? item.rotation : 0) * Math.PI / 180;
-    const u = [Math.cos(angle), Math.sin(angle)];
-    const v = [-u[1], u[0]];
-    return footprintShape(item, surfaceOnly).map(([x, y, width, height]) => ({
-      x: item.x + x * u[0] + y * v[0], y: item.y + x * u[1] + y * v[1],
-      u, v, width: width / 2, height: height / 2,
-    }));
+    const cosine = Math.cos(angle);
+    const sine = Math.sin(angle);
+    return (shapes ?? footprintShape(item, surfaceOnly)).map(([x, y, width, height, localAngle = 0]) => {
+      const u = [Math.cos(angle + localAngle), Math.sin(angle + localAngle)];
+      return {
+        x: item.x + x * cosine - y * sine, y: item.y + x * sine + y * cosine,
+        u, v: [-u[1], u[0]], width: width / 2, height: height / 2,
+      };
+    });
   }
 
   const project = (x, y, axis) => x * axis[0] + y * axis[1];
@@ -283,6 +374,8 @@
   }
 
   function solidBoxes(item) {
+    const specialty = specialtyFootprint(item);
+    if (specialty) return orientedBoxes(item, false, specialty);
     if (isDiningChair(item) || placementRole(item) !== 'floor' || FLOOR_SOLIDS.has(item.type) || SOLID_VARIANT.test(item.type)) {
       return orientedBoxes(item, false);
     }
@@ -446,7 +539,7 @@
     function choose(mapping) {
       target = mapping;
       all = false;
-      view.value = 'catalog';
+      view.value = mapping.existing ? 'placed' : 'catalog';
       search.value = '';
       paint();
       search.focus();
@@ -462,7 +555,15 @@
       context.replaceChildren();
       if (target) {
         context.append(make('strong', target.item?.name || target.entity?.name || target.entity?.entity_id));
-        if (target.entity) context.append(action(all ? 'Suggested models' : 'All compatible models', () => { all = !all; paint(); }));
+        if (target.entity) {
+          context.append(action(target.existing ? 'Choose a new model' : 'Bind existing object', () => {
+            choose({entity:target.entity, existing:!target.existing});
+          }));
+          if (!target.existing) context.append(action(all ? 'Suggested models' : 'All compatible models', () => {
+            all = !all;
+            paint();
+          }));
+        }
         context.append(action('Cancel mapping', () => {
           view.value = target.entity ? 'devices' : 'placed';
           target = undefined;
@@ -476,22 +577,33 @@
           if (!match(item.name, model?.label, item.type, item.entityId)) continue;
           const dimensions = [item.w, item.h, item.modelHeight].filter(Number.isFinite).join(' × ');
           const detail = [model?.label || item.type, dimensions && dimensions + ' plan px', item.entityId].filter(Boolean).join(' · ');
-          const buttons = [action('Edit', () => apply({kind:'edit', itemId:item.id}))];
-          if (templates.some(candidate => canReplace(item, model, candidate))) {
-            buttons.push(action('Change model', () => choose({item})));
+          let buttons;
+          if (target?.existing) {
+            if (!canBind(item, target.entity.entity_id, model)) continue;
+            buttons = [action('Bind to this object', () => apply({kind:'bind', itemId:item.id, entityId:target.entity.entity_id}))];
+          } else {
+            buttons = [action('Edit', () => apply({kind:'edit', itemId:item.id}))];
+            if (templates.some(candidate => canReplace(item, model, candidate))) {
+              buttons.push(action('Change model', () => choose({item})));
+            }
           }
           rows.push([item.name || model?.label || item.type, detail, buttons]);
         }
       } else if (view.value === 'devices') {
-        const mapped = new Map();
-        for (const item of items) if (item.entityId && !mapped.has(item.entityId)) mapped.set(item.entityId, item);
+        const usage = entityUsage(items);
         for (const entity of entities) {
           if (!isEntityId(entity.entity_id) || !match(entity.name, entity.entity_id, entity.area)) continue;
-          const item = mapped.get(entity.entity_id);
-          const detail = [entity.entity_id, entity.area, item ? 'On plan · ' + item.name : 'Available to map'].filter(Boolean).join(' · ');
-          rows.push([entity.name || entity.entity_id, detail, [item
-            ? action('Edit mapped object', () => apply({kind:'edit', itemId:item.id}))
-            : action('Choose model', () => choose({entity}))]]);
+          const links = usage.get(entity.entity_id) || [];
+          const primary = links.find(link => link.role === 'primary');
+          const linkedObjects = links.map(({item, role}) => role === 'primary' ? item.name : role + ' for ' + item.name);
+          const detail = [entity.entity_id, entity.area, ...linkedObjects].filter(Boolean).join(' · ');
+          const buttons = links.length ? [action(primary ? 'Edit mapped object' : 'Edit linked object',
+            () => apply({kind:'edit', itemId:(primary || links[0]).item.id}))] : [];
+          if (templates.some(model => canMap(entity.entity_id, model))) {
+            buttons.push(action(primary ? 'Map again' : 'Map to object', () => choose({entity,
+              existing:items.some(item => canBind(item, entity.entity_id, byType.get(item.type)))})));
+          }
+          rows.push([entity.name || entity.entity_id, detail, buttons]);
         }
       } else {
         let models = templates.filter(template => !template.legacy);
@@ -521,7 +633,8 @@
       }
       status.textContent = rows.length > 48 ? 'Showing 48 of ' + rows.length + '. Search to narrow the list.'
         : rows.length ? rows.length + (rows.length === 1 ? ' result' : ' results')
-        : view.value === 'devices' && !entities.length ? 'Connect to Home Assistant to list devices.' : 'No matches.';
+        : view.value === 'devices' && !entities.length ? 'Connect to Home Assistant to list devices.'
+        : target?.existing && !query ? 'No compatible unbound objects. Choose a new model instead.' : 'No matches.';
     }
     view.addEventListener('change', () => { target = undefined; search.value = ''; paint(); });
     search.addEventListener('input', paint);
@@ -540,6 +653,7 @@
     };
   }
 
-  root.RoomcraftModels = Object.freeze({catalog, canMap, canReplace, suggestions, supportsHeight, resizeFootprint,
-    splitDiningFurniture, placementRole, walkingObstacleBoxes, blockingPlacement, orderMountedObjects, mount, handoffKey});
+  root.RoomcraftModels = Object.freeze({catalog, canMap, canBind, canReplace, suggestions, supportsHeight, resizeFootprint, resizeCornerFootprint,
+    splitDiningFurniture, placementRole, specialtyBarrierSections, walkingObstacleBoxes, blockingPlacement,
+    orderMountedObjects, mount, handoffKey});
 })(typeof window === 'undefined' ? globalThis : window);

@@ -1,5 +1,12 @@
 # Changelog
 
+## Object inventory, device binding, and light controls
+
+- Restore 3D models for safety barriers, climbing blocks, fireplaces, soft seating, wall art and mirrors. Toys, activity pieces, mats, planters, storage, fans, lamps and vacuums show distinct models and finishes in 3D Studio and Home.
+- Bind a Home Assistant entity to an existing object. Studio shows its compatible models, the purpose of each binding and the result of each gesture. Duplicating artwork clears its original device bindings.
+- Keep custom dimensions and live settings when changing a finish. Browse all styles in a family, edit the stair tread count and preserve wall attachment when resizing. An explicitly disabled state graphic stays still in Home.
+- Hold a capable light on Home to adjust its supported brightness, white temperature, color, effects, fade, white mode or flash. Studio lists the Home controls for the bound light.
+
 ## System audit and radar alignment
 
 - Keep each avatar's body size steady and clear of solid furniture. A supported seated pose uses the cushion, and the radar ring stays at the observed position.

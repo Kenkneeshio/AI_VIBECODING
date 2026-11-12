@@ -1,6 +1,8 @@
 import {keepPreviousDashboardDesign, stableDashboardJson as stableStringify} from './dashboard-snapshots.mjs';
 import {dashboardProjectProblem} from './dashboard-project.mjs';
 import {FREE_VIEW_TILT_LIMIT} from './storybook-camera.mjs';
+import {storybookLightControlLabels} from './storybook-state.mjs';
+import '../public/control-actions.js';
 
 /**
  * Roomcraft's Home Assistant transport. The editor artwork and interaction
@@ -39,7 +41,7 @@ const INTERFACE_BUTTON_VARS = Object.freeze({
 const CONTROL_ACTIONS = ['auto', 'toggle', 'activate', 'more-info', 'none'];
 const VISUAL_KINDS = ['light', 'fan', 'climate', 'window', 'door', 'vacuum', 'device', 'none'];
 const LIGHT_FORMS = ['table_lamp', 'bud_lamp', 'cloud_floor_lamp', 'bloom_ceiling', 'star_pendant', 'acorn_sconce'];
-const ACTIVATION_SERVICES = new Map([['scene', 'turn_on'], ['script', 'turn_on'], ['button', 'press']]);
+const controlActions = window.RoomcraftControlActions;
 const DETAIL_VISIBILITY_EVENT = 'roomcraft-detail-visibility';
 const DETAIL_VISIBILITY_KEY = 'roomcraft.show-object-details.v1';
 const STORYBOOK_DETAIL_POSITION = `
@@ -660,13 +662,18 @@ class RoomcraftEditorCard extends HTMLElement {
     const card = findPlanCard(config);
     const imageUrl = typeof card.image === 'string'
       ? new URL(card.image, location.origin).href : null;
-    const entityOptions = Object.entries(this._hass?.states || {}).map(([entity_id, state]) => ({
-      entity_id,
-      name: typeof state.attributes?.friendly_name === 'string'
-        ? state.attributes.friendly_name.slice(0, 120) : entity_id,
-      domain: entity_id.split('.')[0],
-      area: this._hass?.areas?.[this._hass?.entities?.[entity_id]?.area_id]?.name || '',
-    }));
+    const entityOptions = Object.entries(this._hass?.states || {}).map(([entity_id, state]) => {
+      const entity = this._hass?.entities?.[entity_id];
+      const areaId = entity?.area_id || this._hass?.devices?.[entity?.device_id]?.area_id;
+      return {
+        entity_id,
+        name: typeof state.attributes?.friendly_name === 'string'
+          ? state.attributes.friendly_name.slice(0, 120) : entity_id,
+        domain: entity_id.split('.')[0],
+        area: this._hass?.areas?.[areaId]?.name || '',
+        lightControls: storybookLightControlLabels(entity_id, state.attributes),
+      };
+    });
     return {
       project: isObject(config.roomcraft_layout) ? config.roomcraft_layout : null,
       imageUrl,
@@ -761,7 +768,7 @@ function controlVisualKind(config) {
 
 function controlDisplayState(value, domain) {
   if (!value || value === 'unavailable' || value === 'unknown') return 'unavailable';
-  if (['scene', 'script', 'button'].includes(domain)) return 'ready';
+  if (controlActions.activationService(domain)) return 'ready';
   // A motor or light never lights up because another domain reports a mode,
   // sensor value, or the last time an action-only scene ran.
   if (['light', 'switch', 'fan', 'input_boolean', 'binary_sensor'].includes(domain)) {
@@ -872,6 +879,7 @@ class RoomcraftObjectControl extends HTMLElement {
     const style = document.createElement('style');
     style.textContent = `
       :host{display:block;box-sizing:border-box;min-width:32px;min-height:32px;transition:left 1.3s linear,top 1.3s linear}
+      :host([data-passive]),.target:disabled{pointer-events:none!important}
       .target{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;border-radius:12px;background:transparent;color:transparent;box-shadow:none;appearance:none;-webkit-appearance:none;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
       .target:hover,.target:focus-visible{outline:2px solid #7ee8d2;outline-offset:1px}
       .target:active{filter:brightness(1.25)}
@@ -1083,6 +1091,7 @@ class RoomcraftObjectControl extends HTMLElement {
       this._held = false;
       this._moved = false;
       this._pointerStart = [event.clientX, event.clientY];
+      if (this._actionFor('hold') === 'none') return;
       this._holdTimer = setTimeout(() => {
         if (this._moved) return;
         this._held = true;
@@ -1099,6 +1108,7 @@ class RoomcraftObjectControl extends HTMLElement {
     const stopHold = () => { clearTimeout(this._holdTimer); this._pointerStart = null; };
     button.addEventListener('pointerup', stopHold);
     button.addEventListener('pointercancel', stopHold);
+    button.addEventListener('pointerleave', stopHold);
     button.addEventListener('click', () => {
       if (this._held || this._moved) { this._held = false; this._moved = false; return; }
       this._activate('tap');
@@ -1108,6 +1118,11 @@ class RoomcraftObjectControl extends HTMLElement {
       clearTimeout(this._holdTimer);
       if (this._held) { this._held = false; return; }
       this._activate('hold');
+    });
+    button.addEventListener('keydown', event => {
+      if (!event.shiftKey || event.key !== 'Enter' || this._actionFor('hold') === 'none') return;
+      event.preventDefault();
+      if (!event.repeat) this._activate('hold');
     });
     const art = document.createElement('span');
     art.className = 'art';
@@ -1202,7 +1217,7 @@ class RoomcraftObjectControl extends HTMLElement {
     const state = this._hass?.states?.[this._config.entity];
     const value = state?.state || 'unavailable';
     const domain = this._config.entity.split('.')[0];
-    const actionOnly = ['scene', 'script', 'button'].includes(domain);
+    const actionOnly = !!controlActions.activationService(domain);
     const displayValue = actionOnly && !['unavailable', 'unknown'].includes(value) ? 'ready' : value;
     const visualState = controlDisplayState(value, domain);
     const visualKind = controlVisualKind(this._config);
@@ -1229,6 +1244,11 @@ class RoomcraftObjectControl extends HTMLElement {
     const label = this._config.title || state?.attributes?.friendly_name || this._config.entity;
     const tap = this._actionFor('tap');
     const hold = this._actionFor('hold');
+    this._button.disabled = tap === 'none' && hold === 'none';
+    if (this._button.disabled) this.setAttribute('data-passive', '');
+    else this.removeAttribute('data-passive');
+    if (hold !== 'none') this._button.setAttribute('aria-keyshortcuts', 'Shift+Enter');
+    else this._button.removeAttribute('aria-keyshortcuts');
     this._button.setAttribute('data-toggleable', String(tap === 'toggle'));
     const describe = (action, gesture) => action === 'toggle' ? `${gesture} to toggle` :
       action === 'activate' ? `${gesture} to run` :
@@ -1303,15 +1323,8 @@ class RoomcraftObjectControl extends HTMLElement {
   }
 
   _actionFor(kind) {
-    const target = this._targetFor(kind);
-    const domain = target.split('.')[0];
-    let action = this._config[kind === 'hold' ? 'roomcraft_hold_action' : 'roomcraft_tap_action'] || 'auto';
-    if (action === 'auto') action = kind === 'hold' ? 'more-info' :
-      domain === 'vacuum' ? 'vacuum-panel' :
-      ACTIVATION_SERVICES.has(domain) ? 'activate' :
-      ['light', 'switch', 'fan', 'input_boolean', 'cover'].includes(domain) ? 'toggle' : 'more-info';
-    if (action === 'activate' && !ACTIVATION_SERVICES.has(domain)) action = 'more-info';
-    return action;
+    const action = this._config[kind === 'hold' ? 'roomcraft_hold_action' : 'roomcraft_tap_action'];
+    return controlActions.resolve(action, kind, this._targetFor(kind), this._config.entity, this._hass?.services);
   }
 
   _targetFor(kind) {
@@ -1336,7 +1349,7 @@ class RoomcraftObjectControl extends HTMLElement {
     if (action === 'toggle' || action === 'activate') {
       try {
         const domain = targetId.split('.')[0];
-        const service = action === 'activate' ? ACTIVATION_SERVICES.get(domain) : 'toggle';
+        const service = action === 'activate' ? controlActions.activationService(domain) : 'toggle';
         Promise.resolve(this._hass.callService(action === 'activate' ? domain : 'homeassistant',
           service, { entity_id: targetId }))
           .catch(() => this._showDetails(targetId));
@@ -1846,7 +1859,7 @@ class RoomcraftEntityMenu extends HTMLElement {
           } catch { this._showDetails(item.entityId); }
         });
         row.append(toggle);
-      } else if (ACTIVATION_SERVICES.has(item.domain)) {
+      } else if (controlActions.activationService(item.domain)) {
         const run = document.createElement('button');
         run.type = 'button';
         run.className = 'toggle';
@@ -1856,7 +1869,7 @@ class RoomcraftEntityMenu extends HTMLElement {
         run.disabled = item.disabled || ['unavailable', 'unknown'].includes(item.state);
         run.addEventListener('click', () => {
           try {
-            Promise.resolve(this._hass.callService(item.domain, ACTIVATION_SERVICES.get(item.domain),
+            Promise.resolve(this._hass.callService(item.domain, controlActions.activationService(item.domain),
               { entity_id: item.entityId })).catch(() => this._showDetails(item.entityId));
           } catch { this._showDetails(item.entityId); }
         });

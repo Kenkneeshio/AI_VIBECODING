@@ -72,7 +72,7 @@ export function createStorybookLighting(renderer, scene, bounds) {
       node.receiveShadow = true;
       node.castShadow ||= shadow;
     });
-    if (fixture && item.entityId) candidates.push({item, object});
+    if (fixture && item.entityId && item.visualKind !== 'none') candidates.push({item, object});
   }
 
   function update(environment, states, ground, placementChanged = false) {

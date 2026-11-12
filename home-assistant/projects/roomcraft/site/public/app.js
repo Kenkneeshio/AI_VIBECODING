@@ -903,7 +903,7 @@
       const o=project.items.find(item=>item.id===interaction.id);
       if(!o)return;
       const dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;
-      if(Math.hypot(dx,dy)<=2&&!interaction.snapshot&&o.type!=='window'&&templateByType[o.type]?.mount!=='wall')return;
+      if(Math.hypot(dx,dy)<=2&&!interaction.snapshot)return;
       const candidate=movedItem(o,interaction.x+dx,interaction.y+dy);
       if(candidate)draftItem(o,candidate);
       return;
@@ -912,15 +912,13 @@
       const o=project.items.find(o=>o.id===interaction.id);if(!o)return;
       const a=interaction.rotation*Math.PI/180,dx=p.x-interaction.start.x,dy=p.y-interaction.start.y;
       const localX=dx*Math.cos(a)+dy*Math.sin(a),localY=-dx*Math.sin(a)+dy*Math.cos(a);
-      const min=o.type==='cameraThumbnail'?40:24;
-      let nextW=Math.max(min,Math.round(interaction.w+interaction.sx*localX));
-      let nextH=Math.max(min,Math.round(interaction.h+interaction.sy*localY));
-      if(e.shiftKey||lockObjectDimensions){
-        const scale=Math.max(nextW/interaction.w,nextH/interaction.h);
-        nextW=Math.max(min,Math.round(interaction.w*scale));nextH=Math.max(min,Math.round(interaction.h*scale));
-      }
-      if(o.type==='cameraThumbnail'||validEntityId(o.entityId)){nextW=Math.min(W,nextW);nextH=Math.min(H,nextH);}
-      const lx=interaction.sx*nextW/2,ly=interaction.sy*nextH/2;
+      const dimensions=Models.resizeCornerFootprint(interaction.initial,
+        Math.round(interaction.w+interaction.sx*localX), Math.round(interaction.h+interaction.sy*localY),
+        e.shiftKey||lockObjectDimensions);
+      if(!dimensions)return;
+      const {w:nextW,h:nextH}=dimensions;
+      const wallMounted=o.type==='window'||templateByType[o.type]?.mount==='wall';
+      const lx=interaction.sx*nextW/2,ly=interaction.sy*(wallMounted?interaction.h:nextH)/2;
       const nx=Math.round(interaction.anchor.x+lx*Math.cos(a)-ly*Math.sin(a));
       const ny=Math.round(interaction.anchor.y+lx*Math.sin(a)+ly*Math.cos(a));
       const bound=o.type==='cameraThumbnail'||validEntityId(o.entityId);
@@ -1058,18 +1056,28 @@
   function updateRecoveryButton(){const b=document.getElementById('recoverDraftButton');if(b)b.hidden=!readPreviousDraft();const back=document.getElementById('returnPreRecoveryButton');if(back)back.hidden=!readPreRecoveryLayout();}
   function recoverPreviousDraft(){const previous=readPreviousDraft();if(!previous){showToast('No previous browser draft found');return;}if(!readPreRecoveryLayout()){try{localStorage.setItem(BEFORE_RECOVERY_KEY,projectFingerprint(project));}catch(_){showToast('Could not save current layout; export JSON first');return;}}snapshot();project=normalizeProject(clone(previous));selected=null;clearPlacement();afterChange('Recovered previous browser draft',{authoritative:true});showToast('Previous draft restored; pre-recovery layout saved');}
   function returnPreRecoveryLayout(){const before=readPreRecoveryLayout();if(!before){showToast('No pre-recovery layout found');return;}snapshot();project=normalizeProject(clone(before));selected=null;clearPlacement();localStorage.removeItem(BEFORE_RECOVERY_KEY);afterChange('Returned to pre-recovery layout',{authoritative:true});showToast('Pre-recovery layout restored');}
-  function field(label,key,value,type='text'){return `<div class="field"><label for="prop-${key}">${label}</label><input id="prop-${key}" data-prop="${key}" type="${type}" value="${htmlEscape(value)}" ${type==='number'?(['w','h','modelHeight','x','y','rotation'].includes(key)?'step="any"':'step="1"'):''}></div>`;}
+  function field(label,key,value,type='text'){
+    const attributes = key === 'steps' ? 'step="1" min="2" max="40" placeholder="14"' :
+      key === 'modelHeight' ? 'step="any" min="6" max="300"' : 'step="any"';
+    return `<div class="field"><label for="prop-${key}">${label}</label><input id="prop-${key}" data-prop="${key}" type="${type}" value="${htmlEscape(value)}" ${type==='number'?attributes:''}></div>`;
+  }
   function hotspotField(label,key,value,type='text'){return `<div class="field"><label for="hotspot-${key}">${label}</label><input id="hotspot-${key}" data-hotspot-prop="${key}" type="${type}" value="${htmlEscape(value)}" ${type==='number'?'step="0.01" min="0" max="100"':''}></div>`;}
   function variantField(t,type){
     if(!t.artFamily)return '';
     const variants=window.RoomcraftCatalogVariants;
     if(t.seriesId&&variants){
       const fields=[['style','Style','designLabel'],['size','Size','sizeLabel'],['finish','Color / finish','finishLabel']];
-      return fields.map(([kind,label,labelKey])=>{
+      let resizes = false;
+      const options = fields.map(([kind,label,labelKey])=>{
         const choices=variants.choices(templates,t,kind);
         if(choices.length<2)return '';
-        return `<div class="field"><label for="prop-catalog-${kind}">${label}</label><select id="prop-catalog-${kind}" data-variant data-variant-kind="${kind}">${choices.map(v=>`<option value="${htmlEscape(v.type)}" ${v.type===type?'selected':''}>${htmlEscape(v[labelKey]||v.label)}</option>`).join('')}</select></div>`;
+        if(kind!=='finish')resizes = true;
+        return `<div class="field"><label for="prop-catalog-${kind}">${label}</label><select id="prop-catalog-${kind}" data-variant data-variant-kind="${kind}">${choices.map(v=>{
+          const fallbackSize=kind==='style'&&v.sizeId!==t.sizeId&&v.sizeLabel?` · ${v.sizeLabel}`:'';
+          return `<option value="${htmlEscape(v.type)}" ${v.type===type?'selected':''}>${htmlEscape((v[labelKey]||v.label)+fallbackSize)}</option>`;
+        }).join('')}</select></div>`;
       }).join('');
+      return options+(resizes?'<p class="field-hint">Style and size use the selected model’s width and depth.</p>':'');
     }
     const stem=type.slice(0,type.lastIndexOf('-'));
     const legacy=variants?.legacyFinishChoices(templates,t)||templates.filter(v=>v.type.startsWith(stem+'-')&&v.type.slice(0,v.type.lastIndexOf('-'))===stem);
@@ -1194,6 +1202,21 @@
     afterChange('Updated object dimensions');
   }
 
+  function updateStairTreads(item, value) {
+    if (item.type !== 'stairs') return;
+    const steps = value.trim() ? Number(value) : undefined;
+    if (steps !== undefined && (!Number.isInteger(steps) || steps < 2 || steps > 40)) {
+      showToast('Enter a whole number from 2 to 40, or leave it blank for 14 treads.');
+      renderInspector();
+      return;
+    }
+    if (item.steps === steps) return;
+    snapshot();
+    if (steps === undefined) delete item.steps;
+    else item.steps = steps;
+    afterChange('Updated stair treads');
+  }
+
   function resetObjectDimensions() {
     if (selected?.kind !== 'item') return;
     const current = project.items.find(entry => entry.id === selected.id);
@@ -1239,6 +1262,10 @@
       updateObjectDimensions(target,key,value);
       return;
     }
+    if(selected.kind==='item' && key==='steps'){
+      updateStairTreads(target,value);
+      return;
+    }
     if(selected.kind==='item' && ['x','y','rotation'].includes(key)){
       updateObjectPose(target,key,value);
       return;
@@ -1282,17 +1309,19 @@
       afterChange(tracking ? 'Updated person tracking' : 'Updated dashboard button');
       return;
     }
-    if(selected.kind==='item'&&target.type==='cameraThumbnail'&&key==='imageEntityId'&&!(key in target))target.imageEntityId='';
     if(selected.kind==='item'&&target.type==='cameraThumbnail'&&key==='eventEntityIds'){
-      const ids=value.split(',').map(id=>id.trim()).filter(Boolean);
+      const ids=value.split(',').map(id=>id.trim().toLowerCase()).filter(Boolean);
       if(ids.length>6||ids.some(id=>!/^binary_sensor\.[a-z0-9_]+$/i.test(id))||new Set(ids).size!==ids.length){
         showToast('Use up to six distinct binary sensor IDs');renderInspector();return;
       }
       if(JSON.stringify(target.eventEntityIds||[])===JSON.stringify(ids))return;
       snapshot();target.eventEntityIds=ids;afterChange('Updated camera event sensors');return;
     }
-    if(!(key in target))return;
+    const optionalEntity = selected.kind==='item' && (key==='entityId' ||
+      (target.type==='cameraThumbnail' && key==='imageEntityId'));
+    if(!(key in target)&&!optionalEntity)return;
     if(key==='previewMode'&&!['event','live','live_auto','event_live','offline'].includes(value))return;
+    if(key==='entityId'||key==='imageEntityId')value=value.trim().toLowerCase();
     if(key==='entityId'&&value&&!validEntityId(value)){showToast('Use an entity ID like light.living_room');renderInspector();return;}
     if(target.type==='cameraThumbnail'&&key==='entityId'&&value&&!/^camera\.[a-z0-9_]+$/i.test(value)){showToast('Use a camera entity ID');renderInspector();return;}
     if(target.type==='cameraThumbnail'&&key==='imageEntityId'&&value&&!/^image\.[a-z0-9_]+$/i.test(value)){showToast('Use an image entity ID');renderInspector();return;}
@@ -1306,10 +1335,10 @@
       if(bound&&key==='x')v=Math.max(0,Math.min(W,v));
       if(bound&&key==='y')v=Math.max(0,Math.min(H,v));
     }
-    if(target[key]===v)return;
+    if((optionalEntity ? target[key] ?? '' : target[key])===v)return;
     snapshot();target[key]=v;
     if(selected.kind==='item')clampLinkedItem(target);
-    afterChange(`Updated ${key}`);
+    afterChange(key==='entityId' ? (v ? `Linked to ${v}` : 'Removed entity link') : `Updated ${key}`);
   }
   function calibratePresence(useSwitchPosition) {
     const item = selected?.kind === 'item' && project.items.find(entry => entry.id === selected.id);
@@ -1353,6 +1382,14 @@
       return beginModelPlacement(command.modelId, command.entityId);
     }
     const current = project.items.find(entry => entry.id === command.itemId);
+    if (command.kind === 'bind') {
+      if (!Models.canBind(current, command.entityId, templateByType[current?.type])) return false;
+      setViewMode('design');
+      setTool('select');
+      select('item', current.id);
+      updateProperty('entityId', command.entityId);
+      return true;
+    }
     if (!current || !['edit','replace'].includes(command.kind)) return false;
     setViewMode('design');
     setTool('select');
@@ -1363,18 +1400,12 @@
     const previous = templateByType[current.type];
     const next = Object.hasOwn(templateByType,command.modelId) && templateByType[command.modelId];
     if (!Models.canReplace(current, previous, next)) return false;
-    if (!checkPlacement({...current, type:next.type, lightForm:next.lightForm}, current)) return false;
+    const replacement = window.RoomcraftCatalogVariants.applyModel(current, previous, next);
+    if (!Models.supportsHeight(replacement)) delete replacement.modelHeight;
+    if (!checkPlacement(replacement, current)) return false;
     snapshot();
     selected = {kind:'item', id:current.id};
-    if (current.name === previous.label) current.name = next.label;
-    if (!current.visualKind || current.visualKind === previous.visualKind) {
-      if (next.visualKind) current.visualKind = next.visualKind;
-      else delete current.visualKind;
-    }
-    if (next.lightForm) current.lightForm = next.lightForm;
-    else delete current.lightForm;
-    current.type = next.type;
-    if (!Models.supportsHeight(current)) delete current.modelHeight;
+    project.items[project.items.indexOf(current)] = replacement;
     afterChange('Changed model to '+next.label);
     return true;
   }
@@ -1403,19 +1434,10 @@
     const index=project.items.findIndex(i=>i.id===selected.id),o=project.items[index];
     if(!o||o.type===type)return;
     const old=templateByType[o.type],next=templateByType[type];
-    const variants=window.RoomcraftCatalogVariants;
-    if(old?.seriesId&&variants){
-      const replacement=variants.apply(o,old,next,kind);
-      if(!replacement)return;
-      if(!checkPlacement(replacement,o))return;
-      snapshot();project.items[index]=replacement;
-      afterChange(`Changed ${kind}`);return;
-    }
-    if(!old?.artFamily||old.type.slice(0,old.type.lastIndexOf('-'))!==type.slice(0,type.lastIndexOf('-')))return;
-    snapshot();if(o.name===old.label)o.name=next.label;o.type=type;
-    if(next.lightForm)o.lightForm=next.lightForm;else delete o.lightForm;
-    if(next.visualKind)o.visualKind=next.visualKind;else delete o.visualKind;
-    afterChange('Changed color / finish');
+    const replacement=window.RoomcraftCatalogVariants.apply(o,old,next,kind);
+    if(!replacement||!checkPlacement(replacement,o)){renderInspector();return;}
+    snapshot();project.items[index]=replacement;
+    afterChange(kind==='finish'?'Changed color / finish':`Changed ${kind}`);
   }
   function updateHotspotProperty(key,value){if(selected?.kind!=='hotspot')return;const h=project.hotspots.find(h=>h.id===selected.id);if(!h)return;let next=value;if(key==='left'||key==='top'){const n=Number(value);if(!Number.isFinite(n))return;next=`${Math.max(0,Math.min(100,n)).toFixed(2)}%`;}else if(key==='entity'){if(!/^[a-z_]+\.[a-z0-9_]+$/i.test(value)){showToast('Use an entity ID like light.living_room');renderInspector();return;}}else if(key==='tap'&& !['toggle','more-info'].includes(value))return;else if(key==='hold'&& !['none','more-info'].includes(value))return;else if(key!=='title'&&key!=='entity')return;
     const current=key==='left'||key==='top'?h.style[key]:key==='tap'?h.tap_action?.action:key==='hold'?h.hold_action?.action||'none':h[key];if(next===current)return;snapshot();if(key==='left'||key==='top')h.style[key]=next;else if(key==='tap')h.tap_action={action:next};else if(key==='hold'){if(next==='none')delete h.hold_action;else h.hold_action={action:next};}else h[key]=next;afterChange(`Updated ${h.title} control`);
@@ -1438,6 +1460,7 @@
     });
     if(!placed){showToast('Make room next to this object before duplicating it.');return;}
     snapshot();
+    window.RoomcraftObjectControls.clearDeviceLinks(copy);
     copy.id=uid('i');copy.name=`${current.name} copy`;
     project.items.push(copy);select('item',copy.id);afterChange('Duplicated object');
   }
@@ -1690,7 +1713,26 @@
     document.getElementById('roomList').addEventListener('click',e=>{const b=e.target.closest('[data-room]');if(!b)return;setViewMode('design');setTool('room');select('room',b.dataset.room);});
     document.getElementById('inspectorContent').addEventListener('change',e=>{
       if (e.target.matches?.('[data-lock-dimensions]')) { lockObjectDimensions = e.target.checked; return; }
-      const el=e.target.closest('[data-prop]');if(el)updateProperty(el.dataset.prop,el.value);const v=e.target.closest('[data-variant]');if(v)updateVariant(v.value,v.dataset.variantKind||'finish');const h=e.target.closest('[data-hotspot-prop]');if(h)updateHotspotProperty(h.dataset.hotspotProp,h.value);});
+      const activeField = e.target === document.activeElement ? e.target.id : '';
+      if (e.target.matches?.('[data-add-camera-event]')) {
+        const camera = selected?.kind === 'item' && project.items.find(item => item.id === selected.id);
+        if (camera?.type === 'cameraThumbnail' && e.target.value) {
+          updateProperty('eventEntityIds', [...(camera.eventEntityIds || []), e.target.value].join(', '));
+          if (activeField) (document.getElementById(activeField) || document.getElementById('prop-eventEntityIds'))?.focus();
+        }
+        return;
+      }
+      const field = e.target.closest('[data-prop]');
+      const variant = e.target.closest('[data-variant]');
+      const hotspot = e.target.closest('[data-hotspot-prop]');
+      if (field?.validity?.badInput) {
+        showToast('Enter a valid number.');
+        renderInspector();
+      } else if (field) updateProperty(field.dataset.prop, field.value);
+      else if (variant) updateVariant(variant.value, variant.dataset.variantKind || 'finish');
+      else if (hotspot) updateHotspotProperty(hotspot.dataset.hotspotProp, hotspot.value);
+      if (activeField) document.getElementById(activeField)?.focus();
+    });
     document.getElementById('inspectorContent').addEventListener('click',e=>{const a=e.target.closest('[data-action]');if(a){if(a.dataset.action==='delete')deleteSelected();if(a.dataset.action==='duplicate')duplicateSelected();if(a.dataset.action==='rotate')rotateSelected();if(a.dataset.action==='reset-dimensions')resetObjectDimensions();if(a.dataset.action==='calibrate-presence')calibratePresence(true);if(a.dataset.action==='align-presence')calibratePresence(false);}if(e.target.id==='openHelpButton')document.getElementById('helpDialog').showModal();});
     document.getElementById('newRoomButton').addEventListener('click',addRoom);
     document.getElementById('designModeButton').addEventListener('click',()=>setViewMode('design'));

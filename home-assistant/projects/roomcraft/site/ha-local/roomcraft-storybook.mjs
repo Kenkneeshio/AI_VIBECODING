@@ -15,6 +15,7 @@ import {bindStorybookDisplaySettings, DISPLAY_SETTINGS_MARKUP, DISPLAY_SETTINGS_
   storybookDisplaySceneSettings} from './storybook-display-settings.mjs';
 import {readStorybookUtilities, utilityReading} from './storybook-utilities.mjs';
 import {bindStorybookPower, POWER_PANEL_MARKUP, POWER_PANEL_STYLE} from './storybook-power-panel.mjs';
+import {bindStorybookLightPanel, STORYBOOK_LIGHT_PANEL, STORYBOOK_LIGHT_PANEL_STYLES} from './storybook-light-panel.mjs';
 import {bindStorybookCommutes, COMMUTE_DIALOG_MARKUP, COMMUTE_DIALOG_STYLE} from './storybook-commutes.mjs';
 import {createStorybookLocation, STORYBOOK_LOCATION_MARKUP, STORYBOOK_LOCATION_STYLE} from './storybook-location.mjs';
 import {bindStorybookHeatMap, HEAT_MAP_LEGEND, HEAT_MAP_STYLE, HEAT_MAP_TOGGLE} from './storybook-heatmap-panel.mjs';
@@ -209,6 +210,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         ${COASTAL_SKY_STYLE}
         ${DISPLAY_SETTINGS_STYLE}
         ${POWER_PANEL_STYLE}
+        ${STORYBOOK_LIGHT_PANEL_STYLES}
         ${COMMUTE_DIALOG_STYLE}
         ${STORYBOOK_LOCATION_STYLE}
         ${HEAT_MAP_STYLE}
@@ -336,6 +338,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       ${COMMUTE_DIALOG_MARKUP}
       ${SNAPSHOT_DIALOG_MARKUP}
       ${DISPLAY_SETTINGS_MARKUP}
+      ${STORYBOOK_LIGHT_PANEL}
       ${POWER_PANEL_MARKUP}`;
     bindLiveModelLibrary(this);
     this.snapshots = bindSnapshotDialog(this);
@@ -347,6 +350,10 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.stage = this.shadowRoot.querySelector('.stage');
     this.canvas = this.shadowRoot.querySelector('canvas');
     this.overlay = this.shadowRoot.querySelector('.overlay');
+    this.lightPanel = bindStorybookLightPanel(this);
+    this.overlay.addEventListener('hass-more-info', event => {
+      if (this.lightPanel.open(event.detail?.entityId)) event.stopPropagation();
+    });
     this.tethers = this.shadowRoot.querySelector('.tethers');
     this.dock = this.shadowRoot.querySelector('.bar');
     this.weather = this.shadowRoot.querySelector('.weather');
@@ -575,6 +582,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.commutes.sync();
     if (this.devicesDrawer) this.devicesDrawer.hass = value?.connected === false ? undefined : value;
     this.refreshUtility(previous);
+    this.lightPanel.refresh();
     this.power.refresh(previous);
     this.locationPanel.update(value);
     this.updateDefaultViewButtons();
@@ -1166,6 +1174,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     if (!width || !height) return;
     const keepClear = this.scene.exteriorClearance();
     const targets = [];
+    const passive = [];
     for (const control of this.controls) {
       const {config, element, camera} = control;
       if (camera && !this.cameraTilesVisible) continue;
@@ -1178,11 +1187,14 @@ class RoomcraftStorybookCard extends HTMLElement {
       const {w, h} = camera ? storybookCameraTileSize(item, width) : {w: 44, h: 44};
       const priority = config.roomcraft_visual_kind === 'light' || config.roomcraft_device_form === 'presence_switch'
         ? 0 : camera ? 2 : 1;
-      targets.push({...control, x: anchor.x * width, y: anchor.y * height, w, h, priority,
-        id: item.id, keepClear: camera ? keepClear : undefined});
+      const target = {...control, x: anchor.x * width, y: anchor.y * height, w, h, priority,
+        id: item.id, keepClear: camera ? keepClear : undefined};
+      if (!camera && config.roomcraft_tap_action === 'none' && config.roomcraft_hold_action === 'none') {
+        passive.push(target);
+      } else targets.push(target);
     }
-    const byId = new Map(targets.map(target => [target.id, target]));
-    const placements = placeStorybookTargets(targets, width, height);
+    const byId = new Map([...targets, ...passive].map(target => [target.id, target]));
+    const placements = [...placeStorybookTargets(targets, width, height), ...passive];
     const positioned = new Set(placements.map(target => target.element));
     const leaders = [];
     for (const target of placements) {
@@ -1224,6 +1236,7 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   reset() {
     this.heatMap.configure();
+    this.lightPanel.close();
     this.stopDemo(false);
     this.freeViewGestures?.cancel();
     cancelAnimationFrame(this.animationFrame);

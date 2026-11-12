@@ -48,7 +48,11 @@ Use **Menu → On the map → Detection zone** to see the radar's saved bounds a
 
 ## Find and edit object models
 
-Open **Menu → Manage → Object models** in Roomcraft Home or **Main menu → Object models** in Studio. Choose **On the plan** to find and edit an existing object, **Add objects** to search the catalog, or **Home Assistant devices** to match a device to a model. Choose a suggested model or browse all compatible choices. Roomcraft Home opens Studio for placement and edits.
+Open **Menu → Manage → Object models** in Roomcraft Home or **Main menu → Object models** in Studio. Choose **On the plan** to find an object, **Add objects** to search the catalog, or **Home Assistant devices** to select a device and see compatible models. Choose **Bind to this object** to use artwork already on the plan. Roomcraft Home opens Studio for placement and edits.
+
+In an object's Inspector, choose its **State entity** and the actions for **Tap** and **Hold**. Use a separate action target when the picture reports one entity but needs to operate another. A window can show a contact sensor and use a separate cover as its tap target. The preview beside each gesture describes the current result. Duplicated artwork starts without the original entity links.
+
+Tap a light in Home for its configured quick action. Hold it for light controls, or focus it with the keyboard and press **Shift+Enter**. Home shows the controls advertised by the light, such as brightness, warm or cool white, color, and effects. Select an adjustment, then use its **Set** button to send it. Applying an adjustment can turn on a light. **Fade duration** applies to commands from the open panel. **Home Assistant details** opens the native device dialog. In Studio, the light's Inspector lists the controls available in Home. [Home Assistant light controls](https://www.home-assistant.io/actions/light.turn_on/)
 
 Select a placed object and open **Dimensions** in the Inspector. Enter width and depth in plan pixels. **Keep width/depth ratio** applies to numeric edits and corner drags. Enter **Height in 3D** where available, or leave it blank for the model's natural height. **Reset dimensions** restores the catalog footprint and natural height.
 

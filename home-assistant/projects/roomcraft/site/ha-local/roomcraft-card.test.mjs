@@ -123,6 +123,29 @@ test('LAN bridge replaces a marked camera thumbnail and retains manual overlays'
   assert.equal(saved.views[1].cards[0].title, 'Live');
 });
 
+test('Studio receives light control labels and inherited room names without raw light attributes', async () => {
+  const card = new Card();
+  card.hass = {
+    connected:true, user:{is_admin:true},
+    states:{
+      'light.test_strip':{state:'on', attributes:{friendly_name:'Desk strip',supported_color_modes:['rgb'],
+        effect_list:['Fixture party effect'],brightness:97}},
+      'switch.test_outlet':{state:'off', attributes:{friendly_name:'Outlet'}},
+    },
+    areas:{study:{name:'Study'}},
+    entities:{'light.test_strip':{device_id:'test_strip'}},
+    devices:{test_strip:{area_id:'study'}},
+    callWS:async () => dashboard(),
+  };
+  const {entityOptions} = await card._readDashboard();
+  const light = entityOptions.find(entity => entity.entity_id === 'light.test_strip');
+  assert.equal(light.area,'Study');
+  assert.match(light.lightControls.join(' '), /brightness/i);
+  assert.match(light.lightControls.join(' '), /color/i);
+  assert.doesNotMatch(JSON.stringify(entityOptions), /Fixture party effect|effect_list|supported_color_modes|attributes/);
+  assert.equal(entityOptions.find(entity => entity.entity_id === 'switch.test_outlet').lightControls,undefined);
+});
+
 test('consolidated Studio imports and publishes the projection in Roomcraft Home', async () => {
   const legacy = dashboard();
   let saved = {
@@ -666,6 +689,43 @@ test('the object artwork is the light control, with details on hold', async () =
     roomcraft_tap_action: 'none', roomcraft_hold_action: 'toggle' });
   assert.equal(object._button.attributes['data-zone'], 'true');
   assert.match(object._button.attributes['aria-label'], /Tap disabled; hold to toggle/);
+  object.disconnectedCallback();
+});
+
+test('an object routes a supported action to its separate target and keeps sensor gestures read-only', async () => {
+  const object = new ObjectControl();
+  const config = {entity:'binary_sensor.blind_contact', title:'Window', roomcraft_tap_action:'toggle',
+    roomcraft_hold_action:'activate', roomcraft_hold_entity:'input_button.close_blind'};
+  const calls = [];
+  object.setConfig(config);
+  object.hass = {
+    states:{'binary_sensor.blind_contact':{state:'on'}, 'input_button.close_blind':{state:'2026-01-01T12:00:00Z'},
+      'cover.blind':{state:'closed'}},
+    services:{cover:{toggle:{}}},
+    callService:(...args) => { calls.push(args); return Promise.resolve(); },
+  };
+  assert.match(object._button.attributes['aria-label'], /Tap for details; hold to run/);
+  object._activate('tap');
+  assert.equal(calls.length, 0);
+  assert.equal(object.lastEvent.detail.entityId, 'binary_sensor.blind_contact');
+  object.setConfig({...config, roomcraft_tap_entity:'cover.blind'});
+  assert.equal(object._button.attributes['data-state'], 'on');
+  assert.equal(object._button.attributes['aria-keyshortcuts'], 'Shift+Enter');
+  object._activate('tap');
+  let prevented = false;
+  object._button.listeners.keydown({key:'Enter', shiftKey:true, preventDefault() { prevented = true; }});
+  assert.equal(prevented, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [
+    ['homeassistant','toggle',{entity_id:'cover.blind'}],
+    ['input_button','press',{entity_id:'input_button.close_blind'}],
+  ]);
+  object.setConfig({...config, roomcraft_tap_action:'none', roomcraft_hold_action:'none'});
+  assert.equal(object._button.disabled, true);
+  assert.ok('data-passive' in object.attributes);
+  assert.equal(object._button.attributes['aria-keyshortcuts'], undefined);
+  object._activate('tap');
+  object._activate('hold');
+  assert.equal(calls.length, 2);
   object.disconnectedCallback();
 });
 

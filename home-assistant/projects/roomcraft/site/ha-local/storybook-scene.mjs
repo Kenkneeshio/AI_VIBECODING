@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import {sceneFeatureEnabled, sceneWind} from './storybook-scene-settings.mjs';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { makeStorybookFurniture } from './storybook-furniture.mjs';
-import { garagePadContains, makeStorybookDevice } from './storybook-devices.mjs';
+import '../public/inventory.js';
+import { garagePadContains, isStorybookBlind, makeStorybookDevice } from './storybook-devices.mjs';
 import { compileFloorStructure, compileWallStructure, isOutdoorRoom } from './storybook-structure.mjs';
 import { createStorybookLighting } from './storybook-lighting.mjs';
 import { createStorybookSolarFade, storybookSolar } from './storybook-solar.mjs';
@@ -51,7 +52,7 @@ const WALL_LOOKS = {
 };
 const WET = new Set(['lightning-rainy', 'pouring', 'rainy', 'snowy-rainy']);
 const SNOW = new Set(['snowy', 'snowy-rainy']);
-const MOUNT_HEIGHT = { presenceSwitch: 39, wallSconce: 40, wallUnit: 48, thermostat: 42 };
+const MOUNT_HEIGHT = { presenceSwitch: 39, wallSconce: 40, wallUnit: 48, thermostat: 42, artwork: 38, mirror: 39 };
 function seededRandom(seed) {
   let value = seed >>> 0;
   return () => {
@@ -91,18 +92,22 @@ function interiorSide(rooms, wall, x, z) {
 }
 
 function resolveWallMount(rooms, walls, item) {
-  if (!Object.hasOwn(MOUNT_HEIGHT, item.type)) return null;
+  const template = (typeof window === 'undefined' ? globalThis : window).RoomcraftInventory?.byType?.[item.type];
+  const padding = template?.artFamily === 'paddedPanel';
+  const height = MOUNT_HEIGHT[item.type] ?? (template?.mount === 'wall'
+    ? padding ? 0 : MOUNT_HEIGHT.wallSconce : undefined);
+  if (height === undefined) return null;
   const match = nearestWall(walls, item.x, item.y);
   if (!match || match.distance > 38) return null;
   const { wall, centerX, centerZ } = match;
   const signedDistance = (item.x - centerX) * -wall.dz + (item.y - centerZ) * wall.dx;
   const side = Math.abs(signedDistance) > 4 ? Math.sign(signedDistance) : interiorSide(rooms, wall, centerX, centerZ);
-  const inset = (WALL_WIDTH / 2 + 4) * side;
+  const inset = (WALL_WIDTH / 2 + 4 + (padding ? item.h * .30 : 0)) * side;
   return {
     x: centerX - wall.dz * inset,
     z: centerZ + wall.dx * inset,
     angle: wall.angle + (side < 0 ? Math.PI : 0),
-    mountY: Math.min(MOUNT_HEIGHT[item.type], WALL_HEIGHT - 8),
+    mountY: Math.min(height, WALL_HEIGHT - 8),
   };
 }
 
@@ -311,8 +316,7 @@ export function compileStorybookPlan(layout) {
   const placements = items.map(item => {
     const baseY = item.type === 'cameraThumbnail' && garages.some(garage => cameraAboveGarage(item, garage))
       ? GROUND_Y : garageBaseY(item.type);
-    const isBlind = item.type === 'controlZone' &&
-      (item.visualKind === 'window' || item.entityId?.startsWith('cover.'));
+    const isBlind = isStorybookBlind(item);
     let mount = windowMounts.get(item.id) ?? resolveWallMount(indoorRooms, walls, item);
     if (isBlind) {
       let minDistance = 52;
@@ -979,6 +983,7 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
   trackingOverlay.add(trackingFill, trackingKey);
   const anchors = new Map();
   const roots = new Map();
+  const staticGraphics = new Set(plan.placements.filter(({item}) => item.visualKind === 'none').map(({item}) => item.id));
   const garages = new Map();
   const stairsById = new Map(plan.stairs.map(stair => [stair.item.id, stair]));
   for (const placement of plan.placements) {
@@ -986,11 +991,16 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
     const drawItem = item.type === 'window' && window ? window : item;
     const stair = stairsById.get(item.id);
     const object = stair ? makeStorybookStairs(stair) :
-      makeStorybookDevice(drawItem, {window: isBlind ? window : undefined, mountY}) ?? makeStorybookFurniture(drawItem);
+      makeStorybookDevice(drawItem, {window: isBlind ? window : undefined, mountY}) ?? makeStorybookFurniture(drawItem, {mountY});
     if (object) {
       const heightOffset = applyModelHeight(item, object.root);
       object.root.position.set(x, baseY + heightOffset, z);
       object.root.rotation.y = -angle;
+      if (object.dock) {
+        object.dock.position.set(x, baseY, z);
+        object.dock.rotation.y = -angle;
+        scene.add(object.dock);
+      }
       if (object.floorRadius) {
         const radius = object.floorRadius;
         const allowsPoint = (px, pz) => vacuum.clearance(px, pz) >= radius;
@@ -1194,11 +1204,12 @@ function buildStorybookScene(canvas, layout, plan, renderer) {
     }
     trackedControlChanged = false;
     for (const [id, object] of roots) {
-      const state = statesById[id] ?? defaultState;
+      const staticGraphic = staticGraphics.has(id);
+      const state = staticGraphic ? defaultState : statesById[id] ?? defaultState;
       const {visible, position:rootPosition} = object.root;
       let location = draftPositions?.[id]?.position;
       let hasTracking = false;
-      if (object.floorRadius && showTelemetryPosition && !location) {
+      if (object.floorRadius && !staticGraphic && showTelemetryPosition && !location) {
         const motion = transientTelemetry ? object.demoMotion : object.liveMotion;
         if (!transientTelemetry && object.demoMotion.hasPosition) object.demoMotion.clear();
         const measured = motion.observe(state.position, timeSeconds, {

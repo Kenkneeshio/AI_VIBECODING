@@ -30,9 +30,14 @@ test('bed selectors resolve style, size, and finish independently and determinis
 
   const styles = variants.choices(templates, current, 'style');
   assert.ok(styles.length >= 5);
-  assert.ok(styles.every(entry => entry.seriesId === 'bed' && entry.sizeId === 'queen'));
+  assert.ok(styles.every(entry => entry.seriesId === 'bed'));
   assert.ok(new Set(styles.map(entry => entry.designId)).has('canopy'));
   assert.ok(new Set(styles.map(entry => entry.designId)).has('upholstered'));
+  assert.equal(styles.find(entry => entry.designId === 'canopy').sizeId, 'queen');
+  assert.equal(styles.find(entry => entry.designId === 'bunk').sizeId, 'twin');
+  assert.equal(styles.find(entry => entry.designId === 'crib').sizeId, 'crib');
+  assert.deepEqual(Array.from(variants.choices(templates.slice().reverse(), current, 'style'), entry => entry.type),
+    Array.from(styles, entry => entry.type));
 });
 
 test('finish preserves custom geometry while size and style apply authored footprints', () => {
@@ -51,6 +56,7 @@ test('finish preserves custom geometry while size and style apply authored footp
   assert.equal(finish.name, 'My custom bed');
   assert.equal(finish.rotation, 27);
   assert.equal(finish.entityId, 'switch.example');
+  assert.equal(finish.visualKind, 'device');
 
   const king = variants.apply(item, current, byType['bedroom-platform-bed-king-oak'], 'size');
   assert.equal(king.w, 226);
@@ -63,6 +69,7 @@ test('finish preserves custom geometry while size and style apply authored footp
   assert.equal(canopy.w, 188);
   assert.equal(canopy.h, 205);
   assert.equal(canopy.name, 'My custom bed');
+  assert.equal(canopy.visualKind, 'device');
 });
 
 test('legacy catalog entries keep their original finish-only grouping', () => {
@@ -77,6 +84,26 @@ test('legacy catalog entries keep their original finish-only grouping', () => {
     'baby-toys-soft-ball-sage',
     'baby-toys-soft-ball-sky'
   ]);
-  assert.equal(variants.apply({ type: legacy.type }, legacy, choices[0], 'finish'), null,
-    'legacy entries continue through the existing editor path');
+  const item = {type:legacy.type, name:legacy.label, w:81, h:83, visualKind:'none', entityId:'switch.example'};
+  const updated = variants.apply(item, legacy, choices[0], 'finish');
+  assert.equal(updated.type, choices[0].type);
+  assert.equal(updated.name, choices[0].label);
+  assert.deepEqual([updated.w,updated.h,updated.visualKind,updated.entityId],[81,83,'none','switch.example']);
+  assert.equal(variants.apply(item, legacy, templates.find(entry => entry.type === 'baby-toys-plush-bear-teddy'), 'finish'), null);
+});
+
+test('new model geometry carries a compatible light form while authored control settings survive', () => {
+  const window = runtime();
+  const current = window.RoomcraftInventory.byType['lighting-bud-table-lamp-mint'];
+  const next = window.RoomcraftInventory.byType['lighting-cloud-floor-lamp-cream'];
+  const item = {type:current.type,name:current.label,w:36,h:52,modelHeight:64,
+    entityId:'light.example',tapEntityId:'scene.reading',visualKind:'none',lightForm:'bud_lamp'};
+  const replacement = window.RoomcraftCatalogVariants.applyModel(item, current, next);
+  assert.equal(replacement.type,next.type);
+  assert.equal(replacement.name,next.label);
+  assert.equal(replacement.lightForm,'cloud_floor_lamp');
+  assert.equal(replacement.visualKind,'none');
+  assert.equal(replacement.tapEntityId,'scene.reading');
+  assert.equal(replacement.modelHeight,64);
+  assert.deepEqual([replacement.w,replacement.h],[36,52]);
 });

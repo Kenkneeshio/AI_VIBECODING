@@ -1,4 +1,5 @@
 import {combineCommuteReadings, commuteReading, readStorybookCommutes} from './storybook-commutes.mjs';
+import '../public/light-capabilities.js';
 
 const CONTROL = 'custom:roomcraft-object-control';
 const CAMERA = 'custom:roomcraft-camera-thumbnail';
@@ -11,6 +12,13 @@ const SPEED_FACTORS = new Map([['m/s', 1], ['km/h', 1 / 3.6], ['mph', .44704], [
 const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
   'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
 const BEACH_CLOCKS = new Map();
+
+/** Send only the available control names to Studio's authenticated entity picker. */
+export function storybookLightControlLabels(entityId, attributes) {
+  if (typeof entityId !== 'string' || !entityId.startsWith('light.')) return undefined;
+  const root = typeof window === 'undefined' ? globalThis : window;
+  return root.RoomcraftLightCapabilities.describe(attributes).labels;
+}
 
 function beachClock(now, timeZone, night) {
   if (typeof timeZone !== 'string' || !timeZone || !Number.isFinite(now)) {

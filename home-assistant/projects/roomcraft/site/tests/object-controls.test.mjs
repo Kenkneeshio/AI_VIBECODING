@@ -5,10 +5,12 @@ import { test } from 'node:test';
 import { installRoomcraftEngine } from './engine-loader.mjs';
 
 const controlsSource = readFileSync(new URL('../public/object-controls.js', import.meta.url), 'utf8');
+const actionsSource = readFileSync(new URL('../public/control-actions.js', import.meta.url), 'utf8');
 const rasterSource = readFileSync(new URL('../public/raster-renderer.js', import.meta.url), 'utf8');
 
 function controls() {
   const window = {};
+  runInNewContext(actionsSource, { window });
   runInNewContext(controlsSource, { window });
   return window.RoomcraftObjectControls;
 }
@@ -20,9 +22,59 @@ test('old object bindings keep automatic device actions', () => {
   assert.equal(c.validBinding(oldLight), true);
   assert.equal(c.effectiveTapAction(oldLight), 'toggle');
   assert.equal(c.effectiveHoldAction(oldLight), 'more-info');
-  assert.equal(c.effectiveTapAction(oldBlind), 'more-info');
+  assert.equal(c.effectiveTapAction(oldBlind), 'toggle');
   assert.equal(c.effectiveTapAction({ ...oldLight, tapAction: 'none' }), 'none');
   assert.equal(c.effectiveHoldAction({ ...oldBlind, holdAction: 'toggle' }), 'toggle');
+});
+
+test('separate action targets respect their own domains and fallback behavior', () => {
+  const c = controls();
+  const windowContact = { type: 'window', name: 'Window', entityId: 'binary_sensor.window',
+    tapAction: 'toggle', holdAction: 'activate', holdEntityId: 'script.close_blinds' };
+  assert.equal(c.effectiveTapAction(windowContact), 'more-info');
+  assert.equal(c.effectiveTapAction({...windowContact, tapEntityId:'cover.blind'}), 'toggle');
+  assert.equal(c.effectiveHoldAction(windowContact), 'activate');
+  assert.equal(c.effectiveTapAction({ entityId:'vacuum.main' }), 'vacuum-panel');
+  assert.equal(c.effectiveTapAction({ entityId:'sensor.example', tapEntityId:'vacuum.main' }), 'more-info');
+  assert.equal(c.effectiveTapAction({ entityId:'input_button.scene' }), 'activate');
+  const options = c.normalizeEntityOptions([
+    {entity_id:'binary_sensor.window', name:'Window contact'},
+    {entity_id:'cover.blind', name:'Blind'},
+    {entity_id:'script.close_blinds', name:'Close blinds'},
+  ]);
+  const inspector = c.renderInspector(windowContact, { icon:'◇', label:'Window' }, () => '', () => '', String, options);
+  const tapOptions = inspector.match(/<datalist id="roomcraft-tapEntityId-options">(.*?)<\/datalist>/)[1];
+  assert.match(tapOptions, /cover\.blind/);
+  assert.doesNotMatch(tapOptions, /binary_sensor\.window/);
+  assert.match(inspector, /Open details for binary_sensor\.window/);
+  assert.match(inspector, /Run script\.close_blinds/);
+});
+
+test('duplicating artwork clears links and location calibration from the copy', () => {
+  const c = controls();
+  const radar = {type:'presenceSwitch', entityId:'switch.dimmer', presenceEntityId:'binary_sensor.occupied',
+    presenceTrackEntityId:'sensor.radar', presenceTrackTransform:[1,0,250,0,1,375], tapAction:'none',
+    controlIcon:'mdi:radar', visualKind:'device', name:'Radar'};
+  c.clearDeviceLinks(radar);
+  assert.deepEqual(radar, {type:'presenceSwitch', entityId:'', controlIcon:'mdi:radar', visualKind:'device', name:'Radar'});
+  const camera = {type:'cameraThumbnail', entityId:'camera.door', previewMode:'event_live',
+    imageEntityId:'image.door', eventEntityIds:['binary_sensor.ring']};
+  c.clearDeviceLinks(camera);
+  assert.deepEqual(JSON.parse(JSON.stringify(camera)), {type:'cameraThumbnail', entityId:'', previewMode:'event_live',
+    imageEntityId:'', eventEntityIds:[]});
+});
+
+test('the Inspector identifies the extra dashboard controls advertised by the bound light', () => {
+  const c = controls();
+  const options = c.normalizeEntityOptions([
+    {entity_id:'light.example_strip',lightControls:['Brightness','Color','Brightness','']},
+    {entity_id:'switch.example_outlet',lightControls:['Color']},
+  ]);
+  const render = entityId => c.renderInspector({type:'lamp',name:'Desk lamp',entityId},
+    {label:'Desk lamp',icon:'◇'}, () => '', () => '', String, options);
+  assert.match(render('light.example_strip'), /Dashboard light controls · Brightness · Color/);
+  assert.doesNotMatch(render('switch.example_outlet'), /Dashboard light controls/);
+  assert.doesNotMatch(render('light.not_loaded'), /Dashboard light controls/);
 });
 
 test('bottom interface controls export as one uniform upward-opening button row', () => {
@@ -218,9 +270,10 @@ test('dashboard entity suggestions are sanitized, searchable, and domain filtere
     { entity_id: 'light.example_lamp', name: 'Duplicate' },
     { entity_id: 'camera.example_entry', name: 'Entry camera', area: 'Porch' },
     { entity_id: 'image.example_event', name: 'Latest event', area: 'Porch' },
+    { entity_id: 'binary_sensor.person', name: 'Person detected', area: 'Porch' },
     { entity_id: 'https://invalid.test', name: 'Invalid' }
   ]);
-  assert.equal(options.length, 3);
+  assert.equal(options.length, 4);
   assert.equal(options.find(o => o.entity_id === 'light.example_lamp').domain, 'light');
   const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
   const chair = c.renderInspector(
@@ -238,6 +291,8 @@ test('dashboard entity suggestions are sanitized, searchable, and domain filtere
   assert.match(camera, /value="image.example_event"/);
   assert.match(camera, /value="event_live" selected/);
   assert.match(camera, /binary_sensor.entry_ring, binary_sensor.entry_person/);
+  assert.match(camera, /data-add-camera-event/);
+  assert.match(camera, /value="binary_sensor.person"/);
   assert.match(camera, /value="live_auto"/);
   assert.doesNotMatch(camera, /value="light.example_lamp"/);
 });

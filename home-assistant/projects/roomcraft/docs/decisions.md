@@ -1,5 +1,11 @@
 # Decision log
 
+## Give catalog choices the same meaning in Studio and Home
+
+Treat the catalog type and its finish recipe as the stable identity for an object. Both 3D surfaces build from that recipe and the saved footprint. Verify each physical entry has renderable geometry and test open areas of enclosures separately from their padded panels. Keep camera and interface tiles, invisible hit areas, and stairs in their respective overlay or structure layers.
+
+Separate the entity that provides state from the targets used by each gesture. A read-only entity can display its state and open details. A separate compatible target can operate the device. Home reads a light's advertised capabilities before opening the extra controls and again before issuing an action. The layout stores binding choices and dimensions. Device capabilities and values remain live Home Assistant data.
+
 ## Preserve physical scale and compare radar geometry consistently
 
 Keep a character's body size tied to its authored model. Check the swept body against walls and solid furniture. Hide and reacquire a body when the route is blocked while keeping an independent marker for the radar reading. Allow a supported pose at a confirmed seat.

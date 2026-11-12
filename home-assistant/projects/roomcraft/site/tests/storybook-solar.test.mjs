@@ -50,11 +50,14 @@ test('realistic shadow direction and cloud attenuation preserve the state-driven
   const accent = scene.children.find(node => node.isPointLight);
   const object = {root: new THREE.Group(), anchorY: 26};
   lighting.register({id: 'lamp', type: 'tableLamp', entityId: 'light.fixture'}, object);
+  lighting.register({id:'static-lamp', type:'tableLamp', entityId:'light.static_fixture', visualKind:'none'}, object);
   const off = {lamp: {state: 'off'}};
   lighting.update({solar: sample(6, 108, true)}, off, ground);
   assert.ok(key.position.x > key.target.position.x);
   assert.ok(key.position.z > key.target.position.z);
   assert.ok(renderer.shadowMap.needsUpdate);
+  assert.equal(accent.intensity, 0);
+  lighting.update({solar: sample(6, 108, true)}, {'static-lamp': {state:'on'}}, ground);
   assert.equal(accent.intensity, 0);
   renderer.shadowMap.needsUpdate = false;
   const sunset = sample(6, 252, false);

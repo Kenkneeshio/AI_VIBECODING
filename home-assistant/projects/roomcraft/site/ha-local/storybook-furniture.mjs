@@ -3,6 +3,9 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { makeStorybookHabitat } from './storybook-habitats.mjs';
 import { attachStorybookTelevision } from './storybook-television.mjs';
+import '../public/inventory.js';
+import { makeCatalogPlay } from './storybook-catalog-play.mjs';
+import { drawStorybookSpecialty } from './storybook-catalog-specialty.mjs';
 
 // These miniatures use the editor's existing footprint units. All geometry is
 // floor-relative, centered on the item, and independent of Home Assistant.
@@ -554,27 +557,59 @@ function plush(p, w, d, bunny, asChair) {
   return face + size * (bunny ? .37 : .28);
 }
 
-function activity(p, w, d) {
-  const height = 22;
-  const tints = [color.sage, color.peach, color.honey, color.lilac, color.blue, color.blush];
-  feet(p, 0, 0, w * .96, d * .96, height, color.sage);
-  p.box(0, height - 2, 0, w * .94, 7, d * .93, color.linen, 3);
-  for (let i = 0; i < tints.length; i++) {
-    const x = w * (.23 * (i % 3) - .23);
-    const z = d * (i < 3 ? -.18 : .18);
-    p.disc(x, height + 5, z, w * .067, 2.6 + i % 3, d * .072, tints[i], 1.12);
+function catalogStorage(p, w, d, {form, palette: c}) {
+  const size = Math.min(w, d);
+  const bin = form === 'bin';
+  const height = size * (bin ? .31 : .35);
+  if (bin || form === 'basket') {
+    if (bin) {
+      p.box(0, 0, 0, w * .81, height, d * .81, c.base, size * .07);
+      p.box(0, height - .8, 0, w * .83, 2.5, d * .83, c.accent, size * .075);
+      p.box(0, height + 1.2, 0, w * .74, 1, d * .73, c.dark, size * .06);
+      p.box(0, height * .63, d * .409, w * .26, height * .20, 1.1, c.detail, 1.2);
+    } else {
+      p.disc(0, 0, 0, w * .43, height, d * .42, c.base, .79);
+      p.disc(0, height - .35, 0, w * .393, .8, d * .38, c.dark);
+      for (let i = 0; i <= 5; i++) {
+        p.ring(0, height * (.13 + i * .16), 0, w * (.35 + i * .016), d * (.34 + i * .016), .74,
+          i % 2 ? c.accent : c.base);
+      }
+    }
+    for (let i = 0; i < 3; i++) {
+      const x = (i - 1) * w * .22;
+      const tint = [color.sage, color.honey, color.lilac][i];
+      p.box(x, height + .95, (i % 2 - .5) * d * .16, w * .16, size * (.13 + .03 * i), d * .21, tint, 2, i * .27);
+    }
+    return height + size * .22;
   }
-  return 31;
-}
-
-function mat(p, w, d, tint) {
-  const swatches = [color.linen, tint, color.sand, color.peach];
-  for (let row = 0; row < 4; row++) for (let col = 0; col < 5; col++) {
-    const x = w * ((col + .5) / 5 - .5);
-    const z = d * ((row + .5) / 4 - .5);
-    p.box(x, 1.1, z, w / 5 - .8, 2.6, d / 4 - .8, swatches[(row + col) % 4], 1);
+  const isCubby = form === 'cubby' || form === 'lowShelf';
+  const cabinetHeight = Math.max(13, Math.min(54, size * (isCubby ? .49 : .72)));
+  const shelfDepth = Math.max(2, d * .75);
+  const finish = c.base;
+  if (form === 'floating') {
+    p.box(0, cabinetHeight, 0, w * .94, 3.4, shelfDepth, finish, 1.2);
+    for (const side of [-1, 1]) p.box(side * w * .30, cabinetHeight - 7, -shelfDepth * .38, 4, 7, shelfDepth * .20, c.dark, .8);
+    return cabinetHeight + 4;
   }
-  return 4;
+  const levels = isCubby ? 2 : 3;
+  const divisions = isCubby ? 3 : 2;
+  const spacing = cabinetHeight / (levels - 1);
+  for (const side of [-1, 1]) p.box(w * .45 * side, 0, 0, w * .065, cabinetHeight + 3.3, shelfDepth, finish, 1);
+  p.box(0, 0, -shelfDepth * .44, w * .88, cabinetHeight, d * .08, c.dark, .65);
+  for (let i = 0; i < levels; i++) {
+    p.box(0, i * spacing, 0, w * .94, 3.1, shelfDepth, finish, 1);
+    if (i === levels - 1) continue;
+    for (let col = 0; col < divisions; col++) {
+      const x = w * ((col + .5) / divisions - .5) * .84;
+      if (isCubby) p.box(x, i * spacing + 3.2, d * .05, w * .205, spacing * .45, d * .52,
+        [color.sage, color.blush, color.linen][col], 1.7);
+      else for (let book = 0; book < 4; book++) {
+        p.box(x + w * (.047 * book - .07), i * spacing + 3.15, d * .11, w * .038,
+          spacing * (.41 + book % 3 * .085), d * .31, [color.lilac, color.sage, color.honey, color.blush][book], .65);
+      }
+    }
+  }
+  return cabinetHeight + 3.2;
 }
 
 function foliage(p, w, d, isFloor) {
@@ -596,13 +631,16 @@ function foliage(p, w, d, isFloor) {
   return size * (isFloor ? .82 : .65);
 }
 
-export function makeStorybookFurniture(item) {
+export function makeStorybookFurniture(item, context = {}) {
   const { type, w, h: d } = item || {};
   if (typeof type !== 'string' || !Number.isFinite(w) || !Number.isFinite(d) || w < 1 || d < 1) return null;
   if (type.startsWith('pets-')) return makeStorybookHabitat(type, w, d);
   const tint = finishes[type.split('-').at(-1)];
+  const template = (typeof window === 'undefined' ? globalThis : window).RoomcraftInventory?.byType?.[type] ?? {type};
   const p = new Miniature(w, d);
-  let top;
+  let top = drawStorybookSpecialty(p, w, d, template, context);
+  if (top === undefined && !['plush', 'photoBunnyPlush'].includes(template.form)) top = makeCatalogPlay(p, w, d, template);
+  if (top !== undefined) return p.finish(top);
   if (type === 'sofa' || /(?:sofa|loveseat|chaise)-/.test(type)) {
     top = sofa(p, w, d, tint || (type === 'sofa' ? color.linen : color.sage), type);
   } else if (type === 'tv') {
@@ -639,14 +677,16 @@ export function makeStorybookFurniture(item) {
     top = counter(p, w, d, type, type === 'counter' && item.id === 'i7');
   } else if (type === 'tub' || type === 'toilet' || type === 'bathFixtures') {
     top = bath(p, w, d, type);
-  } else if (type === 'plant' || type === 'floorPlant' || type.startsWith('balcony-')) {
+  } else if (type === 'plant' || type === 'floorPlant') {
     top = foliage(p, w, d, type !== 'plant');
   } else if (type === 'wallUnit') {
     p.box(0, 48, 0, w, 17, d * .62, color.linen, 4);
     p.box(0, 51, d * .32, w * .89, 4, 1.8, color.ink, .6);
     p.box(-w * .34, 56, d * .32, w * .11, 2.1, 2.1, color.blue, .7);
     top = 65;
-  } else if (/dresser|nightstand|bookcase|storageCabinet|toy-storage|shelf/.test(type)) {
+  } else if (['storage', 'shelf'].includes(template.artFamily) || template.form === 'lowShelf') {
+    top = catalogStorage(p, w, d, template);
+  } else if (/dresser|nightstand|bookcase|storageCabinet/.test(type)) {
     top = cabinet(p, w, d, tint || color.oakLight, type);
   } else if (/coffeeTable|sideTable|bedroomBench|coffee-table|side-table|low-play-table/.test(type)) {
     const height = type === 'bedroomBench' ? 26 : 30;
@@ -656,15 +696,6 @@ export function makeStorybookFurniture(item) {
     top = height + 8;
   } else if (type.includes('bunny-plush') || type.includes('plush-bear') || type.includes('bear-floor-chair')) {
     top = plush(p, w, d, type.includes('bunny'), type.includes('floor-chair'));
-  } else if (type.startsWith('baby-mats-')) {
-    top = mat(p, w, d, tint || color.sage);
-  } else if (type.startsWith('baby-activities-')) {
-    top = activity(p, w, d);
-  } else if (type.startsWith('baby-toys-')) {
-    const r = Math.min(w, d) * .20;
-    p.oval(0, r, 0, r, r, r, tint || color.peach);
-    p.ring(0, r, 0, r * .95, r * .95, 1.2, color.linen);
-    top = r * 2;
   } else {
     return null;
   }

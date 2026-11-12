@@ -13,6 +13,13 @@ test('device mapping shows compatible models and preserves camera, garage, and m
   assert.deepEqual(camera.available.map(model => model.type), ['cameraThumbnail']);
   const lights = Models.suggestions({entity_id:'light.example', name:'Reading lamp'}, templates);
   assert.ok(lights.recommended.some(model => model.type === 'tableLamp'));
+  const fanLight = Models.suggestions({entity_id:'switch.ceiling_fan_light', name:'Fan light'}, templates);
+  assert.ok(fanLight.recommended.some(model => model.type === 'ceilingLight'));
+  assert.ok(fanLight.recommended.every(model => model.group !== 'fans'));
+  const window = {type:'window', x:160, y:310, w:98, h:28};
+  assert.ok(Models.canBind(window, 'binary_sensor.window_contact', models.get('window')));
+  assert.equal(Models.canBind({...window, entityId:'cover.blind'}, 'binary_sensor.window_contact', models.get('window')), false);
+  assert.equal(Models.canBind({...window, x:-10}, 'binary_sensor.window_contact', models.get('window')), false);
   assert.equal(Models.canMap('sensor.example', models.get('garageDoor')), false);
   assert.equal(Models.canReplace({type:'lamp',entityId:'light.example'}, models.get('lamp'), models.get('floorLamp')), true);
   assert.equal(Models.canReplace({type:'lamp',entityId:'light.example'}, models.get('lamp'), models.get('wallSconce')), false);
@@ -25,6 +32,15 @@ test('locking proportions scales both axes and respects the limits of linked tou
   assert.deepEqual(Models.resizeFootprint(item, 'w', 200, true), {w:200,h:100});
   assert.deepEqual(Models.resizeFootprint({...item,entityId:'switch.test'}, 'w', 9000, true), {w:1536,h:768});
   assert.equal(Models.resizeFootprint(item,'h',NaN,false), null);
+});
+
+test('a locked corner drag shrinks toward one axis and uses the same footprint bounds as number inputs', () => {
+  const item = {type:'table', w:160, h:80};
+  assert.deepEqual(Models.resizeCornerFootprint(item, 120, 80, true), {w:128,h:64});
+  assert.deepEqual(Models.resizeCornerFootprint(item, -10, -40, false), {w:12,h:12});
+  assert.deepEqual(Models.resizeCornerFootprint({...item,type:'cameraThumbnail'}, 9000, 80, true),
+    {w:1536,h:768});
+  assert.equal(Models.resizeCornerFootprint(item, 160, Infinity, true), null);
 });
 
 test('top contact allows a lamp on a table and blocks edge overhang and incompatible furniture', () => {

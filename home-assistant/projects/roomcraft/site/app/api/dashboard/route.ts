@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { keepPreviousDashboardDesign, stableDashboardJson as stableStringify } from "../../../ha-local/dashboard-snapshots.mjs";
-import { storybookPreview } from "../../../ha-local/storybook-state.mjs";
+import { storybookLightControlLabels, storybookPreview } from "../../../ha-local/storybook-state.mjs";
 import { dashboardProjectProblem, isDashboardLayout } from "../../../ha-local/dashboard-project.mjs";
 import { SCENE_HEIGHT, SCENE_WIDTH, editableDashboardHotspots, roomcraftPlanCard, validCameraThumbnail, validObjectControl, withUpdatedPlanCard } from "../../../lib/dashboard-elements";
 
@@ -356,6 +356,7 @@ export async function GET(request: Request): Promise<Response> {
           ? item.attributes.friendly_name.slice(0, 120) : item.entity_id,
         domain: String(item.entity_id).split(".")[0],
         area: "",
+        lightControls: storybookLightControlLabels(item.entity_id, item.attributes),
       }));
     return json({
       project: isObject(dashboard.roomcraft_layout) ? dashboard.roomcraft_layout : null,

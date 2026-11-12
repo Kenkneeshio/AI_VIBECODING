@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import '../public/inventory.js';
 
 // Miniature device models. Authored plan pixels map to world X/Z, with Y up.
 // These models accept an explicit state and clock, and never read Home Assistant.
@@ -35,6 +36,7 @@ const on = (state) => live(state) && (state.active === true || state.state === '
 const brightness = (state) => on(state)
   ? (Number.isFinite(state.attributes?.brightness) ? clamp(state.attributes.brightness / 255, 0, 1) : 1)
   : 0;
+const catalogItem = type => (typeof window === 'undefined' ? globalThis : window).RoomcraftInventory?.byType?.[type];
 
 function mesh(parent, geometry, surface, x = 0, y = 0, z = 0) {
   const object = new THREE.Mesh(geometry, surface);
@@ -107,22 +109,25 @@ function lightPool(root, radius, height = 2.8) {
   };
 }
 
-function lamp(item, w, h) {
+function lamp(item, w, h, context) {
   const root = new THREE.Group();
   const type = item.type;
-  const form = String(item.lightForm ?? '');
+  const recipe = catalogItem(type);
+  const form = String(item.lightForm ?? recipe?.lightForm ?? '');
   const pendant = type === 'pendantLight' || form === 'star_pendant';
   const ceiling = type === 'ceilingLight' || pendant || form === 'bloom_ceiling';
   const standing = type === 'floorLamp' || form === 'cloud_floor_lamp';
   const wall = type === 'wallSconce' || form === 'acorn_sconce';
   const fanLight = ceiling && /fan light/i.test(item.name ?? '');
   const size = Math.min(w, h);
-  const base = material(color.honey);
-  const trim = material(color.ink);
+  const palette = recipe?.palette;
+  const idleShade = new THREE.Color(palette?.detail ?? color.cream);
+  const base = material(palette?.base ?? color.honey, {roughness: .53});
+  const trim = material(palette?.dark ?? color.ink);
   const brass = material(color.brass, {roughness: 0.36, metalness: 0.42});
-  const diffuser = material(color.cream, { emissive: color.warm, emissiveIntensity: 0 });
+  const diffuser = material(idleShade, { emissive: color.warm, emissiveIntensity: 0 });
   const tint = new THREE.Color(color.warm);
-  const bodyHeight = fanLight ? 46 : pendant ? 50 : ceiling ? 56 : wall ? 40 : standing ? 56 : 36;
+  const bodyHeight = fanLight ? 46 : pendant ? 50 : ceiling ? 56 : wall ? context.mountY ?? 40 : standing ? 56 : 36;
   const tableLamp = !ceiling && !standing && !wall;
   const poolRadius = tableLamp ? clamp(size * .68, 15, 46) : clamp(size * (ceiling ? 1.72 : 1.35), 38, 110);
   const pool = lightPool(root, poolRadius, tableLamp ? 16.8 : 2.8);
@@ -132,12 +137,20 @@ function lamp(item, w, h) {
     if (pendant) cylinder(root, 1.7, 1.7, 13, base, 0, bodyHeight + 9);
     cylinder(root, radius * 0.82, radius, 5, base, 0, bodyHeight - 1.5);
     cylinder(root, radius * 0.92, radius * 0.96, 1.15, brass, 0, bodyHeight + 1.1);
-    const globe = bead(root, radius * 0.83, diffuser, 0, bodyHeight, 0);
-    globe.scale.y = pendant ? 0.88 : 0.52;
+    if (form === 'star_pendant' || form === 'bloom_ceiling') {
+      const globe = mesh(root, new THREE.IcosahedronGeometry(radius * .96, 0), diffuser, 0, bodyHeight, 0);
+      globe.scale.y = pendant ? 1.03 : .56;
+    } else {
+      const globe = bead(root, radius * .83, diffuser, 0, bodyHeight, 0);
+      globe.scale.y = pendant ? .88 : .52;
+    }
   } else if (wall) {
-    softBox(root, size * 0.34, 18, 4, trim, 0, 35, -4);
-    cylinder(root, size * 0.12, size * 0.11, 14, base, 0, 37, 3);
-    bead(root, size * 0.21, diffuser, 0, bodyHeight + 3, 3);
+    softBox(root, size * 0.34, 18, 4, trim, 0, bodyHeight - 5, -4);
+    cylinder(root, size * 0.12, size * 0.11, 14, base, 0, bodyHeight - 3, 3);
+    if (form === 'acorn_sconce') {
+      cylinder(root, size * .15, size * .22, 13, diffuser, 0, bodyHeight + 4, 3, 10);
+      cylinder(root, size * .22, size * .218, 1.2, brass, 0, bodyHeight - 2.3, 3, 10);
+    } else bead(root, size * .21, diffuser, 0, bodyHeight + 3, 3);
   } else {
     const stemTop = bodyHeight - 7;
     const foot = standing ? 3 : 16;
@@ -148,7 +161,18 @@ function lamp(item, w, h) {
       bead(root, radius * 0.81, diffuser, 0, bodyHeight, 0);
     } else {
       const folds = form === 'bud_lamp' ? 12 : 9;
-      cylinder(root, radius * 0.56, radius, 14, diffuser, 0, bodyHeight, 0, folds);
+      if (form === 'bud_lamp') {
+        const fluted = new THREE.CylinderGeometry(radius * .56, radius, 14, folds * 2);
+        const vertices = fluted.attributes.position;
+        for (let i = 0; i < vertices.count; i++) {
+          const x = vertices.getX(i);
+          const z = vertices.getZ(i);
+          const facet = Math.round(Math.atan2(x, z) * folds / Math.PI);
+          if (facet % 2) vertices.setXYZ(i, x * .92, vertices.getY(i), z * .92);
+        }
+        fluted.computeVertexNormals();
+        mesh(root, fluted, diffuser, 0, bodyHeight, 0);
+      } else cylinder(root, radius * .56, radius, 14, diffuser, 0, bodyHeight, 0, folds);
       cylinder(root, radius, radius * 0.99, 1.2, brass, 0, bodyHeight - 6.7, 0, folds);
       cylinder(root, radius * 0.55, radius * 0.58, 1.1, brass, 0, bodyHeight + 7.1, 0, folds);
     }
@@ -168,17 +192,22 @@ function lamp(item, w, h) {
       diffuser.emissiveIntensity = power * 0.88;
       diffuser.emissive.copy(tint);
       if (power > 0) diffuser.color.copy(tint);
-      else diffuser.color.setHex(color.cream);
+      else diffuser.color.copy(idleShade);
     },
   };
 }
 
-function fanBlade(radius) {
+function fanBlade(radius, palm) {
   const outline = new THREE.Shape();
   outline.moveTo(radius * .10, -radius * .061);
-  outline.bezierCurveTo(radius * .39, -radius * .094, radius * .62, -radius * .16, radius * .88, -radius * .14);
-  outline.bezierCurveTo(radius * 1.01, -radius * .11, radius * 1.03, radius * .07, radius * .88, radius * .13);
-  outline.bezierCurveTo(radius * .62, radius * .20, radius * .42, radius * .13, radius * .10, radius * .063);
+  if (palm) {
+    outline.bezierCurveTo(radius * .42, -radius * .15, radius * .76, -radius * .42, radius, -.024 * radius);
+    outline.bezierCurveTo(radius * .87, radius * .25, radius * .49, radius * .28, radius * .10, radius * .063);
+  } else {
+    outline.bezierCurveTo(radius * .39, -radius * .094, radius * .62, -radius * .16, radius * .88, -radius * .14);
+    outline.bezierCurveTo(radius * 1.01, -radius * .11, radius * 1.03, radius * .07, radius * .88, radius * .13);
+    outline.bezierCurveTo(radius * .62, radius * .20, radius * .42, radius * .13, radius * .10, radius * .063);
+  }
   outline.closePath();
   const geometry = new THREE.ExtrudeGeometry(outline, {
     depth: 1.8, bevelEnabled: true, bevelSize: .6, bevelThickness: .48,
@@ -195,20 +224,33 @@ function fan(item, w, h, upright) {
   const shaft = child(root, 0, baseY, 0);
   if (upright) shaft.rotation.x = PI / 2;
   const rotor = child(shaft, 0, -1, 0);
-  const housing = material(color.cream);
-  const dark = material(color.ink);
-  const bladeColor = /(?:white|cream)$/.test(item.type) ? color.oat
-    : /(?:forest|sage)$/.test(item.type) ? color.sage : color.honey;
+  rotor.name = 'Fan blades';
+  const recipe = catalogItem(item.type);
+  const palm = recipe?.form === 'palm';
+  const housing = material(recipe?.palette.accent ?? color.cream);
+  const dark = material(recipe?.palette.dark ?? color.ink);
+  const bladeColor = recipe?.palette.base ?? (/(?:white|cream)$/.test(item.type) ? color.oat
+    : /(?:forest|sage)$/.test(item.type) ? color.sage : color.honey);
   const blades = material(bladeColor);
+  const ribs = palm ? material(recipe.palette.accent) : null;
   const count = upright || /three-blade/.test(item.type) ? 3 : /four-blade/.test(item.type) ? 4 : 5;
   cylinder(shaft, radius * 0.18, radius * 0.2, 6, dark);
   cylinder(shaft, radius * 0.174, radius * 0.176, 1.4, material(color.brass, {roughness: .36, metalness: .42}), 0, 3.4);
   cylinder(shaft, radius * 0.15, radius * 0.17, 2.6, housing, 0, 4.9);
-  const blade = fanBlade(radius);
+  const blade = fanBlade(radius, palm);
   for (let i = 0; i < count; i++) {
     const arm = child(rotor);
     arm.rotation.y = (i / count) * fullTurn;
     mesh(arm, blade, blades);
+    if (ribs) {
+      box(arm, radius * .72, .5, .55, ribs, radius * .52, 1.45);
+      for (let row = 0; row < 4; row++) {
+        for (const side of [-1, 1]) {
+          const vein = box(arm, radius * (.10 + .025 * row), .46, .48, ribs, radius * (.45 + .11 * row), 1.39, side * radius * .043);
+          vein.rotation.y = side * .68;
+        }
+      }
+    }
   }
   if (upright) {
     softBox(root, radius * 1.66, 6, radius * 1.02, dark, 0, 3);
@@ -481,20 +523,39 @@ function appliance(item, w, h) {
   };
 }
 
-function robot(w, h) {
+function robot(item, w, h) {
   const root = new THREE.Group();
+  const recipe = catalogItem(item.type);
+  const form = recipe?.form;
   const radius = Math.min(w, h) * 0.42;
   const visualScale = .72;
   root.scale.setScalar(visualScale);
   const status = material(color.sage, { emissive: color.mint, emissiveIntensity: 0 });
-  const base = material(color.ink);
-  cylinder(root, radius, radius * 0.95, 7, base, 0, 4.6);
-  cylinder(root, radius * 0.96, radius, 5.5, material(color.cream), 0, 10.2);
+  const base = material(recipe?.palette.dark ?? color.ink);
+  const shell = material(recipe?.palette.base ?? color.cream, {roughness:.46});
+  const stretch = form === 'slim' ? 1.22 : 1;
+  const body = cylinder(root, radius, radius * .95, form === 'slim' ? 4.8 : 7, base, 0, 4.6);
+  const lid = cylinder(root, radius * .96, radius, form === 'slim' ? 3.6 : 5.5, shell, 0, form === 'slim' ? 8.4 : 10.2);
+  body.scale.x = lid.scale.x = stretch;
   cylinder(root, radius * 0.28, radius * 0.33, 4, material(color.oat), 0, 14, -radius * 0.23);
   for (const x of [-0.27, 0.27]) bead(root, radius * 0.105, base, radius * x, 10, radius * 0.88);
   const stripe = softBox(root, radius * 0.68, 1.2, 2.5, status, 0, 13.2, radius * 0.36);
+  if (form === 'mop') {
+    const fabric = material(recipe.palette.accent);
+    for (const side of [-1, 1]) cylinder(root, radius * .39, radius * .40, 2.1, fabric,
+      side * radius * .45, 1.8, radius * .51);
+  }
+  let dock;
+  if (form === 'docked') {
+    dock = new THREE.Group();
+    dock.name = 'Vacuum charging dock';
+    const dockSurface = material(recipe.palette.accent);
+    softBox(dock, radius * 1.36, 1.8, radius * .95, base, 0, 1.2, -radius * .59, .4);
+    softBox(dock, radius * 1.36, radius * .53, radius * .35, dockSurface, 0, radius * .30, -radius * .94, 1.4);
+    box(dock, radius * .50, .9, .9, base, 0, radius * .41, -radius * .75);
+  }
   return {
-    root, anchorY: 12, floorRadius: radius * 1.03 * visualScale,
+    root, dock, anchorY: 12, floorRadius: radius * 1.03 * visualScale * stretch,
     animate(state, seconds = 0, tracking = false) {
       const running = ['cleaning', 'returning'].includes(stateValue(state));
       stripe.material.emissiveIntensity = running ? (tracking ? 0.6 + 0.5 * Math.cos(seconds * 6) : 0.3) : 0;
@@ -502,28 +563,33 @@ function robot(w, h) {
   };
 }
 
+export function isStorybookBlind(item) {
+  return item.type === 'controlZone' && (item.visualKind === 'window' ||
+    (!item.visualKind || item.visualKind === 'auto') && typeof item.entityId === 'string' && item.entityId.startsWith('cover.'));
+}
+
 export function makeStorybookDevice(item, context = {}) {
   const w = span(item.w, 42);
   const h = span(item.h, 42);
   const type = String(item.type ?? '');
   const kind = item.visualKind;
-  const domain = String(item.entityId ?? '').split('.')[0];
   if (type === 'cameraThumbnail' || type.startsWith('ui')) return null;
   if (type === 'presenceSwitch') return presenceSwitch(w, context);
   if (type === 'garageDoor') return garage(w, h);
   if (type === 'door' || kind === 'door') return hingedDoor(w);
   if (type === 'window') return aperture(w, true, Boolean(item.entityId));
   if (type === 'controlZone') {
-    return kind === 'window' || domain === 'cover'
+    return isStorybookBlind(item)
       ? aperture(span(context.window?.w, w), false, true) : null;
   }
   if (type === 'wallUnit' || type === 'thermostat' || kind === 'climate') return wallPanel(item, w, context);
   if (type === 'airPurifier' || type === 'humidifier') return appliance(item, w, h);
-  if (kind === 'vacuum' || /^cleaning-.*robot/.test(type)) return robot(w, h);
+  if (kind === 'vacuum' || /^cleaning-.*robot/.test(type)) return robot(item, w, h);
   if (type === 'windowFan') return fan(item, w, h, true);
   if (kind === 'fan' || /^fans-/.test(type)) return fan(item, w, h, false);
-  if (kind === 'light' || item.lightForm || /^(?:lamp|ceilingLight|pendantLight|floorLamp|tableLamp|wallSconce)$/.test(type)) {
-    return lamp(item, w, h);
+  if (kind === 'light' || item.lightForm || catalogItem(type)?.lightForm ||
+      /^(?:lamp|ceilingLight|pendantLight|floorLamp|tableLamp|wallSconce)$/.test(type)) {
+    return lamp(item, w, h, context);
   }
   return null;
 }

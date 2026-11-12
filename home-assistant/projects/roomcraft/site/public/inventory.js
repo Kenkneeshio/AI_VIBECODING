@@ -216,5 +216,5 @@
   add('lighting','cuteLight','acornSconce','acorn-wall-sconce','Fluted brass wall sconce',38,50,['oak','cream'],{...variant('wall-light','fluted-brass','Fluted brass','wall','Wall','brass glass'),tags:`${craftedTags} wall light fluted brass glass`,visualKind:'light',lightForm:'acorn_sconce',mount:'wall'});
 
   const byType=Object.fromEntries(templates.map(t=>[t.type,t]));
-  window.RoomcraftInventory={groups,templates,byType};
+  (typeof window === 'undefined' ? globalThis : window).RoomcraftInventory={groups,templates,byType};
 })();

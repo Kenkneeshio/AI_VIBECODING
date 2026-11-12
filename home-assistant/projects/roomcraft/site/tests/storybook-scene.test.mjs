@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { compileStorybookPlan } from '../ha-local/storybook-scene.mjs';
+import { makeStorybookDevice } from '../ha-local/storybook-devices.mjs';
 
 function covers(polygons, x, z) {
   const contains = ring => {
@@ -56,6 +57,23 @@ test('the wall opening, glass, and live shade share the same geometry', () => {
   assert.equal(switchPlacement.x, 570);
   assert.equal(switchPlacement.z, 221);
   assert.equal(switchPlacement.mountY, 39);
+});
+
+test('explicit invisible and door zones keep their authored location beside a window', () => {
+  const source = sample();
+  for (const mode of ['none', 'device', 'door']) {
+    const zone = {...source.items[1], visualKind:mode};
+    const layout = {...source, items:[source.items[0], zone]};
+    const placement = compileStorybookPlan(layout).placements[1];
+    assert.equal(placement.isBlind, false);
+    assert.deepEqual([placement.x, placement.z], [zone.x, zone.y]);
+    const object = makeStorybookDevice(zone);
+    assert.equal(Boolean(object), mode === 'door');
+    object?.root.traverse(node => {
+      node.geometry?.dispose();
+      node.material?.dispose();
+    });
+  }
 });
 
 test('invalid rooms and incompatible versions fail before allocating WebGL resources', () => {

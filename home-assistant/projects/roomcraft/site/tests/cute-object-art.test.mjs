@@ -119,6 +119,14 @@ test('crafted miniature catalog is stable, data driven, and uses realistic mater
   ]) assert.ok(catalog.some(entry => entry.type === legacyType), `legacy stable type ${legacyType}`);
 });
 
+test('every inventory entry has a balanced two-dimensional art path', () => {
+  const window = loadRuntime();
+  for (const entry of window.RoomcraftInventory.templates) {
+    const {summary} = render(window, entry);
+    assert.ok(summary.fills > 0, entry.type);
+  }
+});
+
 test('2D dining tables and chairs render as individual models with legacy composites preserved', () => {
   const window = loadRuntime();
   const models = window.RoomcraftInventory.byType;

@@ -2,6 +2,7 @@
   'use strict';
 
   const actions = new Set(['auto', 'toggle', 'activate', 'more-info', 'none']);
+  const actionRules = window.RoomcraftControlActions;
   const visualKinds = new Set(['auto', 'light', 'fan', 'climate', 'window', 'door', 'vacuum', 'device', 'none']);
   const lightForms = new Set(['table_lamp', 'bud_lamp', 'cloud_floor_lamp', 'bloom_ceiling', 'star_pendant', 'acorn_sconce']);
   const iconPattern = /^mdi:[a-z0-9-]+$/i;
@@ -31,11 +32,17 @@
       const entity_id = option.entity_id.trim();
       if (!entityPattern.test(entity_id) || seen.has(entity_id)) return null;
       seen.add(entity_id);
+      const domain = entity_id.split('.')[0];
+      const lightControls = domain === 'light' && Array.isArray(option.lightControls)
+        ? [...new Set(option.lightControls.filter(label => typeof label === 'string' && label.length <= 40)
+          .map(label => label.trim()).filter(Boolean))].slice(0, 12)
+        : undefined;
       return {
         entity_id,
-        domain: entity_id.split('.')[0],
+        domain,
         name: typeof option.name === 'string' ? option.name.trim().slice(0, 80) : '',
-        area: typeof option.area === 'string' ? option.area.trim().slice(0, 60) : ''
+        area: typeof option.area === 'string' ? option.area.trim().slice(0, 60) : '',
+        ...(lightControls?.length ? {lightControls} : {})
       };
     }).filter(Boolean).sort((a,b) => (a.name || a.entity_id).localeCompare(b.name || b.entity_id)).slice(0, 1500);
   }
@@ -137,7 +144,7 @@
       return visualKinds.has(value) ? { valid: true, value: value === 'auto' ? undefined : value } : { valid: false };
     }
     if (key === 'tapEntityId' || key === 'holdEntityId') {
-      return !value || entityPattern.test(value) ? { valid: true, value: value || undefined } : { valid: false };
+      return !value || entityPattern.test(value) ? { valid: true, value: value.toLowerCase() || undefined } : { valid: false };
     }
     if (key === 'presenceEntityId') {
       return !value || /^binary_sensor\.[a-z0-9_]+$/i.test(value)
@@ -173,15 +180,23 @@
     return !value || iconPattern.test(value) ? { valid: true, value: value || undefined } : { valid: false };
   }
 
+  function clearDeviceLinks(item) {
+    item.entityId = '';
+    for (const key of bindingKeys) {
+      if (key !== 'visualKind' && key !== 'controlIcon') delete item[key];
+    }
+    if (item.type === 'cameraThumbnail') {
+      item.imageEntityId = '';
+      item.eventEntityIds = [];
+    }
+  }
+
   function effectiveTapAction(item) {
-    if (item.tapAction && item.tapAction !== 'auto') return item.tapAction;
-    const domain = (item.tapEntityId || item.entityId || '').split('.')[0];
-    if (['scene', 'script', 'button'].includes(domain)) return 'activate';
-    return ['light', 'switch', 'fan', 'input_boolean'].includes(domain) ? 'toggle' : 'more-info';
+    return actionRules.resolve(item.tapAction, 'tap', item.tapEntityId || item.entityId, item.entityId);
   }
 
   function effectiveHoldAction(item) {
-    return item.holdAction && item.holdAction !== 'auto' ? item.holdAction : 'more-info';
+    return actionRules.resolve(item.holdAction, 'hold', item.holdEntityId || item.entityId, item.entityId);
   }
 
   function visualKind(item) {
@@ -345,9 +360,10 @@
     ]);
   }
 
-  function entityField(label, key, value, options, domain, escape) {
+  function entityField(label, key, value, options, filter, escape) {
     const listId = 'roomcraft-' + key + '-options';
-    const choices = options.filter(option => !domain || option.domain === domain);
+    const choices = options.filter(option => !filter ||
+      (typeof filter === 'string' ? option.domain === filter : filter(option)));
     const values = choices.map(option => {
       const description = [option.name, option.area, option.domain].filter(Boolean).join(' · ');
       return '<option value="' + escape(option.entity_id) + '" label="' + escape(description) + '"></option>';
@@ -356,6 +372,39 @@
       + '<input id="prop-' + key + '" data-prop="' + key + '" type="text" value="' + escape(value)
       + '" list="' + listId + '" placeholder="Search or enter an entity ID" autocomplete="off">'
       + '<datalist id="' + listId + '">' + values + '</datalist></div>';
+  }
+
+  function gestureFields(item, gesture, entityOptions, escape) {
+    const hold = gesture === 'hold';
+    const actionKey = gesture + 'Action';
+    const entityKey = gesture + 'EntityId';
+    const target = item[entityKey] || item.entityId;
+    const selected = item[actionKey] || 'auto';
+    const resolved = hold ? effectiveHoldAction(item) : effectiveTapAction(item);
+    const description = {
+      toggle: 'Toggle', activate: 'Run', 'vacuum-panel': 'Open vacuum controls for',
+      'more-info': 'Open details for',
+    };
+    const label = hold ? 'Hold' : 'Tap';
+    return actionField(actionKey, label + ' action', selected, hold ? 'Automatic · open details' : 'Automatic for entity')
+      + (selected === 'none' ? '' :
+        entityField(label + ' target (optional)', entityKey, item[entityKey] || '', entityOptions,
+          option => actionRules.supports(selected, option.entity_id), escape))
+      + (!item.entityId || selected === 'none' ? '' : '<p class="field-hint">' +
+        (['toggle', 'activate'].includes(selected) && selected !== resolved
+          ? 'This entity does not support that action. Choose a compatible target or change the action. '
+          : '') + escape(description[resolved] + ' ' + target) + '.</p>');
+  }
+
+  function cameraEventPicker(item, entityOptions, escape) {
+    const selected = new Set(item.eventEntityIds || []);
+    const available = entityOptions.filter(option => option.domain === 'binary_sensor' && !selected.has(option.entity_id));
+    if (!available.length || selected.size >= 6) return '';
+    return '<div class="field"><label for="camera-event-picker">Add event sensor</label>'
+      + '<select id="camera-event-picker" data-add-camera-event><option value="">Choose a binary sensor…</option>'
+      + available.map(option => '<option value="' + escape(option.entity_id) + '">'
+        + escape([option.name || option.entity_id, option.area, option.name && option.entity_id].filter(Boolean).join(' · '))
+        + '</option>').join('') + '</select></div>';
   }
 
   function trackingInspector(item, escape, entityOptions) {
@@ -416,6 +465,7 @@
     const sizing = '<div class="inspector-block"><p class="inspector-label">DIMENSIONS · PLAN PX</p>'
       + '<div class="field-grid">' + field('Width', 'w', item.w, 'number') + field('Depth', 'h', item.h, 'number') + '</div>'
       + (dimensions.height ? field('Height in 3D (blank = model)', 'modelHeight', item.modelHeight ?? '', 'number') : '')
+      + (item.type === 'stairs' ? field('Stair treads (blank = 14)', 'steps', item.steps ?? '', 'number') : '')
       + '<div class="inspector-actions"><label><input type="checkbox" data-lock-dimensions'
       + (dimensions.locked ? ' checked' : '') + '> Keep width/depth ratio</label>'
       + (template.w ? '<button type="button" class="secondary-button" data-action="reset-dimensions">Reset dimensions</button>' : '')
@@ -434,13 +484,19 @@
         + '<div class="field"><label for="prop-eventEntityIds">Event sensors (comma separated)</label>'
         + '<input id="prop-eventEntityIds" data-prop="eventEntityIds" type="text" value="' + escape((item.eventEntityIds || []).join(', '))
         + '" placeholder="binary_sensor.ring, binary_sensor.person" autocomplete="off"></div>'
-        + '<p class="field-hint">Event mode shows the latest image until a listed sensor turns on, then tries live video for a short event window. Always-live mode is for cameras that can stream continuously.</p></div>';
+        + cameraEventPicker(item, entityOptions, escape)
+        + '<p class="field-hint">Live during an event keeps the last image visible and tries live video when a listed sensor turns on. Always show live feed is for cameras that can stream continuously.</p></div>';
+    } else if (item.type.startsWith('ui') || item.type === 'stairs') {
+      link = '';
     } else {
+      const lightControls = entityOptions.find(option => option.entity_id === item.entityId)?.lightControls;
       link = '<div class="inspector-block"><p class="inspector-label">DASHBOARD BUTTON</p>'
-        + entityField('Device entity ID', 'entityId', item.entityId || '', entityOptions, null, escape)
+        + entityField('State entity', 'entityId', item.entityId || '', entityOptions,
+          option => window.RoomcraftModels?.canMap(option.entity_id, template) ?? option.domain !== 'camera', escape)
         + '<p class="field-hint">' + (item.entityId
-          ? 'This object is a dashboard button linked to ' + escape(item.entityId) + '.'
-          : 'Add an entity ID to turn this object into a dashboard button. Leave it blank for decoration.') + '</p>'
+          ? 'The live graphic uses ' + escape(item.entityId) + '.'
+          : 'Choose a Home Assistant device or sensor to make this object interactive. Leave it blank for decoration.') + '</p>'
+        + (lightControls?.length ? '<p class="field-hint">Dashboard light controls · ' + escape(lightControls.join(' · ')) + '</p>' : '')
         + field('Button label (optional)', 'controlLabel', item.controlLabel || '')
         + (zone ? '' : '<div class="field"><label for="prop-controlIcon">Button icon (optional)</label>'
           + '<input id="prop-controlIcon" data-prop="controlIcon" list="roomcraftButtonIcons" value="' + escape(item.controlIcon || '')
@@ -448,14 +504,12 @@
           + '<datalist id="roomcraftButtonIcons"><option value="mdi:lightbulb"><option value="mdi:ceiling-fan">'
           + '<option value="mdi:window-closed"><option value="mdi:garage"><option value="mdi:television">'
           + '<option value="mdi:robot-vacuum"><option value="mdi:power"></datalist></div>')
-        + actionField('tapAction', 'Tap action', item.tapAction, 'Automatic for device')
         + '<div class="field"><label for="prop-visualKind">Live graphic</label><select id="prop-visualKind" data-prop="visualKind">'
         + [['auto','Automatic'],['light','Light or lamp'],['fan','Ceiling fan'],['climate','Air conditioning'],['window','Window or blinds'],['door','Door or garage'],['vacuum','Robot vacuum'],['device','General device'],['none','No state graphic']]
           .map(([value,label]) => '<option value="' + value + '"' + ((item.visualKind || 'auto') === value ? ' selected' : '') + '>' + label + '</option>').join('')
         + '</select></div>'
-        + entityField('Tap target (optional)', 'tapEntityId', item.tapEntityId || '', entityOptions, null, escape)
-        + actionField('holdAction', 'Hold action', item.holdAction, 'Default · open device details')
-        + entityField('Hold target (optional)', 'holdEntityId', item.holdEntityId || '', entityOptions, null, escape)
+        + gestureFields(item, 'tap', entityOptions, escape)
+        + gestureFields(item, 'hold', entityOptions, escape)
         + (item.type === 'presenceSwitch'
           ? entityField('Presence sensor', 'presenceEntityId', item.presenceEntityId || '', entityOptions, 'binary_sensor', escape)
             + '<p class="field-hint">The three dots attached to the switch animate only while this occupancy sensor reports on.</p>'
@@ -467,9 +521,7 @@
             + escape((item.vacuumPositionTransform || []).join(', ')) + '" placeholder="a, b, c, d, e, f" autocomplete="off"></div>'
             + '<p class="field-hint">The optional six-number transform maps live vacuum coordinates to plan pixels: x′ = ax + by + c, y′ = dx + ey + f. When calibrated, the robot moves smoothly to its real map position; stale active positions are not presented as live. Tap opens start, pause, dock, locate, room-cleaning, and map controls.</p>'
           : '')
-        + '<p class="field-hint">Search available devices by name or enter an entity ID. Automatic tap toggles lights, switches, and fans; runs scenes, scripts, and buttons; and opens details for other devices. The object name is the button label unless you set one above.'
-        + ' Optional tap and hold targets let this object show one entity’s state while running a different scene, script, or button.'
-        + ' The live graphic follows the main entity. Choose Fan to spin when that switch is on.'
+        + '<p class="field-hint">Search by name or enter an entity ID. Optional tap and hold targets can operate a different entity from the one supplying the graphic.'
         + (zone ? ' General control areas stay invisible; Window and Door modes show a state tint.' : '') + '</p></div>';
     }
     return '<div class="inspector-block"><p class="inspector-label">SELECTED OBJECT</p>'
@@ -481,7 +533,7 @@
 
   window.RoomcraftObjectControls = {
     isBindingKey: key => bindingKeys.has(key),
-    validBinding, propertyUpdate, presenceCalibration, presenceAlignment, presenceAlignmentValues, effectiveTapAction, effectiveHoldAction,
+    validBinding, propertyUpdate, clearDeviceLinks, presenceCalibration, presenceAlignment, presenceAlignmentValues, effectiveTapAction, effectiveHoldAction,
     normalizeEntityOptions, manualDashboardElements, manualYaml, poseUpdate, renderInspector, visualKind
   };
 })();

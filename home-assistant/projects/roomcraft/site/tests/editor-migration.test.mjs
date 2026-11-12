@@ -74,7 +74,10 @@ function boot(savedProject, dashboardRequest, options = {}) {
   window.top = window;
   installRoomcraftEngine(window);
   for (const wallSource of wallSources) runInNewContext(wallSource, { window });
+  runInNewContext(readFileSync(new URL('../public/control-actions.js', import.meta.url), 'utf8'), {window});
   runInNewContext(controlsSource, { window });
+  if (options.fullInventory) runInNewContext(readFileSync(new URL('../public/inventory.js', import.meta.url), 'utf8'), {window});
+  runInNewContext(readFileSync(new URL('../public/catalog-variants.js', import.meta.url), 'utf8'), {window});
   runInNewContext(readFileSync(new URL('../public/model-library.js', import.meta.url), 'utf8'), {window});
   const localStorage = {
     getItem(key) { return data.get(key) ?? null; },
@@ -119,6 +122,82 @@ test('the 3D mutation bridge preserves bindings and records one undoable move', 
   assert.deepEqual(bridge.getProject(), before);
   before.items[0].x = -1000;
   assert.notEqual(bridge.getProject().items[0].x, -1000);
+});
+
+test('stair treads use one undoable layout setting in Studio and the 3D Home plan', () => {
+  const stair = {id:'test-stair', type:'stairs', name:'Exterior stairs', x:500, y:430, w:88, h:210, rotation:0};
+  const editor = boot({version:2, editableReferenceVersion:10, rooms:[], walls:[], items:[stair], hotspots:[]});
+  editor.window.RoomcraftEditorViewport.selectItem(stair.id);
+  const input = value => ({target:{closest:selector => selector === '[data-prop]' ?
+    {value, dataset:{prop:'steps'}} : null}});
+  assert.match(editor.elements.get('inspectorContent').innerHTML, /Stair treads/);
+  assert.equal(compileStorybookPlan(editor.read()).stairs[0].steps,14);
+  editor.dispatch('inspectorContent','change',input('21'));
+  const edited = editor.read();
+  assert.equal(edited.items[0].steps,21);
+  assert.equal(compileStorybookPlan(edited).stairs[0].steps,21);
+  editor.dispatch('inspectorContent','change',input('41'));
+  assert.deepEqual(editor.read(),edited);
+  editor.dispatch('inspectorContent','change',{target:{closest:selector => selector === '[data-prop]' ?
+    {value:'',validity:{badInput:true},dataset:{prop:'steps'}} : null}});
+  assert.deepEqual(editor.read(),edited);
+  assert.deepEqual(boot(edited).read().items[0],edited.items[0]);
+  editor.dispatch('inspectorContent','change',input(''));
+  assert.equal(editor.read().items[0].steps,undefined);
+  editor.dispatch('undoButton','click',{});
+  assert.deepEqual(editor.read(),edited);
+});
+
+test('catalog variants keep authored action targets and restore the Inspector after a blocked footprint', () => {
+  const item = {id:'test-bed', type:'bedroom-platform-bed-queen-oak', name:'Guest bed', x:650, y:440,
+    w:188, h:205, rotation:0, entityId:'switch.example', tapEntityId:'scene.example', visualKind:'none'};
+  const cabinet = {id:'cabinet', type:'storageCabinet', name:'Cabinet', x:765, y:440, w:34, h:45, rotation:0};
+  const editor = boot({version:2,editableReferenceVersion:10,rooms:[],walls:[],items:[item,cabinet],hotspots:[]},
+    undefined, {fullInventory:true});
+  editor.window.RoomcraftEditorViewport.selectItem(item.id);
+  const choose = (value, variantKind) => editor.dispatch('inspectorContent','change',{
+    target:{closest:selector => selector === '[data-variant]' ? {value,dataset:{variantKind}} : null},
+  });
+  choose('bedroom-platform-bed-queen-walnut','finish');
+  const finished = editor.read().items[0];
+  assert.deepEqual(finished,{...item,type:'bedroom-platform-bed-queen-walnut'});
+  choose('bedroom-platform-bed-king-walnut','size');
+  assert.deepEqual(editor.read().items[0],finished);
+  assert.match(editor.elements.get('inspectorContent').innerHTML, /value="bedroom-platform-bed-queen-walnut" selected/);
+  assert.equal(editor.window.RoomcraftEditorEngine.inspect().commandCount,1);
+  editor.dispatch('undoButton','click',{});
+  assert.deepEqual(editor.read().items[0],item);
+});
+
+test('resizing the depth of a wall-mounted model keeps its center on the wall', () => {
+  const sconce = {id:'wall-light',type:'wallSconce',name:'Wall light',x:510,y:400,w:36,h:50,rotation:0};
+  const wall = {id:'wall',x1:410,y1:400,x2:690,y2:400};
+  const editor = boot({version:2,editableReferenceVersion:10,rooms:[],walls:[wall],items:[sconce],hotspots:[]});
+  editor.window.RoomcraftEditorViewport.selectItem(sconce.id);
+  editor.pointer('pointerdown',535,432);
+  editor.pointer('pointermove',535,457);
+  editor.pointer('pointerup',535,457);
+  assert.deepEqual(editor.read().items[0],{...sconce,h:75});
+  editor.dispatch('undoButton','click',{});
+  assert.deepEqual(editor.read().items[0],sconce);
+});
+
+test('new artwork and mirrors mount to the same wall in Studio and Home', () => {
+  const wall = {id:'wall', x1:410, y1:400, x2:690, y2:400};
+  const editor = boot({version:2, editableReferenceVersion:10, rooms:[], walls:[wall], items:[], hotspots:[]});
+  const bridge = editor.window.RoomcraftEditorViewport;
+  for (const [type, x] of [['artwork',490], ['mirror',610]]) {
+    assert.equal(bridge.applyModelCommand({kind:'place',modelId:type}),true);
+    assert.equal(bridge.placeAt(x,520),false);
+    assert.equal(bridge.placeAt(x,412),true);
+    const layout = editor.read();
+    const item = layout.items.at(-1);
+    assert.deepEqual([item.x,item.y,item.rotation],[x,400,0]);
+    const projected = compileStorybookPlan(layout).placements.find(placement => placement.item.id === item.id);
+    assert.equal(projected.x,x);
+    assert.equal(projected.z,411);
+    assert.ok(projected.mountY > 0);
+  }
 });
 
 test('2D dragging and the Studio movement bridge preserve the last legal placement', () => {
@@ -713,8 +792,8 @@ test('existing objects gain configurable dashboard button actions without a migr
   editor.pointer('pointerup', 500, 500);
   const inspector = editor.elements.get('inspectorContent');
   assert.match(inspector.innerHTML, /DASHBOARD BUTTON/);
-  assert.match(inspector.innerHTML, /Device entity ID/);
-  assert.match(inspector.innerHTML, /Automatic for device/);
+  assert.match(inspector.innerHTML, /State entity/);
+  assert.match(inspector.innerHTML, /Automatic for entity/);
   const change = (key, value) => editor.dispatch('inspectorContent', 'change', {
     target: { closest: selector => selector === '[data-prop]' ? { dataset: { prop: key }, value } : null }
   });
@@ -1053,4 +1132,33 @@ test('mapping and swapping a model keep one editable binding and its footprint',
   bridge.selectItem(original.id);
   dimensionField('modelHeight','');
   assert.equal(bridge.getProject().items[0].modelHeight, undefined);
+});
+
+test('an existing compatible object can be bound once and undone without changing its pose', () => {
+  const lamp = {id:'placed-lamp', type:'lamp', name:'Reading lamp', x:640, y:440, w:48, h:52, rotation:30, entityId:''};
+  const editor = boot({version:2, editableReferenceVersion:10, rooms:[], walls:[], hotspots:[], items:[lamp]});
+  const bridge = editor.window.RoomcraftEditorViewport;
+  const before = bridge.getProject();
+  assert.equal(bridge.applyModelCommand({kind:'bind', itemId:lamp.id, entityId:'camera.wrong_type'}), false);
+  assert.deepEqual(bridge.getProject(), before);
+  assert.equal(bridge.applyModelCommand({kind:'bind', itemId:lamp.id, entityId:'light.reading'}), true);
+  assert.deepEqual({...bridge.getProject().items[0]}, {...before.items[0], entityId:'light.reading'});
+  assert.equal(bridge.applyModelCommand({kind:'bind', itemId:lamp.id, entityId:'light.different'}), false);
+  editor.dispatch('undoButton','click',{});
+  assert.deepEqual(bridge.getProject(), before);
+});
+
+test('the camera event picker appends a binary sensor as one undoable edit', () => {
+  const camera = {id:'camera', type:'cameraThumbnail', name:'Door', x:400, y:420, w:100, h:70, rotation:0,
+    entityId:'camera.entry', imageEntityId:'image.entry', eventEntityIds:['binary_sensor.ring'], previewMode:'event_live'};
+  const editor = boot({version:2, editableReferenceVersion:10, rooms:[], walls:[], hotspots:[], items:[camera]});
+  const bridge = editor.window.RoomcraftEditorViewport;
+  const before = bridge.getProject();
+  bridge.selectItem(camera.id);
+  editor.dispatch('inspectorContent', 'change', {target:{
+    matches: selector => selector === '[data-add-camera-event]', value: 'binary_sensor.person',
+  }});
+  assert.deepEqual(Array.from(bridge.getProject().items[0].eventEntityIds), ['binary_sensor.ring','binary_sensor.person']);
+  editor.dispatch('undoButton','click',{});
+  assert.deepEqual(bridge.getProject(), before);
 });
