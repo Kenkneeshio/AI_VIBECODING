@@ -716,11 +716,23 @@ function meadowTexture(document) {
   return texture;
 }
 
+/** A generated plant's entire canopy must stay outside detached structures. */
+export function storybookPlantClearsStructures(structures, x, z, radius) {
+  return !structures.some(structure => {
+    const dx = x - structure.x;
+    const dz = z - structure.z;
+    const u = dx * Math.cos(structure.angle) + dz * Math.sin(structure.angle);
+    const v = -dx * Math.sin(structure.angle) + dz * Math.cos(structure.angle);
+    return Math.abs(u) < structure.item.w / 2 + radius && Math.abs(v) < structure.item.h * .6 + radius;
+  });
+}
+
 function buildYard(batch, groveBatch, plan, street, treeWind, heightAt, sandHeight, density, garageDriveways = []) {
   const { minX, maxX, minZ, maxZ } = plan.houseBounds;
   const width = maxX - minX;
   const depth = maxZ - minZ;
   const rand = seededRandom(150741);
+  const structures = plan.placements.filter(({item}) => item.type === 'garageDoor' || item.type === 'stairs');
   if (!plan.editableStructure) {
     const pathWidth = Math.min(90, width * 0.18);
     const pathX = plan.reference ? plan.reference.left + pathWidth / 2 : minX + pathWidth / 2;
@@ -736,8 +748,11 @@ function buildYard(batch, groveBatch, plan, street, treeWind, heightAt, sandHeig
     if (!keepPlant(index)) continue;
     const x = minX + fx * width;
     const z = minZ + fz * depth;
-    if (storybookGarageDrivewayContains(garageDriveways, x, z, 45)) continue;
     const size = 21 + rand() * 24;
+    // Include the outer leaves and flowers, not only the shrub's center.
+    const radius = size * 1.26 + 4;
+    if (storybookGarageDrivewayContains(garageDriveways, x, z, radius) ||
+        !storybookPlantClearsStructures(structures, x, z, radius)) continue;
     const groundY = heightAt(x, z);
     batch.ball(size * 0.94, 9, size * 0.67, '#6d886a', x, groundY + 7, z);
     batch.ball(size * 0.82, size * 0.57, size * 0.69, '#819b76', x + 3, groundY + 13, z);
@@ -771,18 +786,11 @@ function buildYard(batch, groveBatch, plan, street, treeWind, heightAt, sandHeig
     ['coast-oak', 1.145, .27, 102],
     ['olive', -.18, .94, 82],
   ];
-  const structures = plan.placements.filter(({item}) => item.type === 'garageDoor' || item.type === 'stairs');
   const clearsBuiltArea = (x, z, radius) => {
     if (storybookGarageDrivewayContains(garageDriveways, x, z, radius)) return false;
     if (z - radius <= street.sample(x, street.nearZ).z + 3) return false;
     if (x + radius > minX && x - radius < maxX && z + radius > minZ && z - radius < maxZ) return false;
-    return !structures.some(structure => {
-      const dx = x - structure.x;
-      const dz = z - structure.z;
-      const u = dx * Math.cos(structure.angle) + dz * Math.sin(structure.angle);
-      const v = -dx * Math.sin(structure.angle) + dz * Math.cos(structure.angle);
-      return Math.abs(u) < structure.item.w / 2 + radius && Math.abs(v) < structure.item.h * .6 + radius;
-    });
+    return storybookPlantClearsStructures(structures, x, z, radius);
   };
   for (const [seed, [kind, fx, fz, height]] of treeSites.entries()) {
     if (!keepPlant(seed)) continue;
