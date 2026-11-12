@@ -144,7 +144,7 @@
           (item.rotation !== undefined && item.rotation !== 0) || item.modelHeight !== undefined)) {
         issue('side-road-settings', path, 'Side roads need width 48–140, length 120–1000, and automatic rotation and height.');
       }
-      if (record(item) && ['sceneryRanchHouse', 'scenerySideRoad'].includes(item.type) &&
+      if (record(item) && ['sceneryRanchHouse', 'scenerySideRoad', 'sceneryOfficeCampus'].includes(item.type) &&
           (['entityId', 'tapEntityId', 'holdEntityId', 'presenceEntityId', 'presenceTrackEntityId',
             'vacuumMapEntityId', 'imageEntityId'].some(key => item[key] !== undefined && item[key] !== '') ||
           item.eventEntityIds !== undefined && (!Array.isArray(item.eventEntityIds) || item.eventEntityIds.length))) {

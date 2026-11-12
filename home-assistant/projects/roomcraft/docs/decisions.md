@@ -1,5 +1,9 @@
 # Decision log
 
+## Extend the shared exterior-building contract for office landmarks
+
+Use another grouped catalog recipe for a commercial building, with the same ground plane, camera bounds, editing, disposal and binding restrictions as the ranch. Preserve existing roads and layout objects. Reference the actual visible multi-story architecture rather than substitute a generic low-rise. Keep artwork deterministic and code-native; document inferred detail and grouped editing. [Office landmark](office-landmark.md)
+
 ## Keep personal landmarks generic, editable and outside the condo contract
 
 Represent an exterior ranch and side street as explicit catalog items using the existing project/Undo/Save workflow. Keep their ground elevation and scenery bounds separate from the upstairs home. Derive the road's orientation and junction from the shared curved street, rather than allowing a rotation that disconnects its curb geometry. Reject Home Assistant entity/action bindings on these decorative types. Use a deterministic code-native house recipe with a generic public name and synthetic proof art; retain no identifying reference address, URL or photo in Git. Give the customer’s two-driveway/rear-garden correction precedence over the older frontage photo. Use overhead imagery to inform the roof/lot and keep inferred foliage/material details explicit. Union exterior bounds only for camera framing; do not move the condo or coast. Document reference age and the fixed-PNG crop honestly. [Exterior landmark contract](exterior-landmarks.md)

@@ -1,9 +1,10 @@
 import {BufferGeometry,Float32BufferAttribute,MathUtils} from 'three';
 import polygonClipping from 'polygon-clipping';
+import {isExteriorBuilding} from './storybook-exterior.mjs';
 
 const {clamp,lerp}=MathUtils;
 const WALK=26,CURB=4,CORNER=40;
-const TYPES=new Set(['garageDoor','sceneryRanchHouse','stairs']);
+const TYPES=new Set(['garageDoor','stairs']);
 const add=(a,b,s=1)=>({x:a.x+b.x*s,z:a.z+b.z*s});
 const dot=(a,b)=>a.x*b.x+a.z*b.z;
 const delta=(a,b)=>({x:a.x-b.x,z:a.z-b.z});
@@ -40,7 +41,7 @@ function blockedPolygons(plan,owner,groundY) {
     const b=plan.houseBounds;
     result.push([{x:b.minX,z:b.minZ},{x:b.maxX,z:b.minZ},{x:b.maxX,z:b.maxZ},{x:b.minX,z:b.maxZ}]);
   }
-  for(const p of plan.placements??[])if(p!==owner&&TYPES.has(p.item.type))result.push(rectangle(p,3));
+  for(const p of plan.placements??[])if(p!==owner&&(TYPES.has(p.item.type)||isExteriorBuilding(p.item.type)))result.push(rectangle(p,3));
   for(const wall of [...(plan.walls??[]),...(plan.fences??[]).filter(w=>Math.min(w.base1,w.base2)<=groundY+9)]) {
     const dx=wall.x2-wall.x1,dz=wall.y2-wall.y1,length=Math.hypot(dx,dz);
     if(length)result.push(rectangle({x:(wall.x1+wall.x2)/2,z:(wall.y1+wall.y2)/2,

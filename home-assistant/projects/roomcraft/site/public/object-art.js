@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const assetUrl = window.RoomcraftAssetUrl || (path => path);
-  const supported=new Set(['sofa','table','chair','diningTable','diningChair','bed','desk','armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','lamp','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce','thermostat','presenceSwitch','humidifier','airPurifier','windowFan','garageDoor','garagePriusBlue','garageCeilingLight','sceneryRanchHouse','scenerySideRoad','floorPlant','artwork','mirror','window']);
+  const supported=new Set(['sofa','table','chair','diningTable','diningChair','bed','desk','armchair','coffeeTable','sideTable','dresser','nightstand','bookcase','stool','lamp','ceilingLight','pendantLight','floorLamp','tableLamp','wallSconce','thermostat','presenceSwitch','humidifier','airPurifier','windowFan','garageDoor','garagePriusBlue','garageCeilingLight','sceneryRanchHouse','scenerySideRoad','sceneryOfficeCampus','floorPlant','artwork','mirror','window']);
   // These cells face the same near-top-down camera as the supplied plan.
   // Front-facing atlas pieces use the perspective-aware canvas art below.
   const atlas=new Image();
@@ -1496,6 +1496,67 @@
           for(let dy=0;dy<w*.09;dy+=2){c.moveTo(dx-.7,top+crossing*.8+dy);c.lineTo(dx+.7,top+crossing*.8+dy);}c.stroke();
         }
         break;
+      }
+      case 'sceneryOfficeCampus':{
+        // Roof plan of the same stepped office/rotunda and parking-deck recipe.
+        c.save();c.scale(w/220,h/180);
+        rr(c,-110,-90,220,180,2,'#a3b189');rr(c,-105,-85,210,170,1,'#d1cbb7');
+        rr(c,-99,-83,198,158,1,'#737d7e');
+        rr(c,-85,-77,162,104,1,'#d5ceba');
+        rr(c,-104,35,148,52,.7,'#c8c3af','#e0dcc6',1.5);
+        rr(c,-102,37,144,48,.4,'#aaa995');
+        c.strokeStyle='#ede3c5';c.lineWidth=.45;c.beginPath();
+        for(let xx=-98;xx<41;xx+=12){for(const yy of [38,70]){c.moveTo(xx,yy);c.lineTo(xx,yy+15);}}
+        for(const yy of [52.5,69.5]){c.moveTo(-100,yy);c.lineTo(40,yy);}c.stroke();
+        for(const yy of [36,86]){
+          rr(c,-104,yy-.5,148,1,.2,'#e6dfc6');
+          for(let xx=-101;xx<=41;xx+=8)rr(c,xx-.45,yy-.45,.9,.9,.1,'#687d77');
+        }
+        for(const [xx,yy,color] of [[-91,43,'#799fb8'],[-55,77,'#d9ba82'],[-7,43,'#8ca99a'],[17,77,'#b68e9b']]){
+          rr(c,xx-4,yy-6.5,8,13,1.5,color,'#53656a',.4);
+          rr(c,xx-3,yy-3.8,6,7,1,'#435f6a');rr(c,xx-3.1,yy-2.5,6.2,4.7,.7,color);
+          for(const dx of [-2.5,2.5])rr(c,xx+dx-.6,yy+5.5,1.2,.6,.2,'#ece4c4');
+        }
+        rr(c,-10,24,32,18,.5,'#ddd4ba');
+        for(let i=0;i<4;i++)rr(c,-8.5,45-i*2.2,29,2,.15,i%2?'#c3bda8':'#ddd5bc');
+        // Slight side reveals preserve the curtain-wall color from above.
+        const wings=[[-43,-23,56,90],[5,-34,40,66],[51,-25,52,82]];
+        for(const [xx,yy,ww,hh] of wings){
+          rr(c,xx-ww/2+2,yy-hh/2+3,ww+2,hh+2,.3,'#3f514c35');
+          rr(c,xx-ww/2-.7,yy-hh/2-.7,ww+1.4,hh+1.4,.2,'#6b8ea2','#3e6577',.6);
+          rr(c,xx-ww/2+1,yy-hh/2+1,ww-2,hh-2,.2,'#dddac4','#f2ead1',1.5);
+          rr(c,xx-ww/2+2.2,yy-hh/2+2.2,ww-4.4,hh-4.4,.2,gradient(c,xx,yy,ww,hh,[[0,'#cdcdbb'],[1,'#b2b8aa']]));
+          c.strokeStyle='#a5afa0';c.lineWidth=.25;c.beginPath();
+          for(let dx=-ww/2+10;dx<ww/2-3;dx+=13){c.moveTo(xx+dx,yy-hh/2+3);c.lineTo(xx+dx,yy+hh/2-3);}c.stroke();
+        }
+        for(const [xx,yy,scale] of [[-47,-44,1],[-43,-13,1],[46,-39,1],[6,-48,.8]]){
+          rr(c,xx-7.5*scale+1,yy-6*scale+2,15*scale,12*scale,.4,'#52615740');
+          rr(c,xx-7.5*scale,yy-6*scale,15*scale,12*scale,.3,'#d1d0bd','#7f8f82',.4);
+          for(const dx of [-3.5,3.5]){
+            disc(c,xx+dx*scale,yy,2.5*scale,'#526d71','#9fb3a5',.25);
+            for(let i=0;i<4;i++){c.save();c.translate(xx+dx*scale,yy);c.rotate(i*Math.PI/2);oval(c,0,-1.2*scale,.55*scale,1*scale,'#9bafa5');c.restore();}
+          }
+        }
+        rr(c,-5,-33.5,20,17,.4,'#c8bea6','#e7dec2',1);rr(c,-4,-32.5,18,15,.2,'#d9d2bc');
+        disc(c,7,16,18,'#52615645');disc(c,6,14,17.8,'#e7e1cb','#a9ab94',.8);
+        disc(c,6,14,15.8,gradient(c,-12,-4,36,36,[[0,'#efe9d4'],[1,'#d0cfba']]),'#c5c6af',.6);
+        // The foreground parking edge stays below the rotunda roof, exactly
+        // as it does under the shared 3D depth buffer.
+        const shrub=(xx,yy,r)=>{
+          oval(c,xx+1,yy+1.5,r,r*.8,'#40553d35');
+          for(let i=0;i<5;i++){const a=i*2.399;disc(c,xx+Math.cos(a)*r*.28,yy+Math.sin(a)*r*.28,r*.52,['#6b8c5b','#8ca675','#a4b887'][i%3],'#607f54',.2);}
+        };
+        for(const [xx,yy,ww,hh] of [[91,-53,16,43],[-92,-32,15,42],[92,34,15,31],[-36,-81,80,8]]){
+          rr(c,xx-ww/2,yy-hh/2,ww,hh,.7,'#d5cfb5','#a6ad90',.4);
+          rr(c,xx-ww/2+1,yy-hh/2+1,ww-2,hh-2,.6,'#7c8e63');
+          const count=ww>hh?Math.floor(ww/12):Math.floor(hh/11);
+          for(let i=0;i<count;i++)shrub(xx+(ww>hh?(i-(count-1)/2)*11:0),yy+(hh>ww?(i-(count-1)/2)*10:0),4);
+        }
+        for(const [xx,yy,r] of [[92,-64,8],[-93,-46,8.5],[94,34,7],[-70,-81,8],[70,-76,7]]){
+          shrub(xx,yy,r);disc(c,xx-1,yy-1,r*.25,'#a4b784');
+        }
+        for(const xx of [48,63]){rr(c,xx-5.5,28.2,11,3.5,.5,'#a68562','#6f745a',.3);rr(c,xx-5.5,27.7,11,.8,.2,'#c09c6b');}
+        c.restore();break;
       }
       case 'sceneryRanchHouse':{
         // Same +Y frontage and yard footprint as the independent +Z 3D ranch.

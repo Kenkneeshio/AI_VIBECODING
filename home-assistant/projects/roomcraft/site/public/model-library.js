@@ -42,6 +42,7 @@
     { type: 'garagePriusBlue', label: 'Blue Prius hatchback', icon: '▰', w: 34, h: 70, group: 'systems', tags: 'parked car garage Toyota hybrid blue Prius' },
     { type: 'garageCeilingLight', label: 'Garage overhead light', icon: '☀', w: 32, h: 18, group: 'lighting', visualKind: 'light', lightForm: 'bloom_ceiling' },
     { type: 'sceneryRanchHouse', label: 'Single-story landscape house', icon: '⌂', w: 130, h: 176, group: 'scenery', tags: 'decorative exterior landscape ranch house single story' },
+    { type: 'sceneryOfficeCampus', label: 'Office campus', icon: '▥', w: 220, h: 180, group: 'scenery', tags: 'decorative exterior landscape office campus building workplace' },
     { type: 'scenerySideRoad', label: 'Perpendicular side road', icon: '╬', w: 64, h: 380, group: 'scenery', tags: 'decorative exterior landscape street road intersection' },
     { type: 'cameraThumbnail', label: 'Camera thumbnail', icon: '▣', w: 170, h: 110, group: 'security' },
     { type: 'controlZone', label: 'Invisible button area', icon: '▧', w: 120, h: 72, group: 'security' },
@@ -66,8 +67,8 @@
   ];
 
   const handoffKey = 'roomcraft.studio-models.v1';
-  const lockedTypes = new Set(['window', 'stairs', 'cameraThumbnail', 'garageDoor', 'presenceSwitch', 'sceneryRanchHouse', 'scenerySideRoad']);
-  const isExterior = type => type === 'sceneryRanchHouse' || type === 'scenerySideRoad';
+  const lockedTypes = new Set(['window', 'stairs', 'cameraThumbnail', 'garageDoor', 'presenceSwitch', 'sceneryRanchHouse', 'scenerySideRoad', 'sceneryOfficeCampus']);
+  const isExterior = type => ['sceneryRanchHouse', 'scenerySideRoad', 'sceneryOfficeCampus'].includes(type);
   const isInterface = type => typeof type === 'string' && type.startsWith('ui');
   const key = value => String(value ?? '').toLowerCase();
   const domain = id => key(id).split('.')[0];

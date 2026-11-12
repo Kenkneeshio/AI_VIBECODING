@@ -1,5 +1,6 @@
 /** Decorative exterior models do not redefine the upstairs plan or coastline. */
-export const isExteriorScenery = type => ['sceneryRanchHouse','scenerySideRoad'].includes(type);
+export const isExteriorBuilding = type => ['sceneryRanchHouse','sceneryOfficeCampus'].includes(type);
+export const isExteriorScenery = type => isExteriorBuilding(type) || type==='scenerySideRoad';
 
 export function exteriorFootprint({item,x,z,angle}, margin = 0) {
   const halfW=item.w/2+margin,halfH=item.h/2+margin;
@@ -27,7 +28,7 @@ export function exteriorCameraBounds(plan) {
 
 export function exteriorHouseContains(placements,x,z,margin=0) {
   return placements.some(p=>{
-    if(p.item.type!=='sceneryRanchHouse')return false;
+    if(!isExteriorBuilding(p.item.type))return false;
     const dx=x-p.x,dz=z-p.z;
     return Math.abs(dx*Math.cos(p.angle)+dz*Math.sin(p.angle))<=p.item.w/2+margin&&
       Math.abs(-dx*Math.sin(p.angle)+dz*Math.cos(p.angle))<=p.item.h/2+margin;

@@ -1,4 +1,5 @@
 import {Color, Float32BufferAttribute, MathUtils, PlaneGeometry} from 'three';
+import {isExteriorBuilding} from './storybook-exterior.mjs';
 
 const {clamp, smootherstep} = MathUtils;
 const MAX_RELIEF = 15;
@@ -43,7 +44,7 @@ function supportPads(plan, groundY) {
   const house = plan.houseBounds;
   const pads = [house];
   for (const placement of plan.placements ?? []) {
-    if (!['garageDoor','sceneryRanchHouse'].includes(placement.item.type)) continue;
+    if (placement.item.type!=='garageDoor'&&!isExteriorBuilding(placement.item.type)) continue;
     const {h} = placement.item;
     pads.push(padAround(placement, -h * .55, h * .66));
   }

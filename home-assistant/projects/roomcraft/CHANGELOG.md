@@ -1,5 +1,11 @@
 # Changelog
 
+## Editable office campus — pending release
+
+- Add a detailed six-story office campus to Exterior scenery, with shared Home/Studio rendering and normal move, dimensions, height, rotation, Delete and Undo controls.
+- Preserve existing home/street geometry and device bindings; include the new ground-level landmark in camera framing, terrain support and planting clearance.
+- Reference, editing contract, verification and rollback are recorded in the [office landmark handoff](docs/office-landmark.md). Deployment is pending.
+
 ## Editable exterior house and side street — 12 November 2026
 
 - Add a generic, detailed single-story ranch and a perpendicular side road to **Exterior scenery**, with normal position, dimensions, duplication, deletion and Undo workflows. The corrected ranch includes two front driveways, a substantial rear garden, shed and roof solar panels.

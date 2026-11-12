@@ -5,7 +5,8 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { makeStorybookFurniture } from './storybook-furniture.mjs';
 import {makeStorybookParkedVehicle} from './storybook-parked-vehicles.mjs';
 import {makeStorybookSceneryHouse} from './storybook-scenery-house.mjs';
-import {isExteriorScenery, exteriorBounds, exteriorHouseContains, exteriorCameraBounds} from './storybook-exterior.mjs';
+import {makeStorybookOfficeCampus} from './storybook-office-campus.mjs';
+import {isExteriorScenery, isExteriorBuilding, exteriorBounds, exteriorHouseContains, exteriorCameraBounds} from './storybook-exterior.mjs';
 import {compileStorybookSideRoads,buildStorybookSideRoads,storybookSideRoadContains} from './storybook-side-road.mjs';
 import '../public/inventory.js';
 import { garagePadContains, isStorybookBlind, makeStorybookDevice } from './storybook-devices.mjs';
@@ -737,7 +738,7 @@ function buildYard(batch, groveBatch, plan, street, treeWind, heightAt, sandHeig
   const width = maxX - minX;
   const depth = maxZ - minZ;
   const rand = seededRandom(150741);
-  const structures = plan.placements.filter(({item}) => ['garageDoor','stairs','sceneryRanchHouse'].includes(item.type));
+  const structures = plan.placements.filter(({item}) => ['garageDoor','stairs'].includes(item.type) || isExteriorBuilding(item.type));
   if (!plan.editableStructure) {
     const pathWidth = Math.min(90, width * 0.18);
     const pathX = plan.reference ? plan.reference.left + pathWidth / 2 : minX + pathWidth / 2;
@@ -1317,7 +1318,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
       }
     }
     const object = sideRoadObject ?? (item.type==='scenerySideRoad' ? null : stair ? makeStorybookStairs(stair) :
-      makeStorybookSceneryHouse(drawItem) ?? makeStorybookParkedVehicle(drawItem) ??
+      makeStorybookSceneryHouse(drawItem) ?? makeStorybookOfficeCampus(drawItem) ?? makeStorybookParkedVehicle(drawItem) ??
       makeStorybookDevice(drawItem, {window: isBlind ? window : undefined, mountY}) ??
       makeStorybookFurniture(drawItem, {mountY, surfaceDetail}));
     if (object) {
