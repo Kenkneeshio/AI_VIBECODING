@@ -243,12 +243,13 @@ test('a transient close-up centers authored features in landscape and portrait a
     const camera = makeCamera();
     fitStorybookCamera(camera, frame, width, height, view);
     const original = camera.projectionMatrix.clone();
-    for (const point of [new THREE.Vector3(310, 30, 450), new THREE.Vector3(762, -110, -180)]) {
-      assert.deepEqual(fitStorybookCamera(camera, frame, width, height, view, {focus: point, demoZoom: 4.2}), view);
+    for (const [point, zoom] of [[new THREE.Vector3(310, 30, 450), 4.2],
+      [new THREE.Vector3(762, -110, -180), 7], [new THREE.Vector3(-300, -79, 475), 80]]) {
+      assert.deepEqual(fitStorybookCamera(camera, frame, width, height, view, {focus: point, demoZoom: zoom}), view);
       const centered = point.clone().project(camera);
       near(centered.x, 0);
       near(centered.y, 0);
-      assert.equal(camera.zoom, 4.2);
+      assert.equal(camera.zoom, Math.min(zoom,8));
       const right = point.clone().add(new THREE.Vector3(25, 0, 0)).project(camera);
       assert.ok(right.x > 0);
     }

@@ -244,6 +244,42 @@ try {
   await until(()=>scoped("const preview=doc.querySelector('canvas[data-preview=\"scenerySchoolCampus\"]');return preview?.dataset.painted==='true'"),'school thumbnail');
   const schoolPixels=await scoped("const preview=doc.querySelector('canvas[data-preview=\"scenerySchoolCampus\"]');return Array.from(preview.getContext('2d').getImageData(0,0,preview.width,preview.height).data).filter((value,index)=>index%4===3&&value>0).length");
   assert.ok(schoolPixels>500,'school catalog thumbnail must contain visible artwork');
+  const activity=await evaluate(`(() => {
+    const w=${wd},api=w.RoomcraftEditorViewport,doc=w.document;
+    const entries=api.getProject().items.filter(item=>['sceneryRanchHouse','sceneryOfficeCampus','scenerySchoolCampus'].includes(item.type));
+    const field=(key,value)=>{const input=doc.getElementById('prop-'+key);if(!input)throw Error('Missing activity field '+key);
+      input.value=String(value);input.dispatchEvent(new Event('change',{bubbles:true}));};
+    const current=id=>api.getProject().items.find(item=>item.id===id);
+    for(const entry of entries) {
+      api.useSelectTool();api.selectItem(entry.id);
+      for(const key of ['landmarkActivity','landmarkPeople','landmarkVehicles','landmarkEvents'])if(doc.getElementById('prop-'+key)?.value!=='true')throw Error('Legacy landmark did not default on');
+      if(Boolean(doc.getElementById('prop-landmarkSatellites'))!==(entry.type==='sceneryOfficeCampus'))throw Error('Satellites appeared on the wrong landmark');
+      field('landmarkPeople','false');
+      if(current(entry.id).landmarkPeople!==false)throw Error('People toggle failed');
+      doc.getElementById('undoButton').click();api.selectItem(entry.id);
+      if(current(entry.id).landmarkPeople!==undefined)throw Error('Landmark toggle Undo failed');
+      field('landmarkPeople','false');field('landmarkEvents','false');field('landmarkPace','.75');
+      if(entry.type==='sceneryOfficeCampus'){field('landmarkVehicles','false');field('landmarkSatellites','false');}
+      field('landmarkActivity','false');
+      if(current(entry.id).landmarkActivity!==false)throw Error('Master activity toggle failed');
+      doc.getElementById('undoButton').click();api.selectItem(entry.id);
+      if(current(entry.id).landmarkActivity!==undefined||current(entry.id).landmarkPeople!==false)throw Error('Master toggle Undo lost independent choices');
+      field('landmarkPace','3');
+      if(current(entry.id).landmarkPace!==.75)throw Error('Invalid landmark pace replaced safe setting');
+    }
+    const expected=api.getProject();
+    w.RoomcraftLandmarkQAJSON=JSON.stringify(expected);
+    const office=entries.find(item=>item.type==='sceneryOfficeCampus');api.selectItem(office.id);field('landmarkPeople','true');
+    const transfer=new w.DataTransfer();transfer.items.add(new w.File([w.RoomcraftLandmarkQAJSON],'landmark-settings.json',{type:'application/json'}));
+    const upload=doc.getElementById('importFile');upload.files=transfer.files;upload.dispatchEvent(new Event('change',{bubbles:true}));
+    return {officeId:office.id,items:expected.items.filter(item=>entries.some(entry=>entry.id===item.id))};
+  })()`);
+  await until(()=>evaluate(`(() => {const w=${wd},item=w.RoomcraftEditorViewport.getProject().items.find(item=>item.id===${JSON.stringify(activity.officeId)});return item?.landmarkPeople===false&&item.landmarkPace===.75;})()`),'landmark JSON import roundtrip');
+  const importedActivity=await evaluate(`(() => {const api=${wd}.RoomcraftEditorViewport;return api.getProject().items.filter(item=>['sceneryRanchHouse','sceneryOfficeCampus','scenerySchoolCampus'].includes(item.type));})()`);
+  assert.deepEqual(importedActivity,activity.items,'actual file import preserves all landmark settings');
+  await evaluate(`(() => {const w=${wd},api=w.RoomcraftEditorViewport;api.selectItem(api.getProject().items.find(item=>item.type==='scenerySchoolCampus').id);})()`);
+  result.landmarkSettings=activity.items.map(({id,type,landmarkPeople,landmarkVehicles,landmarkEvents,landmarkSatellites,landmarkPace})=>
+    ({id,type,landmarkPeople,landmarkVehicles,landmarkEvents,landmarkSatellites,landmarkPace}));
   await photo('exterior-studio-default');
   await scoped("doc.getElementById('zoomOutButton').click();doc.getElementById('zoomOutButton').click()");
   await delay(800);
@@ -262,6 +298,7 @@ try {
   assert.deepEqual([savedLeftRoad.x,savedLeftRoad.y,savedLeftRoad.w,savedLeftRoad.h,savedLeftRoad.rotation],[-80,350,64,840,0]);
   assert.deepEqual([savedSchool.x,savedSchool.y,savedSchool.w,savedSchool.h,savedSchool.rotation],[-300,475,300,240,270]);
   assert.equal(savedSchool.modelHeight,undefined);
+  assert.deepEqual([savedHouse,savedOffice,savedSchool],activity.items,'mock Save keeps every activity toggle and pace after Undo/import');
   assert.equal(body.project.items.length,project.items.length+5);
   assert.deepEqual(body.project.items.find(i=>i.id==='fixture-garage'),garage);
   assert.ok(!savedRoad.entityId&&!savedHouse.entityId&&!savedOffice.entityId&&!savedSchool.entityId&&!savedLeftRoad.entityId);
@@ -275,7 +312,7 @@ try {
   assert.deepEqual(savedConnections,result.connections,'saved layout deterministically rebuilds the same cardinal road and all driveways');
   await writeFile(join(qa,'evidence.json'),JSON.stringify(result,null,2));
   assert.deepEqual(errors,[]);
-  console.log('PASS: Studio exterior catalog placement, position/rotation/dimension controls, move/Undo, road-length Undo and two branches and four connected entrances, decorative binding guards, unchanged home/street bounds, ground elevations, selection and PNG+layout mock Save; no physical actions');
+  console.log('PASS: Studio exterior placement and ground geometry; landmark activity controls, Undo, bounded pace, JSON import and PNG+layout mock Save; decorative bindings remain disabled; no physical actions');
   console.log(qa);
 } finally {
   ws?.close();

@@ -1,5 +1,7 @@
 # Roomcraft engineering handoff
 
+**In-progress release:** [living landmarks and the one-minute tour](landmark-activity.md). Shared, explicit-time decorative vignettes add per-building activity controls and three five-second demo chapters. The following verified school release remains the rollback baseline until final evidence is recorded.
+
 **Current verified release:** [elementary school campus](school-campus.md), runtime `3d6f31db`, HA `8555f9c637e3207c`, owner-private Studio 109. A deterministic grouped school recipe includes low classroom wings, courtyard, drop-off, shaded junior play corner, main playground, court, field, fencing and landscape. The new left road uses the same shared compiler and the school’s clear entrance. All 80 original objects and household bindings are preserved; the saved layout has 82 items. The exact source passed 647 tests and CI; built Studio interactions, actual Save, exact HA asset/project readback and wall-tablet inspection passed. The release record contains grouped-editing limits, public art proof and rollback.
 
 **Preceding release:** [shared exterior road connections](road-connections.md), runtime `6419875c`, HA `b9409959a1d19a3e`, owner-private Studio 108. A straight plan-grid-aligned road retains its curved-street junction and derives building approaches with independent terrain/planting protection. The office is moved close beside it, reducing its approach to 63 plan units. All 80 item IDs and bindings survive; only road length and office X change. The exact source passed 642 tests and runtime CI; built editor Save/Undo, actual Studio publication, HA asset/project readback and the 1920 × 1080 calendar-tablet inspection passed. The release record contains exact artifacts and rollback.
@@ -60,7 +62,7 @@ Studio and the shared 3D renderer use the catalog's placement roles. Studio chec
 
 The weather demo samples `storybook-demo-frame.mjs` on its own clock. Live wind speed and bearing and available celestial positions come from `storybook-state.mjs`. The tree shader, sky and water receive those render values. The Moon integration supplies the phase. An illustrated path drives the moon's movement when a position is unavailable. `storybook-demo-narration.mjs` plays the bundled cue track, with browser speech and captions available as fallbacks.
 
-From `site/`, regenerate the bundled audio after editing the cue table with `powershell -File scripts/build-demo-narration.ps1`. The generator uses Microsoft Zira Desktop and FFmpeg, verifies a 45-second decoded track, and reads the same cues the dashboard captions use.
+From `site/`, regenerate the bundled audio after editing the cue table with `powershell -File scripts/build-demo-narration.ps1`. The generator uses Microsoft Zira Desktop and FFmpeg, verifies a 60-second decoded track, and reads the same cues the dashboard captions use.
 
 The road preview runs when `roomcraft-storybook.mjs` has no fresh calibrated commute profile for the active selection. `storybook-traffic.mjs` owns the two-lane schedule and draws from the shared `storybook-vehicles.mjs` catalog. The commute panel keeps the browser's vehicle style choice. Reinstall Git revision `ce62626136cef65ca574bad373e3287f7f1b0787` or restore private Studio version 74 to roll back the road release.
 

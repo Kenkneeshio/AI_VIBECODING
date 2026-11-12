@@ -1,5 +1,11 @@
 # Changelog
 
+## Living landmarks and a one-minute demo — 12 November 2026
+
+- Extend the shared tour to 60 seconds with school, family-house and office chapters; optional narration remains muted by default.
+- Add configurable miniature people, activities, vehicles and event accents, including two grandparents with a young Asian girl and office satellites. Home and Studio use the same deterministic animation layer.
+- Track acceptance, grouped-editing controls, exact validation and deployment evidence in [living landmarks](docs/landmark-activity.md).
+
 ## Editable elementary school and playgrounds — 12 November 2026
 
 - Add a reference-informed elementary school campus with play areas on the left of the home and a connected side road.

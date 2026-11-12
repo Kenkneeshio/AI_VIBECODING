@@ -3,6 +3,9 @@
 
   const actions = new Set(['auto', 'toggle', 'activate', 'more-info', 'none']);
   const appearanceKeys = new Set(['garageRoof', 'garageDriveway', 'garageDrivewayWidth']);
+  const landmarkTypes = new Set(['sceneryRanchHouse', 'sceneryOfficeCampus', 'scenerySchoolCampus']);
+  const landmarkBooleans = new Set(['landmarkActivity', 'landmarkPeople', 'landmarkVehicles', 'landmarkEvents', 'landmarkSatellites']);
+  const landmarkKeys = new Set([...landmarkBooleans, 'landmarkPace']);
   const actionRules = window.RoomcraftControlActions;
   const visualKinds = new Set(['auto', 'light', 'fan', 'climate', 'window', 'door', 'vacuum', 'device', 'none']);
   const lightForms = new Set(['table_lamp', 'bud_lamp', 'cloud_floor_lamp', 'bloom_ceiling', 'star_pendant', 'acorn_sconce']);
@@ -110,7 +113,23 @@
   const exteriorEntityKeys = ['entityId', 'tapEntityId', 'holdEntityId', 'presenceEntityId',
     'presenceTrackEntityId', 'vacuumMapEntityId', 'imageEntityId'];
 
+  function canSetLandmarkProperty(item, key) {
+    return landmarkTypes.has(item.type) && landmarkKeys.has(key)
+      && (key !== 'landmarkSatellites' || item.type === 'sceneryOfficeCampus');
+  }
+
+  function validLandmarkSettings(item) {
+    for (const key of landmarkKeys) {
+      const value = item[key];
+      if (value === undefined) continue;
+      if (!canSetLandmarkProperty(item, key)) return false;
+      if (key === 'landmarkPace' ? !Number.isFinite(value) || value < .25 || value > 2 : typeof value !== 'boolean') return false;
+    }
+    return true;
+  }
+
   function validBinding(item) {
+    if (!validLandmarkSettings(item)) return false;
     if (isExterior(item) && (exteriorEntityKeys.some(key => item[key] !== undefined && item[key] !== '')
         || item.eventEntityIds !== undefined && (!Array.isArray(item.eventEntityIds) || item.eventEntityIds.length))) return false;
     return (!('tapAction' in item) || actions.has(item.tapAction))
@@ -143,8 +162,13 @@
   }
 
   function propertyUpdate(key, rawValue) {
-    if ((!bindingKeys.has(key) && !appearanceKeys.has(key)) || typeof rawValue !== 'string') return { valid: false };
+    if ((!bindingKeys.has(key) && !appearanceKeys.has(key) && !landmarkKeys.has(key)) || typeof rawValue !== 'string') return { valid: false };
     const value = rawValue.trim();
+    if (landmarkBooleans.has(key)) return ['true','false'].includes(value)
+      ? {valid:true,value:value==='false'?false:undefined} : {valid:false};
+    if (key === 'landmarkPace') return !value ? {valid:true,value:undefined}
+      : Number.isFinite(Number(value)) && Number(value)>=.25 && Number(value)<=2
+        ? {valid:true,value:Number(value)===1?undefined:Number(value)} : {valid:false};
     if (key === 'garageRoof') return ['full','cutaway'].includes(value)
       ? {valid:true,value:value==='full'?undefined:value} : {valid:false};
     if (key === 'garageDriveway') return ['true','false'].includes(value)
@@ -550,6 +574,12 @@
       + '<div class="selection-title"><span class="selection-icon">' + template.icon + '</span><div><h3>' + escape(item.name)
       + '</h3><p>' + escape(template.label) + '</p></div></div></div>'
       + appearance + sizing
+      + (landmarkTypes.has(item.type) ? '<div class="inspector-block"><p class="inspector-label">LANDMARK ACTIVITY</p>'
+        + [['landmarkActivity','Ambient activity'],['landmarkPeople','People'],['landmarkVehicles','Vehicles'],['landmarkEvents','Activity events'],
+          ...(item.type==='sceneryOfficeCampus'?[['landmarkSatellites','Satellites']]:[])]
+          .map(([key,label])=>selectField(key,label,String(item[key]!==false),[['true','On'],['false','Off']])).join('')
+        + field('Animation pace (0.25–2×)','landmarkPace',item.landmarkPace??1,'number','min="0.25" max="2" step="0.05"')
+        + '<p class="field-hint">Illustrative miniatures, not live occupancy or real vehicle activity. Motion follows the dashboard graphics and reduced-motion settings.</p></div>' : '')
       + (item.type === 'garageDoor' ? '<div class="inspector-block"><p class="inspector-label">GARAGE &amp; DRIVEWAY</p>'
         + selectField('garageRoof','Roof view',item.garageRoof||'full',[['full','Full roof'],['cutaway','Cutaway · show interior']])
         + selectField('garageDriveway','Connect driveway to street',String(item.garageDriveway===true),[['false','Off'],['true','On']])
@@ -562,6 +592,8 @@
   window.RoomcraftObjectControls = {
     isBindingKey: key => bindingKeys.has(key),
     isAppearanceKey: key => appearanceKeys.has(key),
+    isLandmarkKey: key => landmarkKeys.has(key),
+    canSetLandmarkProperty, validLandmarkSettings,
     validBinding, propertyUpdate, clearDeviceLinks, presenceCalibration, presenceAlignment, presenceAlignmentValues, effectiveTapAction, effectiveHoldAction,
     normalizeEntityOptions, manualDashboardElements, manualYaml, poseUpdate, renderInspector, visualKind
   };

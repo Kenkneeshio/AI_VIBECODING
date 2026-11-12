@@ -36,7 +36,7 @@ foreach ($cue in $cues) {
     }
     $durationMs += $cue.durationMs
 }
-if ($durationMs -ne 45000) { throw 'Expected a 45-second narration timeline.' }
+if ($durationMs -ne 60000) { throw 'Expected a 60-second narration timeline.' }
 
 Add-Type -AssemblyName System.Speech
 $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer

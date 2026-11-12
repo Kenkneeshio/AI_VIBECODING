@@ -7,6 +7,7 @@ import {makeStorybookParkedVehicle} from './storybook-parked-vehicles.mjs';
 import {makeStorybookSceneryHouse} from './storybook-scenery-house.mjs';
 import {makeStorybookOfficeCampus} from './storybook-office-campus.mjs';
 import {makeStorybookSchoolCampus} from './storybook-school-campus.mjs';
+import {createLandmarkLife} from './storybook-landmark-life.mjs';
 import {isExteriorScenery, isExteriorBuilding, exteriorBounds, exteriorHouseContains, exteriorCameraBounds} from './storybook-exterior.mjs';
 import {compileStorybookSideRoads,buildStorybookSideRoads,storybookSideRoadContains,storybookSideRoadSupportPads} from './storybook-side-road.mjs';
 import '../public/inventory.js';
@@ -1299,6 +1300,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   trackingOverlay.add(trackingFill, trackingKey);
   const anchors = new Map();
   const roots = new Map();
+  const landmarkLife = new Map();
   const surfaceDetail = {value:0};
   const staticGraphics = new Set(plan.placements.filter(({item}) => item.visualKind === 'none').map(({item}) => item.id));
   const garages = new Map();
@@ -1342,6 +1344,15 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
       }
       scene.add(object.root);
       roots.set(item.id, object);
+      if (isExteriorBuilding(item.type)) {
+        const life = createLandmarkLife(item, {heightScale:object.root.scale.y});
+        if (life) {
+          life.root.position.copy(object.root.position);
+          life.root.rotation.copy(object.root.rotation);
+          scene.add(life.root);
+          landmarkLife.set(item.id, {life, item});
+        }
+      }
       if (['garageDoor','garagePriusBlue','garageCeilingLight'].includes(item.type) || isExteriorScenery(item.type)) garages.set(object.root, item.id);
       lighting.register(item, object);
     }
@@ -1371,6 +1382,11 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   let lastDraftPositions;
   let trackedControlChanged = false;
   const cameraBounds = {...exteriorCameraBounds(plan), sceneryMinZ: street.sceneryMinZ, coastalFrames};
+  for (const {life} of landmarkLife.values()) {
+    if (Number.isFinite(life.bounds?.max.y)) {
+      cameraBounds.maxY = Math.max(cameraBounds.maxY ?? 92, life.root.position.y + life.bounds.max.y);
+    }
+  }
   for (const placement of plan.placements) {
     const object = roots.get(placement.item.id);
     if (!object) continue;
@@ -1472,6 +1488,15 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   function getDemoFocus(target) {
     if (typeof target === 'string') {
       if (Object.hasOwn(sceneryFocus, target)) return {...sceneryFocus[target]};
+      const landmarkType = {'landmark-family':'sceneryRanchHouse', 'landmark-office':'sceneryOfficeCampus',
+        'landmark-school':'scenerySchoolCampus'}[target];
+      if (landmarkType) {
+        const placement = plan.placements.find(({item}) => item.type === landmarkType && roots.has(item.id));
+        if (!placement) return null;
+        const object = roots.get(placement.item.id);
+        const bounds = new THREE.Box3().setFromObject(object.root);
+        return {x:object.root.position.x, y:(bounds.min.y + bounds.max.y)/2, z:object.root.position.z};
+      }
       const entry = anchors.get(target);
       if (!entry) return null;
       const {x, z, baseY, object} = entry;
@@ -1619,6 +1644,13 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
       object.root.position.z = z;
       object.animate?.(state, object.ambientMotion ? time : telemetryTime, hasTracking, transientTelemetry);
     }
+    for (const [id, {life, item}] of landmarkLife) {
+      life.root.position.copy(roots.get(id).root.position);
+      life.update({elapsedSeconds:timeSeconds, night:environment.night === true, reducedMotion:reduceMotion,
+        settings:{enabled:item.landmarkActivity !== false, people:item.landmarkPeople !== false,
+          vehicles:item.landmarkVehicles !== false, events:item.landmarkEvents !== false,
+          satellites:item.landmarkSatellites !== false, speed:item.landmarkPace ?? 1}});
+    }
     lighting.update(environment, statesById, groundMaterial, placementChanged);
     if (scene.fog) horizonFog.color.copy(scene.background);
     const nextPeople = transientTelemetry ? demoPeople : livePeople;
@@ -1669,6 +1701,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     sidewalk.dispose();
     boats.dispose();
     beachPlay.dispose();
+    for (const {life} of landmarkLife.values()) { scene.remove(life.root); life.dispose(); }
     const geometries = new Set();
     const materials = new Set();
     const textures = new Set([sandstone]);

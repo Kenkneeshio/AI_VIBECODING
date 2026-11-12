@@ -21,6 +21,12 @@ const shots = [
   {beat: 'weather', duration: 16000, title: 'Sky and reflections', azimuth: 0, tilt: 28, zoom: 2.05, target: 'coast'},
   {beat: 'traffic', duration: 3200, title: 'Street and sidewalk', azimuth: 4, tilt: 33, zoom: 3.1, target: 'road',
     caption: 'Fresh commute readings shape traffic when available.'},
+  {beat: 'landmark-school', duration: 5000, title: 'School & playgrounds', azimuth: 336, tilt: 30, zoom: 5, target: 'landmark-school',
+    caption: 'Explore the school, play areas, and connected paths.'},
+  {beat: 'landmark-family', duration: 5000, title: 'Grandparents’ home', azimuth: 24, tilt: 25, zoom: 7, target: 'landmark-family',
+    caption: 'Visit grandparents’ home and its garden.'},
+  {beat: 'landmark-office', duration: 5000, title: 'Office campus', azimuth: 332, tilt: 39, zoom: 5.2, target: 'landmark-office',
+    caption: 'Visit the office campus and its connected parking.'},
   {beat: 'finale', duration: 2000, title: 'Back to your live home', caption: 'Back to your live home.'},
 ];
 

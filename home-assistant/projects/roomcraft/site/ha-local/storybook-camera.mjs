@@ -166,7 +166,7 @@ export function fitStorybookCamera(camera, bounds, width, height, view = 'top', 
   camera.bottom = centerY - halfHeight;
   camera.top = centerY + halfHeight;
   // Demo framing is intentionally excluded from the returned camera preference.
-  camera.zoom = Number.isFinite(demoZoom) ? THREE.MathUtils.clamp(demoZoom, 0.6, 4.5) : normalized.zoom;
+  camera.zoom = Number.isFinite(demoZoom) ? THREE.MathUtils.clamp(demoZoom, 0.6, 8) : normalized.zoom;
   // Orthographic framing is unchanged by moving along the view ray. At a shallow
   // angle, give the lowest view ray enough room to start above the foreground.
   const lowestOrigin = camera.position.y + (centerY - halfHeight / camera.zoom) * camera.up.y;

@@ -7,6 +7,8 @@
   const MAX_TOTAL_ROOM_POINTS = 8192;
   const EPSILON = 0.000001;
   const LIMITS = Object.freeze({rooms:200, walls:2000, items:2000});
+  const LANDMARK_TYPES = new Set(['sceneryRanchHouse', 'sceneryOfficeCampus', 'scenerySchoolCampus']);
+  const LANDMARK_BOOLEANS = ['landmarkActivity', 'landmarkPeople', 'landmarkVehicles', 'landmarkEvents', 'landmarkSatellites'];
   const record = value => value !== null && typeof value === 'object' && !Array.isArray(value);
   const finite = (...values) => values.every(Number.isFinite);
   const coordinate = value => Number.isFinite(value) && Math.abs(value) <= MAX_COORDINATE;
@@ -134,6 +136,11 @@
     });
     project.items.forEach((item, index) => {
       const path = 'items[' + index + ']';
+      if (record(item) && (LANDMARK_BOOLEANS.some(key => item[key] !== undefined &&
+          (!LANDMARK_TYPES.has(item.type) || typeof item[key] !== 'boolean' || key === 'landmarkSatellites' && item.type !== 'sceneryOfficeCampus')) ||
+          item.landmarkPace !== undefined && (!LANDMARK_TYPES.has(item.type) || !Number.isFinite(item.landmarkPace) || item.landmarkPace < .25 || item.landmarkPace > 2))) {
+        issue('landmark-settings', path, 'Landmark activity switches must be on or off, satellites are office-only, and animation pace must be from 0.25 to 2.');
+      }
       if (record(item) && ((item.garageRoof !== undefined && !['full','cutaway'].includes(item.garageRoof)) ||
           (item.garageDriveway !== undefined && typeof item.garageDriveway !== 'boolean') ||
           (item.garageDrivewayWidth !== undefined && (!Number.isFinite(item.garageDrivewayWidth) || item.garageDrivewayWidth < 32 || item.garageDrivewayWidth > 200)))) {

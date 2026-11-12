@@ -2,6 +2,7 @@
 
 | Goal | Reason | Evidence of completion |
 | --- | --- | --- |
+| Bring familiar landmarks into the live miniature and demo | The neighborhood should have editable activity and each landmark should receive a clear tour stop | One-minute tour, per-building activity controls and shared animation; evidence in [living landmarks](landmark-activity.md) |
 | Add the neighboring school as editable scenery | Familiar school buildings and playgrounds should belong to the same miniature landscape and connect naturally to its street | Detailed campus and connected left branch; 647 tests, CI, built editor, exact HA Save/readback and tablet inspection in [school campus](school-campus.md) |
 | Connect exterior landmarks through one editable straight road | The office should sit beside the ranch’s road, which should run parallel to the condo | Straight shared spine, three approaches and closer office placement; 642 tests, CI, actual Studio Save, HA/Site publication and tablet inspection in [road connections](road-connections.md) |
 | Add an editable office landmark to the exterior scene | Familiar destinations should fit the same miniature world without changing the condo or introducing another renderer | Shared detailed office recipe, editable dimensions and placement, 639 tests, CI, exact Studio Save/HA readback, private Site 107 and tablet rendering verified in the [office record](office-landmark.md) |

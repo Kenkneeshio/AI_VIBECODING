@@ -1,5 +1,9 @@
 # Decision log
 
+## Keep landmark activity decorative, editable and shared
+
+Add deterministic explicit-time vignettes to the existing grouped landmark recipes. Keep actor proportions separate from building-height transforms, and drive Home/Studio through the same renderer. Optional authored category switches and pace use the existing Inspector, validation and history contracts. Public recipes use generic household/campus characters; private placement and identities stay outside Git. Extend the demo with three five-second stops while preserving the existing weather sequence, muted voice default and physical-device isolation. See [living landmarks](landmark-activity.md).
+
 ## Make the school another authored exterior recipe
 
 Use one grouped elementary-school campus recipe and a separate editable side-road object. Reuse the exterior ground, camera, terrain/planting clearance, binding guards and shared Home/Studio renderer. Include play equipment in the campus art instead of a static background image. Keep private location discovery and original reference media out of source; document inferred architectural detail and grouped editing limits. [School campus](school-campus.md)

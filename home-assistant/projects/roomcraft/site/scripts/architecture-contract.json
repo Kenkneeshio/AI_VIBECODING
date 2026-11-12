@@ -26,6 +26,7 @@
   "requiredImports": [
     {"from": "ha-local/roomcraft-storybook.mjs", "to": "ha-local/storybook-scene.mjs", "reason": "Home uses the shared 3D scene"},
     {"from": "ha-local/storybook-editor.mjs", "to": "ha-local/storybook-scene.mjs", "reason": "Studio uses the same 3D scene"},
+    {"from": "ha-local/storybook-scene.mjs", "to": "ha-local/storybook-landmark-life.mjs", "reason": "Home and Studio share deterministic landmark activity"},
     {"from": "ha-local/roomcraft-card.js", "to": "ha-local/dashboard-project.mjs", "reason": "Native publish uses shared validation"},
     {"from": "app/api/dashboard/route.ts", "to": "ha-local/dashboard-project.mjs", "reason": "Hosted publish uses shared validation"},
     {"from": "ha-local/roomcraft-card.js", "to": "ha-local/dashboard-snapshots.mjs", "reason": "Native publish uses shared history"},

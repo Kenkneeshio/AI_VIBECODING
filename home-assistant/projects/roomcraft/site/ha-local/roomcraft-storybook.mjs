@@ -36,7 +36,7 @@ const DETECTION_ZONE_KEY = 'roomcraft.show-detection-zone.v1';
 const CAMERA_TILES_KEY = 'roomcraft.show-camera-tiles.v1';
 const REDUCE_MOTION_KEY = 'roomcraft.reduce-motion.v1';
 const DEMO_MUTED_KEY = 'roomcraft.demo-muted.v2';
-const DEMO_NARRATION_URL = new URL('./demo-narration-v1.mp3', import.meta.url).href;
+const DEMO_NARRATION_URL = new URL('./demo-narration-v1.mp3?timeline=landmarks-60-v2', import.meta.url).href;
 const AMBIENT_TRAFFIC = Object.freeze({severity: 'ambient'});
 
 function readPreference(key, fallback) {
@@ -346,7 +346,7 @@ class RoomcraftStorybookCard extends HTMLElement {
                   <p class="menu-heading" aria-hidden="true">Household</p>
                   <button type="button" data-link-dialog="location" aria-haspopup="dialog">Location sharing</button>
                   <button type="button" data-link-dialog="commute" aria-haspopup="dialog">Commute traffic</button>
-                  <button type="button" class="demo-start" disabled>45-second demo</button>
+                  <button type="button" class="demo-start" disabled>1-minute demo</button>
                 </section>
               </div>
             </div>
@@ -688,7 +688,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     const view = this.cameraView;
     const scenario = createStorybookDemoScenario(this.model.layout);
     const timeline = createStorybookDemo(view, target => this.scene.getDemoFocus(
-      ['beach', 'coast', 'road'].includes(target) ? target : scenario.targets[target]));
+      ['beach', 'coast', 'road', 'landmark-school', 'landmark-family', 'landmark-office'].includes(target) ? target : scenario.targets[target]));
     this.demoRun = {startedAt: performance.now(), view, timeline, scenario,
       timer: setTimeout(() => this.stopDemo(), DEMO_DURATION_MS)};
     this.heatMap.sync();

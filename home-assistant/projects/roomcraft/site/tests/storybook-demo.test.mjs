@@ -8,12 +8,14 @@ const cameraAnchors = {
   fan: {x: -180, y: 46, z: 85}, vacuum: {x: -110, y: 20, z: 16},
   garage: {x: -390, y: -9, z: -270}, habitat: {x: 240, y: 35, z: -39},
   beach: {x: -28, y: -22, z: -558},
+  'landmark-school': {x:-300,y:-79,z:475}, 'landmark-family': {x:1775,y:-70,z:420},
+  'landmark-office': {x:1750,y:5,z:700},
   coast: {x: 45, y: -22, z: -610}, road: {x: 32, y: -19, z: -450},
 };
 const sample = createStorybookDemo(original, target => cameraAnchors[target]);
 
-test('the demo starts in the current view and restores it at 45 seconds', () => {
-  assert.equal(DEMO_DURATION_MS, 45_000);
+test('the demo starts in the current view and restores it at 60 seconds', () => {
+  assert.equal(DEMO_DURATION_MS, 60_000);
   const start = sample(0);
   const end = sample(DEMO_DURATION_MS);
   for (const shot of [start, end]) {
@@ -32,7 +34,7 @@ test('the demo starts in the current view and restores it at 45 seconds', () => 
 
 test('short shots glide to each world focus and retain the original preference label', () => {
   const schedule = [['overview', 0], ['presence', 2300], ['lamps', 5800], ['fan', 8800], ['vacuum', 11800],
-    ['garage', 14800], ['habitat', 17800], ['beach', 20800], ['weather', 23800], ['traffic', 39800], ['finale', 43000]];
+    ['garage', 14800], ['habitat', 17800], ['beach', 20800], ['weather', 23800], ['traffic', 39800], ['landmark-school', 43000], ['landmark-family', 48000], ['landmark-office', 53000], ['finale', 58000]];
   for (const [beat, at] of schedule) {
     assert.equal(sample(at).beat, beat);
     assert.equal(sample(at).view.preset, original.preset);
@@ -52,9 +54,9 @@ test('short shots glide to each world focus and retain the original preference l
 test('missing authored objects redistribute their shot time and reduced motion keeps the starting view', () => {
   const compact = createStorybookDemo(original, target => target === 'road' ? cameraAnchors.road : null);
   assert.equal(compact(2300).beat, 'traffic');
-  assert.equal(compact(42000).beat, 'traffic');
-  assert.equal(compact(43000).beat, 'finale');
-  for (const at of [0, 450, 6000, 18300, 24500, 29000, 45000]) {
+  assert.equal(compact(57999).beat, 'traffic');
+  assert.equal(compact(58000).beat, 'finale');
+  for (const at of [0, 450, 6000, 18300, 24500, 29000, 45000, 49500, 54500, 60000]) {
     const moving = sample(at);
     assert.deepEqual(sample(at, {reducedMotion: true}), {...moving, view: original, focus: null, zoom: original.zoom});
   }
@@ -78,14 +80,14 @@ test('scripted captions and spoken cues align to the weather and moon windows', 
   }
   assert.equal(sample(39_800).cueId, 'traffic');
   const noDevices = createStorybookDemo(original, target => target === 'coast' ? cameraAnchors.coast : null);
-  assert.equal(noDevices(27_000).beat, 'weather');
-  assert.equal(noDevices(42_999).beat, 'weather');
-  assert.equal(noDevices(43_000).beat, 'finale');
-  assert.equal(noDevices(42_999).beatTimeMs, 15_999);
+  assert.equal(noDevices(42_000).beat, 'weather');
+  assert.equal(noDevices(57_999).beat, 'weather');
+  assert.equal(noDevices(58_000).beat, 'finale');
+  assert.equal(noDevices(57_999).beatTimeMs, 15_999);
 });
 
 test('the bundled recording spans the full timeline with the same cue text', () => {
-  assert.equal(STORYBOOK_DEMO_VOICE_CUES.length, 13);
+  assert.equal(STORYBOOK_DEMO_VOICE_CUES.length, 16);
   let nextStart = 0;
   for (const {id, text, startMs, durationMs} of STORYBOOK_DEMO_VOICE_CUES) {
     assert.equal(startMs, nextStart);
@@ -95,4 +97,21 @@ test('the bundled recording spans the full timeline with the same cue text', () 
     assert.equal(sample(nextStart - 1).cueId, id);
   }
   assert.equal(nextStart, DEMO_DURATION_MS);
+});
+
+
+test('each placed landmark receives a five-second focus chapter without shortening the weather tour', () => {
+  for (const [beat,start] of [['landmark-school',43000],['landmark-family',48000],['landmark-office',53000]]) {
+    assert.equal(sample(start).beat,beat);
+    assert.equal(sample(start+4999).beat,beat);
+    assert.notEqual(sample(start+5000).beat,beat);
+    assert.deepEqual(sample(start+900).focus,{...cameraAnchors[beat],weight:1});
+    assert.ok(sample(start+900).caption.length>12);
+  }
+  assert.equal(sample(23800).beat,'weather');
+  assert.equal(sample(39799).beat,'weather');
+  assert.equal(sample(39800).beat,'traffic');
+  const missing=createStorybookDemo(original,target=>target.startsWith('landmark-')?null:cameraAnchors[target]);
+  assert.equal(missing(DEMO_DURATION_MS).done,true);
+  for(let at=0;at<DEMO_DURATION_MS;at+=100)assert.ok(!missing(at).beat.startsWith('landmark-'));
 });

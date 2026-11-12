@@ -1382,7 +1382,9 @@
       afterChange(`Applied ${surfaceById[value].name} to ${target.name}`);
       return;
     }
-    if(selected.kind==='item'&&(window.RoomcraftObjectControls.isBindingKey(key)||window.RoomcraftObjectControls.isAppearanceKey(key))){
+    if(selected.kind==='item'&&(window.RoomcraftObjectControls.isBindingKey(key)||window.RoomcraftObjectControls.isAppearanceKey(key)||window.RoomcraftObjectControls.isLandmarkKey(key))){
+      const landmark = window.RoomcraftObjectControls.isLandmarkKey(key);
+      if(landmark&&!window.RoomcraftObjectControls.canSetLandmarkProperty(target,key))return;
       if(window.RoomcraftObjectControls.isAppearanceKey(key)&&target.type!=='garageDoor')return;
       const tracking = key === 'presenceTrackEntityId' || key === 'presenceTrackTransform' || key === 'presenceTrackZone'
         || key === 'presenceTrackProfile';
@@ -1396,8 +1398,9 @@
           presenceTrackProfile: 'Choose a radar model from the list.',
           controlIcon: 'Use an icon like mdi:lightbulb',
           garageDrivewayWidth: 'Enter a driveway width from 32 to 200, or leave it blank for automatic sizing.',
+          landmarkPace: 'Enter an animation pace from 0.25 to 2, or leave it blank for the default pace.',
         };
-        showToast(errors[key] || 'Choose a valid button setting');
+        showToast(errors[key] || (landmark ? 'Choose On or Off for landmark activity.' : 'Choose a valid button setting'));
         renderInspector();
         return;
       }
@@ -1409,7 +1412,7 @@
         delete target.vacuumMapId;
         delete target.vacuumPositionTransform;
       }
-      afterChange(tracking ? 'Updated person tracking' : window.RoomcraftObjectControls.isAppearanceKey(key) ? 'Updated garage' : 'Updated dashboard button');
+      afterChange(landmark ? 'Updated landmark activity' : tracking ? 'Updated person tracking' : window.RoomcraftObjectControls.isAppearanceKey(key) ? 'Updated garage' : 'Updated dashboard button');
       return;
     }
     if(selected.kind==='item'&&target.type==='cameraThumbnail'&&key==='eventEntityIds'){
