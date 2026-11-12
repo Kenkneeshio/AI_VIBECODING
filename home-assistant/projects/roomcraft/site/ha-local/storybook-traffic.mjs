@@ -45,9 +45,10 @@ const LIGHT_FADE = `
 `;
 
 function nightLightMaterial(billboard) {
+  const uniforms = {...THREE.UniformsUtils.clone(THREE.UniformsLib.fog), lightStrength: {value: 1}};
   return new THREE.ShaderMaterial({
     fog:true,
-    uniforms:THREE.UniformsUtils.clone(THREE.UniformsLib.fog),
+    uniforms,
     transparent:true,
     depthWrite:false,
     blending:THREE.AdditiveBlending,
@@ -69,6 +70,7 @@ function nightLightMaterial(billboard) {
     `,
     fragmentShader:`
       varying vec2 lightUv;
+      uniform float lightStrength;
       ${billboard ? 'varying vec3 tint;' : ''}
       #include <fog_pars_fragment>
       void main() {
@@ -87,7 +89,7 @@ function nightLightMaterial(billboard) {
           vec3 color = vec3(1.0, 0.80, 0.53);
         `}
         ${LIGHT_FADE}
-        gl_FragColor = vec4(color, opacity);
+        gl_FragColor = vec4(color, clamp(opacity * lightStrength, 0.0, 1.0));
         #include <colorspace_fragment>
       }
     `,
@@ -191,12 +193,13 @@ export function createStorybookTraffic(road) {
   const transform = new THREE.Object3D();
   const laneHalf = Math.abs(road.lanes[0] - road.lanes[1]) / 2;
   let lastNight;
+  let lastBrightness = 1;
   root.visible = false;
 
   function setLamps(model, night) {
     for (const {mesh, role} of model.layers) {
-      if (role === 'headlamp') mesh.material.emissiveIntensity = night ? 2.45 : .26;
-      if (role === 'taillamp') mesh.material.emissiveIntensity = night ? 1.13 : .28;
+      if (role === 'headlamp') mesh.material.emissiveIntensity = night ? 2.45 * lastBrightness : .26;
+      if (role === 'taillamp') mesh.material.emissiveIntensity = night ? 1.13 * lastBrightness : .28;
     }
   }
 
@@ -225,7 +228,8 @@ export function createStorybookTraffic(road) {
     halos.setColorAt(index, front ? HEADLIGHT_COLOR : TAILLIGHT_COLOR);
   }
 
-  function update(time, profile, {reduceMotion = false, night = false, transientTelemetry = false} = {}) {
+  function update(time, profile, {reduceMotion = false, night = false, transientTelemetry = false,
+    headlightBrightness = 1} = {}) {
     if (transientTelemetry) demoMotion ??= createTrafficMotion(road);
     const clock = transientTelemetry ? demoMotion : motion;
     const slots = clock.update(time, profile, reduceMotion, transientTelemetry);
@@ -233,8 +237,12 @@ export function createStorybookTraffic(road) {
     beams.visible = halos.visible = night && root.visible;
     beams.count = halos.count = 0;
     if (!root.visible) return;
-    if (night !== lastNight) {
+    const brightness = Number.isFinite(headlightBrightness) ? THREE.MathUtils.clamp(headlightBrightness, .35, 1.6) : 1;
+    if (night !== lastNight || brightness !== lastBrightness) {
       lastNight = night;
+      lastBrightness = brightness;
+      beams.material.uniforms.lightStrength.value = brightness;
+      halos.material.uniforms.lightStrength.value = brightness;
       for (const model of models.values()) setLamps(model, night);
     }
     for (const model of models.values()) model.count = 0;

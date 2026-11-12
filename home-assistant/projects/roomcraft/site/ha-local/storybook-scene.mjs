@@ -10,7 +10,7 @@ import { fitStorybookCamera, normalizeCameraView, storybookHorizonFog, STORYBOOK
 import { applyModelHeight } from './storybook-size.mjs';
 import { createStorybookPeople } from './storybook-people.mjs';
 import { compileStorybookSeats } from './storybook-seating.mjs';
-import { createFloorSupport, unobstructedFloor } from './storybook-floor-support.mjs';
+import { createFloorSupport, createStorybookFurnitureCollision, unobstructedFloor } from './storybook-floor-support.mjs';
 import { createStorybookMotion } from './storybook-motion.mjs';
 import { createStorybookCoverage } from './storybook-coverage.mjs';
 import { createStorybookRadarHeatMap } from './storybook-radar-heatmap.mjs';
@@ -880,10 +880,29 @@ export function storybookMotionSurfaces(plan) {
 
 export function createStorybookScene(canvas, layout) {
   const plan = compileStorybookPlan(layout);
-  const sceneSettings = layout.sceneSettings;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'low-power' });
-  // Studio reuses its canvas after edits. Clear blending and depth state from the previous renderer.
-  renderer.resetState();
+  try {
+    renderer.resetState();
+    return buildStorybookScene(canvas, layout, plan, renderer);
+  } catch (error) {
+    releaseRenderer(renderer);
+    throw error;
+  }
+}
+
+function releaseRenderer(renderer) {
+  try {
+    // The canvas owns its WebGL context across Home reconnects and Studio edits.
+    // Reset unpack flags before Three initializes another renderer's 3D placeholders.
+    if (!renderer.getContext().isContextLost()) renderer.resetState();
+  } finally {
+    renderer.dispose();
+  }
+}
+
+function buildStorybookScene(canvas, layout, plan, renderer) {
+  let sceneSettings = layout.sceneSettings;
+  let displaySettings = {};
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#d7dfcd');
   const horizonFog = new THREE.Fog(scene.background);
@@ -892,6 +911,8 @@ export function createStorybookScene(canvas, layout) {
   const groundMaterial = new THREE.MeshStandardMaterial({
     color: '#e8e8d2', map: meadowTexture(canvas.ownerDocument), roughness: 0.95
   });
+  let lightingLutUniform;
+  groundMaterial.onBeforeCompile = ({uniforms}) => { lightingLutUniform = uniforms.dfgLUT; };
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(6200, 4200), groundMaterial);
   ground.rotation.x = -Math.PI / 2;
   ground.position.set((minX + maxX) / 2, GROUND_Y, (minZ + maxZ) / 2);
@@ -947,8 +968,7 @@ export function createStorybookScene(canvas, layout) {
   const footprint = plan.floorStructure.footprint;
   const {home, vacuum} = storybookMotionSurfaces(plan);
   const floorForPerson = (x, z) => home.contains(x, z) ? 0 : null;
-  // The tracker is a foreground overlay. Use the same camera so the character
-  // stays anchored to the measured floor position behind walls and furniture.
+  // Give avatars their own lighting while sharing the house depth and camera.
   const trackingOverlay = new THREE.Scene();
   const coverage = createStorybookCoverage();
   const heatMap = createStorybookRadarHeatMap(footprint);
@@ -957,11 +977,6 @@ export function createStorybookScene(canvas, layout) {
   const trackingKey = new THREE.DirectionalLight('#fff1d8', 1.65);
   trackingKey.position.set(-4, 9, 6);
   trackingOverlay.add(trackingFill, trackingKey);
-  const peopleOptions = {
-    supportsRoute: (x, z, endX, endZ) => home.supportsRoute(x, z, endX, endZ,
-      Math.min(11, home.clearance(x, z), home.clearance(endX, endZ))),
-    floorClearance: home.clearance,
-  };
   const anchors = new Map();
   const roots = new Map();
   const garages = new Map();
@@ -992,6 +1007,17 @@ export function createStorybookScene(canvas, layout) {
     }
     anchors.set(item.id, { x, z, baseY, rootY: object?.root.position.y, object });
   }
+  const floorItems = plan.placements.filter(({item, baseY}) => baseY === 0 && roots.has(item.id));
+  const restFurniture = createStorybookFurnitureCollision(floorItems);
+  let furniture = restFurniture;
+  const peopleOptions = {
+    supportsRoute: (x, z, endX, endZ, radius = Math.min(11, home.clearance(x, z), home.clearance(endX, endZ))) =>
+      home.supportsRoute(x, z, endX, endZ, radius),
+    floorClearance: home.clearance,
+    allowsBodyPoint: (x, z, radius, exceptItemId) => !furniture.blocksPoint(x, z, radius, exceptItemId),
+    allowsBodyRoute: (x, z, endX, endZ, radius, exceptItemId) =>
+      !furniture.blocksRoute(x, z, endX, endZ, radius, exceptItemId),
+  };
   const livePeople = createStorybookPeople(trackingOverlay, floorForPerson, {
     ...peopleOptions, seats: compileStorybookSeats(plan.placements, roots, home.clearance),
   });
@@ -1097,17 +1123,25 @@ export function createStorybookScene(canvas, layout) {
   function draw(transientTelemetry = false) {
     heatMap.root.visible = !transientTelemetry && cameraView.preset !== 'waterfront';
     renderer.render(scene, camera);
-    const showCoverage = !transientTelemetry && coverage.scene.children.length > 0;
-    if (!people?.hasVisibleTracks && !showCoverage) return;
-    // Clear the house depth, while keeping the avatars' own depth and shading.
+    const showPeople = (transientTelemetry || displaySettings.showAvatars !== false) &&
+      cameraView.preset !== 'waterfront' && people?.hasVisibleTracks;
+    const showCoverage = !transientTelemetry && cameraView.preset !== 'waterfront' && coverage.scene.children.length > 0;
+    if (!showPeople && !showCoverage) return;
     renderer.autoClear = false;
     try {
-      renderer.clearDepth();
-      if (showCoverage) renderer.render(coverage.scene, camera);
-      if (people?.hasVisibleTracks) renderer.render(trackingOverlay, camera);
+      if (showPeople) renderer.render(trackingOverlay, camera);
+      if (showCoverage) {
+        renderer.clearDepth();
+        renderer.render(coverage.scene, camera);
+      }
     } finally {
       renderer.autoClear = true;
     }
+  }
+  function setDisplaySettings(settings = {}) {
+    displaySettings = settings;
+    sceneSettings = {...layout.sceneSettings, ...settings.features};
+    heatMap.setOpacity(settings.heatMapOpacity);
   }
   function updateWaterfront(timeSeconds, environment, transientTelemetry = false) {
     const activity = environment.beachActivity ?? (environment.night ? 'overnight' : 'day');
@@ -1143,7 +1177,8 @@ export function createStorybookScene(canvas, layout) {
     if (traffic) {
       traffic.root.visible = showTraffic;
       if (showTraffic) traffic.update(timeSeconds, environment.traffic, {reduceMotion,
-        night: environment.night === true, transientTelemetry});
+        night: environment.night === true, transientTelemetry,
+        headlightBrightness: transientTelemetry ? 1 : displaySettings.headlightBrightness});
     }
     updatePrecipitation(telemetryTime, transientTelemetry || sceneFeatureEnabled(sceneSettings, 'precipitation')
       ? environment : {});
@@ -1152,6 +1187,10 @@ export function createStorybookScene(canvas, layout) {
     if (placementChanged) {
       lastDraftPositions = draftPositions;
       resolvedSupports = draftPositions ? placementSupport.resolve(draftPositions) : restingSupports;
+      furniture = draftPositions ? createStorybookFurnitureCollision(floorItems.map(placement => {
+        const position = draftPositions[placement.item.id]?.position;
+        return position ? {...placement, x:position.x, z:position.y} : placement;
+      })) : restFurniture;
     }
     trackedControlChanged = false;
     for (const [id, object] of roots) {
@@ -1190,7 +1229,8 @@ export function createStorybookScene(canvas, layout) {
       people = nextPeople;
       people?.setVisible(true);
     }
-    people?.render(timeSeconds, reduceMotion, !draftPositions);
+    people?.render(timeSeconds, reduceMotion, !draftPositions &&
+      (transientTelemetry || displaySettings.seatedPoses !== false));
     draw(transientTelemetry);
   }
   function setPeople(tracks, timeSeconds, options = {}) {
@@ -1244,12 +1284,16 @@ export function createStorybookScene(canvas, layout) {
     for (const geometry of geometries) geometry.dispose();
     for (const material of materials) material.dispose();
     lighting.dispose();
-    renderer.dispose();
+    // Three's shared lighting lookup keeps an upload listener for each WebGL
+    // renderer. Evict its GPU uploads on rebuild so retired renderers can be collected.
+    // A remaining canvas uploads the same lookup again on its next draw.
+    lightingLutUniform?.value?.dispose();
+    releaseRenderer(renderer);
   }
   const exteriorClearance = () => projectExteriorClearance(plan, camera, currentWidth, currentHeight);
   return {
     resize, render, anchor, setView, getView, getDemoFocus, projectToPlan, pickGarage, exteriorClearance, dispose,
-    hasAmbientMotion: true, setPeople, setDetectionZones: coverage.setZones, setHeatMap: heatMap.setHistory,
+    hasAmbientMotion: true, setPeople, setDisplaySettings, setDetectionZones: coverage.setZones, setHeatMap: heatMap.setHistory,
     get trackedControlChanged() { return trackedControlChanged; },
     get hasPendingReacquisition() { return livePeople.hasPendingReacquisition ||
       [...roots.values()].some(object => object.liveMotion?.pendingReacquisition); },

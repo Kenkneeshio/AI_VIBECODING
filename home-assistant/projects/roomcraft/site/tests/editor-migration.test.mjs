@@ -15,6 +15,8 @@ const crop = { x: 0, y: 80, width: 1536, height: 864 };
 function boot(savedProject, dashboardRequest, options = {}) {
   const data = new Map([[storageKey, JSON.stringify(savedProject)]]);
   const listeners = new Map();
+  const timers = new Map();
+  let timerId = 0;
   const navigation = [];
   const location = {
     pathname: options.pathname || '/local/roomcraft/editor.html',
@@ -64,7 +66,7 @@ function boot(savedProject, dashboardRequest, options = {}) {
     naturalWidth = 0;
     addEventListener() {}
   }
-  const window = { addEventListener() {}, location, RoomcraftInventory: { templates: [
+  const window = { addEventListener(name, fn) { listeners.set(`window:${name}`, fn); }, location, RoomcraftInventory: { templates: [
     {type:'fans-fan-light-white',label:'Ceiling fan with light · White',w:158,h:158,group:'fans',artFamily:'ceilingFan',form:'light',visualKind:'fan'},
     {type:'fans-five-blade-fan-white',label:'Five-blade ceiling fan · White',w:160,h:160,group:'fans',artFamily:'ceilingFan',form:'five',visualKind:'fan'}
   ], groups: [] },
@@ -81,7 +83,13 @@ function boot(savedProject, dashboardRequest, options = {}) {
   };
   runInNewContext(source, {
     document, window, location, URL, localStorage, Image: ImageStub,
-    setTimeout(fn) { fn(); return 1; }, clearTimeout() {},
+    setTimeout(fn, delay) {
+      const id = ++timerId;
+      if (options.deferAutosave && delay === 250) timers.set(id, fn);
+      else fn();
+      return id;
+    },
+    clearTimeout(id) { timers.delete(id); },
     requestAnimationFrame(fn) { fn(); },
     AbortSignal, console
   });
@@ -142,8 +150,9 @@ test('Studio saves radar calibration through the Inspector and keeps live sample
   editor.dispatch('inspectorContent', 'change', {target:{closest:closest('[data-prop]', {
     dataset:{prop:'presenceTrackEntityId'}, value:'sensor.radar_targets',
   })}});
-  for (const [id, value] of [['presence-track-scale', {value:'100'}],
-    ['presence-track-heading', {value:'0'}], ['presence-track-flip', {checked:false}]]) editor.elements.set(id, value);
+  for (const [id, value] of [['presence-track-scale', {value:'100'}], ['presence-track-lateral-scale', {value:'100'}],
+    ['presence-track-heading', {value:'0'}], ['presence-track-skew', {value:'0'}],
+    ['presence-track-flip', {checked:false}]]) editor.elements.set(id, value);
   editor.dispatch('inspectorContent', 'click', {target:{closest:closest('[data-action]', {
     dataset:{action:'calibrate-presence'},
   })}});
@@ -156,6 +165,28 @@ test('Studio saves radar calibration through the Inspector and keeps live sample
   editor.dispatch('undoButton', 'click', {});
   assert.equal(editor.read().items[0].presenceTrackTransform, undefined);
   assert.equal(editor.read().items[0].presenceTrackEntityId, 'sensor.radar_targets');
+});
+
+test('advanced radar alignment is a draft-only edit and preserves the fitted origin', () => {
+  const radar = {id:'radar', type:'presenceSwitch', name:'Radar', x:300, y:400, w:36, h:20, rotation:90,
+    presenceTrackEntityId:'sensor.fixture_radar', presenceTrackTransform:[0,-.8,305.5,1.2,.1,399.6]};
+  const editor = boot({version:2, editableReferenceVersion:10, rooms:[], walls:[], items:[radar], hotspots:[]});
+  editor.window.RoomcraftEditorViewport.selectItem(radar.id);
+  for (const [id, value] of [['presence-track-scale', {value:'75'}], ['presence-track-lateral-scale', {value:'110'}],
+    ['presence-track-heading', {value:'-60'}], ['presence-track-skew', {value:'10'}],
+    ['presence-track-flip', {checked:true}]]) editor.elements.set(id, value);
+  const before = editor.read();
+  const action = dataset => ({target:{closest:selector => selector === '[data-action]' ? {dataset} : null}});
+  editor.dispatch('inspectorContent', 'click', action({action:'align-presence'}));
+  const updated = editor.read().items[0].presenceTrackTransform;
+  assert.deepEqual([updated[2], updated[5]], [305.5, 399.6]);
+  assert.ok(Math.abs(Math.hypot(updated[0],updated[3]) - 1.10) < 1e-9);
+  assert.ok(Math.abs(Math.hypot(updated[1],updated[4]) - .75) < 1e-9);
+  assert.ok(updated[0] * updated[4] - updated[1] * updated[3] < 0);
+  assert.equal(editor.window.RoomcraftEditorEngine.inspect().commandCount, 1);
+  assert.deepEqual(boot(editor.read()).read().items[0].presenceTrackTransform, updated);
+  editor.dispatch('undoButton', 'click', {});
+  assert.deepEqual(editor.read(), before);
 });
 
 test('joining walls closes a T junction, keeps a doorway, and is one undoable edit', () => {
@@ -835,6 +866,70 @@ test('startup keeps a browser draft if Home Assistant is unreachable', async () 
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(editor.read().items.find(i => i.id === 'chair').x, 500);
   assert.match(editor.elements.get('dashboardTransferStatus').textContent, /browser layout kept: Offline/);
+});
+
+test('pagehide flushes the last committed draft without saving a drag preview', () => {
+  const project = {version:2, editableReferenceVersion:10, rooms:[], walls:[], hotspots:[],
+    items:[{id:'chair', type:'chair', name:'Chair', x:500, y:500, w:48, h:48, rotation:0}]};
+  const editor = boot(project, undefined, {deferAutosave:true});
+  const api = editor.window.RoomcraftEditorViewport;
+  assert.equal(api.moveItem('chair', 540, 500), true);
+  editor.pointer('pointerdown', 540, 500);
+  editor.pointer('pointermove', 600, 500);
+  assert.equal(editor.read().items[0].x, 500);
+  editor.dispatch('window', 'pagehide', {});
+  assert.equal(editor.read().items[0].x, 540);
+});
+
+test('recovery from an offline startup requires importing before it can publish', async () => {
+  const local = {version:2, editableReferenceVersion:10, rooms:[], walls:[], hotspots:[],
+    items:[{id:'chair', type:'chair', name:'Chair', x:500, y:500, w:48, h:48, rotation:0}]};
+  const remote = {...local, items:[{...local.items[0], x:640}]};
+  const calls = [];
+  const editor = boot(local, async (method, payload) => {
+    calls.push([method, payload?.revision]);
+    if (calls.length === 1) throw new Error('Offline');
+    if (method === 'GET') return {revision:'current', project:remote, hotspots:[]};
+    return {revision:'published', imageUrl:'/api/image/serve/fixture/original'};
+  });
+  await new Promise(resolve => setImmediate(resolve));
+  const attempt = editor.dispatch('exportDashboardButton', 'click', {});
+  await new Promise(resolve => setImmediate(resolve));
+  if (editor.elements.get('confirmationDialog')?.open) {
+    editor.dispatch('confirmationCancel', 'click', {});
+  }
+  await attempt;
+  assert.deepEqual(calls, [['GET', undefined]]);
+  assert.match(editor.elements.get('dashboardTransferStatus').textContent, /Import the current dashboard/);
+  assert.equal(editor.read().items[0].x, 500);
+
+  const importing = editor.dispatch('importDashboardButton', 'click', {});
+  await new Promise(resolve => setImmediate(resolve));
+  editor.dispatch('confirmationAccept', 'click', {});
+  await importing;
+  assert.equal(editor.read().items[0].x, 640);
+  assert.equal(JSON.parse(editor.storage.get('roomcraft.second-floor.dashboard-replaced-draft.v2')).items[0].x, 500);
+
+  const publishing = editor.dispatch('exportDashboardButton', 'click', {});
+  editor.dispatch('confirmationAccept', 'click', {});
+  await publishing;
+  assert.deepEqual(calls, [['GET', undefined], ['GET', undefined], ['POST', 'current']]);
+});
+
+test('explicit dashboard import keeps the latest unpublished browser edit recoverable', async () => {
+  const project = {version:2, editableReferenceVersion:10, rooms:[], walls:[], hotspots:[],
+    items:[{id:'chair', type:'chair', name:'Chair', x:500, y:500, w:48, h:48, rotation:0}]};
+  const editor = boot(project, async () => ({revision:'current', project, hotspots:[]}));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(editor.window.RoomcraftEditorViewport.moveItem('chair', 580, 530), true);
+  const importing = editor.dispatch('importDashboardButton', 'click', {});
+  await new Promise(resolve => setImmediate(resolve));
+  editor.dispatch('confirmationAccept', 'click', {});
+  await importing;
+  assert.equal(editor.read().items[0].x, 500);
+  assert.equal(editor.elements.get('recoverDraftButton').hidden, false);
+  editor.dispatch('recoverDraftButton', 'click', {});
+  assert.equal(editor.read().items[0].x, 580);
 });
 
 test('a stale dashboard draft cannot retry export until the latest version is imported', async () => {

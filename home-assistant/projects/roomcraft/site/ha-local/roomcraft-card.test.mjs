@@ -1384,6 +1384,47 @@ test('LAN bridge refuses a stale revision before upload', async () => {
   assert.equal(uploads, 0);
 });
 
+test('a dashboard upload cannot switch to a different authenticated Studio connection', async () => {
+  const card = new Card();
+  const fixture = dashboard();
+  let finishUpload, uploadStarted;
+  const starting = new Promise(resolve => { uploadStarted = resolve; });
+  let writes = 0;
+  const session = {
+    connected:true, connection:{}, user:{id:'example-admin', is_admin:true},
+    callWS:async request => {
+      if (request.type === 'lovelace/config/save') writes++;
+      return structuredClone(fixture);
+    },
+    fetchWithAuth:async () => {
+      uploadStarted();
+      return new Promise(resolve => { finishUpload = resolve; });
+    },
+  };
+  card.hass = session;
+  const imported = await card._readDashboard();
+  const publishing = card._writeDashboard({project:imported.project, revision:imported.revision, pngDataUrl:pngDataUrl()});
+  await starting;
+  card.hass = {...session, connection:{}};
+  finishUpload({ok:true, json:async () => ({id:'c'.repeat(32)})});
+  await assert.rejects(publishing, error => error.status === 409);
+  assert.equal(writes, 0);
+  await assert.rejects(card._writeDashboard({project:imported.project, revision:imported.revision,
+    pngDataUrl:pngDataUrl()}), error => error.status === 409);
+});
+
+test('a completed dashboard read cannot return a revision after Studio changes dashboard', async () => {
+  const card = new Card();
+  let finishRead;
+  card.hass = {connected:true, user:{id:'example-admin', is_admin:true},
+    callWS:async () => new Promise(resolve => { finishRead = resolve; })};
+  const reading = card._readDashboard();
+  card.setConfig({dashboard:'roomcraft-home'});
+  finishRead(dashboard());
+  await assert.rejects(reading, error => error.status === 409);
+  assert.equal(card._revisions.size, 0);
+});
+
 test('popup editor receives only its own same-origin dashboard response', async () => {
   const replies = [];
   const popup = { closed: false, postMessage: (message, origin) => replies.push({ message, origin }) };

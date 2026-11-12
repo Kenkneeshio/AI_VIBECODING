@@ -99,7 +99,28 @@ test('radar calibration binds a presence switch to a sensor and rejects unusable
   assert.match(inspector, /PERSON TRACKING/);
   assert.match(inspector, /data-prop="presenceTrackEntityId"/);
   assert.match(inspector, /data-action="calibrate-presence"/);
+  assert.match(inspector, /data-action="align-presence"/);
+  assert.match(inspector, /Lateral scale .*Forward scale .*Rotation offset .*Skew/);
   assert.match(inspector, /data-prop="presenceTrackTransform"/);
+});
+
+test('radar alignment round-trips unequal scales, rotation, mirror and signed skew without moving the fitted origin', () => {
+  const c = controls();
+  const item = {type:'presenceSwitch', x:300, y:400, rotation:90, presenceTrackTransform:[1,0,302.45,0,1,398.17]};
+  const intended = {lateralScale:107.125, forwardScale:81.5, headingOffset:-28, skew:12.3, flipLeftRight:true};
+  const transform = c.presenceAlignment(item, intended);
+  assert.deepEqual([transform[2], transform[5]], [302.45, 398.17]);
+  const saved = {...item, presenceTrackTransform:transform};
+  const decoded = c.presenceAlignmentValues(saved);
+  for (const key of ['lateralScale','forwardScale','headingOffset','skew']) {
+    assert.ok(Math.abs(decoded[key] - intended[key]) < 1e-8, key);
+  }
+  assert.equal(decoded.flipLeftRight, true);
+  assert.deepEqual(Array.from(c.presenceAlignment(saved, decoded)), Array.from(transform));
+  const reset = c.presenceAlignment(saved, decoded, true);
+  assert.deepEqual([reset[2], reset[5]], [300, 400]);
+  assert.equal(c.presenceAlignment(saved, {...decoded, skew:90}), undefined);
+  assert.equal(c.presenceAlignment(saved, {...decoded, forwardScale:0}), undefined);
 });
 
 test('configured detection zone bounds validate in sensor centimetres and remain optional', () => {

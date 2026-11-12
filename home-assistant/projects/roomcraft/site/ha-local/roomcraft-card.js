@@ -1,5 +1,5 @@
 import {keepPreviousDashboardDesign, stableDashboardJson as stableStringify} from './dashboard-snapshots.mjs';
-import {validSceneSettings} from './storybook-scene-settings.mjs';
+import {dashboardProjectProblem} from './dashboard-project.mjs';
 import {FREE_VIEW_TILT_LIMIT} from './storybook-camera.mjs';
 
 /**
@@ -19,7 +19,6 @@ const EDITOR_URL = '/local/roomcraft/editor.html';
 const CAMERA_ELEMENT_TYPE = 'custom:roomcraft-camera-thumbnail';
 const OBJECT_ELEMENT_TYPE = 'custom:roomcraft-object-control';
 const MENU_ELEMENT_TYPE = 'custom:roomcraft-entity-menu';
-const UI_ITEM_TYPES = new Set(['uiWeatherOrb', 'uiMenu', 'uiTime', 'uiEdit', 'uiStatusAir', 'uiStatusElectrical']);
 const PLAN_WIDTH = 1536;
 const PLAN_HEIGHT = 1024;
 const SCENE_WIDTH = 1536;
@@ -381,37 +380,8 @@ function updatePlanCard(config, image, hotspots, items = []) {
 }
 
 function validateProject(project) {
-  if (!isObject(project) || project.version !== 2 ||
-      !Array.isArray(project.rooms) || !Array.isArray(project.walls) ||
-      !Array.isArray(project.items) || !Array.isArray(project.hotspots)) {
-    throw new Error('The layout is not a supported Roomcraft project.');
-  }
-  if (project.rooms.length > 200 || project.walls.length > 2000 ||
-      project.items.length > 2000 || project.hotspots.length > 100) {
-    throw new Error('The layout exceeds supported limits.');
-  }
-  if (!validSceneSettings(project.sceneSettings)) throw new Error('The layout has invalid scene settings.');
-  for (const hotspot of project.hotspots) {
-    if (!isObject(hotspot) || hotspot.type !== 'state-icon' ||
-        !/^[a-z_]+\.[a-z0-9_]+$/i.test(hotspot.entity || '') ||
-        !isObject(hotspot.style)) {
-      throw new Error('The layout has an invalid Home Assistant control.');
-    }
-  }
-  for (const item of project.items) {
-    if (isObject(item) && UI_ITEM_TYPES.has(item.type) &&
-        (![item.x, item.y, item.w, item.h, item.rotation ?? 0].every(Number.isFinite) ||
-          item.x < 0 || item.x > PLAN_WIDTH || item.y < 0 || item.y > PLAN_HEIGHT ||
-          item.w < 12 || item.h < 12 || item.w > PLAN_WIDTH || item.h > PLAN_HEIGHT)) {
-      throw new Error('The layout has an invalid dashboard interface item.');
-    }
-    if (isObject(item) && item.type === 'cameraThumbnail' && !validCameraThumbnail(item)) {
-      throw new Error('The layout has an invalid camera thumbnail.');
-    }
-    if (isObject(item) && item.type !== 'cameraThumbnail' && item.entityId && !validObjectControl(item)) {
-      throw new Error('The layout has an invalid object control.');
-    }
-  }
+  const problem = dashboardProjectProblem(project, {validCameraThumbnail, validObjectControl});
+  if (problem) throw new BridgeError(400, problem);
   return project;
 }
 
@@ -550,7 +520,8 @@ class RoomcraftEditorCard extends HTMLElement {
   }
 
   set hass(value) {
-    if (!value || this._hass?.user?.id !== value.user?.id) this._clearLook();
+    if (!value || this._hass?.user?.id !== value.user?.id ||
+        this._hass?.user?.is_admin !== value.user?.is_admin || this._hass?.connection !== value.connection) this._clearLook();
     this._hass = value;
   }
   getCardSize() { return 12; }
@@ -558,6 +529,16 @@ class RoomcraftEditorCard extends HTMLElement {
   _clearLook() {
     this._lookConfig = undefined;
     this._lookGeneration++;
+    this._revisions.clear();
+  }
+
+  _requireCurrentStudio(generation, publishing = false) {
+    if (!this._hass?.connected || generation !== this._lookGeneration) {
+      throw new BridgeError(409, 'The Studio connection changed. Import the current dashboard before publishing.');
+    }
+    if (publishing && !this._hass.user?.is_admin) {
+      throw new BridgeError(403, 'An administrator Home Assistant login is required to publish a layout.');
+    }
   }
 
   _editorUrl() {
@@ -661,8 +642,8 @@ class RoomcraftEditorCard extends HTMLElement {
     event.source?.postMessage(response, location.origin);
   }
 
-  async _getConfig() {
-    const config = await this._hass.callWS({ type: 'lovelace/config', url_path: this.dashboardPath });
+  async _getConfig(session = this._hass, dashboard = this.dashboardPath) {
+    const config = await session.callWS({ type: 'lovelace/config', url_path: dashboard });
     if (!isObject(config)) throw new Error('Home Assistant returned an invalid dashboard.');
     findPlanCard(config);
     return config;
@@ -701,7 +682,8 @@ class RoomcraftEditorCard extends HTMLElement {
   async _readDashboard() {
     const generation = this._lookGeneration;
     const config = await this._getConfig();
-    if (generation === this._lookGeneration) this._lookConfig = config;
+    this._requireCurrentStudio(generation);
+    this._lookConfig = config;
     return this._result(config, this._recordRevision(config));
   }
 
@@ -711,10 +693,10 @@ class RoomcraftEditorCard extends HTMLElement {
       config, this._hass?.states, Date.now(), this._hass?.config?.time_zone) ?? null;
   }
 
-  async _uploadPng(bytes) {
+  async _uploadPng(bytes, session = this._hass) {
     const form = new FormData();
     form.append('file', new Blob([bytes], { type: 'image/png' }), 'roomcraft-second-floor.png');
-    const response = await this._hass.fetchWithAuth(
+    const response = await session.fetchWithAuth(
       '/api/image/upload', { method: 'POST', body: form });
     if (!response.ok) throw new Error(`Home Assistant image upload failed (${response.status}).`);
     const result = await response.json();
@@ -735,30 +717,34 @@ class RoomcraftEditorCard extends HTMLElement {
     const project = validateProject(payload.project);
     const bytes = decodePng(payload.pngDataUrl);
     const generation = this._lookGeneration;
+    const session = this._hass;
+    const dashboard = this.dashboardPath;
     this._writeBusy = true;
     try {
       const expected = this._revisions.get(payload.revision);
-      const original = await this._getConfig();
+      const original = await this._getConfig(session, dashboard);
+      this._requireCurrentStudio(generation, true);
       if (stableStringify(original) !== expected) {
         throw new BridgeError(409, 'The dashboard changed. Import it again before exporting.');
       }
-      const image = await this._uploadPng(bytes);
-      const latest = await this._getConfig();
+      const image = await this._uploadPng(bytes, session);
+      this._requireCurrentStudio(generation, true);
+      const latest = await this._getConfig(session, dashboard);
+      this._requireCurrentStudio(generation, true);
       if (stableStringify(latest) !== expected) {
         throw new BridgeError(409, 'The dashboard changed during image upload. Import it again before exporting.');
       }
       const { next } = updatePlanCard(latest, image, project.hotspots, project.items);
       next.roomcraft_layout = project;
       const publication = keepPreviousDashboardDesign(latest, next, new Date().toISOString());
-      await this._hass.callWS({ type: 'lovelace/config/save', url_path: this.dashboardPath, config: publication });
-      const verified = await this._getConfig();
+      await session.callWS({ type: 'lovelace/config/save', url_path: dashboard, config: publication });
+      const verified = await this._getConfig(session, dashboard);
+      this._requireCurrentStudio(generation, true);
       if (stableStringify(verified) !== stableStringify(publication)) {
         throw new Error('Dashboard save could not be verified. Reload before trying again.');
       }
-      if (generation === this._lookGeneration) {
-        this._lookConfig = verified;
-        this._lookGeneration++;
-      }
+      this._lookConfig = verified;
+      this._lookGeneration++;
       this._revisions.clear();
       return this._result(verified, this._recordRevision(verified));
     } finally {

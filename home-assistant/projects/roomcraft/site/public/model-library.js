@@ -289,6 +289,13 @@
     return [];
   }
 
+  function walkingObstacleBoxes(item) {
+    if (placementRole(item) === 'tabletop' || item.type === 'rug' || item.type.startsWith('baby-mats-')) return [];
+    if (['chair','stool','tv'].includes(item.type) || /(?:desk-chair|toy-storage|fireplace|floor-chair)/.test(item.type)
+        || item.type.startsWith('pets-')) return orientedBoxes(item, false);
+    return solidBoxes(item);
+  }
+
   function overlapDepth(first, second) {
     const span = (box, axis) => box.width * Math.abs(project(...box.u, axis))
       + box.height * Math.abs(project(...box.v, axis));
@@ -534,5 +541,5 @@
   }
 
   root.RoomcraftModels = Object.freeze({catalog, canMap, canReplace, suggestions, supportsHeight, resizeFootprint,
-    splitDiningFurniture, placementRole, blockingPlacement, orderMountedObjects, mount, handoffKey});
+    splitDiningFurniture, placementRole, walkingObstacleBoxes, blockingPlacement, orderMountedObjects, mount, handoffKey});
 })(typeof window === 'undefined' ? globalThis : window);

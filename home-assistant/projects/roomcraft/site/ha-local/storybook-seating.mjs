@@ -1,6 +1,5 @@
 const SOFA = /(?:sofa|loveseat|chaise)-/;
 const DESK = /-desk-/;
-const FIT_RADIUS = 24;
 const STILL_RADIUS = 10;
 const DWELL_MS = 1200;
 const MAX_OBSERVATION_GAP_MS = 3100;
@@ -90,11 +89,10 @@ export function compileStorybookSeats(placements, roots, floorClearance) {
       const heading = local.yaw - angle;
       const supportY = root.position.y + local.surface * root.scale.y;
       if (supportY < 10 || supportY > 84) continue;
-      result.push({id: `${item.id}:${index}`, x: centerX, z: centerZ, y: supportY,
+      result.push({id: `${item.id}:${index}`, itemId:item.id, x: centerX, z: centerZ, y: supportY,
         heading, forwardX: Math.sin(heading), forwardZ: Math.cos(heading), pose: local.pose,
         reach: Math.min(42, Math.max(18, local.depth * .48 + 8)),
-        behind: Math.max(7, local.depth * .32),
-        fit: Math.min(1, local.width / FIT_RADIUS, local.depth / 17, clearance / FIT_RADIUS)});
+        behind: Math.max(7, local.depth * .32), width:local.width, depth:local.depth});
     }
   }
   return result;

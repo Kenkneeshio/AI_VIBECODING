@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import polygonClipping from 'polygon-clipping';
-import {createFloorSupport} from '../ha-local/storybook-floor-support.mjs';
+import {createFloorSupport, createStorybookFurnitureCollision} from '../ha-local/storybook-floor-support.mjs';
 
 const rectangle = (x1, z1, x2, z2) => [[x1,z1], [x2,z1], [x2,z2], [x1,z2], [x1,z1]];
 const main = rectangle(0, 0, 100, 100);
@@ -34,4 +34,30 @@ test('the union supports a crossing from the floor to stairs without an internal
   assert.equal(walkable.clearance(30, 130), 10);
   assert.equal(walkable.supportsRoute(30, 90, 30, 130), true);
   assert.equal(walkable.supportsRoute(45, 99, 30, 130), false);
+});
+
+test('avatar body sweeps avoid solid furniture while an adjacent seat can exempt only its own footprint', () => {
+  const collision = createStorybookFurnitureCollision([
+    {item:{id:'seat',type:'diningChair',w:30,h:32}, x:110,z:85,angle:0},
+    {item:{id:'table',type:'diningTable',w:50,h:44}, x:160,z:85,angle:Math.PI / 2},
+    {item:{id:'rug',type:'rug',w:100,h:100}, x:120,z:100,angle:0},
+    {item:{id:'lamp',type:'tableLamp',w:42,h:42}, x:56,z:85,angle:0},
+  ]);
+  assert.equal(collision.blocksRoute(46,85,200,85,8), true);
+  assert.equal(collision.blocksPoint(110,85,8), true);
+  assert.equal(collision.blocksPoint(110,85,8,'seat'), false);
+  assert.equal(collision.blocksPoint(160,85,8,'seat'), true);
+  assert.equal(collision.blocksPoint(120,136,8), false);
+  assert.equal(collision.blocksPoint(56,85,8), false);
+  assert.equal(collision.blocksRoute(135,115,190,115,2), false);
+  assert.equal(collision.blocksRoute(135,115,190,115,8), true, 'a centerline that clears the table can still clip with radius');
+});
+
+test('the opening of a rotated sectional remains open', () => {
+  const collision = createStorybookFurnitureCollision([
+    {item:{id:'sectional',type:'sofa',w:120,h:80}, x:350,z:220,angle:Math.PI / 2},
+  ]);
+  assert.equal(collision.blocksPoint(326,255,10), false);
+  assert.equal(collision.blocksPoint(326,181,10), true);
+  assert.equal(collision.blocksPoint(370,255,10), true);
 });

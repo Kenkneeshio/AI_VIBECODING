@@ -1,4 +1,5 @@
 import polygonClipping from 'polygon-clipping';
+import '../public/model-library.js';
 
 // Walkable geometry is the union of the rendered surfaces, with its holes intact.
 const EPSILON = 1e-7;
@@ -37,7 +38,7 @@ function pointDistanceSquared(x, z, ax, az, bx, bz) {
   return (x - ax - t * dx) ** 2 + (z - az - t * dz) ** 2;
 }
 
-function blocksRoute(edge, x, z, endX, endZ, radiusSquared) {
+function blocksSweptEdge(edge, x, z, endX, endZ, radiusSquared) {
   if (intersectsEdge(edge, x, z, endX, endZ)) return true;
   if (!radiusSquared) return false;
   const [ax, az, bx, bz] = edge;
@@ -51,6 +52,42 @@ function blocksRoute(edge, x, z, endX, endZ, radiusSquared) {
 export function unobstructedFloor(footprint, wallStructure) {
   const barriers = wallStructure.filter(region => region.bottom === 0).flatMap(region => region.polygons);
   return footprint.length && barriers.length ? polygonClipping.difference(footprint, barriers) : footprint;
+}
+
+/** Obstructions use the authored footprint shapes, including openings in L-shaped furniture. */
+export function createStorybookFurnitureCollision(placements) {
+  const host = typeof window === 'undefined' ? globalThis : window;
+  const boxes = placements.flatMap(({item, x, z, angle}) =>
+    host.RoomcraftModels.walkingObstacleBoxes({...item, x, y:z, rotation:angle * 180 / Math.PI})
+      .map(box => {
+        const {width:w, height:h, u, v} = box;
+        return {...box, id:item.id,
+          extentX:Math.abs(u[0]) * w + Math.abs(v[0]) * h,
+          extentZ:Math.abs(u[1]) * w + Math.abs(v[1]) * h,
+          edges:[[-w,-h,w,-h],[w,-h,w,h],[w,h,-w,h],[-w,h,-w,-h]],
+        };
+      }));
+
+  function blocksRoute(x, z, endX, endZ, radius = 0, exceptItemId) {
+    const limit = Math.max(0, radius) ** 2;
+    return boxes.some(box => {
+      if (box.id === exceptItemId || Math.min(x, endX) > box.x + box.extentX + radius ||
+          Math.max(x, endX) < box.x - box.extentX - radius || Math.min(z, endZ) > box.y + box.extentZ + radius ||
+          Math.max(z, endZ) < box.y - box.extentZ - radius) return false;
+      const dx = x - box.x;
+      const dz = z - box.y;
+      const ex = endX - box.x;
+      const ez = endZ - box.y;
+      const a = dx * box.u[0] + dz * box.u[1];
+      const b = dx * box.v[0] + dz * box.v[1];
+      const c = ex * box.u[0] + ez * box.u[1];
+      const d = ex * box.v[0] + ez * box.v[1];
+      const inside = (u, v) => Math.abs(u) <= box.width && Math.abs(v) <= box.height;
+      return inside(a, b) || inside(c, d) || box.edges.some(edge => blocksSweptEdge(edge, a, b, c, d, limit));
+    });
+  }
+  const blocksPoint = (x, z, radius, exceptItemId) => blocksRoute(x, z, x, z, radius, exceptItemId);
+  return {blocksPoint, blocksRoute};
 }
 
 export function createFloorSupport(footprint) {
@@ -69,7 +106,7 @@ export function createFloorSupport(footprint) {
   function supportsRoute(x, z, endX, endZ, radius = 0) {
     const limit = Math.max(0, radius - EPSILON) ** 2;
     return contains(x, z) && contains(endX, endZ) &&
-      !edges.some(edge => blocksRoute(edge, x, z, endX, endZ, limit));
+      !edges.some(edge => blocksSweptEdge(edge, x, z, endX, endZ, limit));
   }
   return {contains, clearance, supportsRoute};
 }

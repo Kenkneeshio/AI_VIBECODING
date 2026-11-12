@@ -9,7 +9,8 @@ function setup(floorAt, geometry) {
   const people = createStorybookPeople(scene, floorAt, geometry);
   const report = (x, y, time, options, expiresAt) => people.setTracks([{id: 'radar:1', x, y, expiresAt}], time, options);
   const avatar = () => scene.getObjectByName('radar-avatar-papa');
-  return {people, report, avatar};
+  const ring = () => scene.getObjectByName('radar-track-mark');
+  return {people, report, avatar, ring};
 }
 
 test('a track holds across an unsupported gap and reacquires only after a distinct report and hidden interval', () => {
@@ -60,24 +61,27 @@ test('a frame that loses floor support hides before reacquiring the destination'
   assert.deepEqual(avatar().position.toArray(), [80, 0, 30]);
 });
 
-test('the model fits at a measured edge point and an off-floor report clears it', () => {
+test('an edge measurement keeps the radar ring at its location and hides the full-size body', () => {
   const floorAt = (x, z) => x >= 0 && x <= 200 && z >= 0 && z <= 200 ? 0 : null;
   const floorClearance = (x, z) => Math.min(x, z, 200 - x, 200 - z);
-  const {people, report, avatar} = setup(floorAt, {floorClearance});
+  const {people, report, avatar, ring} = setup(floorAt, {floorClearance});
   report(70, 40, 1);
   assert.equal(avatar().scale.x, 1);
   report(4, 40, 2, {reduceMotion:true});
-  assert.deepEqual(avatar().position.toArray(), [4, 0, 40]);
-  assert.ok(avatar().scale.x > 0 && avatar().scale.x < 1);
-  const bounds = new THREE.Box3().setFromObject(avatar());
-  assert.ok(bounds.min.x >= 0, 'the avatar, shadow and ground ring stay on the supported side');
+  assert.equal(avatar().visible, false);
+  assert.equal(avatar().scale.x, 1);
+  assert.equal(ring().visible, true);
+  assert.deepEqual(ring().position.toArray(), [4, .26, 40]);
+  assert.ok(new THREE.Box3().setFromObject(ring()).min.x >= -1e-7);
+  assert.equal(people.hasVisibleTracks, true);
   report(-1, 40, 3);
   assert.equal(avatar().visible, false);
+  assert.equal(ring().visible, false);
   assert.equal(people.hasVisibleTracks, false);
 });
 
-const cushion = {id:'sofa:0', x:70, z:60, y:37, heading:0, forwardX:0, forwardZ:1,
-  pose:'lounge', reach:32, behind:16, fit:1};
+const cushion = {id:'sofa:0', itemId:'sofa', x:70, z:60, y:37, heading:0, forwardX:0, forwardZ:1,
+  pose:'lounge', reach:32, behind:16, width:42, depth:34};
 const poseOf = avatar => avatar.getObjectByName('radar-avatar-pose');
 
 test('seating needs distinct settled reports and blends the body while the radar marker stays calibrated', () => {
@@ -95,11 +99,65 @@ test('seating needs distinct settled reports and blends the body while the radar
   assert.equal(poseOf(avatar()).userData.pose, 'lounge');
   assert.equal(seated.x, cushion.x);
   assert.equal(seated.z, cushion.z);
+  assert.equal(avatar().scale.x, 1);
+  assert.equal(poseOf(avatar()).scale.x, 1);
   assert.deepEqual(avatar().position.toArray(), [61,0,65]);
   report(105, 67, 3, undefined, 3000);
   people.render(3.45);
   assert.equal(poseOf(avatar()).userData.pose, 'standing');
   assert.deepEqual(avatar().position.toArray(), [105,0,67]);
+});
+
+test('solid furniture stops the body while the radar ring follows every measured point', () => {
+  const blocks = (fromX, toX, radius) => Math.max(fromX,toX) + radius >= 58 &&
+    Math.min(fromX,toX) - radius <= 72;
+  const {people, report, avatar, ring} = setup(() => 0, {
+    allowsBodyPoint: (x, _z, radius) => !blocks(x, x, radius),
+    allowsBodyRoute: (x, _z, toX, _toZ, radius) => !blocks(x, toX, radius),
+  });
+  report(30, 40, 1, undefined, 1000);
+  report(70, 40, 2, undefined, 2000);
+  assert.equal(avatar().visible, false);
+  assert.equal(ring().position.x, 70);
+  report(102, 40, 3, undefined, 3000);
+  assert.equal(avatar().visible, false);
+  assert.equal(ring().position.x, 102);
+  report(105, 40, 3.4, undefined, 3400);
+  people.render(3.52);
+  assert.equal(avatar().visible, false);
+  people.render(3.7);
+  assert.equal(avatar().visible, true);
+  assert.equal(avatar().position.x, 105);
+  assert.equal(avatar().scale.x, 1);
+});
+
+test('the assigned cushion permits a seated body, while narrow seats and neighboring solids do not', () => {
+  const geometry = {
+    allowsBodyPoint: (_x, _z, _radius, except) => except === 'sofa',
+    allowsBodyRoute: (_x, _z, _tx, _tz, _radius, except) => except === 'sofa',
+  };
+  for (const [seat, extra, visible] of [
+    [cushion, {}, true],
+    [{...cushion, width:19}, {}, false],
+    [cushion, {allowsBodyRoute: () => false}, false],
+  ]) {
+    const {people, report, avatar, ring} = setup(() => 0, {...geometry, ...extra, seats:[seat]});
+    report(62, 65, 1, undefined, 1000);
+    assert.equal(avatar().visible, false);
+    report(62, 65, 2.3, undefined, 2300);
+    people.render(2.45);
+    assert.equal(avatar().visible, visible);
+    assert.equal(ring().position.x, 62);
+    assert.equal(avatar().scale.x, 1);
+    assert.equal(poseOf(avatar()).scale.x, 1);
+    if (visible) {
+      const pose = poseOf(avatar());
+      assert.equal(pose.userData.pose, 'lounge');
+      const position = pose.getWorldPosition(new THREE.Vector3());
+      assert.equal(position.x, cushion.x);
+      assert.equal(position.z, cushion.z);
+    }
+  }
 });
 
 test('a wall blocks a nearby cushion and a walk-by never accumulates seating evidence', () => {

@@ -50,3 +50,40 @@ test('heat map uses one depth-tested mesh and disposes empty or replaced data', 
   map.dispose();
   assert.equal(materialDisposals, 1);
 });
+
+test('heat-map opacity clamps, persists across history replacements and leaves bin data intact', () => {
+  const map = createStorybookRadarHeatMap(floor);
+  map.setOpacity(.4);
+  map.setHistory(history);
+  const [mesh] = map.root.children;
+  const material = mesh.material;
+  const colors = mesh.geometry.getAttribute('color').array.slice();
+  assert.equal(material.opacity, .4);
+  map.setOpacity(.05);
+  assert.equal(material.opacity, .25);
+  assert.equal(map.root.children[0], mesh);
+  assert.deepEqual(mesh.geometry.getAttribute('color').array, colors);
+  map.setHistory(history);
+  assert.equal(map.root.children[0].material, material);
+  assert.equal(material.opacity, .25);
+  map.setOpacity(2);
+  assert.equal(material.opacity, 1);
+  map.setOpacity(.5);
+  map.setOpacity(undefined);
+  assert.equal(material.opacity, 1);
+  map.dispose();
+});
+
+test('heat map renders the transformed footprint rather than an axis-aligned tile', () => {
+  const support = createFloorSupport(floor);
+  const corners = [[6,12], [26,17], [29,30], [9,25]];
+  const {geometry, drawn} = radarHeatMapGeometry(floor, support, {
+    cellSize: 25, cells: [{x: 17.5, y: 21, hits: 2, corners}],
+  });
+  const positions = geometry.getAttribute('position');
+  const vertices = new Set(Array.from({length: positions.count}, (_, index) =>
+    `${positions.getX(index)},${positions.getZ(index)}`));
+  assert.equal(drawn, 1);
+  assert.deepEqual(vertices, new Set(corners.map(point => point.join(','))));
+  geometry.dispose();
+});

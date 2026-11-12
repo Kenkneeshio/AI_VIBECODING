@@ -1,5 +1,11 @@
 # Decision log
 
+## Preserve physical scale and compare radar geometry consistently
+
+Keep a character's body size tied to its authored model. Check the swept body against walls and solid furniture. Hide and reacquire a body when the route is blocked while keeping an independent marker for the radar reading. Allow a supported pose at a confirmed seat.
+
+Use the existing six-coefficient radar transform for live positions, each recorded heat-bin corner, and coverage outlines. Rotation, separate lateral and forward scale, and skew are draft controls for that transform. The calibrated origin changes only through an explicit reset or a new measured fit. The heat map shows observations and flags bins outside the authored bounds. This keeps potential calibration errors visible.
+
 ## Give the nighttime neighborhood its own rhythm
 
 Use the live sun state for road lighting and quieter waterfront activity. Directional headlight effects follow the same road position and lane as the miniature. Use deterministic appearance windows for occasional outdoor figures and vessels after dark. Preserve the existing beach schedule, including the empty beach after 11 p.m. Keep these visual effects outside the authored layout and Home Assistant device state.

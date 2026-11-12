@@ -1,5 +1,13 @@
 # Changelog
 
+## System audit and radar alignment
+
+- Keep each avatar's body size steady and clear of solid furniture. A supported seated pose uses the cushion, and the radar ring stays at the observed position.
+- Studio adds rotation, lateral and forward scale, and skew to radar calibration. Heat bins transform as shapes, so their edges and the detection outline follow the same calibration.
+- Studio requires a current dashboard baseline before publishing. Import preserves a recoverable copy of local edits, and both publish transports use the same project validation.
+- Home reconnects after a graphics interruption without carrying over the previous renderer's upload state. Watchdog checks the additional sources used by the live dashboard.
+- Home adds **Display settings** for scenery layers, headlights, radar heat-map opacity, presence characters, seating poses, and dock alignment.
+
 ## Quieter nights on the waterfront
 
 - Vehicles illuminate the road ahead with headlights after sunset. Tail lights follow the same traffic animation.

@@ -99,6 +99,7 @@ export function bindStorybookHeatMap(root, {getSession, setHistory, dismissMenu,
       const drawn = setHistory(history) ?? 0;
       const outsideFloor = Math.max(0, history.cells.length - drawn);
       const detail = [];
+      if (history.outsideConfigured) detail.push(`${measure(history.outsideConfigured, 'raw bin')} outside configured bounds`);
       if (history.outsidePlan) detail.push(`${measure(history.outsidePlan, 'raw bin')} off the plan`);
       if (outsideFloor) detail.push(`${measure(outsideFloor, 'mapped bin')} off the floor`);
       if (history.furthestCm > 0) detail.push(`Farthest sampled bin about ${(history.furthestCm / 100).toFixed(1)} m`);

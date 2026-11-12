@@ -188,6 +188,34 @@ test('night lights are disabled in daylight and follow replay and reduced-motion
   traffic.dispose();
 });
 
+test('headlight brightness changes both night shaders and lamp emissivity without changing poses', () => {
+  const traffic = createStorybookTraffic(road);
+  const beams = traffic.root.getObjectByName('road-headlight-beams');
+  const halos = traffic.root.getObjectByName('road-lamp-halos');
+  const sedan = {...profile('ambient'), vehicleStyle:'seafoam-sedan'};
+  const options = {night:true, reduceMotion:true};
+  traffic.update(0, sedan, {...options, headlightBrightness:.65});
+  const [, headlamp, taillamp] = traffic.root.getObjectByName('vehicle-seafoam-sedan').children;
+  const poses = beams.instanceMatrix.array.slice(0, beams.count * 16);
+  assert.equal(beams.material.uniforms.lightStrength.value, .65);
+  assert.equal(halos.material.uniforms.lightStrength.value, .65);
+  assert.equal(headlamp.material.emissiveIntensity, 2.45 * .65);
+  assert.equal(taillamp.material.emissiveIntensity, 1.13 * .65);
+  traffic.update(4, sedan, {...options, headlightBrightness:2});
+  assert.equal(beams.material.uniforms.lightStrength.value, 1.6);
+  assert.equal(halos.material.uniforms.lightStrength.value, 1.6);
+  assert.equal(headlamp.material.emissiveIntensity, 2.45 * 1.6);
+  assert.deepEqual(beams.instanceMatrix.array.slice(0, beams.count * 16), poses);
+  traffic.update(5, sedan, {...options, headlightBrightness:0});
+  assert.equal(beams.material.uniforms.lightStrength.value, .35);
+  traffic.update(6, sedan, {...options, headlightBrightness:NaN});
+  assert.equal(beams.material.uniforms.lightStrength.value, 1);
+  traffic.update(7, sedan, {...options, night:false, headlightBrightness:1.6});
+  assert.equal(beams.visible, false);
+  assert.equal(headlamp.material.emissiveIntensity, .26);
+  traffic.dispose();
+});
+
 test('the everyday mix has predictable cars and occasional semis and motorcycles', () => {
   const traffic = createStorybookTraffic(road);
   const visibleModels = () => traffic.root.children.filter(child => child.isGroup && child.visible);

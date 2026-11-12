@@ -15,6 +15,12 @@ function tile(x, y, size) {
     [x-c,y+r],[x-r,y+c],[x-r,y-c],[x-c,y-r]];
 }
 
+function binOutline({x, y, corners}, size) {
+  if (!Array.isArray(corners) || corners.length !== 4 || !corners.every(point =>
+    Array.isArray(point) && point.length === 2 && point.every(Number.isFinite))) return tile(x, y, size);
+  return [...corners, corners[0]];
+}
+
 function appendPolygon(vertices, colors, polygon, color, alpha) {
   const [outer, ...holes] = polygon.map(ring => ring.slice(0, -1).map(([x, y]) => new THREE.Vector2(x, y)));
   const faces = THREE.ShapeUtils.triangulateShape(outer, holes);
@@ -38,11 +44,11 @@ export function radarHeatMapGeometry(footprint, floorSupport, history) {
   const vertices = [];
   const colors = [];
   let drawn = 0;
-  for (const {x, y, hits} of bins) {
-    const rate = Math.sqrt(hits / maximum);
+  for (const bin of bins) {
+    const rate = Math.sqrt(bin.hits / maximum);
     const color = rate < .55 ? LOW.clone().lerp(MID, rate / .55) : MID.clone().lerp(HIGH, (rate - .55) / .45);
     let painted = false;
-    for (const polygon of polygonClipping.intersection([tile(x, y, cellSize)], footprint)) {
+    for (const polygon of polygonClipping.intersection([binOutline(bin, cellSize)], footprint)) {
       painted = appendPolygon(vertices, colors, polygon, color, .36 + rate * .42) || painted;
     }
     if (painted) drawn++;
@@ -80,5 +86,9 @@ export function createStorybookRadarHeatMap(footprint) {
     material.dispose();
   }
 
-  return {root, setHistory, dispose};
+  function setOpacity(value) {
+    material.opacity = Number.isFinite(value) ? THREE.MathUtils.clamp(value, .25, 1) : 1;
+  }
+
+  return {root, setHistory, setOpacity, dispose};
 }

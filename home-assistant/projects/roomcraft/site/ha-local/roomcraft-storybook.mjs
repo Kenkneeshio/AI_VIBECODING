@@ -11,6 +11,8 @@ import {placeStorybookDetails, placeStorybookTargets, readStorybookConfig, story
 import {storybookWeather, storybookWeatherMarkup, storybookWeatherStyles, updateStorybookWeather} from './storybook-weather.mjs';
 import {COASTAL_SKY_STYLE, COASTAL_SKY_MARKUP, updateCoastalSky} from './storybook-coastal-sky.mjs';
 import {sceneDockAlignment, sceneFeatureEnabled, sceneWind} from './storybook-scene-settings.mjs';
+import {bindStorybookDisplaySettings, DISPLAY_SETTINGS_MARKUP, DISPLAY_SETTINGS_STYLE,
+  storybookDisplaySceneSettings} from './storybook-display-settings.mjs';
 import {readStorybookUtilities, utilityReading} from './storybook-utilities.mjs';
 import {bindStorybookPower, POWER_PANEL_MARKUP, POWER_PANEL_STYLE} from './storybook-power-panel.mjs';
 import {bindStorybookCommutes, COMMUTE_DIALOG_MARKUP, COMMUTE_DIALOG_STYLE} from './storybook-commutes.mjs';
@@ -205,6 +207,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         @media(max-width:540px){.bar nav{gap:5px}.bar a,.bar button{padding-inline:7px}}
         ${storybookWeatherStyles}
         ${COASTAL_SKY_STYLE}
+        ${DISPLAY_SETTINGS_STYLE}
         ${POWER_PANEL_STYLE}
         ${COMMUTE_DIALOG_STYLE}
         ${STORYBOOK_LOCATION_STYLE}
@@ -284,6 +287,7 @@ class RoomcraftStorybookCard extends HTMLElement {
                   <button type="button" data-camera="reset">Reset to Top down</button>
                   <button type="button" data-camera="save-default" hidden>Save as default</button>
                   <button type="button" data-camera="clear-default" hidden>Use Top down as default</button>
+                  <button type="button" class="open-display-settings" aria-haspopup="dialog">Display settings</button>
                 </section>
                 <section class="menu-group" aria-label="Manage">
                   <p class="menu-heading" aria-hidden="true">Manage</p>
@@ -331,6 +335,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       </dialog>
       ${COMMUTE_DIALOG_MARKUP}
       ${SNAPSHOT_DIALOG_MARKUP}
+      ${DISPLAY_SETTINGS_MARKUP}
       ${POWER_PANEL_MARKUP}`;
     bindLiveModelLibrary(this);
     this.snapshots = bindSnapshotDialog(this);
@@ -356,6 +361,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.cameraView = resolveDefaultCameraView(null);
     this.menuButton = this.shadowRoot.querySelector('.main-menu-button');
     this.mainMenu = this.shadowRoot.querySelector('.main-menu');
+    this.displaySettings = bindStorybookDisplaySettings(this, settings => this.applyDisplaySettings(settings));
     this.demoButton = this.shadowRoot.querySelector('.demo-start');
     this.demo = this.shadowRoot.querySelector('.demo');
     this.demoTitle = this.demo.querySelector('.demo-title');
@@ -729,6 +735,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   connectedCallback() {
+    this.displaySettings.connect();
     this.watchPublishedLayout();
     this.onObjectDetailsChange ??= () => this.syncObjectDetails();
     this.onObjectDetailsToggle ??= () => {
@@ -753,6 +760,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this.displaySettings.disconnect();
     this.snapshots.disconnect();
     this.setMainMenu(false);
     this.watchPublishedLayout();
@@ -776,6 +784,10 @@ class RoomcraftStorybookCard extends HTMLElement {
     if (!this.isConnected || !this.dashboard || !this.session || this.model || this.loading || this.failed) return;
     this.status.hidden = false;
     this.recovery.hidden = true;
+    if (this.session.connected === false) {
+      this.status.querySelector('[role=status]').textContent = 'Waiting for Home Assistant…';
+      return;
+    }
     this.status.querySelector('[role=status]').textContent = 'Opening Roomcraft…';
     const request = {};
     this.loading = request;
@@ -793,13 +805,13 @@ class RoomcraftStorybookCard extends HTMLElement {
       if (!this.isConnected || this.loading !== request) return;
       this.loadStartupView();
       this.model = readStorybookConfig(config);
-      this.world.dataset.dock = sceneDockAlignment(this.model.layout.sceneSettings);
       for (const id of this.commutes.configure(config?.roomcraft_commutes)) this.model.watch.add(id);
       this.locationPanel.configure(config?.roomcraft_location);
       this.locationPanel.update(this.session);
       this.prepareUtilities(config);
       this.scene = createStorybookScene(this.canvas, this.model.layout);
       this.scene.setView(this.cameraView);
+      this.applyDisplaySettings(this.displaySettings.value);
       this.detectionZones = readDetectionZones(this.model.layout.items);
       this.syncDetectionZones();
       this.heatMap.configure(this.model.layout.items);
@@ -1051,8 +1063,17 @@ class RoomcraftStorybookCard extends HTMLElement {
     }
   }
 
+  applyDisplaySettings(settings) {
+    this.world.dataset.dock = sceneDockAlignment(storybookDisplaySceneSettings(this.model?.layout.sceneSettings, settings));
+    this.scene?.setDisplaySettings?.(settings);
+    if (this.frame && !this.demoRun) this.paintSky(this.frame.environment, this.session?.connected === false);
+    this.anchorDirty = true;
+    this.schedule();
+  }
+
   paintSky(environment, offline) {
-    const settings = this.demoRun ? undefined : this.model?.layout.sceneSettings;
+    const settings = this.demoRun ? undefined :
+      storybookDisplaySceneSettings(this.model?.layout.sceneSettings, this.displaySettings.value);
     this.coastalSky.hidden = !sceneFeatureEnabled(settings, 'sky');
     if (!this.coastalSky.hidden) {
       updateCoastalSky(this.coastalSky, {...sceneWind(environment, settings), reduceMotion: this.motionReduced}, offline);
@@ -1067,8 +1088,8 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   refresh() {
     if (!this.model) return;
-    const offline = this.session?.connected === false;
-    const states = offline ? {} : this.session.states;
+    const offline = !this.session || this.session.connected === false;
+    const states = offline ? {} : this.session.states ?? {};
     const now = Date.now();
     this.frame = storybookFrame(this.model, states, now, this.session?.config?.time_zone);
     const commute = this.commutes.update(offline ? undefined : states, now);
@@ -1216,6 +1237,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.detectionZoneButton.setAttribute('aria-pressed', 'false');
     this.detectionZoneLegend.hidden = true;
     if (this.utilityDialog.open) this.utilityDialog.close();
+    if (this.trackingDialog.open) this.trackingDialog.close();
     for (const dialog of this.linkDialogs) if (dialog.open) dialog.close();
     this.locationPanel.configure(null);
     this.power.close();
@@ -1225,8 +1247,12 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.devicesDrawer?.remove();
     this.devicesDrawer = null;
     this.devicesButton.hidden = true;
+    this.cameraTilesButton.hidden = true;
+    this.trackingButton.hidden = true;
     for (const button of this.utilityButtons) button.hidden = true;
     this.overlay.replaceChildren();
+    for (const {element} of this.controls ?? []) element.hass = undefined;
+    this.controls = [];
     this.tethers.replaceChildren();
     this.scene?.dispose();
     this.scene = undefined;

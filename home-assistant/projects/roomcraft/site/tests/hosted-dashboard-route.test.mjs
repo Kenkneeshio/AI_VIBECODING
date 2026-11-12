@@ -125,6 +125,23 @@ test('hosted publication validates scene settings and preserves approved boolean
   assert.deepEqual(dashboards[canonicalPath].roomcraft_layout.sceneSettings, settings);
 });
 
+test('hosted and native project constraints reject malformed plan geometry before upload', async () => {
+  let uploads = 0;
+  const {route, calls} = harness({[canonicalPath]:home}, {onUpload: () => uploads++});
+  const imported = await (await route.GET(request())).json();
+  for (const invalid of [
+    {...project, rooms:[{points:[{x:1,y:2}]}]},
+    {...project, rooms:Array(201).fill({points:[{x:0,y:0},{x:1,y:0},{x:1,y:1}]})},
+    {...project, items:[{id:'edit',type:'uiEdit',x:-3,y:850,w:40,h:40}]},
+    {...project, walls:[{id:'wall',x1:1,y1:2,x2:null,y2:3}]},
+  ]) {
+    const response = await route.POST(request({revision:imported.revision, project:invalid, pngDataUrl:testPng()}));
+    assert.equal(response.status, 400);
+  }
+  assert.equal(uploads, 0);
+  assert.equal(calls.filter(([type]) => type === 'lovelace/config/save').length, 0);
+});
+
 test('hosted editor falls back only for an unmigrated or missing Roomcraft Home', async () => {
   for (const current of [undefined, shell]) {
     const {route} = harness({[canonicalPath]: current, [legacyPath]: legacy});

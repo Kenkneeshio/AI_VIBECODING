@@ -324,6 +324,7 @@
   let spaceHeld = false;
   let history = [], future = [];
   let saveTimer = null, toastTimer = null;
+  let pendingDraft = null;
   let currentView = { scale: 1, tx: 0, ty: 0 };
   let currentPointer = point(0,0);
   let focusCanvas = false;
@@ -360,16 +361,18 @@
   function saveSoon() {
     const label = document.getElementById('saveState');
     label.innerHTML = '<span class="save-dot"></span> Saving…';
+    pendingDraft = projectFingerprint(project);
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      try { localStorage.setItem(STORAGE_KEY, projectFingerprint(project)); label.innerHTML = '<span class="save-dot"></span> Saved locally'; }
-      catch (_) { label.textContent = 'Browser storage is full'; }
-    }, 250);
+    saveTimer = setTimeout(flushPendingDraft, 250);
   }
-  function saveDraftNow() {
+  function flushPendingDraft() {
+    if(pendingDraft!==null)saveDraftNow(pendingDraft);
+  }
+  function saveDraftNow(draft = projectFingerprint(project)) {
     clearTimeout(saveTimer);
+    saveTimer=null;pendingDraft=null;
     try {
-      localStorage.setItem(STORAGE_KEY, projectFingerprint(project));
+      localStorage.setItem(STORAGE_KEY, draft);
       document.getElementById('saveState').innerHTML = '<span class="save-dot"></span> Saved locally';
       return true;
     } catch (_) {
@@ -1308,14 +1311,21 @@
     if(selected.kind==='item')clampLinkedItem(target);
     afterChange(`Updated ${key}`);
   }
-  function calibratePresence() {
+  function calibratePresence(useSwitchPosition) {
     const item = selected?.kind === 'item' && project.items.find(entry => entry.id === selected.id);
-    const scale = document.getElementById('presence-track-scale').value;
-    const heading = document.getElementById('presence-track-heading').value;
-    const flipped = document.getElementById('presence-track-flip').checked;
-    const transform = window.RoomcraftObjectControls.presenceCalibration(item, Number(scale), Number(heading), flipped);
+    const number = id => {
+      const value = document.getElementById(id).value?.trim();
+      return value ? Number(value) : NaN;
+    };
+    const transform = window.RoomcraftObjectControls.presenceAlignment(item, {
+      lateralScale: number('presence-track-lateral-scale'),
+      forwardScale: number('presence-track-scale'),
+      headingOffset: number('presence-track-heading'),
+      skew: number('presence-track-skew'),
+      flipLeftRight: document.getElementById('presence-track-flip').checked,
+    }, useSwitchPosition);
     if (!transform) {
-      showToast('Enter a scale from 1 to 1000 plan pixels per metre and a rotation offset.');
+      showToast('Use positive scales, a rotation, and skew strictly between −90° and 90°.');
       return;
     }
     updateProperty('presenceTrackTransform', transform.join(', '));
@@ -1540,6 +1550,13 @@
     if(!validProject(next))throw new Error('Dashboard layout or controls are not compatible with this editor');
     return {next,hasEditable,preview:data.storybookPreview??null};
   }
+  function preserveDisplacedDraft(next){
+    const current=projectFingerprint(project);
+    if((!hasLocalDraft&&projectChangeSerial===0)||current===dashboardPublishedProject||current===projectFingerprint(next))return false;
+    const original=projectChangeSerial===0?localStorage.getItem(STORAGE_KEY):null;
+    localStorage.setItem(REPLACED_DRAFT_KEY,original||current);
+    return true;
+  }
   async function loadDashboardDefault(){
     setDashboardBusy(true);
     const initialSerial=projectChangeSerial;
@@ -1550,27 +1567,25 @@
       updateEntityOptions(data);
       if(!data.revision)throw new Error('Dashboard revision is missing');
       const {next,hasEditable,preview}=projectFromDashboard(data);
-      dashboardRevision=data.revision;
       // A slow dashboard read must never replace an in-progress local edit.
       if(projectChangeSerial!==initialSerial||interaction||pendingTemplate||pendingSegment||document.activeElement?.closest?.('#inspectorContent')){
         dashboardNeedsImport=true;
         setDashboardStatus('Browser edits kept. Import from dashboard when ready.');return;
       }
       const current=normalizeProject(clone(next));
-      const different=hasLocalDraft&&projectFingerprint(project)!==projectFingerprint(current);
-      if(different){
-        try{
-          localStorage.setItem(REPLACED_DRAFT_KEY,localStorage.getItem(STORAGE_KEY)||projectFingerprint(project));
-        }catch(_){
-          dashboardNeedsImport=true;
-          setDashboardStatus('Current dashboard found, but browser draft backup failed. Export your layout JSON before importing.',true);
-          return;
-        }
+      let backedUp;
+      try{backedUp=preserveDisplacedDraft(current);}
+      catch(_){
+        dashboardNeedsImport=true;
+        setDashboardStatus('Current dashboard found, but browser draft backup failed. Your layout is still open.',true);
+        return;
       }
       project=current;dashboardDefaultProject=clone(current);dashboardPreview=preview;selected=null;afterChange('Loaded current Home Assistant layout',{authoritative:true});dashboardPublishedProject=projectFingerprint(project);fitView();
+      dashboardRevision=data.revision;dashboardNeedsImport=false;
       const detail=hasEditable?'Current editable dashboard layout loaded':'Current dashboard controls loaded with the starting editable plan';
-      setDashboardStatus(different?detail+' · previous browser draft available to recover':detail);
+      setDashboardStatus(backedUp?detail+' · previous browser draft available to recover':detail);
     }catch(error){
+      dashboardNeedsImport=true;
       const kept=hasLocalDraft||projectChangeSerial!==initialSerial;
       setDashboardStatus('Dashboard unavailable; '+(kept?'browser layout kept':'starting plan loaded')+': '+(error.message||'Connection failed'),true);
     }
@@ -1585,11 +1600,15 @@
       updateEntityOptions(data);
       if(!data.revision)throw new Error('Dashboard revision is missing');
       const {next,hasEditable,preview}=projectFromDashboard(data);
+      const current=normalizeProject(clone(next));
       const detail=hasEditable?'its saved editable Roomcraft layout':'its current controls and the starting editable plan';
-      if(!await askConfirmation('Import dashboard layout',`Import ${detail} from Home Assistant? This replaces the layout saved in this browser. You can undo the import during this session or export your current layout as JSON first.`,'Import layout')){
+      if(!await askConfirmation('Import dashboard layout',`Import ${detail} from Home Assistant? A different unpublished layout is kept as a recoverable browser draft.`,'Import layout')){
         setDashboardStatus('Dashboard import canceled');return;
       }
-      snapshot();project=normalizeProject(clone(next));dashboardDefaultProject=clone(project);dashboardPreview=preview;dashboardRevision=data.revision;selected=null;clearPlacement();setViewMode('design');afterChange('Imported from Home Assistant dashboard',{authoritative:true});dashboardPublishedProject=projectFingerprint(project);fitView();
+      try{preserveDisplacedDraft(current);}
+      catch(_){throw new Error('Could not save a browser backup. Your layout is still open.');}
+      snapshot();project=current;dashboardDefaultProject=clone(project);dashboardPreview=preview;selected=null;clearPlacement();setViewMode('design');afterChange('Imported from Home Assistant dashboard',{authoritative:true});dashboardPublishedProject=projectFingerprint(project);fitView();
+      dashboardRevision=data.revision;
       dashboardNeedsImport=false;
       const message=hasEditable?'Editable layout imported from dashboard':'Dashboard controls imported. Its image has no editable Roomcraft data, so the starting furnishings were used.';
       setDashboardStatus(message);showToast(message);
@@ -1599,12 +1618,11 @@
   async function exportToDashboard(){
     if(dashboardTransferBusy)return;
     const importMessage='Import the current dashboard before exporting this browser draft.';
-    if(dashboardNeedsImport){
+    if(dashboardNeedsImport||!dashboardRevision){
       setDashboardStatus(importMessage,true);showToast(importMessage);return;
     }
     setDashboardBusy(true);setDashboardStatus('Checking the Home Assistant dashboard…');
     try{
-      if(!dashboardRevision){const current=await dashboardRequest('GET');if(!current.revision)throw new Error('Dashboard revision is missing');dashboardRevision=current.revision;}
       if(!await askConfirmation('Export to Home Assistant','Replace the Second Floor plan image and interactive objects with this layout? The editable project is saved with the dashboard for future imports.','Export layout')){
         setDashboardStatus('Dashboard export canceled');return;
       }
@@ -1673,7 +1691,7 @@
     document.getElementById('inspectorContent').addEventListener('change',e=>{
       if (e.target.matches?.('[data-lock-dimensions]')) { lockObjectDimensions = e.target.checked; return; }
       const el=e.target.closest('[data-prop]');if(el)updateProperty(el.dataset.prop,el.value);const v=e.target.closest('[data-variant]');if(v)updateVariant(v.value,v.dataset.variantKind||'finish');const h=e.target.closest('[data-hotspot-prop]');if(h)updateHotspotProperty(h.dataset.hotspotProp,h.value);});
-    document.getElementById('inspectorContent').addEventListener('click',e=>{const a=e.target.closest('[data-action]');if(a){if(a.dataset.action==='delete')deleteSelected();if(a.dataset.action==='duplicate')duplicateSelected();if(a.dataset.action==='rotate')rotateSelected();if(a.dataset.action==='reset-dimensions')resetObjectDimensions();if(a.dataset.action==='calibrate-presence')calibratePresence();}if(e.target.id==='openHelpButton')document.getElementById('helpDialog').showModal();});
+    document.getElementById('inspectorContent').addEventListener('click',e=>{const a=e.target.closest('[data-action]');if(a){if(a.dataset.action==='delete')deleteSelected();if(a.dataset.action==='duplicate')duplicateSelected();if(a.dataset.action==='rotate')rotateSelected();if(a.dataset.action==='reset-dimensions')resetObjectDimensions();if(a.dataset.action==='calibrate-presence')calibratePresence(true);if(a.dataset.action==='align-presence')calibratePresence(false);}if(e.target.id==='openHelpButton')document.getElementById('helpDialog').showModal();});
     document.getElementById('newRoomButton').addEventListener('click',addRoom);
     document.getElementById('designModeButton').addEventListener('click',()=>setViewMode('design'));
     document.getElementById('referenceModeButton').addEventListener('click',()=>setViewMode('reference'));
@@ -1711,6 +1729,8 @@
       if(dashboardTransferBusy)return;const tag=document.activeElement?.tagName;if(['INPUT','TEXTAREA','SELECT'].includes(tag))return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){e.preventDefault();redo();return;}if(e.key===' '){if(tag==='BUTTON')return;e.preventDefault();spaceHeld=true;return;}if(e.key==='Escape'){const canceled=interaction;interaction=null;viewport.classList.remove('dragging');if(canceled?.snapshot&&history.length){project=history.pop();future=[];afterChange('Canceled drag',{resetIdentity:true});}clearPlacement();selected=null;renderInspector();renderStructureList();updateHistoryButtons();draw();return;}if((e.key==='Delete'||e.key==='Backspace')&&selected){e.preventDefault();deleteSelected();return;}const shortcuts={v:'select',h:'pan',r:'room',w:'wall',f:'fence',e:'erase'};const shortcut=shortcuts[e.key.toLowerCase()];if(shortcut){setViewMode('design');setTool(shortcut);}});
     window.addEventListener('keyup',e=>{if(e.key===' ')spaceHeld=false;});
     window.addEventListener('resize',fitView);
+    window.addEventListener('pagehide',flushPendingDraft);
+    document.addEventListener('visibilitychange',()=>{if(document.hidden)flushPendingDraft();});
   }
 
   window.addEventListener('roomcraft-asset-loaded',()=>{draw();paintPalettePreviews();});

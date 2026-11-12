@@ -28,6 +28,10 @@ function inPlan(x, y) {
   return x >= 0 && x <= PLAN_WIDTH && y >= 0 && y <= PLAN_HEIGHT;
 }
 
+export function projectRadarPoint([a,b,c,d,e,f], x, y) {
+  return {x: a * x + b * y + c, y: d * x + e * y + f};
+}
+
 export function validTrackTransform(value) {
   return Array.isArray(value) && value.length === 6 &&
     value.every(n => Number.isFinite(n) && Math.abs(n) <= 10000) &&
@@ -49,7 +53,7 @@ export function readDetectionZones(items) {
   for (const item of items) {
     const transform = item.presenceTrackTransform;
     if (item.type !== 'presenceSwitch' || !validTrackTransform(transform)) continue;
-    const [a,b,c,d,e,f] = transform;
+    const [,b,c,,e,f] = transform;
     const profile = RADAR_FIELDS.get(item.presenceTrackProfile);
     // Radar +Y projects along the second column of the affine transform.
     const forwardLength = Math.hypot(b, e);
@@ -60,7 +64,10 @@ export function readDetectionZones(items) {
       ['nominal', profile?.ring],
     ]) {
       if (!ring) continue;
-      const projected = ring.map(([x,y]) => [a*x + b*y + c, d*x + e*y + f]);
+      const projected = ring.map(([x,y]) => {
+        const point = projectRadarPoint(transform, x, y);
+        return [point.x, point.y];
+      });
       for (const [outline] of polygonClipping.intersection([projected], PLAN_BOUNDARY)) {
         zones.push({
           id: item.id, kind, points: outline.slice(0, -1).map(([x,y]) => ({x,y})), ...marker,
@@ -125,10 +132,8 @@ export function readPersonTracks(items, snapshots, now = Date.now()) {
     if (!state || ['unknown', 'unavailable'].includes(state.state)) continue;
     const {observed_at: observed, tracks} = state.attributes;
     if (!Number.isFinite(observed) || observed > now + 1000 || now - observed >= TRACK_MAX_AGE) continue;
-    const [a,b,c,d,e,f] = transform;
     for (const track of tracks) {
-      const x = a * track.x + b * track.y + c;
-      const y = d * track.x + e * track.y + f;
+      const {x, y} = projectRadarPoint(transform, track.x, track.y);
       if (inPlan(x, y)) {
         result.push({id: entity + ':' + track.id, x, y, expiresAt: observed + TRACK_MAX_AGE});
       }

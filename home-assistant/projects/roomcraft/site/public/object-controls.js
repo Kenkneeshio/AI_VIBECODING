@@ -53,16 +53,49 @@
   }
 
   function presenceCalibration(item, pixelsPerMetre, headingOffset, flipLeftRight) {
-    if (item?.type !== 'presenceSwitch' || ![item.x, item.y, item.rotation].every(Number.isFinite)
-      || !Number.isFinite(pixelsPerMetre) || pixelsPerMetre < 1 || pixelsPerMetre > 1000
-      || !Number.isFinite(headingOffset)) return undefined;
-    // Wall placement uses its local positive Y axis for the room-facing side.
-    const radians = ((item.rotation + headingOffset) % 360) * Math.PI / 180;
-    const scale = pixelsPerMetre / 100;
-    const sideways = flipLeftRight ? -scale : scale;
-    return [sideways * Math.cos(radians), -scale * Math.sin(radians), item.x,
-      sideways * Math.sin(radians), scale * Math.cos(radians), item.y]
-      .map(value => Number(value.toFixed(6)));
+    if (!Number.isFinite(pixelsPerMetre) || pixelsPerMetre < 1 || pixelsPerMetre > 1000) return;
+    return presenceAlignment(item, {lateralScale:pixelsPerMetre, forwardScale:pixelsPerMetre,
+      headingOffset, skew:0, flipLeftRight}, true)?.map(value => Number(value.toFixed(6)));
+  }
+
+  const RAD = Math.PI / 180;
+  const signedAngle = angle => ((angle + 180) % 360 + 360) % 360 - 180;
+
+  function presenceAlignmentValues(item) {
+    const transform = item?.presenceTrackTransform;
+    if (!validPresenceTransform(transform)) {
+      return {lateralScale: 100, forwardScale: 100, headingOffset: 0, skew: 0, flipLeftRight: false};
+    }
+    const [a, b, , d, e] = transform;
+    const flipLeftRight = a * e - b * d < 0;
+    const mirror = flipLeftRight ? -1 : 1;
+    const forwardHeading = Math.atan2(-b, e) / RAD;
+    const lateralHeading = Math.atan2(mirror * d, mirror * a) / RAD;
+    return {
+      lateralScale: Math.hypot(a, d) * 100,
+      forwardScale: Math.hypot(b, e) * 100,
+      headingOffset: signedAngle(forwardHeading - item.rotation),
+      skew: signedAngle(lateralHeading - forwardHeading),
+      flipLeftRight,
+    };
+  }
+
+  function presenceAlignment(item, {lateralScale, forwardScale, headingOffset, skew, flipLeftRight}, useSwitchPosition = false) {
+    if (item?.type !== 'presenceSwitch' || ![item.x, item.y, item.rotation, lateralScale, forwardScale,
+      headingOffset, skew].every(Number.isFinite) || lateralScale <= 0 || forwardScale <= 0 || Math.abs(skew) >= 90) return;
+    const previous = validPresenceTransform(item.presenceTrackTransform) ? item.presenceTrackTransform : null;
+    const origin = previous && !useSwitchPosition ? [previous[2], previous[5]] : [item.x, item.y];
+    const heading = signedAngle(item.rotation + headingOffset) * RAD;
+    const lateral = heading + skew * RAD;
+    const xScale = lateralScale / 100 * (flipLeftRight ? -1 : 1);
+    const yScale = forwardScale / 100;
+    const basis = [xScale * Math.cos(lateral), -yScale * Math.sin(heading), xScale * Math.sin(lateral), yScale * Math.cos(heading)]
+      .map(value => Math.abs(value) < 1e-14 ? 0 : Number(value.toPrecision(12)));
+    const transform = [basis[0], basis[1], origin[0], basis[2], basis[3], origin[1]];
+    if (!validPresenceTransform(transform)) return;
+    if (previous && previous[2] === origin[0] && previous[5] === origin[1] && previous.every((value, index) =>
+      Math.abs(value - transform[index]) <= 1e-9 * Math.max(1, Math.abs(value)))) return previous.slice();
+    return transform;
   }
 
   function validBinding(item) {
@@ -327,25 +360,27 @@
 
   function trackingInspector(item, escape, entityOptions) {
     const transform = item.presenceTrackTransform;
-    const calibrated = validPresenceTransform(transform);
-    const scale = calibrated ? Math.round(Math.hypot(transform[1], transform[4]) * 1000) / 10 : 100;
-    const heading = calibrated ? Math.atan2(-transform[1], transform[4]) * 180 / Math.PI - item.rotation : 0;
-    const offset = Math.round(((heading % 360 + 540) % 360 - 180) * 10) / 10;
-    const flipped = calibrated && transform[0] * transform[4] - transform[1] * transform[3] < 0;
+    const {lateralScale, forwardScale, headingOffset, skew, flipLeftRight} = presenceAlignmentValues(item);
+    const number = value => Number(value.toPrecision(12));
     return '<div class="inspector-block"><p class="inspector-label">PERSON TRACKING</p>'
       + entityField('Radar targets entity', 'presenceTrackEntityId', item.presenceTrackEntityId || '',
         entityOptions, 'sensor', escape)
       + '<p class="field-hint">Characters follow recent positions from this radar sensor. Preview live positions in Home Assistant Studio and publish the layout to use the calibration on the dashboard.</p>'
       + '<button type="button" class="secondary-button full-width" data-radar-calibration>Calibrate from measured points</button>'
       + '<div class="field-grid">'
-      + '<div class="field"><label for="presence-track-scale">Plan pixels per metre</label>'
-      + '<input id="presence-track-scale" type="number" min="1" max="1000" step="any" value="' + scale + '"></div>'
+      + '<div class="field"><label for="presence-track-lateral-scale">Lateral scale (px/m)</label>'
+      + '<input id="presence-track-lateral-scale" type="number" min="0" step="any" value="' + number(lateralScale) + '"></div>'
+      + '<div class="field"><label for="presence-track-scale">Forward scale (px/m)</label>'
+      + '<input id="presence-track-scale" type="number" min="0" step="any" value="' + number(forwardScale) + '"></div>'
       + '<div class="field"><label for="presence-track-heading">Rotation offset (°)</label>'
-      + '<input id="presence-track-heading" type="number" step="any" value="' + offset + '"></div></div>'
+      + '<input id="presence-track-heading" type="number" step="any" value="' + number(headingOffset) + '"></div>'
+      + '<div class="field"><label for="presence-track-skew">Skew (°)</label>'
+      + '<input id="presence-track-skew" type="number" step="any" value="' + number(skew) + '"></div></div>'
       + '<label class="wall-snap-option"><input id="presence-track-flip" type="checkbox"'
-      + (flipped ? ' checked' : '') + '> Flip radar left and right</label>'
+      + (flipLeftRight ? ' checked' : '') + '> Flip radar left and right</label>'
+      + '<button type="button" class="secondary-button full-width" data-action="align-presence">Apply alignment</button>'
       + '<button type="button" class="secondary-button full-width" data-action="calibrate-presence">Use switch position</button>'
-      + '<p class="field-hint">Start with the switch position and its room-facing direction. Adjust the scale and rotation while someone stands at a known point on the plan.</p>'
+      + '<p class="field-hint">Alignment updates the positions, detection outlines, and heat map together. Apply alignment keeps the calibrated origin. Use switch position places it at the switch.</p>'
       + '<div class="field"><label for="prop-presenceTrackTransform">Position transform (advanced)</label>'
       + '<input id="prop-presenceTrackTransform" data-prop="presenceTrackTransform" type="text" value="'
       + escape((transform || []).join(', ')) + '" placeholder="a, b, c, d, e, f" autocomplete="off"></div>'
@@ -446,7 +481,7 @@
 
   window.RoomcraftObjectControls = {
     isBindingKey: key => bindingKeys.has(key),
-    validBinding, propertyUpdate, presenceCalibration, effectiveTapAction, effectiveHoldAction,
+    validBinding, propertyUpdate, presenceCalibration, presenceAlignment, presenceAlignmentValues, effectiveTapAction, effectiveHoldAction,
     normalizeEntityOptions, manualDashboardElements, manualYaml, poseUpdate, renderInspector, visualKind
   };
 })();

@@ -3,15 +3,13 @@ import {createStorybookMotion} from './storybook-motion.mjs';
 import {canUseStorybookSeat, createSeatDwell} from './storybook-seating.mjs';
 
 const MAX_TRACKS = 24;
-// Bounds the pose, ground ring and shadow in every heading.
-const AVATAR_FOOTPRINT_RADIUS = 24;
+const GROUND_RING_RADIUS = 17.5;
 const SIT_SECONDS = .42;
-const STAND_SECONDS = .24;
 const SEAT_HIPS = 8.9;
 const STYLES = [
-  {role: 'papa', scale: [1.26, 1.25, 1.22], sweater: '#537eaa', trim: '#ffcc81', skin: '#db9f76', hair: '#4b3533'},
-  {role: 'mama', scale: [1.09, 1.18, 1.12], sweater: '#c86587', trim: '#ffdeaf', skin: '#e8af83', hair: '#5a3841'},
-  {role: 'baby', scale: [.92, .83, .92], sweater: '#8b78cf', trim: '#ffe492', skin: '#f1b98e', hair: '#674138'},
+  {role: 'papa', scale: [1.26, 1.25, 1.22], radius:20, sweater: '#537eaa', trim: '#ffcc81', skin: '#db9f76', hair: '#4b3533'},
+  {role: 'mama', scale: [1.09, 1.18, 1.12], radius:18, sweater: '#c86587', trim: '#ffdeaf', skin: '#e8af83', hair: '#5a3841'},
+  {role: 'baby', scale: [.92, .83, .92], radius:16, sweater: '#8b78cf', trim: '#ffe492', skin: '#f1b98e', hair: '#674138'},
 ];
 const POSES = {
   idle: {lean:.03, tilt:0, thighs:-1.30, shins:1.16, hands:[-.43,-.40], fidget:.10, pace:2.1},
@@ -41,7 +39,8 @@ function animateFace(character, idle, reducedMotion, forwardTilt = 0, lookAside 
  * Time is monotonic seconds supplied by the scene adapter.
  * Route and clearance queries use the same compiled surface as floorAt.
  */
-export function createStorybookPeople(scene, floorAt = () => 0, {supportsRoute, floorClearance, seats = []} = {}) {
+export function createStorybookPeople(scene, floorAt = () => 0,
+  {supportsRoute, floorClearance, allowsBodyPoint, allowsBodyRoute, seats = []} = {}) {
   const group = new THREE.Group();
   group.name = 'tracked-people';
   scene.add(group);
@@ -60,7 +59,7 @@ export function createStorybookPeople(scene, floorAt = () => 0, {supportsRoute, 
     return {
       sphere: new THREE.SphereGeometry(1, 12, 8),
       disc: new THREE.CircleGeometry(1, 24).rotateX(-Math.PI / 2),
-      groundRing: new THREE.RingGeometry(13.8, 17.5, 32).rotateX(-Math.PI / 2),
+      groundRing: new THREE.RingGeometry(13.8, GROUND_RING_RADIUS, 32).rotateX(-Math.PI / 2),
       glasses: new THREE.TorusGeometry(1, .14, 6, 16),
       palette: STYLES.map(({sweater, trim, skin, hair}) => Object.fromEntries(
         Object.entries({sweater, trim, skin, hair}).map(([part, color]) => [part, paintedMaterial(color)]),
@@ -70,13 +69,13 @@ export function createStorybookPeople(scene, floorAt = () => 0, {supportsRoute, 
       shoes: paintedMaterial('#514656'),
       white: paintedMaterial('#fff1dc'),
       shadow: new THREE.MeshBasicMaterial({color:'#433849', transparent:true, opacity:0.22, depthWrite:false}),
-      groundMark: new THREE.MeshBasicMaterial({color:'#fff1cd', depthWrite:false, toneMapped:false}),
+      groundMark: new THREE.MeshBasicMaterial({color:'#fff1cd', depthTest:false, depthWrite:false, toneMapped:false}),
     };
   }
 
   function makeCharacter(styleIndex) {
     art ??= makeArt();
-    const {role, scale} = STYLES[styleIndex];
+    const {role, scale, radius} = STYLES[styleIndex];
     const {sweater, trim, skin, hair} = art.palette[styleIndex];
     const baby = role === 'baby';
     const root = new THREE.Group();
@@ -105,8 +104,10 @@ export function createStorybookPeople(scene, floorAt = () => 0, {supportsRoute, 
     shadow.scale.set(19, 1, 19);
     root.add(shadow);
     const groundMark = new THREE.Mesh(art.groundRing, art.groundMark);
-    groundMark.position.y = 0.26;
-    root.add(groundMark);
+    groundMark.name = 'radar-track-mark';
+    // The marker remains visible through the floor, with the character in front of it.
+    groundMark.renderOrder = -1;
+    group.add(groundMark);
 
     ellipse(body, sweater, 0, 15, 0, baby ? 8.2 : 7.1, 8.3, 5.4);
     if (baby) {
@@ -175,54 +176,63 @@ export function createStorybookPeople(scene, floorAt = () => 0, {supportsRoute, 
     }
     if (role === 'papa') ellipse(head, art.ink, 0, 1.6, 9.35, 1.1, .28, .35);
     ellipse(head, art.ink, 0, -1.95, 9.15, 1.38, 0.45, 0.38);
-    return {root, poseRoot, body, head, arms, legs, eyes, styleIndex, baby};
+    return {root, groundMark, poseRoot, body, head, arms, legs, eyes, radius, styleIndex, baby};
   }
 
   const allowsPoint = (x, z) => Number.isFinite(floorAt(x, z)) && (!floorClearance || floorClearance(x, z) > 0);
+  const clearBodyPoint = (x, z, radius, exceptItemId) => allowsPoint(x, z) &&
+    (!floorClearance || floorClearance(x, z) >= radius) && (allowsBodyPoint?.(x, z, radius, exceptItemId) ?? true);
+  const clearBodyRoute = (x, z, toX, toZ, radius, exceptItemId) =>
+    (supportsRoute?.(x, z, toX, toZ, radius) ?? true) &&
+    (allowsBodyRoute?.(x, z, toX, toZ, radius, exceptItemId) ?? true);
 
-  function nearestSeat(x, z, taken) {
+  function fitsSeat(seat, x, z, radius, tolerance = 1) {
+    return seat.width >= radius * 1.35 && seat.depth >= radius * .82 &&
+      clearBodyPoint(seat.x, seat.z, radius, seat.itemId) &&
+      canUseStorybookSeat(seat, x, z,
+        (fromX, fromZ, toX, toZ) => clearBodyRoute(fromX, fromZ, toX, toZ, radius, seat.itemId), tolerance);
+  }
+
+  function nearestSeat(x, z, radius, taken) {
     let nearest;
     let distance = Infinity;
     for (const seat of seats) {
       const next = Math.hypot(x - seat.x, z - seat.z);
-      if (next >= distance || taken.has(seat.id) || !canUseStorybookSeat(seat, x, z, supportsRoute)) continue;
+      if (next >= distance || taken.has(seat.id) || !fitsSeat(seat, x, z, radius)) continue;
       nearest = seat;
       distance = next;
     }
     return nearest;
   }
 
-  function updateSeat(track, target) {
-    let elapsed = Math.max(0, lastTime - track.poseAt);
-    if (!track.seat && target) {
+  function seatingBlend(track, target, x, z) {
+    if (track.seat !== target) {
       track.seat = target;
-      elapsed = 0;
+      track.poseAt = lastTime;
     }
-    track.poseAt = lastTime;
-    const delta = target ? elapsed / SIT_SECONDS : -elapsed / STAND_SECONDS;
-    track.seatAmount = reduced ? Number(Boolean(target)) : clampUnit(track.seatAmount + delta);
-    if (!target && !track.seatAmount) track.seat = undefined;
+    if (!target) return 0;
+    // Only interpolate along an open approach. A measured point already in
+    // the cushion appears in its supported pose without crossing the shell.
+    if (reduced || !clearBodyPoint(x, z, track.character.radius) ||
+        !clearBodyPoint(target.x, target.z, track.character.radius) ||
+        !clearBodyRoute(x, z, target.x, target.z, track.character.radius)) return 1;
+    const amount = clampUnit((lastTime - track.poseAt) / SIT_SECONDS);
+    return amount * amount * (3 - 2 * amount);
   }
 
-  function drawCharacter(track, sample) {
-    const {character, seat, seatAmount} = track;
+  function drawCharacter(track, sample, blend) {
+    const {character, seat} = track;
     const {x, y:z, heading, walking, progress:amount} = sample;
     const floor = floorAt(x, z);
-    const fit = floorClearance ? Math.min(1, floorClearance(x, z) / AVATAR_FOOTPRINT_RADIUS) : 1;
-    const blend = seatAmount * seatAmount * (3 - 2 * seatAmount);
     const cos = Math.cos(heading);
     const sin = Math.sin(heading);
     const dx = (seat ? seat.x - x : 0) * blend;
     const dz = (seat ? seat.z - z : 0) * blend;
     const posture = POSES[seat?.pose ?? 'idle'];
-    const seatFit = seat?.fit ?? fit;
-    const raise = seat ? seat.y - floor - SEAT_HIPS * STYLES[character.styleIndex].scale[1] * seatFit : 0;
+    const raise = seat ? seat.y - floor - SEAT_HIPS * STYLES[character.styleIndex].scale[1] : 0;
     character.root.position.set(x, floor, z);
     character.root.rotation.y = heading;
-    character.root.scale.setScalar(fit);
-    // Keep the ground ring at the observed position while the inferred body settles on the cushion.
-    character.poseRoot.position.set((dx * cos - dz * sin) / fit, raise * blend / fit, (dx * sin + dz * cos) / fit);
-    character.poseRoot.scale.setScalar(mix(fit, seatFit, blend) / fit);
+    character.poseRoot.position.set(dx * cos - dz * sin, raise * blend, dx * sin + dz * cos);
     character.poseRoot.rotation.y = seat ? angleDelta(seat.heading, heading) * blend : 0;
     character.poseRoot.userData.pose = blend > 0 ? seat.pose : 'standing';
     const idle = Math.floor(Math.max(0, lastTime - track.born) * 16) / 16 + .7 + character.styleIndex * .62;
@@ -251,35 +261,39 @@ export function createStorybookPeople(scene, floorAt = () => 0, {supportsRoute, 
     lastTime = Number.isFinite(seconds) ? seconds : lastTime;
     reduced = reduceMotion || preference;
     hasVisibleTracks = false;
-    const visible = [];
+    const pending = [];
     const taken = new Set();
     for (const track of tracks.values()) {
       const {character} = track;
+      const {x, y:z} = track.point;
+      const floor = floorAt(x, z);
+      const clearance = floorClearance?.(x, z) ?? GROUND_RING_RADIUS;
+      character.groundMark.visible = Number.isFinite(floor) && clearance > 0;
+      if (character.groundMark.visible) {
+        character.groundMark.position.set(x, floor + .26, z);
+        character.groundMark.scale.setScalar(Math.min(1, clearance / GROUND_RING_RADIUS));
+      }
       const sample = track.motion.sample(lastTime, reduced);
-      character.root.visible = Boolean(sample);
-      if (!sample) {
-        track.seat = undefined;
-        track.seatAmount = 0;
-        track.poseAt = lastTime;
-        continue;
-      }
-      hasVisibleTracks = true;
-      const {x, y:z, current} = sample;
-      const ready = allowSeats && current && track.dwell.ready(x, z, lastTime);
+      if (track.bodyReported && sample?.current) track.bodySuppressed = false;
+      const standing = track.bodyReported && !track.bodySuppressed ? sample : null;
+      const ready = allowSeats && (!track.bodyReported || (standing?.current && !standing.walking)) &&
+        track.dwell.ready(x, z, lastTime);
       if (track.seat) {
-        if (allowSeats && canUseStorybookSeat(track.seat, x, z, supportsRoute, 1.18)) taken.add(track.seat.id);
-        else {
-          track.seat = undefined;
-          track.seatAmount = 0;
-        }
+        if (ready && fitsSeat(track.seat, x, z, character.radius, 1.18)) taken.add(track.seat.id);
+        else track.seat = undefined;
       }
-      visible.push({track, sample, ready});
+      pending.push({track, standing, ready});
     }
-    for (const {track, sample, ready} of visible) {
-      const target = ready ? track.seat ?? nearestSeat(sample.x, sample.y, taken) : undefined;
+    for (const {track, standing, ready} of pending) {
+      const {character, point} = track;
+      const target = ready ? track.seat ?? nearestSeat(point.x, point.y, character.radius, taken) : undefined;
       if (target) taken.add(target.id);
-      updateSeat(track, target);
-      drawCharacter(track, sample);
+      const blend = seatingBlend(track, target, point.x, point.y);
+      const sample = target ? {x:point.x, y:point.y, heading:standing?.heading ?? target.heading,
+        walking:false, progress:1} : standing;
+      character.root.visible = Boolean(sample);
+      if (sample) drawCharacter(track, sample, blend);
+      hasVisibleTracks ||= character.root.visible || character.groundMark.visible;
     }
   }
 
@@ -297,6 +311,7 @@ export function createStorybookPeople(scene, floorAt = () => 0, {supportsRoute, 
     for (const [id, track] of tracks) {
       if (next.has(id)) continue;
       track.character.root.visible = false;
+      track.character.groundMark.visible = false;
       unused[track.character.styleIndex].push(track.character);
       tracks.delete(id);
     }
@@ -308,13 +323,18 @@ export function createStorybookPeople(scene, floorAt = () => 0, {supportsRoute, 
       const styleIndex = styleCounts.indexOf(Math.min(...styleCounts));
       styleCounts[styleIndex]++;
       const character = unused[styleIndex].pop() ?? makeCharacter(styleIndex);
-      const motion = createStorybookMotion({allowsPoint, allowsRoute:supportsRoute ?? (() => true)});
-      tracks.set(id, {character, motion, dwell:createSeatDwell(), born:time, poseAt:time, seatAmount:0});
+      const motion = createStorybookMotion({
+        allowsPoint: (x, z) => clearBodyPoint(x, z, character.radius),
+        allowsRoute: (x, z, toX, toZ) => clearBodyRoute(x, z, toX, toZ, character.radius),
+      });
+      tracks.set(id, {character, motion, dwell:createSeatDwell(), born:time, poseAt:time});
     }
     for (const [id, point] of next) {
-      const {motion, dwell} = tracks.get(id);
-      motion.observe(point, time, {observation:point.expiresAt, reduceMotion});
-      if (seats.length) dwell.observe(point, time);
+      const track = tracks.get(id);
+      track.point = point;
+      track.bodyReported = track.motion.observe(point, time, {observation:point.expiresAt, reduceMotion});
+      if (!track.bodyReported) track.bodySuppressed = true;
+      if (seats.length) track.dwell.observe(point, time);
     }
     render(time, reduceMotion);
   }

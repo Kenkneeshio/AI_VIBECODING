@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { keepPreviousDashboardDesign, stableDashboardJson as stableStringify } from "../../../ha-local/dashboard-snapshots.mjs";
 import { storybookPreview } from "../../../ha-local/storybook-state.mjs";
-import { validSceneSettings } from "../../../ha-local/storybook-scene-settings.mjs";
+import { dashboardProjectProblem, isDashboardLayout } from "../../../ha-local/dashboard-project.mjs";
 import { SCENE_HEIGHT, SCENE_WIDTH, editableDashboardHotspots, roomcraftPlanCard, validCameraThumbnail, validObjectControl, withUpdatedPlanCard } from "../../../lib/dashboard-elements";
 
 const ROOMCRAFT_DASHBOARD = "roomcraft-home";
@@ -141,37 +141,10 @@ function absoluteImageUrl(haOrigin: string, image: unknown): string | null {
   }
 }
 
-function isLayoutProject(value: unknown): value is LayoutProject {
-  return isObject(value) && value.version === 2 &&
-    Array.isArray(value.rooms) && Array.isArray(value.walls) &&
-    Array.isArray(value.items) && Array.isArray(value.hotspots);
-}
-
 function validateProject(value: unknown): LayoutProject {
-  if (!isLayoutProject(value)) {
-    throw new BridgeError(400, "invalid_project", "The layout is not a supported Roomcraft project.");
-  }
-  if (value.hotspots.length > 100 || value.items.length > 2000 || value.walls.length > 2000) {
-    throw new BridgeError(400, "invalid_project", "The layout exceeds supported limits.");
-  }
-  if (!validSceneSettings(value.sceneSettings)) {
-    throw new BridgeError(400, "invalid_project", "The layout has invalid scene settings.");
-  }
-  for (const hotspot of value.hotspots) {
-    if (!isObject(hotspot) || typeof hotspot.entity !== "string" ||
-        hotspot.type !== "state-icon" || !isObject(hotspot.style)) {
-      throw new BridgeError(400, "invalid_project", "The layout has an invalid Home Assistant control.");
-    }
-  }
-  for (const item of value.items) {
-    if (isObject(item) && item.type === "cameraThumbnail" && !validCameraThumbnail(item)) {
-      throw new BridgeError(400, "invalid_project", "The layout has an invalid camera thumbnail.");
-    }
-    if (isObject(item) && item.type !== "cameraThumbnail" && item.entityId && !validObjectControl(item)) {
-      throw new BridgeError(400, "invalid_project", "The layout has an invalid object control.");
-    }
-  }
-  return value;
+  const problem = dashboardProjectProblem(value, {validCameraThumbnail, validObjectControl});
+  if (problem) throw new BridgeError(400, "invalid_project", problem);
+  return value as LayoutProject;
 }
 
 function decodePng(dataUrl: unknown): Uint8Array {
@@ -310,7 +283,7 @@ async function getConfig(socket: HomeAssistantSocket): Promise<DashboardSnapshot
   }
   // The original Roomcraft Home shell stored its project in the separate Second Floor dashboard.
   if (current && (Object.hasOwn(current, "roomcraft_layout") || Object.hasOwn(current, "roomcraft_plan"))) {
-    if (!Object.hasOwn(current, "roomcraft_plan") || !isLayoutProject(current.roomcraft_layout)) {
+    if (!Object.hasOwn(current, "roomcraft_plan") || !isDashboardLayout(current.roomcraft_layout)) {
       throw new BridgeError(409, "dashboard_changed", "The Roomcraft Home layout or projection is missing.");
     }
     findCard(current);
