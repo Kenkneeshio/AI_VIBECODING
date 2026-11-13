@@ -93,25 +93,30 @@ No credentials, private device values, account identifiers, photos, camera media
 
 ## Verification and release status
 
-The first candidate exposed an Innoflight framing gap on the actual tablet: its authored X position was 1750, while the original synthetic fixture used 2020 and did not reproduce the foreground condo occlusion. The bottom half of the campus was obscured despite the earlier fixture passing. The corrected front preset uses 40° tilt, and a temporary actual-tablet preview showed the complete facade and forecourt. The regression now reproduces the closer placement; 25 focused camera tests passed. The corrected source is frozen, but its full gate, final built fixture, new deployment and exact readback remain pending. The older candidate artifacts below are not the final release.
+The final runtime passed the full release gate and **745 automated tests**: 640 site tests, 67 bridge tests, 30 installer tests and 8 presence tests. [Runtime CI](https://github.com/Kenkneeshio/AI_VIBECODING/actions/runs/43491551297) succeeded. The gate was rerun after the final runtime/documentation freeze to bind the manifest to the source below; this operational evidence is a later documentation update.
 
-The intermediate `b8bfa630` candidate passed the full release gate and **744 automated tests**: 639 site tests, 67 bridge tests, 30 installer tests and 8 presence tests. That candidate’s production-built browser fixture passed all three synthetic front views, two-frontend storage isolation, the real HA Studio bridge, same-parent cache notifications, local save/reload/reset and framed idle wake. A named front view converted to Free retained the fitted 270° azimuth and 50° tilt in the fixture. Delete/Ctrl+Z in the preview dialog, Delete during preview, Escape/Return to overhead, unchanged drafts and absence of physical actions were verified; the browser exception list was empty.
+The production-built browser fixture passed all three front views, two isolated frontend profiles sharing one synthetic HA account, the real Studio iframe bridge, same-parent cache refresh, local save/reload/reset and framed idle wake. Front-view-to-Free conversion retained the fitted 270° azimuth and 50° tilt. Preview dialog Delete/Ctrl+Z, canvas preview Delete/Escape, overhead return and unchanged drafts/device states passed. It recorded no physical actions and no browser exceptions. The gallery above now uses the final built fixture's synthetic captures.
 
-| Artifact or check | Exact evidence / status |
+Actual tablet verification exposed and corrected a gap in the first candidate: Innoflight at authored X=1750 was partly hidden by the condo, while the original fixture at X=2020 missed that occlusion. The updated fixture reproduces the closer placement; the final 40° tilt reveals the full facade and forecourt. Gold Coast retains a narrow foreground wall band below its facade and limited occlusion at the bottom of its driveway. These are real scene occluders, not missing model bounds; framing does not remove foreground geometry.
+
+| Released artifact | Exact evidence |
 | --- | --- |
-| Intermediate candidate source | `b8bfa630814c202e76493119680713268f42053e`; corrected final source pending |
-| Intermediate candidate manifest | `sha256:c10fefd69f6d1556579f2d6f73b55ab1d53d8217110e8f2de54fd8648012e19c`, 434 inputs; replacement pending |
-| Runtime CI | [Intermediate candidate run 43490206233](https://github.com/Kenkneeshio/AI_VIBECODING/actions/runs/43490206233); corrected-release CI pending |
-| Intermediate owner-private Studio | Version 118 published successfully; corrected version pending |
-| Intermediate Site source | `ae7817dc7c1edc0ce9ec7cce8108b140da7db625` |
-| Intermediate Site subset manifest | `sha256:eee3d9c554c4532c7a3c60bee4df0e2462ba370ed54aebab0cfec4cd5c826236`, 315 inputs |
-| Intermediate shared built artifacts | Five Home, bridge, Studio, HTML and CSS files were byte-identical between the candidate runtime and Site builds |
-| HA installation and readback | Corrected installation and exact live asset/project readback pending |
-| Actual wall tablet | Initial cold start, preference migration, Gold Coast and school checks passed; temporary Innoflight 40° preview passed; corrected deployment proof pending |
+| Final runtime source | `5175c61a1385f1e2a9190b5172ea75d3226f2ad2` |
+| Full-project manifest | `sha256:e4820083863987b09e42f241544aa2b9c80018b8be38ef1ae7552e18a7392dd1`, 434 inputs |
+| Runtime CI | [Run 43491551297](https://github.com/Kenkneeshio/AI_VIBECODING/actions/runs/43491551297), successful |
+| HA browser asset revision | `2b81db0d8a554b34` |
+| HA readback | 14 exact asset hashes on both LAN and remote access |
+| Authored data | Eight non-view dashboard fields and all 82 objects preserved |
+| Owner-private Studio | Version 119 published successfully |
+| Site source | `2bf049f03d84f166ff4f34b38ca8bee564808538` |
+| Site subset manifest | `sha256:a07cf2bd3d1daa351b486aaa525d9429e6d00746da03bbb93f9808bde9081ad1`, 315 inputs |
+| Shared built artifacts | Five Home, bridge, Studio, HTML and CSS files are byte-identical between the runtime and Site builds |
 
-The four public gallery images are retained from the preceding correct synthetic source fixture. The earlier built fixture exercised preference isolation and controls but missed the closer Innoflight occlusion; no household media is included. A separate hosted-Site browser inspection has not been claimed. HA publication, exact readback, runtime CI and physical-tablet checks must complete before this release is considered fully verified. The [engineering handoff](engineering-handoff.md) tracks the final operational state.
+The actual 1920 × 1080 wall tablet cold-launched the final build and retained its original local default. All three fronts were selected, captured and visually inspected, with fitted azimuth/tilt verified as Gold Coast 270°/50°, school 90°/58° and Innoflight 270°/40°. The complete Innoflight facade and forecourt were clear. Default was restored after inspection and the temporary debugging forward was removed.
 
-Reproduce targeted checks from `site/`:
+Actual-tablet Save, local preference readback and app cold-restart restoration of a framed Innoflight Default passed on the earlier candidate before the occlusion correction. The original default was then restored, and the final build retained it. The final browser fixture independently rechecked persistence and isolation on the final assets. No actual second phone/laptop test or separate hosted-Site browser inspection is claimed. Private tablet images and recovery records remain outside Git. The [engineering handoff](engineering-handoff.md) identifies this verified release.
+
+Reproduce targeted checks from `site/`, then run the complete [release gate](release-standard.md#deterministic-release-evidence) after any source change:
 
 ```powershell
 node --test tests/storybook-camera.test.mjs tests/storybook-landmark-camera.test.mjs tests/storybook-camera-preferences.test.mjs ha-local/roomcraft-card.test.mjs
@@ -121,9 +126,7 @@ $env:ROOMCRAFT_DEVICE_CAMERA_QA_DIST='1'
 node scripts/verify-device-camera-browser.mjs
 ```
 
-The browser fixture runs two isolated storage contexts using the same synthetic HA account. It uses the production Home card, editor card, iframe bridge and Studio renderer, and rejects HA preference/layout/device writes. Its passing checks cover all three front views, independent saves/reloads, Studio-to-Home local sharing, reset tombstones, framed idle wake and unchanged authored/device data. The camera tests exercise landscape, portrait and ultrawide fitting with real model factories, transformed bounds, target movement/scale/rotation, deterministic output and deleted-target fallback.
-
-Run the complete [release gate](release-standard.md#deterministic-release-evidence) after the last source change; browser assertions alone do not prove publication. Before deployment, preserve protected backups and capture the actual previous revision, then deploy the exact built input set and verify readback and the intended tablet frontend.
+The camera tests use real model factories across landscape, portrait and ultrawide viewports, transformed bounds, target movement/scale/rotation, deterministic output and deleted-target fallback. The browser fixture uses the production Home/editor cards, iframe bridge and Studio renderer against synthetic HA data; it rejects shared preference, layout and physical-device writes. Its closer-landmark regression preserves the tablet-discovered case.
 
 ## Rollback and recovery
 

@@ -1,10 +1,10 @@
 # Changelog
 
-## Landmark front views and frontend-local defaults — 13 November 2026 (release in progress)
+## Landmark front views and frontend-local defaults — 13 November 2026
 
 - Add model-derived front views for the family house, elementary school and office; save any supported view as this frontend's default.
 - Migrate the old HA account default once into each browser/profile/origin/dashboard. Save and reset remain local, with explicit storage failures and a reset tombstone.
-- Add a separate Studio view-preview dialog while retaining overhead editing. The initial candidate passed 744 tests and built fixtures, but tablet verification exposed Innoflight occlusion at a closer placement. A 40° front view and updated regression passed 25 focused tests and a temporary tablet preview; corrected full gates/publication remain pending. Runtime `b8bfa630` and Studio 118 are intermediate candidates. See [Device camera views](docs/device-camera-views.md) for evidence and rollback.
+- Add a separate Studio view-preview dialog while retaining overhead editing. Tablet verification corrected Innoflight occlusion with a 40° front view and closer-placement regression. Final full gates, 745 tests, CI, built browser regressions, exact LAN/remote readback and actual tablet front-view/default checks passed. HA `2b81db0d8a554b34`, private Studio 119; all 82 objects and eight non-view dashboard fields preserved. See [Device camera views](docs/device-camera-views.md) for exact evidence, limits and rollback.
 
 ## Home-first idle camera — 12 November 2026
 
