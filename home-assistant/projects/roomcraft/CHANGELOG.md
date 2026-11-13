@@ -1,10 +1,10 @@
 # Changelog
 
-## Home-first idle camera — 12 November 2026 (release in progress)
+## Home-first idle camera — 12 November 2026
 
 - Add slow automatic scenery visits after 30 seconds without interaction, an instant-start menu action, and browser-local timing settings.
 - Favor active holiday art and current scenery events; return to the saved default between visits and immediately on touch, consuming the wake gesture to protect controls.
-- Reuse existing art and preserve shared layout/device state. Contracts, pending verification, and rollback are tracked in [Idle camera](docs/idle-camera.md); deployment is not yet claimed.
+- Verified 727 tests, full gates, CI, production browser regressions, exact LAN/remote readback and actual tablet idle/touch behavior. Corrected a tablet queued-frame race and devices-drawer blocking before closure. HA `ee1b46eac2eb8d12`, private Studio 117; all 82 objects and preferences preserved. See [Idle camera](docs/idle-camera.md) for contracts, evidence and rollback.
 
 ## Living world and marine wildlife — 12 November 2026
 

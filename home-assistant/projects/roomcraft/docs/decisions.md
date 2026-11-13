@@ -2,7 +2,7 @@
 
 ## Let idle discovery change only temporary camera framing
 
-Use a pure explicit-time director and a separate Home browser adapter. Select weighted subjects from actual active scene modules; snapshot each destination, travel slowly and return to the saved default between visits. Consume the entire first wake gesture before resuming normal controls. Roomcraft menus/dialogs, previews, held gestures and reduced motion block movement. Keep timing preferences local to each screen and leave layout, device state and art ownership unchanged. Reuse the existing scene instead of creating a second renderer or a fake-state demo. See [Idle camera](idle-camera.md) for acceptance, contracts and pending release evidence.
+Use a pure explicit-time director and a separate Home browser adapter. Select weighted subjects from actual active scene modules; snapshot each destination, travel slowly and return to the saved default between visits. Consume the entire first wake gesture before resuming normal controls. Roomcraft menus/dialogs, previews, held gestures and reduced motion block movement. Keep timing preferences local to each screen and leave layout, device state and art ownership unchanged. Reuse the existing scene instead of creating a second renderer or a fake-state demo. Clamp queued-frame samples after current input time and use the devices drawer’s public portal state. These boundaries prevent tablet timing races and background movement behind controls. See [Idle camera](idle-camera.md) for acceptance, contracts and completed release evidence.
 
 ## Make variety bounded, editable and truthful
 

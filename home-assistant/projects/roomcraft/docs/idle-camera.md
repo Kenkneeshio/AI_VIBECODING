@@ -72,11 +72,28 @@ No layout/schema migration, Home Assistant project write, entity binding change,
 
 Preferences use `roomcraft.idle-camera.v1` in local storage and do not synchronize between displays. The feature records no touch history or occupancy history. It does not transmit its selected subjects or operate Home Assistant services. Decorative landmark people and animals remain illustrations, not reports of real people or wildlife. Actual controls continue to use their existing state/action contracts.
 
-## Verification and release status
+## Verification and release evidence
 
-The first complete build passed 726 automated tests, CI and production-built browser checks, but actual-tablet verification then exposed a queued-frame timestamp race that cancelled instant starts. The browser adapter was corrected, and review also repaired devices-drawer portal blocking. The corrected source must pass the full gate, built regressions and actual-tablet check before closure.
+The final runtime is `bab951aaf5eda8d1a66824f4e20a238535d6054f`, Home Assistant resource `ee1b46eac2eb8d12`, and owner-private Studio **117**. The final source passed the complete release gate and [GitHub CI](https://github.com/Kenkneeshio/AI_VIBECODING/actions/runs/43373029758).
 
-Focused interest-selector tests passed **6/6**, including a real world-moment sampler fixture for day/night, severe weather and category gates; focused ESLint and whitespace checks passed. An initial source-bundled browser check has passed. Expanded wake regressions, the production-built browser check, the complete exact-revision release gate, deployment/readback, CI and actual-tablet verification remain pending at this documentation checkpoint. No deployed version is claimed here; final operational evidence belongs in the [engineering handoff](engineering-handoff.md).
+| Check | Observed result |
+| --- | --- |
+| Dependency installation | `npm ci --no-audit --no-fund` passed; lockfile unchanged |
+| Architecture and deterministic release | Pure director/selector boundaries, required imports, release verification and manifest readback passed |
+| Automated suites | **727 passed**: 623 Site, 66 bridge/weather, 30 installer and 8 presence |
+| Types, lint, build, whitespace | Passed; existing lint/framework warnings remain non-blocking |
+| Exact production browser artifact | Real RAF and timers; actual 30-second idle/fresh-touch deadline; gradual framing; exact saved-free-default restoration; no browser errors |
+| Wake and lifecycle regressions | Tap, assistive click, 1.8-second hold, two contacts, stale queued RAF, body-portal drawer, Roomcraft dialogs, demo and reduced-motion checks passed |
+| Settings | Browser-local Save, disabled-auto/manual override and fresh page reload passed; 390 × 844 phone dialog fitted without overflow |
+| HA readback | All 14 selected assets matched built bytes over LAN and remote access; exact resource registrations and Home/Studio/Controls views verified |
+| Authored data | All eight non-view dashboard fields matched the pre-release backup, retaining all 82 objects and existing preferences |
+| Site publication | Version 117 succeeded; owner-only audience preserved; bridge, Live, Studio and HTML bytes matched the main build |
+| Actual wall tablet | Trusted ADB and Companion HOME alias confirmed; cold launch at 1920 × 1080, instant slow pan, touch return, pre-timeout home, automatic idle after 30 seconds, exact default restoration, devices-drawer blocker and settings fit verified |
+| Device safety | Browser fixture issued no services or layout writes; tablet checks used only presentation/menu actions |
+
+Actual-tablet verification exposed a queued animation-frame timestamp older than a newly handled button tap. That reset the pure director and cancelled instant start. The adapter now samples no earlier than current monotonic time. Review also found that the devices drawer lives in a body portal while its launcher stays hidden; the bridge now exposes public `isOpen`. Both regressions passed again in the production-built fixture and on the tablet. This is why source/browser evidence alone is not considered deployment proof.
+
+The full project manifest is `sha256:b1313a37646cbdd863c79257501c6f7752fc5cecbb55d3a9a229e6928dfff8ec` (422 inputs). The Site subset manifest is `sha256:c67a297827d2757626850e46cbaeba15b7ae442c664e456111aa5221815ec774` (308 inputs). Site source is `db2f2209e0769d20d0aaa4f76a019e9b6625ddd6`; deployment is `appgdep_6af6a29a76e08191a574487059c5e076`. This post-deployment documentation records those verified runtime inputs; it is not a claim that the documentation follow-up was the deployed runtime.
 
 Reproduce the targeted checks from `site/`:
 
@@ -88,10 +105,8 @@ $env:ROOMCRAFT_IDLE_CAMERA_QA_DIST='1'
 node scripts/verify-idle-camera-browser.mjs
 ```
 
-Director tests cover the real 30-second boundary in explicit-time samples, instant start, smooth outbound/return interpolation, the home interval, blocked/reduced-motion states, deterministic weighting, stable destinations, invalid inputs and clock rollback. The browser fixture uses the real Home card and animation scheduler against synthetic in-memory HA data. Its intended assertions cover the real inactivity wait, fresh-touch reset, slow camera framing, saved-default restoration, touch/assistive/long-press/multi-touch isolation, blockers, phone dialog fit, and absence of device or layout writes. Test assertions are not deployment evidence.
-
-Run the complete [release gate](release-standard.md#deterministic-release-evidence) after the final source change. Before live publication, preserve the current asset/dashboard backup, bind the exact source to its manifest, deploy, read back the assets and verify the wall tablet. Verify that the first touch restores home without a service call and a subsequent deliberate control touch works as expected using a safe fixture or non-actuating inspection.
+Run the complete [release gate](release-standard.md#deterministic-release-evidence) for source changes. The public phone image uses synthetic fixture data. Private tablet captures, exact timer/default assertions, backups and readback details are indexed by the protected `roomcraft-idle-release-20261112.json` operation record. No private media or household state was committed. No separate hosted-Site visual browser check or tablet reboot test was performed in this release; successful Site publication and actual Companion cold launch are the checks claimed here.
 
 ## Rollback
 
-Turn **Automatic idle view** off for an immediate browser-local stop, or enable **Reduce motion**. Software rollback reinstalls the previous verified Roomcraft runtime/assets and resource revision using the [deployment recovery procedure](deployment.md). This feature needs no authored-layout rollback because it does not write the layout. The preceding verified runtime is recorded in [Living world](living-world.md#verification-and-release-evidence); the release owner must capture the actual pre-install revision and protected backup before deploying this change. Hosted Studio publication, HA installation and tablet verification remain separate release surfaces.
+Turn **Automatic idle view** off for an immediate browser-local stop, or enable **Reduce motion**. To restore the pre-idle software, rebuild/reinstall verified source `442666f6def0269c0923b0ad1cdd9d81d15f9fe3` and restore HA resource `ec407312d1d413aa` through the [deployment recovery procedure](deployment.md); restore owner-private Site version **115** separately. The protected operation record points to the original pre-idle dashboard backup, the correction-install backup and private visual evidence. No authored-layout rollback is normally needed because this feature does not write it. Retain browser preferences unless the user asks to reset them.
