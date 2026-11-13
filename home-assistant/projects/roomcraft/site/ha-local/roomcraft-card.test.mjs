@@ -5,6 +5,7 @@ import test from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {buildSync} from 'esbuild';
 import {storybookPreview} from './storybook-state.mjs';
+import {cameraPreferencesKey} from './storybook-camera-preferences.mjs';
 import {invalidStructureProjects, validStructureProject} from '../tests/structure-safety-fixtures.mjs';
 
 const {outputFiles: [{text: code}]} = buildSync({
@@ -1700,19 +1701,19 @@ test('iframe permits an appearance read and only accepts the expected Home Assis
   assert.deepEqual(await task, reply.data);
 });
 
-test('Studio and live view share the signed-in camera preference without touching layout storage', async () => {
+test('Studio and Live share this frontend default, migrate once, and never write the HA user default', async () => {
   const requests = [];
   const replies = [];
-  let stored = null;
+  const legacy = { preset: 'free', azimuth: 22, tilt: 31, zoom: 1.1 };
+  localStorageValues.delete(cameraPreferencesKey('second-floor'));
   const session = {
     connected: true,
     user: { is_admin: false },
     callWS: async request => {
       requests.push(request);
       assert.equal(request.key, 'roomcraft_default_camera_v1:second-floor');
-      if (request.type === 'frontend/set_user_data') stored = request.value;
-      else if (request.type === 'frontend/get_user_data') return { value: stored };
-      else assert.fail('Camera preferences must only use user data');
+      if (request.type === 'frontend/get_user_data') return { value: legacy };
+      assert.fail('Camera preferences must never write HA user data or the layout');
     },
   };
   const iframe = { postMessage: reply => replies.push(reply) };
@@ -1730,12 +1731,36 @@ test('Studio and live view share the signed-in camera preference without touchin
   await send('CAMERA_SET', { ...view, tilt: 89 });
   assert.equal(replies.at(-1).ok, false);
   assert.equal(requests.length, 0);
+  await send('CAMERA_GET');
+  assert.deepEqual({ ...replies.at(-1).data },legacy);
+  assert.equal(requests.length,1,'the first read snapshots the legacy value into this frontend');
   await send('CAMERA_SET', { ...view, unrelated: 'discard' });
   assert.equal(replies.at(-1).ok, true);
   assert.deepEqual({ ...await Card.readStartupView(session, 'second-floor') }, view);
   await Card.writeStartupView(session, 'second-floor', null);
   await send('CAMERA_GET');
   assert.equal(replies.at(-1).data, null);
+  assert.equal(requests.length,1,'save, Live read and reset are browser-local');
+  assert.equal(localStorageValues.get(cameraPreferencesKey('second-floor')),'null');
+  assert.deepEqual(legacy,{ preset: 'free', azimuth: 22, tilt: 31, zoom: 1.1 });
+});
+
+test('the parent bridge reports blocked local storage as failure without a global fallback write', async () => {
+  const previous=context.window.localStorage;
+  const replies=[], requests=[];
+  const iframe={postMessage:reply => replies.push(reply)};
+  const card=new Card();card._iframe={contentWindow:iframe};
+  card.hass={connected:true,callWS:async request => {requests.push(request);assert.fail('Storage failure must not write HA');}};
+  context.window.localStorage={getItem(){throw Error('blocked');},setItem(){throw Error('blocked');}};
+  try {
+    for (const [method,payload] of [['CAMERA_GET',undefined],['CAMERA_SET',{preset:'free',azimuth:10,tilt:20,zoom:1}],['CAMERA_SET',null]]) {
+      await card._onMessage({source:iframe,origin:context.location.origin,
+        data:{channel:'roomcraft-ha',kind:'request',id:1,method,payload}});
+      assert.equal(replies.at(-1).ok,false);
+      assert.match(replies.at(-1).error,/could not be stored in this browser/);
+    }
+    assert.equal(requests.length,0);
+  } finally {context.window.localStorage=previous;}
 });
 
 test('embedded editor returns to the dashboard through the signed-in Home Assistant router', async () => {

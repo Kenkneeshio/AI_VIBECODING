@@ -21,7 +21,8 @@ import { garagePadContains, isStorybookBlind, makeStorybookDevice } from './stor
 import { compileFloorStructure, compileWallStructure, isOutdoorRoom } from './storybook-structure.mjs';
 import { createStorybookLighting } from './storybook-lighting.mjs';
 import { createStorybookSolarFade, storybookSolar } from './storybook-solar.mjs';
-import { fitStorybookCamera, normalizeCameraView, storybookHorizonFog, STORYBOOK_CAMERA_FAR } from './storybook-camera.mjs';
+import { fitStorybookCamera, normalizeCameraView, cameraFramePreset, storybookHorizonFog, STORYBOOK_CAMERA_FAR } from './storybook-camera.mjs';
+import {storybookLandmarkCameraFrames, LANDMARK_CAMERA_TYPES} from './storybook-landmark-camera.mjs';
 import { applyModelHeight } from './storybook-size.mjs';
 import { createStorybookPeople, STORYBOOK_PERSON_RADIUS } from './storybook-people.mjs';
 import {applyVacuumAlignment} from './storybook-vacuum-alignment.mjs';
@@ -1434,6 +1435,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   let inSceneryView;
   let cameraView = normalizeCameraView();
   let cameraFraming;
+  let landmarkCameraFrames;
   const raycaster = new THREE.Raycaster();
   const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   const projected = new THREE.Vector3();
@@ -1442,7 +1444,9 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     inSceneryView = limitOffscreenScenery && currentWidth > 0 && currentHeight > 0 ? storybookSceneryView(camera) : undefined;
   }
   function updateCamera() {
-    fitStorybookCamera(camera, cameraFraming?.bounds ?? cameraBounds, currentWidth, currentHeight, cameraView, cameraFraming);
+    landmarkCameraFrames ??= storybookLandmarkCameraFrames(plan.placements, roots);
+    cameraBounds.frames = {...coastalFrames, ...landmarkCameraFrames};
+    cameraView = fitStorybookCamera(camera, cameraFraming?.bounds ?? cameraBounds, currentWidth, currentHeight, cameraView, cameraFraming);
     updateSceneryView();
     const haze = storybookHorizonFog(cameraView.tilt);
     scene.fog = haze ? horizonFog : null;
@@ -1728,6 +1732,10 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
       object.root.position.z = z;
       object.animate?.(state, object.ambientMotion ? time : telemetryTime, hasTracking, transientTelemetry);
     }
+    if (placementChanged) {
+      landmarkCameraFrames=undefined;
+      if(Object.hasOwn(LANDMARK_CAMERA_TYPES,cameraFramePreset(cameraView))&&currentWidth>0&&currentHeight>0)updateCamera();
+    }
     for (const [id, {life, item}] of landmarkLife) {
       life.root.position.copy(roots.get(id).root.position);
       life.update({elapsedSeconds:timeSeconds, night:environment.night === true, reducedMotion:reduceMotion,
@@ -1762,7 +1770,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     } else livePeople.setTracks(tracks, timeSeconds, options);
   }
   function anchor(itemId) {
-    if (Object.hasOwn(coastalFrames, cameraView.preset)) return null;
+    if (Object.hasOwn(cameraBounds.frames ?? {}, cameraFramePreset(cameraView))) return null;
     const entry = anchors.get(itemId);
     if (!entry || currentWidth < 1 || currentHeight < 1) return null;
     const { x, z, baseY, object } = entry;

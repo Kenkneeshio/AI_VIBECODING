@@ -125,7 +125,7 @@ test('browser Studio saves the exact Free view pose across reload and clears it 
   await studioCameraPreferences(host).write(null);
   assert.equal(await studioCameraPreferences(host).read(), null);
   assert.equal(readSavedFreeView({preset: 'free', tilt: 31, zoom: 1}), null);
-  assert.equal(readSavedFreeView(topView), null);
+  assert.deepEqual(readSavedFreeView(topView), topView);
 });
 
 test('signed-in Studio uses only its Home Assistant bridge for camera preferences', async () => {

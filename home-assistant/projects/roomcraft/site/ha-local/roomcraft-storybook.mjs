@@ -12,6 +12,7 @@ import {createStorybookNarrator} from './storybook-demo-narration.mjs';
 import {bindSnapshotDialog, SNAPSHOT_DIALOG_MARKUP} from './storybook-snapshots.mjs';
 import {enterFreeView, normalizeCameraView, populateCameraOptions, readSavedFreeView, resolveDefaultCameraView, storybookCameraTileSize} from './storybook-camera.mjs';
 import {bindIdleCamera} from './storybook-idle-runtime.mjs';
+import {CAMERA_PREFERENCE_EVENT,cameraPreferencesKey} from './storybook-camera-preferences.mjs';
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
 import {placeStorybookDetails, placeStorybookTargets, readStorybookConfig, storybookFrame, storybookPreview} from './storybook-state.mjs';
 import {storybookWeather, storybookWeatherMarkup, storybookWeatherStyles, updateStorybookWeather} from './storybook-weather.mjs';
@@ -335,8 +336,8 @@ class RoomcraftStorybookCard extends HTMLElement {
                     <button type="button" data-camera="in">Zoom in</button>
                   </div>
                   <button type="button" data-camera="reset">Reset to Top down</button>
-                  <button type="button" data-camera="save-default" hidden>Save as default</button>
-                  <button type="button" data-camera="clear-default" hidden>Use Top down as default</button>
+                  <button type="button" data-camera="save-default" hidden>Save as this device’s default</button>
+                  <button type="button" data-camera="clear-default" hidden>Use Top down on this device</button>
                 </section>
                 <section class="menu-group" aria-label="Manage">
                   <p class="menu-heading" aria-hidden="true">Manage</p>
@@ -585,15 +586,15 @@ class RoomcraftStorybookCard extends HTMLElement {
     populateCameraOptions(this.viewSelect);
     this.viewSelect.addEventListener('change', () => {
       const preset = this.viewSelect.value;
-      this.changeView(preset === 'free' ? enterFreeView(this.cameraView) : preset);
+      this.changeView(preset === 'free' ? enterFreeView(this.scene?.getView() ?? this.cameraView) : preset);
       this.setMainMenu(false, true);
     });
     for (const button of this.shadowRoot.querySelectorAll('[data-camera]')) {
       button.addEventListener('click', () => {
-        const current = this.cameraView;
+        const current = this.scene?.getView() ?? this.cameraView;
         switch (button.dataset.camera) {
-          case 'left': this.changeView({...current, azimuth: current.azimuth - 15}); break;
-          case 'right': this.changeView({...current, azimuth: current.azimuth + 15}); break;
+          case 'left': this.changeView({...enterFreeView(current), azimuth: current.azimuth - 15}); break;
+          case 'right': this.changeView({...enterFreeView(current), azimuth: current.azimuth + 15}); break;
           case 'out': this.changeView({...current, zoom: current.zoom - .15}); break;
           case 'in': this.changeView({...current, zoom: current.zoom + .15}); break;
           case 'reset':
@@ -601,7 +602,7 @@ class RoomcraftStorybookCard extends HTMLElement {
             this.setMainMenu(false, true);
             break;
           case 'save-default':
-            if (current.preset === 'free') this.saveStartupView(current);
+            this.saveStartupView(current);
             this.setMainMenu(false, true);
             break;
           case 'clear-default':
@@ -641,6 +642,12 @@ class RoomcraftStorybookCard extends HTMLElement {
       }
       this.refresh();
     });
+    this.onCameraPreferenceChange = event => {
+      if(event.type==='storage' ? event.key!==cameraPreferencesKey(this.dashboard) : event.detail?.dashboard!==this.dashboard)return;
+      if(this.startupViewRequest)return;
+      if(this.cameraView.preset==='default'||this.idleCamera?.getState().active)this.cameraChanged=false;
+      this.idleCamera?.touch();this.startupViewRead=false;this.loadStartupView();
+    };
     this.onVisibility = () => {
       this.idleCamera?.reset();
       this.heatMap.sync();
@@ -914,6 +921,8 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   connectedCallback() {
     this.idleCamera.connect();
+    window.addEventListener(CAMERA_PREFERENCE_EVENT,this.onCameraPreferenceChange);
+    window.addEventListener('storage',this.onCameraPreferenceChange);
     this.displaySettings.connect();
     this.watchPublishedLayout();
     this.onObjectDetailsChange ??= () => this.syncObjectDetails();
@@ -940,6 +949,8 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   disconnectedCallback() {
     this.idleCamera.disconnect();
+    window.removeEventListener(CAMERA_PREFERENCE_EVENT,this.onCameraPreferenceChange);
+    window.removeEventListener('storage',this.onCameraPreferenceChange);
     this.holidayPanel.close();
     this.worldLifePanel.close();
     this.displaySettings.disconnect();
@@ -1138,7 +1149,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   updateDefaultViewButtons() {
     const available = Boolean(this.scene) && Boolean(this.session?.connected);
     this.demoButton.disabled = !this.scene || Boolean(this.startupViewRequest);
-    this.saveDefaultButton.hidden = !this.scene || this.cameraView.preset !== 'free';
+    this.saveDefaultButton.hidden = !this.scene;
     this.clearDefaultButton.hidden = !this.scene || !this.savedStartupView;
     this.saveDefaultButton.disabled = this.clearDefaultButton.disabled =
       !available || Boolean(this.startupViewRequest);
@@ -1177,9 +1188,9 @@ class RoomcraftStorybookCard extends HTMLElement {
       if (this.startupViewRequest !== request) return;
       this.savedStartupView = readSavedFreeView(saved);
       if (!view) this.changeView('default');
-      this.defaultStatus.textContent = view ? 'Default view saved' : 'Top down is the default';
+      this.defaultStatus.textContent = view ? 'Default saved for this device' : 'This device uses Top down';
     } catch {
-      if (this.startupViewRequest === request) this.defaultStatus.textContent = 'Could not save default view';
+      if (this.startupViewRequest === request) this.defaultStatus.textContent = 'Could not save on this device. Check browser storage.';
     } finally {
       if (this.startupViewRequest === request) {
         this.startupViewRequest = undefined;

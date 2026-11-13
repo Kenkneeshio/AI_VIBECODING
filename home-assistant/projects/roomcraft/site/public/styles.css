@@ -169,6 +169,13 @@ body.dashboard-transfer-busy .workbench{cursor:progress}body.dashboard-transfer-
 .viewport.scene-3d #planCanvas{height:1024px}
 .viewport.scene-3d .mini-help{white-space:normal;max-width:calc(100% - 30px);text-align:center}
 .studio-save{background:#315c44;flex:none}
+.studio-camera-dialog label{display:block;margin:12px 0 6px;font-size:13px;font-weight:700}
+.studio-camera-actions{display:grid;gap:8px;margin-top:14px}
+.studio-camera-actions button{min-height:44px;white-space:normal}
+.studio-camera-banner{position:absolute;z-index:8;top:12px;left:50%;transform:translateX(-50%);display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;padding:8px 10px;border:1px solid #c9d7c1;border-radius:12px;background:#fffaf1f2;box-shadow:0 5px 20px #152b2833;max-width:calc(100% - 24px);width:max-content;font:12px system-ui;color:#304438;pointer-events:auto}
+.studio-camera-banner[hidden]{display:none}
+.studio-camera-banner button{min-height:40px;border:1px solid #aebfa8;border-radius:8px;background:#f1f5e9;color:inherit;font:inherit;padding:5px 10px;cursor:pointer}
+.viewport[data-camera-preview] :is(#planCanvas,.scene-placeholders,.scene-placeholder-leaders,.terrain-brush-overlay,.mini-help){visibility:hidden}
 .studio-save:hover:not(:disabled){background:#244e36}
 .studio-save:disabled,.back-dashboard-button:disabled{opacity:.6;cursor:wait}
 @media(max-width:620px){

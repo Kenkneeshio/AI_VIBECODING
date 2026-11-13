@@ -1,26 +1,12 @@
 import * as THREE from 'three';
-
-const cameraPreset = (label, azimuth, tilt) => Object.freeze({label, azimuth, tilt, zoom: 1});
-const PRESET_TILT_LIMIT = 65;
-export const FREE_VIEW_TILT_LIMIT = 88;
+import {createCameraPreferences} from './storybook-camera-preferences.mjs';
+import {CAMERA_PRESETS, PRESET_TILT_LIMIT, normalizeCameraView, readSavedFreeView,
+  cameraFramePreset} from './storybook-camera-views.mjs';
+export {CAMERA_PRESETS, FREE_VIEW_TILT_LIMIT, normalizeCameraView, readSavedFreeView,
+  readStoredCameraView, resolveDefaultCameraView, enterFreeView, cameraFramePreset} from './storybook-camera-views.mjs';
 export const STORYBOOK_CAMERA_FAR = 4400;
 const CAMERA_DISTANCE = 1900;
 const SCENERY_FLOOR = -111;
-
-export const CAMERA_PRESETS = Object.freeze({
-  default: cameraPreset('Default', 0, 0),
-  top: cameraPreset('Top down', 0, 0),
-  high: cameraPreset('High angle', 0, 15),
-  dollhouse: cameraPreset('Dollhouse', 2, 30),
-  corner: cameraPreset('Corner', 45, 40),
-  north: cameraPreset('From north', 180, 42),
-  east: cameraPreset('From east', 90, 42),
-  south: cameraPreset('From south', 0, 42),
-  west: cameraPreset('From west', 270, 42),
-  waterfront: cameraPreset('Waterfront · La Jolla Cove', 206, 50),
-  shores: cameraPreset('La Jolla Shores', 152, 49),
-  free: cameraPreset('Free view', 0, 25),
-});
 
 /** Keep the same preset labels and order in the dashboard and Studio. */
 export function populateCameraOptions(select, includePlan = false) {
@@ -35,37 +21,6 @@ export function populateCameraOptions(select, includePlan = false) {
   select.replaceChildren(...options);
   select.value = 'default';
   select.disabled = false;
-}
-
-/** A camera preference is presentation data and never rewrites layout coordinates. */
-export function normalizeCameraView(value = 'top') {
-  const input = typeof value === 'string' ? {preset: value} : value ?? {};
-  const preset = Object.hasOwn(CAMERA_PRESETS, input.preset) ? input.preset : 'top';
-  const base = CAMERA_PRESETS[preset];
-  const azimuth = Number.isFinite(input.azimuth) ? input.azimuth : base.azimuth;
-  const maxTilt = preset === 'free' || preset === 'default' ? FREE_VIEW_TILT_LIMIT : PRESET_TILT_LIMIT;
-  return {
-    preset,
-    azimuth: ((azimuth % 360) + 360) % 360,
-    tilt: Number.isFinite(input.tilt) ? THREE.MathUtils.clamp(input.tilt, 0, maxTilt) : base.tilt,
-    zoom: Number.isFinite(input.zoom) ? THREE.MathUtils.clamp(input.zoom, 0.6, 2.5) : base.zoom,
-  };
-}
-
-export function enterFreeView(value) {
-  const current = normalizeCameraView(value);
-  return {...current, preset: 'free', tilt: current.tilt || CAMERA_PRESETS.free.tilt};
-}
-
-/** The startup view can be cleared, or store one exact Free view pose. */
-export function readSavedFreeView(value) {
-  if (value?.preset !== 'free' || ![value.azimuth, value.tilt, value.zoom].every(Number.isFinite)) return null;
-  return normalizeCameraView(value);
-}
-
-/** Select the saved angle or the overhead fallback without entering Free view. */
-export function resolveDefaultCameraView(saved) {
-  return normalizeCameraView({...readSavedFreeView(saved), preset: 'default'});
 }
 
 /** Fade the distant ground and ocean before their mesh edges enter a shallow orbit. */
@@ -94,22 +49,24 @@ export function studioCameraPreferences(host) {
       write: view => bridge.request('CAMERA_SET', view),
     };
   }
-  const key = 'roomcraft.default-camera.v1';
-  return {
-    async read() { return readSavedFreeView(JSON.parse(host.localStorage.getItem(key))); },
-    async write(view) {
-      if (view) host.localStorage.setItem(key, JSON.stringify(view));
-      else host.localStorage.removeItem(key);
-    },
-  };
+  return createCameraPreferences({host,dashboard:'roomcraft-home',
+    readLegacy:()=>JSON.parse(host.localStorage.getItem('roomcraft.default-camera.v1'))});
 }
 
 /** Fit one authored bounding box at an explicit viewport and orthographic pose. */
 export function fitStorybookCamera(camera, bounds, width, height, view = 'top', {focus, demoZoom} = {}) {
   const normalized = normalizeCameraView(view);
-  const coastFrame = bounds?.coastalFrames?.[normalized.preset] ??
-    (normalized.preset === 'waterfront' ? bounds?.waterfront : undefined);
-  if (coastFrame) bounds = coastFrame;
+  const framePreset = cameraFramePreset(normalized) ?? normalized.preset;
+  const subjectFrame = bounds?.frames?.[framePreset] ?? bounds?.coastalFrames?.[framePreset] ??
+    (framePreset === 'waterfront' ? bounds?.waterfront : undefined);
+  if (subjectFrame) {
+    bounds = subjectFrame;
+    // Named front views, including a saved named Default, follow authored rotation.
+    // A Free view's Default preserves its exact angle and current target bounds.
+    if ((normalized.preset === framePreset || normalized.followFront) && Number.isFinite(subjectFrame.azimuth)) {
+      normalized.azimuth = subjectFrame.azimuth;
+    }
+  }
   if (![bounds?.minX, bounds?.maxX, bounds?.minZ, bounds?.maxZ, width, height].every(Number.isFinite) ||
       width <= 0 || height <= 0 || bounds.maxX < bounds.minX || bounds.maxZ < bounds.minZ) {
     throw new Error('A finite scene bounding box and viewport are required.');
@@ -127,7 +84,7 @@ export function fitStorybookCamera(camera, bounds, width, height, view = 'top', 
   camera.lookAt(center);
   camera.updateMatrixWorld(true);
 
-  const coastal = coastFrame && Number.isFinite(bounds.minY) && Number.isFinite(bounds.maxY);
+  const coastal = subjectFrame && Number.isFinite(bounds.minY) && Number.isFinite(bounds.maxY);
   const lowerY = coastal ? bounds.minY : SCENERY_FLOOR;
   const upperY = coastal ? bounds.maxY : Math.max(92, Number.isFinite(bounds.maxY) ? bounds.maxY : 92);
   const frame = new THREE.Box3();

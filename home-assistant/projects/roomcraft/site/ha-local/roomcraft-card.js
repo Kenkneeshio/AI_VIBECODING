@@ -1,6 +1,7 @@
 import {keepPreviousDashboardDesign, stableDashboardJson as stableStringify} from './dashboard-snapshots.mjs';
 import {dashboardProjectProblem, normalizeDashboardTerrain} from './dashboard-project.mjs';
-import {FREE_VIEW_TILT_LIMIT} from './storybook-camera.mjs';
+import {readStoredCameraView} from './storybook-camera-views.mjs';
+import {createCameraPreferences, legacyCameraPreferencesKey} from './storybook-camera-preferences.mjs';
 import {storybookLightControlLabels} from './storybook-state.mjs';
 import {loadVacuumMap} from './storybook-vacuum-map.mjs';
 import {vacuumMapMetadata} from './storybook-vacuum-alignment.mjs';
@@ -422,33 +423,25 @@ function decodePng(dataUrl) {
 
 class RoomcraftEditorCard extends HTMLElement {
   static startupViewKey(dashboard) {
-    // Existing Home Assistant users saved this preference before Home and Studio were combined.
-    return `roomcraft_default_camera_v1:${dashboard === HOME_DASHBOARD ? DASHBOARD : dashboard}`;
+    // Read-only legacy migration key. New preferences belong to this frontend.
+    return legacyCameraPreferencesKey(dashboard);
   }
 
   static async readStartupView(hass, dashboard) {
-    const { value } = await hass.callWS({
-      type: 'frontend/get_user_data', key: this.startupViewKey(dashboard),
-    });
-    return this.validStartupView(value) ? value : null;
+    return createCameraPreferences({host:window, dashboard, readLegacy:async () => {
+      const {value} = await hass.callWS({
+        type:'frontend/get_user_data', key:this.startupViewKey(dashboard),
+      });
+      return value;
+    }}).read();
   }
 
-  static async writeStartupView(hass, dashboard, view) {
-    if (view !== null && !this.validStartupView(view)) throw new Error('Invalid Free view.');
-    const value = view === null ? null : {
-      preset: 'free', azimuth: view.azimuth, tilt: view.tilt, zoom: view.zoom,
-    };
-    await hass.callWS({
-      type: 'frontend/set_user_data', key: this.startupViewKey(dashboard), value,
-    });
-    return value;
+  static async writeStartupView(_hass, dashboard, view) {
+    return createCameraPreferences({host:window, dashboard}).write(view);
   }
 
   static validStartupView(view) {
-    return isObject(view) && view.preset === 'free' &&
-      [view.azimuth, view.tilt, view.zoom].every(Number.isFinite) &&
-      view.azimuth >= 0 && view.azimuth < 360 && view.tilt >= 0 && view.tilt <= FREE_VIEW_TILT_LIMIT &&
-      view.zoom >= 0.6 && view.zoom <= 2.5;
+    return readStoredCameraView(view) !== null;
   }
 
   constructor() {

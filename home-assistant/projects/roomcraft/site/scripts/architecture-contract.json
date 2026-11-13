@@ -15,6 +15,7 @@
   ],
   "pureRoots": [
     "public/engine/",
+    "ha-local/storybook-camera-views.mjs",
     "ha-local/storybook-idle-camera.mjs",
     "ha-local/storybook-idle-interests.mjs"
   ],
@@ -85,6 +86,21 @@
     "app/api/dashboard/route.ts"
   ],
   "requiredImports": [
+    {
+      "from": "ha-local/roomcraft-card.js",
+      "to": "ha-local/storybook-camera-preferences.mjs",
+      "reason": "Live and embedded Studio save defaults on the same frontend"
+    },
+    {
+      "from": "ha-local/storybook-camera-preferences.mjs",
+      "to": "ha-local/storybook-camera-views.mjs",
+      "reason": "Device storage uses the renderer-independent camera contract"
+    },
+    {
+      "from": "ha-local/storybook-scene.mjs",
+      "to": "ha-local/storybook-landmark-camera.mjs",
+      "reason": "Named front views follow the actual authored landmark geometry"
+    },
     {
       "from": "ha-local/roomcraft-storybook.mjs",
       "to": "ha-local/storybook-idle-runtime.mjs",

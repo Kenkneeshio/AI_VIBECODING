@@ -1,5 +1,11 @@
 # Changelog
 
+## Landmark front views and frontend-local defaults — 13 November 2026 (release in progress)
+
+- Add model-derived front views for the family house, elementary school and office; save any supported view as this frontend's default.
+- Migrate the old HA account default once into each browser/profile/origin/dashboard. Save and reset remain local, with explicit storage failures and a reset tombstone.
+- Add a separate Studio view-preview dialog while retaining overhead editing. See [Device camera views](docs/device-camera-views.md) for contracts and pending verification; deployment is not yet claimed.
+
 ## Home-first idle camera — 12 November 2026
 
 - Add slow automatic scenery visits after 30 seconds without interaction, an instant-start menu action, and browser-local timing settings.

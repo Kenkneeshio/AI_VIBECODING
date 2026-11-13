@@ -7,6 +7,7 @@ import {mountStorybookStudioLook} from './storybook-studio-look.mjs';
 import {mountRadarCalibration} from './storybook-calibration-panel.mjs';
 import {mountVacuumAlignment} from './storybook-vacuum-alignment-panel.mjs';
 import {mountStorybookTerrainEditor} from './storybook-terrain-editor.mjs';
+import {mountStudioCamera} from './storybook-studio-camera.mjs';
 
 const SELECT_RADIUS = 22;
 const AMBIENT_FRAME_INTERVAL = 1000 / 12;
@@ -92,6 +93,7 @@ export function mountStorybookEditor(document, host) {
   let view = normalizeCameraView('top');
   let focus;
   let worldLifePreview, worldLifeReturn;
+  let cameraViews, cameraPreviewReturn;
   let active = true;
   let guideProjection;
   let draftPositions;
@@ -121,7 +123,24 @@ export function mountStorybookEditor(document, host) {
   };
   const terrain = mountStorybookTerrainEditor(document, host, {api, viewport, canvas, pointerPoint,
     getScene: () => scene, getProjection: () => guideProjection});
+  cameraViews=mountStudioCamera(document,host,{
+    getView:()=>scene?.getView()??{...view},
+    preview:next=>{
+      if(worldLifePreview)previewWorldLife(null);
+      if(!cameraPreviewReturn)cameraPreviewReturn={view:{...view},focus:focus&&{...focus},
+        panels:[...document.querySelectorAll('.left-panel,.right-panel,.canvas-toolbar')].map(el=>[el,el.inert])};
+      for(const [el] of cameraPreviewReturn.panels)el.inert=true;
+      viewport.setAttribute('data-camera-preview','');view=next;focus=undefined;updateCamera();draw();
+    },
+    finish:()=>{
+      if(!cameraPreviewReturn)return;
+      view=cameraPreviewReturn.view;focus=cameraPreviewReturn.focus;
+      for(const [el,inert] of cameraPreviewReturn.panels)el.inert=inert;
+      cameraPreviewReturn=undefined;viewport.removeAttribute('data-camera-preview');guideProjection=undefined;updateCamera();draw();
+    },
+  });
   function previewWorldLife(value) {
+    if(value)cameraViews?.end();
     const surfaces = [document.getElementById('planCanvas'), markerLayer, leaders].filter(Boolean);
     if (value && !worldLifePreview) {
       worldLifeReturn = {view: {...view}, focus: focus && {...focus}, pointerEvents: viewport.style.pointerEvents,
@@ -241,12 +260,14 @@ export function mountStorybookEditor(document, host) {
     scene?.setView(view, focus ? {focus: {x: focus.x, y: 0, z: focus.y}} : undefined);
   }
   function fit() {
+    if(cameraViews?.isPreview)return;
     view = normalizeCameraView('top');
     focus = undefined;
     updateCamera();
     draw();
   }
   function pan(from, dx, dy) {
+    if(cameraViews?.isPreview)return;
     if (!from || !guideProjection) return;
     const {scale} = guideProjection;
     focus = {x: from.x - dx / scale, y: from.y - dy / scale};
@@ -254,6 +275,7 @@ export function mountStorybookEditor(document, host) {
     draw();
   }
   function zoomAt(factor, x, y) {
+    if(cameraViews?.isPreview)return;
     const before = scene?.projectToPlan(x, y);
     if (!before) return;
     const next = normalizeCameraView({preset: 'top', zoom: view.zoom * factor});
@@ -287,7 +309,7 @@ export function mountStorybookEditor(document, host) {
     if (worldLifePreview) {
       if (!scene.frameWorldLifePreview(worldLifePreview.settings)) updateCamera();
     }
-    else syncGuides(width);
+    else if(!cameraViews?.isPreview)syncGuides(width);
     const selected = api.getSelection();
     const selectedId = selected?.kind === 'item' ? selected.id : null;
     if (displayedCoverage.scene !== scene || displayedCoverage.id !== selectedId) {
@@ -412,7 +434,7 @@ export function mountStorybookEditor(document, host) {
     resizeFrame = host.requestAnimationFrame(() => draw());
   };
   const onPointerDown = (event, forcedId = null) => {
-    if (!is3D() || !scene) return;
+    if (!is3D() || !scene || cameraViews?.isPreview) return;
     if (terrain?.pointerDown(event)) return;
     const screen = pointerPoint(event);
     const tool = api.getTool();
@@ -460,6 +482,7 @@ export function mountStorybookEditor(document, host) {
   } catch { /* Studio can be embedded by a different origin. */ }
   return {
     getView: () => scene?.getView() ?? {...view},
+    get isCameraPreview(){return cameraViews?.isPreview===true;},
     dispose() {
       disposed = true;
       active = false;
@@ -474,6 +497,7 @@ export function mountStorybookEditor(document, host) {
       markerLayer.remove();
       leaders.remove();
       look.dispose();
+      cameraViews?.dispose();
       calibrator?.dispose();
       vacuumAlignment?.dispose();
       terrain?.dispose();
@@ -494,6 +518,6 @@ export function mountStorybookEditor(document, host) {
 
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   window.RoomcraftPlanStructure = compileStorybookPlan;
-  mountStorybookEditor(document, window);
+  window.RoomcraftStudioScene=mountStorybookEditor(document, window);
   window.dispatchEvent(new Event('roomcraft-asset-loaded'));
 }

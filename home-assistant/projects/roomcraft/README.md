@@ -43,6 +43,7 @@ Generated scenery is not yet entirely selectable piece by piece. [Builder comple
 | Release gates and rollback requirements | [Release standard](docs/release-standard.md) |
 | Marine wildlife, ambient variety and shared settings | [Living world](docs/living-world.md) |
 | Slow idle discoveries, safe touch wake and per-screen settings | [Idle camera](docs/idle-camera.md) |
+| Landmark front views, local defaults and Studio view previews | [Device camera views](docs/device-camera-views.md) |
 | Learn the editor | [Illustrated manual](docs/user-manual.md) |
 | Install and recover | [Deployment](docs/deployment.md), [tablet access](docs/tablet-access.md) |
 | Layout fields | [Format](docs/layout-format.md), [schema](layout.schema.json) |

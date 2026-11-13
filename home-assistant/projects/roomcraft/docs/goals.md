@@ -2,6 +2,7 @@
 
 | Goal | Reason | Evidence of completion |
 | --- | --- | --- |
+| Give each frontend its own opening view and clear landmark fronts | A phone or laptop camera choice must not replace the wall tablet's default; exterior destinations need useful reusable views | Local migration/reset contract and model-derived framing implemented; final browser/gate/deployment proof pending in [Device camera views](device-camera-views.md) |
 | Keep home controls primary while revealing occasional scenery discoveries | An untouched wall display should slowly explore existing holiday and activity art, then recover immediately and safely on touch | Deployed with 727 tests, CI, production browser regressions, exact readback and actual tablet instant/automatic/touch-return checks; see [Idle camera](idle-camera.md) |
 | Make the miniature rewarding to revisit without obscuring home controls | The household wants many varied wildlife, activity and scenery encounters with editable settings | Shared catalog deployed with 714 tests, CI, Home/Studio proofs and actual tablet preview/Save/readback; release evidence in [Living world](living-world.md) |
 | Celebrate holidays automatically while respecting individual preferences | Asian and other major celebrations should have editable art, lighting and events, and disabling one must not disable others | 31 independent presets deployed with 688 tests, CI, shared browser proofs and actual tablet preview/Save/readback; see [holiday themes](holiday-themes.md) |

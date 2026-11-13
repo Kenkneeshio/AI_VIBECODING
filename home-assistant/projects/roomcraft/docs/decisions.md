@@ -1,5 +1,9 @@
 # Decision log
 
+## Store camera defaults with the frontend and derive landmark framing from the model
+
+Separate strict, lightweight camera DTOs from the Three.js renderer and browser persistence. Snapshot the legacy HA preference once per browser origin/profile/dashboard; save and reset only local storage, with a null reset tombstone, verified readback and explicit failure. Embedded Studio delegates to its HA parent so Home and Studio agree on that frontend without sharing another device's default. Derive front-view bounds and direction from actual authored models. Keep Studio overhead editing separate from a paused preview, and keep camera preferences outside layout Save/Undo. See [Device camera views](device-camera-views.md).
+
 ## Let idle discovery change only temporary camera framing
 
 Use a pure explicit-time director and a separate Home browser adapter. Select weighted subjects from actual active scene modules; snapshot each destination, travel slowly and return to the saved default between visits. Consume the entire first wake gesture before resuming normal controls. Roomcraft menus/dialogs, previews, held gestures and reduced motion block movement. Keep timing preferences local to each screen and leave layout, device state and art ownership unchanged. Reuse the existing scene instead of creating a second renderer or a fake-state demo. Clamp queued-frame samples after current input time and use the devices drawer’s public portal state. These boundaries prevent tablet timing races and background movement behind controls. See [Idle camera](idle-camera.md) for acceptance, contracts and completed release evidence.
