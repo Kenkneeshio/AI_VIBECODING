@@ -93,36 +93,41 @@ try{
   await send('Page.navigate',{url:'http://127.0.0.1:'+port+'/'});
   await until(()=>evaluate('Boolean(window.card?.scene&&card.frame&&!card.demoButton.disabled)'),'live card');
   await evaluate(`(()=>{
-    cancelAnimationFrame(card.animationFrame);card.animationFrame=undefined;card.schedule=()=>{};
-    window.drawHoliday=(seconds=0)=>{
-      card.frame.environment.holidayDate='2026-09-25';
-      card.scene.render(seconds,card.frame.states,{...card.frame.environment,night:true,reduceMotion:false,holidayPreview:card.holidayPreview});
-      return card.scene.getHolidayState();
-    };
+    // Pin the calendar input only. Keep the production scheduler and renderer:
+    // a manual draw would hide a modal-close bug that leaves the tablet at 0 FPS.
+    card.frame.environment.holidayDate='2026-09-25';card.frame.environment.night=true;
     window.openHolidays=()=>{card.menuButton.click();card.shadowRoot.querySelector('.holiday-settings').click();};
-    drawHoliday();window.originalView=card.scene.getView();openHolidays();
+    window.originalView=card.scene.getView();
   })()`);
+  await until(()=>evaluate("card.scene.getHolidayState().active.includes('mid-autumn')"),'automatic calendar render');
+  const initial=await evaluate('card.scene.getHolidayState()');assert.deepEqual(initial.active,['mid-autumn','chuseok']);
+  await evaluate('openHolidays()');
   assert.equal(await evaluate('card.holidayPanel.isOpen'),true);
   assert.equal(await evaluate("card.shadowRoot.querySelectorAll('.holiday-card').length"),31);
-  const initial=await evaluate('drawHoliday()');assert.deepEqual(initial.active,['mid-autumn','chuseok']);
   await photo('holidays-menu-desktop');
   const representatives=[...new Map(HOLIDAY_CATALOG.map(entry=>[entry.theme,entry])).values()];
   const previewResults=[];
   for(const {id,theme} of representatives){
     if(!await evaluate('card.holidayPanel.isOpen'))await evaluate('openHolidays()');
+    // Let the open modal pause the real animation loop before requesting a preview.
+    await until(()=>evaluate('card.animationFrame===undefined'),'modal pauses animation');
+    const before=await evaluate('card.lastSceneRenderAt');
     await evaluate(`card.shadowRoot.querySelector('[data-holiday-preview="${id}"]').click()`);
-    await delay(125); // Native dialog close is asynchronous; the preview must survive that event.
+    await until(()=>evaluate(`card.lastSceneRenderAt>${before}&&card.scene.getHolidayState().selection==='${id}'`),'automatic '+id+' preview render');
+    const firstFrame=await evaluate('card.lastSceneRenderAt');
+    await until(()=>evaluate(`card.lastSceneRenderAt>${firstFrame}`),'continuing '+id+' animation');
     const preview=await evaluate(`(()=>{
-      const state=drawHoliday(4);
+      const state=card.scene.getHolidayState();
       return {...state,preview:card.holidayPreview?.id,dialogOpen:card.holidayPanel.isOpen,
-        stripVisible:!card.shadowRoot.querySelector('.holiday-preview-strip').hidden};
+        stripVisible:!card.shadowRoot.querySelector('.holiday-preview-strip').hidden,renderedAt:card.lastSceneRenderAt};
     })()`);
     assert.equal(preview.selection,id);assert.equal(preview.preview,id);assert.equal(preview.dialogOpen,false);assert.equal(preview.stripVisible,true);
     previewResults.push({theme,...preview});
     if(['lanterns','harvest','lights','gifts','boats'].includes(theme))await photo('holiday-'+id);
-    const restored=await evaluate(`(()=>{card.shadowRoot.querySelector('[data-holiday-preview-stop]').click();drawHoliday(4);
+    const restored=await evaluate(`(()=>{card.shadowRoot.querySelector('[data-holiday-preview-stop]').click();
       return {view:card.scene.getView(),original:originalView,preview:card.holidayPreview,stripHidden:card.shadowRoot.querySelector('.holiday-preview-strip').hidden};})()`);
     assert.deepEqual(restored.view,restored.original);assert.equal(restored.preview,null);assert.equal(restored.stripHidden,true);
+    await until(()=>evaluate(`card.lastSceneRenderAt>${preview.renderedAt}&&['mid-autumn','chuseok'].includes(card.scene.getHolidayState().selection)`),'automatic render after ending '+id+' preview');
   }
   assert.equal(previewResults.length,16);
   assert.equal(await evaluate("ops.some(request=>request.type==='lovelace/config/save')"),false,'previews do not persist changes');
@@ -132,7 +137,9 @@ try{
     return {valid:form.checkValidity(),invalid:[...form.querySelectorAll(':invalid')].map(input=>({name:input.dataset.holidayPlacement??input.dataset.holidaySetting,value:input.value,reason:input.validationMessage}))};})()`);
   assert.equal(formState.valid,true,JSON.stringify(formState.invalid));
   await until(()=>evaluate("card.shadowRoot.querySelector('.holiday-actions [role=status]').textContent==='Holiday settings saved.'&&Boolean(card.scene&&card.frame)"),'holiday save and readback');
-  const saved=await evaluate('({config:fixtureConfig,ops,state:drawHoliday(0)})');
+  await evaluate("card.frame.environment.holidayDate='2026-09-25';card.frame.environment.night=true;card.holidayPanel.close()");
+  await until(()=>evaluate("card.scene.getHolidayState().selection==='chuseok'"),'saved settings render after modal closes');
+  const saved=await evaluate('({config:fixtureConfig,ops,state:card.scene.getHolidayState()})');
   assert.equal(saved.ops.filter(request=>request.type==='lovelace/config/save').length,1);
   assert.ok(saved.ops.every(request=>['lovelace/config','lovelace/config/save'].includes(request.type)));
   assert.deepEqual(saved.config.fixtureUnrelated,config.fixtureUnrelated);assert.deepEqual(saved.config.views,config.views);
@@ -141,7 +148,6 @@ try{
   assert.equal(saved.config.roomcraft_snapshots.length,1);
   assert.deepEqual(saved.config.roomcraft_snapshots[0].layout,project,'prior design is retained for rollback');
   assert.deepEqual(saved.state.active,['chuseok']);assert.equal(saved.state.selection,'chuseok');
-  await evaluate('card.holidayPanel.close()');
   await evaluate('openHolidays()');
   assert.equal(await evaluate(`card.shadowRoot.querySelector('[data-holiday-id="mid-autumn"] select').value`),'off');
   assert.equal(await evaluate(`card.shadowRoot.querySelector('[data-holiday-id="chuseok"] select').value`),'auto');
@@ -159,6 +165,6 @@ try{
   assert.match(await evaluate("card.shadowRoot.querySelector('[data-holiday-id=\"loy-krathong\"] .holiday-schedule').textContent"),/Automatic date unavailable/);
   assert.deepEqual(errors,[]);
   await writeFile(join(qa,'evidence.json'),JSON.stringify({initial,previewResults,saved,phone,errors},null,2));
-  console.log('PASS: actual live menu31holidays,16rendered theme previews without persistence, restored camera, independent Off with snapshot+readback, persisted reopening, phone modal fit, unknown-date notice; no physical actions');
+  console.log('PASS: actual live menu31holidays,16automatic RAF theme previews with continuing frames and restored camera, independent Off with snapshot+readback, persisted reopening, phone modal fit, unknown-date notice; no physical actions or manual rendering');
   console.log(qa);
 }finally{ws?.close();chrome.kill();server.close();}

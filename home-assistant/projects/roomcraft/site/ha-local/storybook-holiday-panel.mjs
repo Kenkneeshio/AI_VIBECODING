@@ -77,9 +77,12 @@ export function createStorybookHolidayPanel(container, {catalog, getSettings, on
     button.setAttribute('aria-label', `Preview ${holiday.name}`);
     button.addEventListener('click', () => {
       if (!validHolidaySettings(draft)) { status.textContent = 'Check the settings and dates before previewing.'; return; }
-      preview = holiday.id; onPreview?.({id: preview, settings: normalizeHolidaySettings(draft)});
+      preview = holiday.id;
       strip.querySelector('span').textContent = `${holiday.name} · preview`;
       strip.hidden = false; closeDialog('preview');
+      // Live pauses its renderer while this modal is open. Schedule the preview
+      // only after close() has synchronously released that rendering pause.
+      onPreview?.({id: preview, settings: normalizeHolidaySettings(draft)});
     });
     actions.append(select, button);
     const details = doc.createElement('details'), summary = doc.createElement('summary'); summary.textContent = 'Custom date';
