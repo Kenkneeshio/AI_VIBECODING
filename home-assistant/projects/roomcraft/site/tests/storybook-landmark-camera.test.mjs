@@ -15,7 +15,7 @@ const home = {minX:0,maxX:1510,minZ:-400,maxZ:850};
 const specs = [
   ['goldcoast', makeStorybookSceneryHouse, {id:'family',type:'sceneryRanchHouse',w:130,h:176,x:1775,z:420,rotation:90}],
   ['school', makeStorybookSchoolCampus, {id:'school',type:'scenerySchoolCampus',w:300,h:240,x:-300,z:475,rotation:270}],
-  ['innoflight', makeStorybookOfficeCampus, {id:'office',type:'sceneryOfficeCampus',w:220,h:180,x:2020,z:700,rotation:90}],
+  ['innoflight', makeStorybookOfficeCampus, {id:'office',type:'sceneryOfficeCampus',w:220,h:180,x:1750,z:700,rotation:90}],
 ];
 
 function createFixture(spec) {
@@ -52,7 +52,10 @@ test('landmark presets frame actual models from their front facade at every scre
       near(view.azimuth,frame.azimuth);
       const direction = cam.getWorldDirection(new Vector3());
       const front = new Vector3(0,0,1).transformDirection(fixture.object.root.matrixWorld);
-      assert.ok(direction.dot(front) < -.7, 'camera faces into the entry facade');
+      const horizontalDirection = new Vector3(direction.x,0,direction.z).normalize();
+      near(horizontalDirection.dot(front),-1);
+      assert.ok(direction.y < 0 && Math.hypot(direction.x,direction.z) > .6,
+        'elevated camera faces the entry facade rather than looking straight down');
       assertFits(cam,frame);
       const span = cam.right-cam.left;
       fitStorybookCamera(cam,home,width,height,'top');
@@ -80,6 +83,28 @@ test('Gold Coast facade and driveway sightlines clear the foreground condo wall'
   const previousDirection = new Vector3(-Math.sin(62*Math.PI/180),Math.cos(62*Math.PI/180),0);
   assert.equal(new Ray(new Vector3(frame.minX,frame.minY,(frame.minZ+frame.maxZ)/2),
     previousDirection).intersectsBox(wall),true);
+});
+
+test('Innoflight forecourt clears the closer authored condo edge seen on the tablet', () => {
+  const fixture = createFixture(specs[2]), frames = fixture.frames(), frame = frames.innoflight;
+  // The installed campus center is X=1750, not the earlier wide-gap fixture.
+  // The nearby condo east wall is X=1485 with the same 14-unit body/17-unit cap.
+  const wall = new Box3(new Vector3(1476.5,-111,201.5),new Vector3(1493.5,58,858.5));
+  for (const [width,height] of [[1920,1080],[390,680]]) {
+    const cam = camera();
+    fitStorybookCamera(cam,{...home,frames},width,height,'innoflight');
+    assertFits(cam,frame);
+    const towardCamera = cam.getWorldDirection(new Vector3()).negate();
+    for (const x of [frame.minX,frame.maxX]) for (const y of [frame.minY,frame.maxY]) {
+      for (const z of [frame.minZ,(frame.minZ+frame.maxZ)/2,frame.maxZ]) {
+        assert.equal(new Ray(new Vector3(x,y,z),towardCamera).intersectsBox(wall),false,
+          'foreground wall cannot hide the entry, forecourt or parking area');
+      }
+    }
+  }
+  const oldDirection = new Vector3(-Math.sin(62*Math.PI/180),Math.cos(62*Math.PI/180),0);
+  assert.equal(new Ray(new Vector3(frame.minX,frame.minY,(frame.minZ+frame.maxZ)/2),
+    oldDirection).intersectsBox(wall),true,'old shallow front view reproduced the tablet obstruction');
 });
 
 test('landmark frames follow edited dimensions, movement and rotation without stale bounding boxes', () => {

@@ -18,7 +18,7 @@ export const CAMERA_PRESETS = Object.freeze({
   shores: cameraPreset('La Jolla Shores', 152, 49),
   goldcoast: cameraPreset('Gold Coast · front', 0, 50),
   school: cameraPreset('Elementary school · front', 0, 58),
-  innoflight: cameraPreset('Innoflight · front', 0, 62),
+  innoflight: cameraPreset('Innoflight · front', 0, 40),
   free: cameraPreset('Free view', 0, 25),
 });
 

@@ -91,9 +91,25 @@ Successful explicit saves and resets dispatch `roomcraft-camera-preference-chang
 
 No credentials, private device values, account identifiers, photos, camera media or personal location data are stored in the preference or public tests. The helper stores only camera presentation data. Schema, layout Undo/Save, integrations and artwork retain their existing owners.
 
-## Verification checkpoint and release status
+## Verification and release status
 
-At this checkpoint, the combined camera, card and persistence suites passed **85/85 tests**, including migration and save/reset race checks, failed-storage handling and notification semantics. Additional model-front framing tests are tracked by the camera module owner. The source browser fixture passed frontend isolation, embedded Studio preference sharing, idle return and unchanged layout/device-state checks. The final Free-view azimuth correction still awaits one final source browser run. Production browser verification, the final full release gate, exact deployment/readback, CI and physical-tablet proof remain pending. No deployed revision is claimed here. The release owner will record exact final evidence in the [engineering handoff](engineering-handoff.md).
+The first candidate exposed an Innoflight framing gap on the actual tablet: its authored X position was 1750, while the original synthetic fixture used 2020 and did not reproduce the foreground condo occlusion. The bottom half of the campus was obscured despite the earlier fixture passing. The corrected front preset uses 40° tilt, and a temporary actual-tablet preview showed the complete facade and forecourt. The regression now reproduces the closer placement; 25 focused camera tests passed. The corrected source is frozen, but its full gate, final built fixture, new deployment and exact readback remain pending. The older candidate artifacts below are not the final release.
+
+The intermediate `b8bfa630` candidate passed the full release gate and **744 automated tests**: 639 site tests, 67 bridge tests, 30 installer tests and 8 presence tests. That candidate’s production-built browser fixture passed all three synthetic front views, two-frontend storage isolation, the real HA Studio bridge, same-parent cache notifications, local save/reload/reset and framed idle wake. A named front view converted to Free retained the fitted 270° azimuth and 50° tilt in the fixture. Delete/Ctrl+Z in the preview dialog, Delete during preview, Escape/Return to overhead, unchanged drafts and absence of physical actions were verified; the browser exception list was empty.
+
+| Artifact or check | Exact evidence / status |
+| --- | --- |
+| Intermediate candidate source | `b8bfa630814c202e76493119680713268f42053e`; corrected final source pending |
+| Intermediate candidate manifest | `sha256:c10fefd69f6d1556579f2d6f73b55ab1d53d8217110e8f2de54fd8648012e19c`, 434 inputs; replacement pending |
+| Runtime CI | [Intermediate candidate run 43490206233](https://github.com/Kenkneeshio/AI_VIBECODING/actions/runs/43490206233); corrected-release CI pending |
+| Intermediate owner-private Studio | Version 118 published successfully; corrected version pending |
+| Intermediate Site source | `ae7817dc7c1edc0ce9ec7cce8108b140da7db625` |
+| Intermediate Site subset manifest | `sha256:eee3d9c554c4532c7a3c60bee4df0e2462ba370ed54aebab0cfec4cd5c826236`, 315 inputs |
+| Intermediate shared built artifacts | Five Home, bridge, Studio, HTML and CSS files were byte-identical between the candidate runtime and Site builds |
+| HA installation and readback | Corrected installation and exact live asset/project readback pending |
+| Actual wall tablet | Initial cold start, preference migration, Gold Coast and school checks passed; temporary Innoflight 40° preview passed; corrected deployment proof pending |
+
+The four public gallery images are retained from the preceding correct synthetic source fixture. The earlier built fixture exercised preference isolation and controls but missed the closer Innoflight occlusion; no household media is included. A separate hosted-Site browser inspection has not been claimed. HA publication, exact readback, runtime CI and physical-tablet checks must complete before this release is considered fully verified. The [engineering handoff](engineering-handoff.md) tracks the final operational state.
 
 Reproduce targeted checks from `site/`:
 
@@ -105,10 +121,10 @@ $env:ROOMCRAFT_DEVICE_CAMERA_QA_DIST='1'
 node scripts/verify-device-camera-browser.mjs
 ```
 
-The browser fixture is designed to run two isolated storage contexts using the same synthetic HA account. It uses the production Home card, editor card, iframe bridge and Studio renderer, and rejects HA preference/layout/device writes. Required checks include all three front views, independent saves/reloads, Studio-to-Home local sharing, reset tombstones, framed idle wake and unchanged authored/device data. The camera tests exercise landscape, portrait and ultrawide fitting with real model factories, transformed bounds, target movement/scale/rotation, deterministic output and deleted-target fallback.
+The browser fixture runs two isolated storage contexts using the same synthetic HA account. It uses the production Home card, editor card, iframe bridge and Studio renderer, and rejects HA preference/layout/device writes. Its passing checks cover all three front views, independent saves/reloads, Studio-to-Home local sharing, reset tombstones, framed idle wake and unchanged authored/device data. The camera tests exercise landscape, portrait and ultrawide fitting with real model factories, transformed bounds, target movement/scale/rotation, deterministic output and deleted-target fallback.
 
 Run the complete [release gate](release-standard.md#deterministic-release-evidence) after the last source change; browser assertions alone do not prove publication. Before deployment, preserve protected backups and capture the actual previous revision, then deploy the exact built input set and verify readback and the intended tablet frontend.
 
 ## Rollback and recovery
 
-Use **Use Top down on this device** to clear only that frontend's saved camera. If storage is blocked, allow site storage and retry; the UI must not claim it persisted a value before that succeeds. A software rollback uses the previous verified runtime/assets and [deployment recovery](deployment.md). No layout rollback is required for this feature. The old HA user default remains untouched for older runtime versions; its value may differ from a newer local default. Avoid clearing all browser data as a routine rollback because that also removes unrelated local preferences.
+Use **Use Top down on this device** to clear only that frontend's saved camera. If storage is blocked, allow site storage and retry; the UI must not claim it persisted a value before that succeeds. The rollback baseline is runtime `bab951aaf5eda8d1a66824f4e20a238535d6054f`, HA resource `ee1b46eac2eb8d12` and private Studio 117. Reinstall those matching assets and restore the protected pre-install dashboard backup if needed, using [deployment recovery](deployment.md). No layout rollback is required for this feature. The old HA user default remains untouched for older runtime versions; its value may differ from a newer local default. Avoid clearing all browser data as a routine rollback because that also removes unrelated local preferences.

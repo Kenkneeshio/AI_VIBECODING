@@ -26,11 +26,11 @@ try{
 const legacy={preset:'free',azimuth:14,tilt:25,zoom:1.04};
 const project={version:2,editableReferenceVersion:10,hotspots:[],rooms:[{
   id:'home-floor',name:'Fixture home',surface:'oak',label:{x:900,y:500},
-  points:[{x:420,y:210},{x:1450,y:210},{x:1450,y:850},{x:420,y:850}],
+  points:[{x:420,y:210},{x:1485,y:210},{x:1485,y:850},{x:420,y:850}],
 }],walls:[
-  {id:'north',x1:420,y1:210,x2:1450,y2:210},
-  {id:'east',x1:1450,y1:210,x2:1450,y2:850},
-  {id:'south',x1:420,y1:850,x2:1450,y2:850},
+  {id:'north',x1:420,y1:210,x2:1485,y2:210},
+  {id:'east',x1:1485,y1:210,x2:1485,y2:850},
+  {id:'south',x1:420,y1:850,x2:1485,y2:850},
   {id:'west',x1:420,y1:210,x2:420,y2:850},
 ],items:[
   {id:'fixture-sofa',type:'sofa',name:'Sofa',x:570,y:350,w:150,h:75,rotation:0},
@@ -38,7 +38,7 @@ const project={version:2,editableReferenceVersion:10,hotspots:[],rooms:[{
   {id:'fixture-lamp',type:'lamp',name:'Lamp',x:1050,y:400,w:48,h:60,rotation:0},
   {id:'fixture-family',type:'sceneryRanchHouse',name:'Gold Coast',x:1775,y:420,w:130,h:176,rotation:90},
   {id:'fixture-school',type:'scenerySchoolCampus',name:'Elementary school',x:-300,y:475,w:300,h:240,rotation:270},
-  {id:'fixture-office',type:'sceneryOfficeCampus',name:'Innoflight',x:2020,y:700,w:220,h:180,rotation:90},
+  {id:'fixture-office',type:'sceneryOfficeCampus',name:'Innoflight',x:1750,y:700,w:220,h:180,rotation:90},
 ],sceneSettings:{worldLife:{enabled:true}}};
 const config={title:'Fixture home',views:[{path:'home',title:'Home'}],fixtureUnrelated:{preserve:true},
   roomcraft_layout:project,roomcraft_plan:{type:'picture-elements',elements:[],image:'/api/image/serve/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/original'}};
