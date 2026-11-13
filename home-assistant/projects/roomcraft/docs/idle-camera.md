@@ -64,7 +64,7 @@ The director accepts explicit time, interests and settings. It canonicalizes can
 
 The browser boundary supplies monotonic animation time and derives a session seed from its configured seed and an explicit wall-clock bucket. The seed refreshes on connection, manual start and wake from an active idle visit. This varies later visits while preserving repeatable engine tests. The pure engine reads neither clocks nor browser storage. The runtime restores `resolveDefaultCameraView(savedStartupView)` and applies only temporary focus/zoom; it never overwrites the authored camera preference. Zoom is bounded by the existing scene camera.
 
-The browser adapter checks connection, scene/frame readiness, stage size, document visibility, pending startup view, held pointers, Roomcraft menu/dialog/drawer state, demo, holiday preview and wildlife preview. Reduced motion and disabled automatic idle are separate director inputs. Touch capture shields both pointer events and the resulting compatibility click during a wake gesture. Listener and timer ownership follows card connection/disconnection.
+The browser adapter checks connection, scene/frame readiness, stage size, document visibility, pending startup view, held pointers, Roomcraft menu/dialog/drawer state, demo, holiday preview and wildlife preview. Reduced motion and disabled automatic idle are separate director inputs. Touch capture shields both pointer events and the resulting compatibility click during a wake gesture. Listener and timer ownership follows card connection/disconnection. Adapter samples clamp queued animation-frame timestamps to the current monotonic time: a frame queued before an input must not undo a newer instant-start or touch. The devices drawer exposes public isOpen from its connected body portal, independently of its hidden launcher.
 
 ## Compatibility, privacy and art
 
@@ -73,6 +73,8 @@ No layout/schema migration, Home Assistant project write, entity binding change,
 Preferences use `roomcraft.idle-camera.v1` in local storage and do not synchronize between displays. The feature records no touch history or occupancy history. It does not transmit its selected subjects or operate Home Assistant services. Decorative landmark people and animals remain illustrations, not reports of real people or wildlife. Actual controls continue to use their existing state/action contracts.
 
 ## Verification and release status
+
+The first complete build passed 726 automated tests, CI and production-built browser checks, but actual-tablet verification then exposed a queued-frame timestamp race that cancelled instant starts. The browser adapter was corrected, and review also repaired devices-drawer portal blocking. The corrected source must pass the full gate, built regressions and actual-tablet check before closure.
 
 Focused interest-selector tests passed **6/6**, including a real world-moment sampler fixture for day/night, severe weather and category gates; focused ESLint and whitespace checks passed. An initial source-bundled browser check has passed. Expanded wake regressions, the production-built browser check, the complete exact-revision release gate, deployment/readback, CI and actual-tablet verification remain pending at this documentation checkpoint. No deployed version is claimed here; final operational evidence belongs in the [engineering handoff](engineering-handoff.md).
 

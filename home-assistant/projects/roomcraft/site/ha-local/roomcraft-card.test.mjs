@@ -19,6 +19,7 @@ let StatusPopup;
 const registered = new Map();
 class FakeNode {
   constructor(tag = 'node') { this.tag = tag; this.children = []; this.style = {}; this.hidden = false; this.attributes = {}; this.listeners = {}; this.value = ''; }
+  get isConnected() { return this.tag === 'body' || Boolean(this.parentNode?.isConnected); }
   append(...nodes) { for (const node of nodes) { node.parentNode = this; this.children.push(node); } }
   replaceChildren(...nodes) { this.children = []; this.append(...nodes); }
   remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(node => node !== this); this.parentNode = null; }
@@ -1246,6 +1247,23 @@ test('window artwork is a narrow pane inside its full touch target', () => {
   assert.throws(() => object.setConfig({ entity: 'cover.study_blind',
     roomcraft_window_axis: 'diagonal' }), /invalid device binding/i);
   object.disconnectedCallback();
+});
+
+test('the entity menu reports its body portal rather than its hidden launcher', () => {
+  const menu = new EntityMenu();
+  menu.hidden = true;
+  menu.setConfig({type: 'custom:roomcraft-entity-menu', roomcraft_menu: true, sections: []});
+  assert.equal(menu.isOpen, false);
+  menu.open();
+  assert.equal(menu.hidden, true);
+  assert.equal(menu.isOpen, true);
+  menu._portal.remove();
+  assert.equal(menu.isOpen, false, 'externally detached portals are no longer open');
+  menu._close();
+  menu.open();
+  assert.equal(menu.isOpen, true);
+  menu.disconnectedCallback();
+  assert.equal(menu.isOpen, false);
 });
 
 test('the entity menu includes live and disabled registry entities', () => {

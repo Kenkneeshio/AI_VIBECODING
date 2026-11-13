@@ -42,7 +42,7 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
   const block=()=>!connected||!card.isConnected||!card.scene||!card.frame||doc.hidden
     ||held.size>0||Boolean(card.startupViewRequest)||Boolean(card.demoRun||card.holidayPreview||card.worldLifePreview)
     ||!card.mainMenu.hidden||Boolean(root.querySelector('dialog[open]'))
-    ||Boolean(card.devicesDrawer&&!card.devicesDrawer.hidden)
+    ||Boolean(card.devicesDrawer?.isOpen)
     ||card.stage.getBoundingClientRect().width<1;
   function restore() {
     const view=resolveDefaultCameraView(card.savedStartupView);
@@ -60,6 +60,9 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
     return active;
   }
   function update(at=now()) {
+    // A queued RAF timestamp can precede an input handled in that same frame.
+    // Keep adapter samples after touch/start so a busy WebView cannot undo them.
+    at=Math.max(Number.isFinite(at)?at:0,now());
     const blocked=block();
     if(!blocked&&at>=nextInterestAt) {
       interests=card.scene.getIdleCameraInterests?.()??[];nextInterestAt=at+1000;

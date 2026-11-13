@@ -1599,6 +1599,8 @@ class RoomcraftEntityMenu extends HTMLElement {
     };
   }
 
+  get isOpen() { return Boolean(this._portal?.isConnected); }
+
   setConfig(config) {
     if (!isObject(config)) throw new Error('Invalid Roomcraft entity menu.');
     this._config = config;

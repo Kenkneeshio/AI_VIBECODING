@@ -20,12 +20,21 @@ const project={version:2,editableReferenceVersion:10,hotspots:[],walls:[],rooms:
   {id:'table',type:'diningTable',name:'Table',x:800,y:600,w:100,h:70,rotation:0},
 ],sceneSettings:{holidays:{modes:{christmas:'on'}},worldLife:{enabled:true}}};
 const config={title:'Fixture home',views:[{path:'home',title:'Home'}],fixtureUnrelated:{preserve:true},
-  roomcraft_layout:project,roomcraft_plan:{type:'picture-elements',elements:[],image:'/api/image/serve/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/original'}};
+  roomcraft_layout:project,roomcraft_plan:{type:'picture-elements',elements:[{type:'custom:roomcraft-entity-menu',roomcraft_menu:true,sections:[]}],image:'/api/image/serve/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/original'}};
 const html=`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;background:#e7eadb"><script>
 window.ops=[];window.fixtureConfig=${JSON.stringify(config)};window.originalConfig=structuredClone(fixtureConfig);
 for(const tag of ['roomcraft-object-control','roomcraft-camera-thumbnail'])customElements.define(tag,class extends HTMLElement{setConfig(){}});
 customElements.define('roomcraft-editor-card',class extends HTMLElement{static async readStartupView(){return {preset:'free',azimuth:12,tilt:26,zoom:1.1};}});
+// Match the real drawer boundary: hidden launcher, visible document-body portal.
+customElements.define('roomcraft-entity-menu',class extends HTMLElement{
+ setConfig(){} get isOpen(){return Boolean(this.portal?.isConnected);}
+ open(){this.portal=document.createElement('aside');this.portal.setAttribute('role','dialog');
+  this.portal.style.cssText='position:fixed;inset:100px;z-index:999;background:#fff';
+  const close=document.createElement('button');close.id='fixture-drawer-close';close.textContent='Close fixture drawer';
+  close.addEventListener('click',()=>this.close());this.portal.append(close);document.body.append(this.portal);}
+ close(){this.portal?.remove();this.portal=null;}
+});
 window.fixtureSession={connected:true,user:{id:'fixture-admin',is_admin:true},states:{'light.fixture':{state:'off',attributes:{brightness:0}},'weather.fixture':{state:'sunny',attributes:{temperature:21}}},config:{time_zone:'America/Los_Angeles'},
  callWS:async request=>{window.ops.push(structuredClone(request));
    if(request.type==='lovelace/config')return structuredClone(window.fixtureConfig);
@@ -130,6 +139,12 @@ try{
   await tap('.main-menu-button');
   const instantAt=await tap('.idle-start');
   await until(activeIdle,'instant idle',5000);
+  // A queued Android RAF can carry a timestamp older than the activating touch.
+  const staleFrame=await evaluate(`(()=>{const started=card.idleCamera.start();
+    const sample=card.idleCamera.update(performance.now()-100);
+    return {started,active:sample.active,phase:sample.phase};})()`);
+  assert.equal(staleFrame.started,true);
+  assert.equal(staleFrame.active,true,'an already queued RAF must not reset a newer manual start');
   const instant=await state();
   assert.ok((await evaluate('performance.now()'))-instantAt<5000,'instant button bypasses inactivity wait');
   assert.equal(await evaluate('card.mainMenu.hidden'),true,'instant mode closes main menu');
@@ -170,6 +185,18 @@ try{
   assert.deepEqual(await evaluate('card.scene.getView()'),await evaluate('defaultView'));
   await evaluate("card.shadowRoot.querySelector('.fixture-wake-target').click()");
   assert.equal(await evaluate('wakeClicks'),3,'next assistive activation works normally');
+
+  await tap('.main-menu-button');await tap('[data-open-devices]');
+  assert.equal(await evaluate('card.devicesDrawer.hidden'),true,'drawer launcher remains hidden');
+  assert.equal(await evaluate('card.devicesDrawer.isOpen'),true,'drawer portal is open outside the card');
+  await until(async()=>!(await activeIdle())&&(await state()).phase==='blocked','body portal idle blocker',3000);
+  assert.equal(await evaluate('card.idleCamera.start()'),false,'open body portal prevents manual idle');
+  await evaluate("document.querySelector('#fixture-drawer-close').click()");
+  assert.equal(await evaluate('card.devicesDrawer.isOpen'),false);
+  assert.equal(await evaluate('card.idleCamera.start()'),true,'closing body portal releases idle blocker');
+  await until(activeIdle,'idle after portal close',5000);
+  await tap('.fixture-wake-target');
+  assert.equal(await evaluate('wakeClicks'),3);
 
   // Holding the first wake touch must stay suppressed beyond the click window.
   await tap('.main-menu-button');await tap('.idle-start');await until(activeIdle,'long-press idle start',5000);
@@ -259,7 +286,7 @@ try{
   assert.deepEqual(await evaluate('fixtureConfig'),config,'reload preserves authored layout');
   assert.ok((await evaluate('ops')).every(request=>request.type==='lovelace/config'),'reload does not save or operate devices');
   assert.deepEqual(errors,[]);
-  await writeFile(join(qa,'evidence.json'),JSON.stringify({instant,traveling,automatic,realIdleWaitMs:autoAt-lastTouchAt,longPressMs:1800,multiTouchContacts:2,phone,savedPreferences,errors,physicalActions:0},null,2));
+  await writeFile(join(qa,'evidence.json'),JSON.stringify({instant,staleFrame,traveling,automatic,realIdleWaitMs:autoAt-lastTouchAt,longPressMs:1800,multiTouchContacts:2,phone,savedPreferences,errors,physicalActions:0},null,2));
   console.log('PASS: real RAF idle camera; instant menu start, slow framing, true 30-second inactivity and touch reset, touch/assistive/long-press/multi-touch wake isolation/default restore, modal/demo/reduced-motion blockers, phone settings fit, local settings save/reload/manual override and no layout/device writes.');
   console.log(qa);
 }finally{ws?.close();chrome.kill();server.close();}
