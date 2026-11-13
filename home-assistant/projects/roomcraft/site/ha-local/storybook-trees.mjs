@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {normalizeWorldLifeSettings} from './storybook-world-life-settings.mjs';
 
 const {PI, sin, cos} = Math;
 const TAU = PI * 2;
@@ -280,6 +281,7 @@ const WIND_VERTEX = `
   uniform vec2 roomcraftTreeDirection;
   uniform float roomcraftTreeStrength;
   uniform float roomcraftTreePhase;
+  uniform float roomcraftTreeVariety;
 
   float roomcraftTreeBend() {
     return clamp((roomcraftTreeWind.x - 0.16) / 0.84, 0.0, 1.0);
@@ -290,6 +292,7 @@ const WIND_VERTEX = `
     float variation = roomcraftTreeWind.z;
     float gust = 0.69 + 0.23 * sin(26.0 * phase + variation)
       + 0.12 * sin(53.0 * phase + variation * 0.63);
+    gust += roomcraftTreeVariety * 0.17 * pow(max(0.0, sin(3.0 * phase + variation)), 4.0);
     vec2 crosswind = vec2(-roomcraftTreeDirection.y, roomcraftTreeDirection.x);
     float flutter = 0.13 * sin(47.0 * phase + variation * 1.46);
     return roomcraftTreeStrength * (roomcraftTreeDirection * gust + crosswind * flutter);
@@ -302,10 +305,12 @@ const WIND_VERTEX = `
  */
 export function createStorybookTreeWind(batch) {
   const materials = new Set();
+  const trees = [];
   const uniforms = {
     roomcraftTreeDirection: {value: new THREE.Vector2(1, 0)},
     roomcraftTreeStrength: {value: 0},
     roomcraftTreePhase: {value: 0},
+    roomcraftTreeVariety: {value: 0},
   };
   function animateMaterial(material) {
     if (materials.has(material)) return;
@@ -320,14 +325,14 @@ export function createStorybookTreeWind(batch) {
           float treeBend = roomcraftTreeBend();
           transformed.xz += roomcraftTreeDrift() * roomcraftTreeWind.y * treeBend * treeBend;`);
     };
-    material.customProgramCacheKey = () => 'roomcraft-tree-wind-v1';
+    material.customProgramCacheKey = () => 'roomcraft-tree-wind-v2';
   }
   function add(spec = {}) {
     const {kind, height, x, z, seed} = spec;
     if (!Object.hasOwn(STORYBOOK_TREE_SPECIES, kind)) return false;
     const size = treeHeight(kind, height);
     const variation = seeded(treeSeed(x, z, seed))() * TAU;
-    return addStorybookTree({
+    const added = addStorybookTree({
       add(geometry, color, ...position) {
         const vertices = geometry.getAttribute('position');
         const weights = new Float32Array(vertices.count * 3);
@@ -341,12 +346,16 @@ export function createStorybookTreeWind(batch) {
         batch.add(geometry, color, ...position);
       },
     }, spec);
+    if(added)trees.push({...spec,height:size});
+    return added;
   }
   function update(timeSeconds, environment) {
     const wind = sampleStorybookTreeWind(timeSeconds, environment);
+    const life=normalizeWorldLifeSettings(environment?.worldLife);
     uniforms.roomcraftTreeDirection.value.set(wind.x, wind.z);
     uniforms.roomcraftTreeStrength.value = wind.strength;
     uniforms.roomcraftTreePhase.value = wind.phase;
+    uniforms.roomcraftTreeVariety.value = life.enabled&&life.vegetation&&life.weatherAccents?life.variety:0;
   }
-  return {add, update};
+  return {add, update, getTrees:()=>trees.map(tree=>({...tree}))};
 }

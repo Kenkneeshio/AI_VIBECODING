@@ -74,6 +74,7 @@ export function mountStorybookEditor(document, host) {
   const vacuumAlignment = mountVacuumAlignment(document, host, {api, bridge: trackingBridge});
   const look = mountStorybookStudioLook(document, host, {
     api, viewport, bridge: trackingBridge, onChange: () => draw(), getHolidayPlacement: () => scene?.getHolidayDefaultPlacement?.(),
+    onWorldLifePreview: value => previewWorldLife(value),
   });
   const markerLayer = document.createElement('div');
   markerLayer.className = 'scene-placeholders';
@@ -90,6 +91,7 @@ export function mountStorybookEditor(document, host) {
   let fingerprint;
   let view = normalizeCameraView('top');
   let focus;
+  let worldLifePreview, worldLifeReturn;
   let active = true;
   let guideProjection;
   let draftPositions;
@@ -119,6 +121,22 @@ export function mountStorybookEditor(document, host) {
   };
   const terrain = mountStorybookTerrainEditor(document, host, {api, viewport, canvas, pointerPoint,
     getScene: () => scene, getProjection: () => guideProjection});
+  function previewWorldLife(value) {
+    const surfaces = [document.getElementById('planCanvas'), markerLayer, leaders].filter(Boolean);
+    if (value && !worldLifePreview) {
+      worldLifeReturn = {view: {...view}, focus: focus && {...focus}, pointerEvents: viewport.style.pointerEvents,
+        visibility: surfaces.map(element => element.style.visibility)};
+      viewport.style.pointerEvents = 'none';
+      for (const element of surfaces) element.style.visibility = 'hidden';
+    } else if (!value && worldLifeReturn) {
+      view = worldLifeReturn.view; focus = worldLifeReturn.focus;
+      viewport.style.pointerEvents = worldLifeReturn.pointerEvents;
+      surfaces.forEach((element, index) => { element.style.visibility = worldLifeReturn.visibility[index]; });
+      worldLifeReturn = undefined;
+      updateCamera();
+    }
+    worldLifePreview = value;
+  }
   function setStatus(text) {
     api.showStatus?.(text);
   }
@@ -266,7 +284,10 @@ export function mountStorybookEditor(document, host) {
     const {width, height} = currentSize();
     if (width < 1 || height < 1) return;
     scene.resize(width, height);
-    syncGuides(width);
+    if (worldLifePreview) {
+      if (!scene.frameWorldLifePreview(worldLifePreview.settings)) updateCamera();
+    }
+    else syncGuides(width);
     const selected = api.getSelection();
     const selectedId = selected?.kind === 'item' ? selected.id : null;
     if (displayedCoverage.scene !== scene || displayedCoverage.id !== selectedId) {

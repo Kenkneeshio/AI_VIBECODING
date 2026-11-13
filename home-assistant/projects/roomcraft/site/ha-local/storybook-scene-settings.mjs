@@ -1,4 +1,5 @@
 import '../public/engine/holiday-settings.js';
+import '../public/engine/world-life.js';
 import '../public/engine/scene-settings.js';
 
 const settings = (typeof window === 'undefined' ? globalThis : window).RoomcraftSceneSettings;

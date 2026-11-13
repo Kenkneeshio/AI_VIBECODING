@@ -2035,6 +2035,16 @@
       afterChange('Updated scene settings');
       return true;
     },
+    setWorldLifeSettings(value) {
+      if (!window.RoomcraftWorldLife.valid(value)) return false;
+      const next = window.RoomcraftWorldLife.withSettings(project.sceneSettings, value);
+      if (next === project.sceneSettings) return false;
+      snapshot();
+      if (next) project.sceneSettings = next;
+      else delete project.sceneSettings;
+      afterChange('Living world settings updated in the draft. Select Save to publish.');
+      return true;
+    },
     setHolidaySettings(value) {
       if (!window.RoomcraftHolidaySettings.valid(value)) return false;
       const next = window.RoomcraftHolidaySettings.withSettings(project.sceneSettings, value);

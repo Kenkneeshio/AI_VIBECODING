@@ -258,3 +258,6 @@ The architecture report enumerates handwritten modules, ownership, imports and n
 
 Each stage must preserve saved layouts and provide an independently verifiable improvement. See the [dated audit](architecture-audit-2026-11-12.md) for this release's actual work and remaining limitations.
 
+## Living world extension
+
+The shared scene composes marine life and world moments once for Home and Studio. A pure settings contract validates the optional `sceneSettings.worldLife` branch; separate panel and save adapters handle presentation and HA persistence. An explicit world clock anchors deterministic schedules across reloads while isolating previews and the tour. Bounded pools, coastline/boat reservations and authored-tree anchoring keep effects constrained. [Module contracts and evidence](living-world.md).

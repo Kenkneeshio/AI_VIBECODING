@@ -1,5 +1,9 @@
 # Decision log
 
+## Make variety bounded, editable and truthful
+
+Use finite authored catalogs with reproducible seeds, explicit clocks and pooled geometry instead of random per-frame spawning. Derive marine routes from the actual coast and reserve boat/wake paths; ground beach activities on valid sand and keep plants tied to authored trees. Visual previews use the production scheduler and conservative route-envelope camera framing. Category switches, density, pace and variety are shared between Home and Studio; Home saves are conflict-aware with snapshots. Preserve measured traffic, device and presence semantics. A walrus is a named storybook visitor, not a local wildlife claim. See [Living world](living-world.md).
+
 ## Schedule each holiday independently through one shared engine
 
 Use a curated catalog with primary-source date tables for variable calendars and explicit regional conventions. Fail closed outside verified coverage; allow user date overrides and Keep on instead of guessing lunar dates. Default to seven local days centered on the date, with persistent Off per holiday. Use original procedural art, explicit animation time, shared preview and saved settings, and lightweight festive roof trim. Decorations do not actuate devices or become occupancy reports. Preserve current layout data and use conflict-aware save/readback. See [holiday themes](holiday-themes.md).

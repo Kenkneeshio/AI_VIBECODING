@@ -8,6 +8,10 @@ import {makeStorybookSceneryHouse} from './storybook-scenery-house.mjs';
 import {makeStorybookOfficeCampus} from './storybook-office-campus.mjs';
 import {makeStorybookSchoolCampus} from './storybook-school-campus.mjs';
 import {createLandmarkLife} from './storybook-landmark-life.mjs';
+import {createStorybookMarineLife} from './storybook-marine-life.mjs';
+import {createStorybookWorldMoments} from './storybook-world-moments.mjs';
+import {normalizeWorldLifeSettings} from './storybook-world-life-settings.mjs';
+import {createWorldClock} from './storybook-world-clock.mjs';
 import {createHolidayRuntime, defaultHolidayPlacement, holidayPlacement, holidayPlacementBounds} from './storybook-holiday-runtime.mjs';
 import {isExteriorScenery, isExteriorBuilding, exteriorBounds, exteriorHouseContains, exteriorCameraBounds} from './storybook-exterior.mjs';
 import {compileStorybookSideRoads,buildStorybookSideRoads,storybookSideRoadContains,storybookSideRoadSupportPads} from './storybook-side-road.mjs';
@@ -1263,6 +1267,10 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   const sidewalk = createStorybookSidewalk(road);
   const boats = createStorybookBoats(water);
   const beachPlay = createStorybookBeachPlay(water, street);
+  const marineLife = createStorybookMarineLife(water);
+  const worldMoments = createStorybookWorldMoments({water,street,plan,heightAt:meadow.heightAt,trees:treeWind.getTrees()});
+  const worldClock = createWorldClock();
+  scene.add(marineLife.root,worldMoments.root);
   scene.add(ocean.mesh, sidewalk.root, boats.root, beachPlay.root);
   const updatePrecipitation = buildPrecipitation(scene, plan, street.sceneryMinZ);
   const footprint = plan.floorStructure.footprint;
@@ -1432,7 +1440,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     inSceneryView = limitOffscreenScenery && currentWidth > 0 && currentHeight > 0 ? storybookSceneryView(camera) : undefined;
   }
   function updateCamera() {
-    fitStorybookCamera(camera, cameraBounds, currentWidth, currentHeight, cameraView, cameraFraming);
+    fitStorybookCamera(camera, cameraFraming?.bounds ?? cameraBounds, currentWidth, currentHeight, cameraView, cameraFraming);
     updateSceneryView();
     const haze = storybookHorizonFog(cameraView.tilt);
     scene.fog = haze ? horizonFog : null;
@@ -1495,6 +1503,28 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     return getView();
   }
   function getView() { return {...cameraView}; }
+  function frameWorldLifePreview(settings) {
+    const bounds = marineLife.getPreviewBounds(settings);
+    if (!bounds || bounds.isEmpty()) return false;
+    const {min, max} = bounds;
+    const frame = {minX:min.x, maxX:max.x, minZ:min.z, maxZ:max.z, minY:min.y, maxY:max.y};
+    // Reuse the coastal frame contract so vertical padding follows wildlife,
+    // rather than the upstairs home's floor and roof elevations.
+    setView({preset:'top', azimuth:0, tilt:35, zoom:1}, {bounds:{...frame, coastalFrames:{top:frame}}});
+    return true;
+  }
+  function getWorldLifeScreenBounds() {
+    const bounds = marineLife.getBounds();
+    if (!bounds || bounds.isEmpty()) return null;
+    const result = {minX:Infinity, maxX:-Infinity, minY:Infinity, maxY:-Infinity};
+    for (const x of [bounds.min.x, bounds.max.x]) for (const y of [bounds.min.y, bounds.max.y]) for (const z of [bounds.min.z, bounds.max.z]) {
+      projected.set(x,y,z).project(camera);
+      const sx=(projected.x+1)/2, sy=(1-projected.y)/2;
+      result.minX=Math.min(result.minX,sx);result.maxX=Math.max(result.maxX,sx);
+      result.minY=Math.min(result.minY,sy);result.maxY=Math.max(result.maxY,sy);
+    }
+    return result;
+  }
   function getDemoFocus(target) {
     if (typeof target === 'string') {
       if (target === 'holiday') return {x:holidayPose.x, y:GROUND_Y+35*holidayPose.scale, z:holidayPose.y};
@@ -1578,20 +1608,28 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   }
   function updateWaterfront(timeSeconds, environment, transientTelemetry = false) {
     const activity = environment.beachActivity ?? (environment.night ? 'overnight' : 'day');
-    const options = {reduceMotion: environment.reduceMotion === true, night: environment.night === true,
-      condition: environment.condition, transientTelemetry, activity, inView:inSceneryView};
-    sidewalk.root.visible = activity !== 'overnight' &&
-      (transientTelemetry || sceneFeatureEnabled(sceneSettings, 'sidewalk'));
-    boats.root.visible = transientTelemetry || sceneFeatureEnabled(sceneSettings, 'boats');
-    beachPlay.root.visible = transientTelemetry || sceneFeatureEnabled(sceneSettings, 'beachPlay');
-    if (sidewalk.root.visible) sidewalk.update(timeSeconds, options);
-    if (boats.root.visible) boats.update(timeSeconds, options);
-    if (beachPlay.root.visible) beachPlay.update(timeSeconds, options);
-    const showTrees = transientTelemetry || sceneFeatureEnabled(sceneSettings, 'trees');
-    for (const mesh of treeMeshes) mesh.visible = showTrees;
-    if (showTrees) treeWind.update(timeSeconds, environment);
-    ocean.update(timeSeconds, transientTelemetry || sceneFeatureEnabled(sceneSettings, 'reflections')
-      ? environment : {...environment, reflections: false});
+    const worldLife=environment.worldLife;
+    const showTrees=transientTelemetry || sceneFeatureEnabled(sceneSettings,'trees');
+    const options={reduceMotion:environment.reduceMotion===true,night:environment.night===true,
+      condition:environment.condition,transientTelemetry,activity,inView:inSceneryView,
+      worldLife,preview:Boolean(environment.worldLifePreview),windSpeed:environment.windSpeed,
+      windBearing:environment.windBearing,moonPhase:environment.moonPhase,moonElevation:environment.moonElevation,
+      reflections:transientTelemetry || sceneFeatureEnabled(sceneSettings,'reflections'),
+      precipitation:transientTelemetry || sceneFeatureEnabled(sceneSettings,'precipitation')};
+    sidewalk.root.visible=worldLife.enabled && worldLife.characters && activity!=='overnight'
+      && (transientTelemetry || sceneFeatureEnabled(sceneSettings,'sidewalk'));
+    boats.root.visible=worldLife.enabled && worldLife.vehicles && (transientTelemetry || sceneFeatureEnabled(sceneSettings,'boats'));
+    beachPlay.root.visible=worldLife.enabled && worldLife.characters && (transientTelemetry || sceneFeatureEnabled(sceneSettings,'beachPlay'));
+    if(sidewalk.root.visible)sidewalk.update(timeSeconds,options);
+    if(boats.root.visible)boats.update(timeSeconds,options);
+    if(beachPlay.root.visible)beachPlay.update(timeSeconds,options);
+    marineLife.update(environment.worldSeconds,options);
+    worldMoments.update(environment.worldSeconds,{...options,worldLife:{...worldLife,
+      characters:worldLife.characters && (transientTelemetry || sceneFeatureEnabled(sceneSettings,'beachPlay')),
+      vegetation:worldLife.vegetation && showTrees}});
+    for(const mesh of treeMeshes)mesh.visible=showTrees;
+    if(showTrees)treeWind.update(timeSeconds,environment);
+    ocean.update(timeSeconds,options.reflections ? environment : {...environment,reflections:false});
   }
   function render(timeSeconds = 0, statesById = {}, environment = {},
     {animateTelemetry = true, showTelemetryPosition = true, draftPositions, transientTelemetry = false} = {}) {
@@ -1602,6 +1640,10 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     const solar = storybookSolar(environment);
     environment = {...environment, solar: transientTelemetry ? solar : fadeSolar(solar, time, reduceMotion)};
     const telemetryTime = animateTelemetry ? time : 0;
+    const worldLife=normalizeWorldLifeSettings(environment.worldLifePreview?.settings ?? sceneSettings?.worldLife);
+    const worldSeconds=worldClock(timeSeconds,{epochSeconds:environment.worldTimeSeconds,
+      preview:Boolean(environment.worldLifePreview),transientTelemetry,reduceMotion});
+    environment={...environment,worldLife,worldSeconds};
     const showTraffic = transientTelemetry || sceneFeatureEnabled(sceneSettings, 'traffic');
     if (showTraffic && !traffic && environment.traffic) {
       traffic = createStorybookTraffic(road);
@@ -1610,7 +1652,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     if (traffic) {
       traffic.root.visible = showTraffic;
       if (showTraffic) traffic.update(timeSeconds, environment.traffic, {reduceMotion,
-        night: environment.night === true, transientTelemetry,
+        night: environment.night === true, transientTelemetry, worldLife,
         inView:inSceneryView,
         headlightBrightness: transientTelemetry ? 1 : displaySettings.headlightBrightness});
     }
@@ -1713,6 +1755,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     sidewalk.dispose();
     boats.dispose();
     beachPlay.dispose();
+    marineLife.dispose();worldMoments.dispose();
     holidays.dispose();
     for (const {life} of landmarkLife.values()) { scene.remove(life.root); life.dispose(); }
     const geometries = new Set();
@@ -1743,6 +1786,8 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     getHolidayFocus:settings=>{const p=holidayPlacement(plan,street,settings);
       return {x:p.x,y:meadow.heightAt(p.x,p.y)+35*p.scale,z:p.y};},
     getHolidayState:()=>holidays.getState(),
+    getWorldLifeFocus:()=>marineLife.getFocus(), getWorldLifeBounds:()=>marineLife.getBounds(), frameWorldLifePreview, getWorldLifeScreenBounds,
+    getWorldLifeState:()=>({marine:marineLife.getState(),moments:worldMoments.getState()}),
     hasAmbientMotion: true, setPeople, setDisplaySettings, setGraphicsSettings, setVacuumMapOverlay,
     setDetectionZones: coverage.setZones, setHeatMap: heatMap.setHistory,
     get trackedControlChanged() { return trackedControlChanged; },

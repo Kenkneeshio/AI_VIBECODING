@@ -1,6 +1,8 @@
 import {createPersonPresence, personSource, readDetectionZones, trackingSnapshots, trackingStatus} from './storybook-tracking.mjs';
 import {bindLiveModelLibrary} from './storybook-library.mjs';
 import {createStorybookScene} from './storybook-scene.mjs';
+import {createStorybookWorldLifePanel} from './storybook-world-life-panel.mjs';
+import {saveWorldLifeSettings} from './storybook-world-life-save.mjs';
 import {HOLIDAY_CATALOG} from './storybook-holidays.mjs';
 import {createStorybookHolidayPanel} from './storybook-holiday-panel.mjs';
 import {saveHolidaySettings} from './storybook-holiday-save.mjs';
@@ -349,6 +351,7 @@ class RoomcraftStorybookCard extends HTMLElement {
                   <p class="menu-heading" aria-hidden="true">Household</p>
                   <button type="button" data-link-dialog="location" aria-haspopup="dialog">Location sharing</button>
                   <button type="button" data-link-dialog="commute" aria-haspopup="dialog">Commute traffic</button>
+                  <button type="button" class="world-life-settings" aria-haspopup="dialog">Living world &amp; wildlife</button>
                   <button type="button" class="holiday-settings" aria-haspopup="dialog">Holidays &amp; celebrations</button>
                   <button type="button" class="demo-start" disabled>1-minute demo</button>
                 </section>
@@ -447,8 +450,27 @@ class RoomcraftStorybookCard extends HTMLElement {
     });
     this.shadowRoot.querySelector('.holiday-settings').addEventListener('click',()=>{
       this.setMainMenu(false, true);
+      this.worldLifePanel?.close();
       this.holidayExpected = this.model?.layout.sceneSettings?.holidays;
       this.holidayPanel.open();
+    });
+    this.worldLifePanel = createStorybookWorldLifePanel(this.shadowRoot, {
+      getSettings:()=>this.model?.layout.sceneSettings?.worldLife,
+      onPreview:value=>this.previewWorldLife(value), onClose:()=>this.schedule(),
+      onSave:async value=>{
+        const session=this.session, dashboard=this.dashboard;
+        const result=await saveWorldLifeSettings(session,dashboard,this.worldLifeExpected,value,{
+          stillAuthorized:()=>this.isConnected && this.dashboard===dashboard && this.session?.user?.is_admin===true
+            && this.session?.user?.id===session?.user?.id && this.session?.connection===session?.connection,
+          savedAt:new Date().toISOString(),
+        });
+        if(result.status==='saved') {this.worldLifeExpected=result.value;this.reset();await this.load();}
+        return result;
+      },
+    });
+    this.shadowRoot.querySelector('.world-life-settings').addEventListener('click',()=>{
+      this.setMainMenu(false,true);this.holidayPanel.close();
+      this.worldLifeExpected=this.model?.layout.sceneSettings?.worldLife;this.worldLifePanel.open();
     });
     this.menuButton = this.shadowRoot.querySelector('.main-menu-button');
     this.mainMenu = this.shadowRoot.querySelector('.main-menu');
@@ -673,9 +695,24 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   get studioPath() { return `/${this.dashboard || 'roomcraft-home'}/studio`; }
   get weatherEntityId() { return this.weatherPanel.effectiveEntityId ?? this.model?.weather.weather_entity; }
-  get largePanelOpen() { return this.weatherDialog.open || this.powerDialog.open || this.lidarRuler.open || this.holidayPanel?.isOpen; }
+  get largePanelOpen() { return this.weatherDialog.open || this.powerDialog.open || this.lidarRuler.open || this.holidayPanel?.isOpen || this.worldLifePanel?.isOpen; }
+
+  previewWorldLife(value) {
+    if(value) this.holidayPanel.close();
+    if(value&&!this.worldLifePreview) this.worldLifeReturnView=this.scene?.getView();
+    this.worldLifePreview=value;
+    if(value) {
+      this.stopDemo();
+      if(!this.scene?.frameWorldLifePreview?.(value.settings) && this.worldLifeReturnView)
+        this.scene?.setView(this.worldLifeReturnView);
+    } else if(this.worldLifeReturnView) {
+      this.scene?.setView(this.worldLifeReturnView);this.worldLifeReturnView=undefined;
+    }
+    this.anchorDirty=true;this.schedule();
+  }
 
   previewHoliday(value) {
+    if(value)this.worldLifePanel?.close();
     if (value && !this.holidayPreview) this.holidayReturnView = this.scene?.getView();
     this.holidayPreview = value;
     if (value) {
@@ -893,6 +930,7 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   disconnectedCallback() {
     this.holidayPanel.close();
+    this.worldLifePanel.close();
     this.displaySettings.disconnect();
     this.snapshots.disconnect();
     this.setMainMenu(false);
@@ -1351,7 +1389,8 @@ class RoomcraftStorybookCard extends HTMLElement {
         this.scene.setPeople(frame.people, time, options);
         this.scene.render(time, frame.states, {...frame.environment,
           holidayDate:frame.environment.holidayDate ?? this.frame.environment.holidayDate,
-          holidayPreview:this.holidayPreview, reduceMotion}, options);
+          holidayPreview:this.holidayPreview, worldLifePreview:this.worldLifePreview,
+          worldTimeSeconds:frame.environment.worldTimeSeconds ?? this.frame.environment.worldTimeSeconds, reduceMotion}, options);
         this.lastSceneRenderAt = at;
         if (this.anchorDirty || (!demo && this.scene.trackedControlChanged)) {
           if (!demo) this.positionControls();

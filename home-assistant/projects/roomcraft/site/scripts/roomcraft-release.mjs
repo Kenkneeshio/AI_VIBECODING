@@ -33,6 +33,7 @@ export const REQUIRED_ENGINE_SOURCES = Object.freeze([
   'engine/wall-joins.js',
   'engine/reference-geometry.js',
   'engine/holiday-settings.js',
+  'engine/world-life.js',
   'engine/scene-settings.js',
   'engine/terrain.js',
   'engine/edit-safety.js'

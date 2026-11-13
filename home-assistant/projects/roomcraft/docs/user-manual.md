@@ -318,3 +318,11 @@ Choose **Main menu → Check & repair layout** to check the current draft. Repai
 Choose **Home → Menu → Household → Holidays & celebrations** or **Studio → Main menu → Holidays & celebrations**. Search the 31 presets, preview the art, and select **Auto**, **Keep on**, or **Off** for each. Auto runs for seven days centered on the holiday by default; Keep on continues until changed; Off disables only that holiday and stays saved in following years. Select **Save** in Home, or **Apply** then the main **Save** in Studio. End preview restores your previous view without saving.
 
 Change the window, intensity, decorative glow and animated events, or open placement controls to move/resize/rotate the display. Dates use Home Assistant's time zone. Regional conventions and verified coverage appear with each holiday; use an annual `MM-DD` or year-specific `YYYY-MM-DD` override for your family's observance. Missing future dates do not activate automatically. All holiday effects are decorative; actual lights and switches keep their real states. See the [illustrated holiday guide](holiday-themes.md).
+
+## Living world and wildlife
+
+Open **Home → Menu → Household → Living world & wildlife**, or **Studio → Main menu → Living world & wildlife**. Switch individual marine species and scenery categories on/off. Adjust **Density**, **Pace**, **Variety** and **Seed** to change the mix; the same seed/settings/time reproduce the same events.
+
+**Preview** closes the menu and frames the enabled wildlife. **End preview** restores your previous view without saving. Use **Save** in Home, or **Apply** followed by the main **Save** in Studio. Studio supports Undo/Redo and layout import/export for these settings.
+
+Dolphins leap, whales surface and spout, sharks cruise, and seals and storybook walruses swim or rest. Quiet overnight and rough-weather behavior still apply. Beach activities, butterflies/birds, foliage drift and water accents complement the scene; weather effects follow actual conditions. Turning off decorative variations does not turn off real household controls or hide measured traffic. See the [illustrated wildlife and engineering guide](living-world.md).

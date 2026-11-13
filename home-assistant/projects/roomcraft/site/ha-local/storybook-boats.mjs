@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {normalizeWorldLifeSettings} from './storybook-world-life-settings.mjs';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 
 const TAU = Math.PI * 2;
@@ -465,18 +466,22 @@ export function createStorybookBoats(water) {
   let lastTime;
   let disposed = false;
 
-  function update(timeSeconds, {reduceMotion = false, night = false, condition, transientTelemetry = false, activity} = {}) {
+  function update(timeSeconds, {reduceMotion = false, night = false, condition, transientTelemetry = false, activity,worldLife} = {}) {
     if (disposed) return;
+    const life=worldLife&&normalizeWorldLifeSettings(worldLife),pace=life?.pace??1;
+    root.visible=!life||(life.enabled&&life.vehicles&&life.density>0);
+    if(!root.visible)return;
     const now = Number.isFinite(timeSeconds) ? timeSeconds : undefined;
     if (!transientTelemetry && !reduceMotion && now !== undefined && lastTime !== undefined) {
-      liveTime += clamp(now - lastTime, 0, .25);
+      liveTime += clamp(now - lastTime, 0, .25)*pace;
     }
     lastTime = transientTelemetry ? undefined : now;
-    const time = transientTelemetry ? (reduceMotion ? 0 : now ?? 0) : liveTime;
+    const time = transientTelemetry ? (reduceMotion ? 0 : (now ?? 0)*pace) : liveTime;
     const dark = night || activity === 'evening' || activity === 'overnight';
     const passage = dark && !reduceMotion ? nightSailing(time, activity) : null;
-    for (const {route, hull, wake, lights} of boats) {
-      const visible = !dark || passage?.route.id === route.id;
+    for (const [index,{route, hull, wake, lights}] of boats.entries()) {
+      const populated=!life||(index+life.seed)%boats.length<Math.ceil(boats.length*life.density);
+      const visible = populated&&(!dark || passage?.route.id === route.id);
       hull.visible = visible;
       wake.mesh.visible = visible;
       if (lights) lights.visible = dark && visible;

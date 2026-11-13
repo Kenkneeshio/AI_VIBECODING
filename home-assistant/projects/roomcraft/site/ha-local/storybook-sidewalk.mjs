@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {STORYBOOK_BICYCLES, buildStorybookBicycle} from './storybook-vehicles.mjs';
+import {normalizeWorldLifeSettings} from './storybook-world-life-settings.mjs';
 
 const WALK_SPEED = 22;
 const CYCLE_SPEED = 63;
@@ -202,7 +203,10 @@ export function createStorybookSidewalk(road) {
   let previousLiveTime;
   let lastPose;
   let lastPalette;
-  function update(seconds, {reduceMotion = false, night = false, transientTelemetry = false, activity, inView} = {}) {
+  function update(seconds, {reduceMotion = false, night = false, transientTelemetry = false, activity, inView,worldLife} = {}) {
+    const life=worldLife&&normalizeWorldLifeSettings(worldLife),pace=life?.pace??1,lifeKey=JSON.stringify(life);
+    root.visible=!life||(life.enabled&&life.characters&&life.density>0);
+    if(!root.visible)return;
     const dark = night || activity === 'evening' || activity === 'overnight';
     if (dark !== lastNight) {
       for (const layers of bikes.values()) for (const {role, mesh} of layers) {
@@ -214,17 +218,24 @@ export function createStorybookSidewalk(road) {
     if (!transientTelemetry) {
       const step = Number.isFinite(previousLiveTime) && Number.isFinite(seconds)
         ? THREE.MathUtils.clamp(seconds - previousLiveTime, 0, .25) : 0;
-      if (!reduceMotion) liveSeconds += step;
+      if (!reduceMotion) liveSeconds += step*pace;
       previousLiveTime = seconds;
     }
-    const time = transientTelemetry ? (reduceMotion ? 0 : seconds) : liveSeconds;
+    const time = transientTelemetry ? (reduceMotion ? 0 : seconds*pace) : liveSeconds;
     if (lastPose?.time === time && lastPose?.reduceMotion === reduceMotion &&
         lastPose?.transientTelemetry === transientTelemetry && lastPose?.night === night && lastPose?.activity === activity &&
-        lastPose?.inView === inView) return;
+        lastPose?.inView === inView&&lastPose?.lifeKey===lifeKey) return;
     const previouslyCulled = Boolean(lastPose?.inView);
-    lastPose = {time, reduceMotion, transientTelemetry, night, activity, inView};
+    lastPose = {time, reduceMotion, transientTelemetry, night, activity, inView,lifeKey};
     const frame = paths.sample(time, reduceMotion, {night, activity});
-    const palette = frame.walkers.length === paths.walkers.length ? 'day' : frame.walkers[0]?.id;
+    if(life&&life.density<1){
+      const groups=[...new Set(frame.walkers.map(actor=>actor.groupId))];
+      const kept=new Set(groups.filter((_,i)=>(i+life.seed)%groups.length<Math.ceil(groups.length*life.density)));
+      frame.walkers=frame.walkers.filter(actor=>kept.has(actor.groupId));
+      const count=frame.cyclists.length;
+      frame.cyclists=frame.cyclists.filter((_,i)=>(i+life.seed)%count<Math.ceil(count*life.density));
+    }
+    const palette = frame.walkers.map(actor=>actor.id).join('|');
     const recolor = Boolean(inView) || previouslyCulled || palette !== lastPalette;
     lastPalette = palette;
     let partIndex = 0;

@@ -1,5 +1,7 @@
 import * as THREE from 'three';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {STORYBOOK_VEHICLES, buildStorybookVehicle} from './storybook-vehicles.mjs';
+import {normalizeWorldLifeSettings} from './storybook-world-life-settings.mjs';
 
 const PATTERNS = new Map([
   ['clear', {stride: 4, speed: 70}],
@@ -103,6 +105,58 @@ function neighborhoodVehicle({index, lane}) {
   return NEIGHBORHOOD_FLEET[(2 * (block + positionInBlock) + lane) % NEIGHBORHOOD_FLEET.length];
 }
 
+const PAINTS=[['#71a89c','#d7dfc1'],['#bd858e','#e6c3bb'],['#749cc1','#c1d2dc']];
+const BODY_COLORS={
+  'butter-compact':['#edb857','#fff0c7'],'blush-beetle':['#da8e8a','#e4a4a1'],
+  'seafoam-sedan':['#70aea5','#98c9b6'],'blue-wagon':['#769bc0','#a5bbcf'],
+  'coral-convertible':['#e4806b','#ffe0a9'],'berry-sports':['#a3769d','#c3a2ba'],
+  'pine-suv':['#80986e','#c7bd8d'],'sand-pickup':['#c6a37c','#e3c09a'],
+  'lavender-delivery':['#ac9ec7','#d6c5da'],'cream-camper':['#9bb9a7','#f5dc9b'],
+  'peach-food-truck':['#e8a283','#f2c5a2'],'cobalt-minibus':['#7898bc','#e3dbcc'],
+  'honey-box-truck':['#dca95d','#f0cf96'],'mint-city-bus':['#75a99d','#d8e2bd'],
+};
+const CARGO_HEIGHT={'blue-wagon':23,'pine-suv':27,'cream-camper':31};
+
+/** Cosmetic choice only: counts, positions and speed still come from traffic.
+ * A manually chosen vehicle remains exactly that authored model. */
+export function storybookTrafficAppearance(slot,worldLife,selected){
+  if(selected)return {vehicle:selected,paint:-1,accessory:null};
+  const settings=worldLife&&normalizeWorldLifeSettings(worldLife);
+  if(!settings?.enabled||!settings.vehicles||settings.variety===0)return {vehicle:neighborhoodVehicle(slot),paint:-1,accessory:null};
+  const hash=(Math.imul(slot.index+1,374761393)^Math.imul(slot.lane+settings.seed+1,668265263))>>>0;
+  const varied=hash%1000<settings.variety*1000;
+  const vehicle=varied?STORYBOOK_VEHICLES[(hash>>>8)%STORYBOOK_VEHICLES.length]:neighborhoodVehicle(slot);
+  const paint=varied&&BODY_COLORS[vehicle.id]?(hash>>>16)%PAINTS.length:-1;
+  return {vehicle,paint,accessory:varied&&CARGO_HEIGHT[vehicle.id]?(hash%2?'surfboard':'weekend-case'):null};
+}
+function repaintVehicle(layers,id,index){
+  if(index<0||!BODY_COLORS[id])return;
+  const source=BODY_COLORS[id].map(c=>new THREE.Color(c)),target=PAINTS[index].map(c=>new THREE.Color(c));
+  const colors=layers.find(layer=>layer.role==='body')?.geometry.attributes.color;if(!colors)return;
+  for(let i=0;i<colors.count;i++)for(let k=0;k<source.length;k++){
+    const c=source[k];
+    if(Math.abs(colors.getX(i)-c.r)+Math.abs(colors.getY(i)-c.g)+Math.abs(colors.getZ(i)-c.b)<.00001){
+      colors.setXYZ(i,target[k].r,target[k].g,target[k].b);break;
+    }
+  }
+  colors.needsUpdate=true;
+}
+function roofCargoGeometry(kind){
+  const parts=kind==='surfboard'?[[new THREE.SphereGeometry(1,14,7).scale(18,1.2,3.6),'#f2d9a2']]:
+    [[new THREE.BoxGeometry(22,4,13),'#788f9b']];
+  for(const x of [-8,8]){
+    if(kind==='surfboard')parts.push([new THREE.BoxGeometry(1.6,1.2,14).translate(x,-1.4,0),'#6c7477'],
+      [new THREE.BoxGeometry(.8,.2,7.5).translate(x,1.2,0),'#7f9c98']);
+    else parts.push([new THREE.BoxGeometry(.6,.25,13.2).translate(x,2.04,0),'#bdc3ba']);
+  }
+  const colored=parts.map(([source,shade])=>{
+    const g=source.toNonIndexed();source.dispose();g.deleteAttribute('uv');
+    const c=new THREE.Color(shade),values=new Float32Array(g.attributes.position.count*3);
+    for(let i=0;i<values.length;i+=3)c.toArray(values,i);g.setAttribute('color',new THREE.BufferAttribute(values,3));return g;
+  });
+  const result=mergeGeometries(colored);for(const g of colored)g.dispose();return result;
+}
+
 /** Advance two illustrative lanes without tying the art to a route's actual car positions. */
 export function createTrafficMotion({centerX, width, lanes}) {
   const span = width - 60;
@@ -192,6 +246,11 @@ export function createStorybookTraffic(road) {
   beams.visible = halos.visible = false;
   root.add(shadows, beams, halos);
   const transform = new THREE.Object3D();
+  const cargo=new Map([
+    ['surfboard',meshFor(roofCargoGeometry('surfboard'),new THREE.MeshStandardMaterial({vertexColors:true,roughness:.6}))],
+    ['weekend-case',meshFor(roofCargoGeometry('weekend-case'),new THREE.MeshStandardMaterial({vertexColors:true,roughness:.74}))],
+  ]);
+  for(const [name,mesh] of cargo){mesh.name='road-cargo-'+name;mesh.visible=false;root.add(mesh);}
   const laneHalf = Math.abs(road.lanes[0] - road.lanes[1]) / 2;
   let lastNight;
   let lastBrightness = 1;
@@ -204,18 +263,20 @@ export function createStorybookTraffic(road) {
     }
   }
 
-  function modelFor(vehicle) {
-    if (models.has(vehicle.id)) return models.get(vehicle.id);
+  function modelFor(vehicle,paint=-1) {
+    const key=vehicle.id+(paint<0?'':':paint-'+paint);
+    if (models.has(key)) return models.get(key);
     const group = new THREE.Group();
-    group.name = `vehicle-${vehicle.id}`;
-    const layers = buildStorybookVehicle(vehicle.id).map(({geometry, material, role}) =>
+    group.name = `vehicle-${key}`;
+    const art=buildStorybookVehicle(vehicle.id);repaintVehicle(art,vehicle.id,paint);
+    const layers = art.map(({geometry, material, role}) =>
       ({mesh: meshFor(geometry, material), role}));
     group.add(...layers.map(({mesh}) => mesh));
     root.add(group);
     const mounts = role => lampMounts(layers.find(layer => layer.role === role).mesh.geometry);
     const model = {group, layers, headlamps:mounts('headlamp'), taillamps:mounts('taillamp'), count: 0};
     setLamps(model, lastNight);
-    models.set(vehicle.id, model);
+    models.set(key, model);
     return model;
   }
 
@@ -236,13 +297,14 @@ export function createStorybookTraffic(road) {
   }
 
   function update(time, profile, {reduceMotion = false, night = false, transientTelemetry = false,
-    headlightBrightness = 1, inView} = {}) {
+    headlightBrightness = 1, inView,worldLife} = {}) {
     if (transientTelemetry) demoMotion ??= createTrafficMotion(road);
     const clock = transientTelemetry ? demoMotion : motion;
     const slots = clock.update(time, profile, reduceMotion, transientTelemetry);
     root.visible = slots.length > 0;
     beams.visible = halos.visible = night && root.visible;
     beams.count = halos.count = 0;
+    for(const mesh of cargo.values()){mesh.count=0;mesh.visible=false;}
     if (!root.visible) return;
     const brightness = Number.isFinite(headlightBrightness) ? THREE.MathUtils.clamp(headlightBrightness, .35, 1.6) : 1;
     if (night !== lastNight || brightness !== lastBrightness) {
@@ -260,17 +322,22 @@ export function createStorybookTraffic(road) {
     for (const slot of slots) {
       const {x, z, yaw = 0} = road.sample?.(slot.x, slot.z) ?? slot;
       // Keep a car's silhouette stable across wraps and changes in traffic mode.
-      const vehicle = selected ?? neighborhoodVehicle(slot);
+      const appearance=storybookTrafficAppearance(slot,worldLife,selected),{vehicle}=appearance;
       // Include painted shadows, the headlight projection, and camera-facing lamp halos.
       const reach = vehicle.length * .6 + (night ? MAX_HEADLIGHT_LENGTH : 0);
       if (inView && !inView(x, road.surfaceY, z, Math.hypot(reach, vehicle.width, 45))) continue;
-      const model = modelFor(vehicle);
+      const model = modelFor(vehicle,appearance.paint);
       transform.position.set(x, road.surfaceY, z);
       transform.rotation.y = yaw + (slot.lane ? Math.PI : 0);
       transform.scale.set(1, 1, 1);
       transform.updateMatrix();
       for (const {mesh} of model.layers) mesh.setMatrixAt(model.count, transform.matrix);
       model.count++;
+      if(appearance.accessory){
+        const mesh=cargo.get(appearance.accessory);
+        transform.position.y+=CARGO_HEIGHT[vehicle.id]+2.1;transform.updateMatrix();
+        mesh.setMatrixAt(mesh.count++,transform.matrix);transform.position.y=road.surfaceY;
+      }
       transform.scale.set(vehicle.length * .55, 1, vehicle.width * .62);
       transform.updateMatrix();
       shadows.setMatrixAt(shadowCount++, transform.matrix);
@@ -296,6 +363,7 @@ export function createStorybookTraffic(road) {
     root.visible = shadowCount > 0;
     shadows.count = shadowCount;
     if (shadowCount) shadows.instanceMatrix.needsUpdate = true;
+    for(const mesh of cargo.values()){mesh.visible=mesh.count>0;if(mesh.count)mesh.instanceMatrix.needsUpdate=true;}
     for (const {group, layers, count} of models.values()) {
       group.visible = count > 0;
       for (const {mesh} of layers) {

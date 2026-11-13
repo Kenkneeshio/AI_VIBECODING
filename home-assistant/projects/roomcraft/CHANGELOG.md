@@ -1,5 +1,11 @@
 # Changelog
 
+## Living world and marine wildlife — 12 November 2026
+
+- Add eight articulated marine variants across dolphins, sharks, whales, seals and storybook walruses, with seeded encounters, body/coat variation, safe routes and quiet overnight behavior.
+- Add grounded beach activities, birds, butterflies, tree drift, water/weather accents and traffic appearance variations through shared, bounded animation modules.
+- Add Living world settings and preview to Home and Studio, preserving actual controls, layout data and holiday preferences. See [Living world](docs/living-world.md) for contracts, verification and rollback.
+
 ## Independent holiday art and schedules — 12 November 2026
 
 - Add 31 holiday presets with emphasis on Asian celebrations, original animated art, neighborhood decorative lighting and independent Auto / Keep on / Off modes.

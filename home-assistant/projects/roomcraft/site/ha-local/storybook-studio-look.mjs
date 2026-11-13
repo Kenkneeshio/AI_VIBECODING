@@ -4,6 +4,7 @@ import {storybookMoonChoices, storybookWeatherChoices} from './storybook-weather
 import {readStorybookVehicleStyle} from './storybook-commutes.mjs';
 import {createStorybookHolidayPanel} from './storybook-holiday-panel.mjs';
 import {HOLIDAY_CATALOG, holidayLocalDate} from './storybook-holidays.mjs';
+import {createStorybookWorldLifePanel} from './storybook-world-life-panel.mjs';
 
 const LOOK_INTERVAL_MS = 2500;
 const DEFAULT_ENVIRONMENT = Object.freeze({
@@ -25,7 +26,7 @@ export function studioWeatherPreview({condition, daylight, moonPhase, windSpeed,
     sunRising, beachActivity};
 }
 
-export function mountStorybookStudioLook(document, host, {api, viewport, bridge, onChange, getHolidayPlacement}) {
+export function mountStorybookStudioLook(document, host, {api, viewport, bridge, onChange, getHolidayPlacement, onWorldLifePreview}) {
   const dialog = document.getElementById('sceneSettingsDialog');
   const open = document.getElementById('sceneSettingsButton');
   const features = document.getElementById('sceneFeatures');
@@ -56,8 +57,21 @@ export function mountStorybookStudioLook(document, host, {api, viewport, bridge,
     },
     saveLabel: 'Apply to draft',
   });
-  const openHolidays = () => holidayPanel.open();
+  const openHolidays = () => { worldLifePanel.close(); holidayPanel.open(); };
   holidayButton?.addEventListener('click', openHolidays);
+  let worldLifePreview;
+  const worldLifeButton = document.getElementById('worldLifeSettingsButton');
+  const worldLifePanel = createStorybookWorldLifePanel(document.body, {
+    getSettings: () => api.getProject().sceneSettings?.worldLife,
+    onSave: settings => {
+      api.setWorldLifeSettings(settings);
+      return {status: 'saved', notice: 'Applied to your draft. Select Save in Studio to publish.'};
+    },
+    onPreview: value => { worldLifePreview = value; onWorldLifePreview?.(value); onChange(); }, onClose: onChange,
+    saveLabel: 'Apply to draft',
+  });
+  const openWorldLife = () => { holidayPanel.close(); worldLifePanel.open(); };
+  worldLifeButton?.addEventListener('click', openWorldLife);
   const styles = document.createElement('style');
   styles.textContent = COASTAL_SKY_STYLE;
   document.head.append(styles);
@@ -202,6 +216,9 @@ export function mountStorybookStudioLook(document, host, {api, viewport, bridge,
         });
       const holidayDate = localHolidayDate();
       const environment = {...look, holidayDate, holidayPreview: holidayPreview ?? undefined,
+        worldLifePreview: worldLifePreview ?? undefined,
+        worldTimeSeconds: Number.isFinite(dashboard?.environment?.worldTimeSeconds)
+          ? dashboard.environment.worldTimeSeconds : Date.now() / 1000,
         traffic: {...(look.traffic ?? DEFAULT_ENVIRONMENT.traffic),
         vehicleStyle: readStorybookVehicleStyle(host)}};
       sky.hidden = !active || !sceneFeatureEnabled(settings, 'sky');
@@ -219,6 +236,8 @@ export function mountStorybookStudioLook(document, host, {api, viewport, bridge,
       motion.removeEventListener('change', onChange);
       holidayButton?.removeEventListener('click', openHolidays);
       holidayPanel.destroy();
+      worldLifeButton?.removeEventListener('click', openWorldLife);
+      worldLifePanel.destroy();
       dialog.close();
       for (const {input} of layers) input.parentElement.remove();
       custom.replaceChildren();

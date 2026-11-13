@@ -129,6 +129,7 @@ export function storybookFrame(model, snapshot = {}, now = 0, timeZone, weatherE
   const weatherAttributes = weather?.attributes ?? {};
   const daylightKnown = sun?.state === 'above_horizon' || sun?.state === 'below_horizon';
   const environment = {
+    worldTimeSeconds: Number.isFinite(now) ? now / 1000 : undefined,
     holidayDate: holidayLocalDate(now, timeZone),
     holidayTimeZone: timeZone,
     night: daylightKnown ? sun.state === 'below_horizon' : weather?.state === 'clear-night',

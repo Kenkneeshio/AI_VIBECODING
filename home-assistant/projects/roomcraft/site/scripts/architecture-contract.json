@@ -84,6 +84,21 @@
   ],
   "requiredImports": [
     {
+      "from": "ha-local/storybook-scene.mjs",
+      "to": "ha-local/storybook-marine-life.mjs",
+      "reason": "Home and Studio share marine art and safe deterministic routes"
+    },
+    {
+      "from": "ha-local/storybook-scene.mjs",
+      "to": "ha-local/storybook-world-moments.mjs",
+      "reason": "Decorative activity uses one bounded shared renderer"
+    },
+    {
+      "from": "ha-local/storybook-world-life-settings.mjs",
+      "to": "public/engine/world-life.js",
+      "reason": "World settings use one pure validation contract"
+    },
+    {
       "from": "ha-local/roomcraft-storybook.mjs",
       "to": "ha-local/storybook-scene.mjs",
       "reason": "Home uses the shared 3D scene"

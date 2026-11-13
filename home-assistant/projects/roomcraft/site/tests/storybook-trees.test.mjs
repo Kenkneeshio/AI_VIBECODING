@@ -82,6 +82,11 @@ test('tree wind uses shared material uniforms and retains each tree’s seed, he
   });
   assert.equal(wind.add({kind: 'fan-palm', x: 20, z: 40, groundY: -111, height: 145, seed: 7}), true);
   assert.equal(wind.add({kind: 'fan-palm', x: 30, z: 45, groundY: -111, height: 90, seed: 17}), true);
+  const anchors=wind.getTrees();
+  assert.deepEqual(anchors.map(({x,z,groundY,height})=>({x,z,groundY,height})),[
+    {x:20,z:40,groundY:-111,height:145},{x:30,z:45,groundY:-111,height:90},
+  ]);
+  anchors[0].x=999;assert.equal(wind.getTrees()[0].x,20,'ambient drift cannot mutate authored tree anchors');
   let root = false;
   let crown = false;
   const phases = new Set();

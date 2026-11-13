@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+import {normalizeWorldLifeSettings} from './storybook-world-life-settings.mjs';
 
 const DRY_SAND_MARGIN = 26;
 const DUNE_CLEARANCE = 39;
@@ -528,17 +529,20 @@ export function createStorybookBeachPlay(water, street) {
   let lastTime;
   let lastReduced;
   let lastActivity;
-  function update(seconds, {reduceMotion = false, transientTelemetry = false, activity = 'day', night = false} = {}) {
+  function update(seconds, {reduceMotion = false, transientTelemetry = false, activity = 'day', night = false,worldLife} = {}) {
+    const life=worldLife&&normalizeWorldLifeSettings(worldLife),pace=life?.pace??1;
+    root.visible=!life||(life.enabled&&life.characters&&life.density>0);
+    if(!root.visible)return;
     const selected = activity === 'overnight' ? activity : night ? 'evening' :
       Object.hasOwn(stages, activity) ? activity : 'day';
     if (!transientTelemetry) {
       const dt = Number.isFinite(previousTime) && Number.isFinite(seconds)
         ? THREE.MathUtils.clamp(seconds - previousTime, 0, .25) : 0;
-      if (!reduceMotion) liveSeconds += dt;
+      if (!reduceMotion) liveSeconds += dt*pace;
       previousTime = seconds;
     }
     const time = reduceMotion ? .96 : transientTelemetry
-      ? Number.isFinite(seconds) ? Math.max(0, seconds) : 0
+      ? Number.isFinite(seconds) ? Math.max(0, seconds)*pace : 0
       : liveSeconds;
     if (time === lastTime && reduceMotion === lastReduced && selected === lastActivity) return;
     lastTime = time;
