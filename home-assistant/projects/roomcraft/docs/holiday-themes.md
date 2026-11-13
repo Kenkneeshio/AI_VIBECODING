@@ -45,7 +45,32 @@ Holiday variants reuse standardized art families while retaining distinct detail
 
 ## Verification and release record
 
-Implementation in progress. Record exact automated checks, synthetic visuals, built-browser interactions, actual HA readback, tablet verification and source/deployment IDs after those checks run. Tests must cover time-zone/year boundaries, leap dates, independent Off, overlap, unknown future dates, overrides, draft/save conflicts, reduced motion, disposal and Home/Studio parity. Public proofs use synthetic layouts without private entities or camera images.
+The final source passed the complete release gate: **585 site tests, 65 bridge/weather tests, 30 installer tests and 8 presence tests (688 total)**, architecture boundaries, deterministic release/manifest verification, TypeScript, lint, production build and whitespace checks. Lint retains 17 existing warnings and no errors. Runtime GitHub CI [43336916567](https://github.com/Kenkneeshio/AI_VIBECODING/actions/runs/43336916567) passed.
+
+Calendar cases cover reviewed lunar dates, regional coverage, leap-month and year boundaries, independent Off, overlap, unknown future dates, overrides, DST/local midnight and explicit-clock determinism. Art/runtime cases cover all 31 variants, quiet observances, reduced motion, disposal, exact wall/roof support, moved/resized landmarks and separate stage transforms. The Home/Studio state test proves the next refresh at HA local midnight.
+
+The actual-card browser fixture uses the production animation scheduler. All 16 art-family previews must resume after the modal pauses rendering, produce continuing frames and restore the previous camera. It also verifies independent Off during overlap, saved settings, prior-layout snapshot, readback, persistent reopening, phone fit and zero device service calls. The final built Studio fixture exercises real menu controls, exact fractional placement, preview isolation, rapid reopen/Escape, Undo/Redo, reset to automatic and mock Save.
+
+The first tablet preview exposed a gap in the earlier manually rendered fixture: the preview callback ran while its modal was still open, so the scheduler stayed paused. The corrected callback runs after closing the modal, and the final fixture no longer replaces the scheduler or manually renders frames. Source `23a3912` / Site 111 was superseded by the corrected release below; use the final source, not the intermediate deployment.
+
+![Shared holiday controls in a synthetic phone viewport](images/holiday-menu-phone.png)
+
+| Released artifact | Exact evidence |
+| --- | --- |
+| Final runtime source | `07972b7eda27db8c22362ac72d53571f2c9a0725` |
+| Full-project manifest | `sha256:778001679c0af07b762019e1e24ada0cbca0073c90cb26e1713a6b84062341b2`, 381 inputs |
+| HA resource revision | `fddc98664af18134` |
+| HA asset readback | 13 exact hashes over LAN and Nabu Casa, including both holiday and scene settings engine scripts; Home/Studio/Controls structure and resource registrations verified |
+| Authored data | All 82 existing objects and their control data retained. Actual tablet Save persisted 31 Auto modes, seven days, intensity 0.7, events/glow enabled, no date or placement override; only the holiday settings branch and normal prior-design snapshots changed |
+| Owner-private Site | Version 112, deployment `appgdep_6af6593598548191b6020715365eeaa2`, succeeded; owner-only audience retained |
+| Site source | `28b1051fe8816255bedf2009c5c3717b603856f3` |
+| Site subset manifest | `sha256:e5c6b535277c43590a45acab0ceb799430278d3d11d967bf6c29f3193d9a647e`, 274 inputs |
+| Local packaged archive hash | `sha256:88d0f98485c1f72fef910fb3abd864cd52939396299545ccb41f82f5d870f7ff` |
+| Site stored archive hash | `sha256:6f1b0fe623090761acb9e696796b7d0a3cd38fce48a0d22b215fac33fc2b3616` |
+
+The 1920 × 1080 Apolosign tablet cold-launched Companion 2026.10.1-full with its HOME alias intact. The actual menu, Lunar New Year animated preview, roof-trim neighborhood view, End preview restoration and Save action were exercised. Independent API readback confirmed the saved defaults, unchanged objects/other authored data and retained pre-save layout snapshot. Observed counters were 24 FPS on Home and 28 in the close preview; these are samples, not a benchmark. No physical device was actuated.
+
+Public images and browser fixtures use synthetic scenes. Actual tablet images and full dashboard backups stay in the protected management folder. No separate hosted-Site visual check was performed: native publication verifies that deployment, while the shared built source was checked in Chrome and on the HA tablet. Reproduce browser proofs from `site/` with `ROOMCRAFT_HOLIDAY_QA_DIST=1 node scripts/verify-holiday-browser.mjs` and `ROOMCRAFT_HOLIDAY_STUDIO_QA_DIST=1 node scripts/verify-holiday-studio-browser.mjs` after the normal build. In PowerShell, set the corresponding `$env:` variable first. Post-deployment evidence is committed separately from the exact runtime revision above.
 
 ## Rollback
 

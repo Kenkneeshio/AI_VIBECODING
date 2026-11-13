@@ -5,6 +5,7 @@
 - Add 31 holiday presets with emphasis on Asian celebrations, original animated art, neighborhood decorative lighting and independent Auto / Keep on / Off modes.
 - Share seven-day scheduling, local dates, previews, placement and intensity controls between Home and Studio. Save preserves existing objects, device states and other holidays.
 - Document coverage, regional conventions, extension points, proof and rollback in [holiday themes](docs/holiday-themes.md).
+- Final runtime `07972b7e`, HA `fddc98664af18134` and private Studio 112 are verified. All 688 tests, CI, real-scheduler browser previews and actual tablet preview/Save/readback passed. A tablet-discovered preview pause was corrected before closing the release; all 82 objects are retained.
 
 ## Living landmarks and a one-minute demo — 12 November 2026
 
