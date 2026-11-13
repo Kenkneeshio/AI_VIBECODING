@@ -79,7 +79,17 @@ function walkFiles(root) {
 }
 
 function runtimeCandidates(siteRoot = SITE_ROOT, projectRoot = PROJECT_ROOT) {
+  // Authored HA modules can be shared with Studio or used only by the Live
+  // card. Discover the direct source files, not deployment/private subtrees,
+  // so adding a module cannot silently leave it out of the release digest.
+  const haSourceRoot = join(siteRoot, 'ha-local');
+  const haRuntimeModules = existsSync(haSourceRoot)
+    ? readdirSync(haSourceRoot, { withFileTypes: true })
+      .filter(entry => entry.isFile() && entry.name.endsWith('.mjs') && !entry.name.endsWith('.test.mjs'))
+      .map(entry => join(haSourceRoot, entry.name))
+    : [];
   const candidates = [
+    ...haRuntimeModules,
     ...walkFiles(join(siteRoot, 'app')),
     ...walkFiles(join(siteRoot, 'lib')),
     ...walkFiles(join(siteRoot, 'public')),

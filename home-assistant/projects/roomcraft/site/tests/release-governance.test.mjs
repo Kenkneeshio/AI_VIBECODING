@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readFileSync } from 'node:fs';
-import { isAbsolute, join } from 'node:path';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
 import {
   PROJECT_ROOT,
   REQUIRED_ENGINE_SOURCES,
@@ -79,6 +80,38 @@ test('release evidence covers implementation, verification, configuration, and d
   if (!standalone) requiredPaths.push('docs/release-standard.md');
   for (const requiredPath of requiredPaths) {
     assert.ok(paths.has(requiredPath), `release manifest must include ${requiredPath}`);
+  }
+});
+
+test('release evidence discovers shared and Live-only HA modules without collecting private files', () => {
+  const paths = new Set(buildReleaseManifest(SITE_ROOT, PROJECT_ROOT).inputs.map(input => input.path));
+  const prefix = SITE_ROOT === PROJECT_ROOT ? '' : 'site/';
+  for (const name of [
+    'storybook-marine-life.mjs', 'storybook-world-clock.mjs', 'storybook-world-moments.mjs',
+    'storybook-world-life-settings.mjs', 'storybook-world-life-panel.mjs', 'storybook-world-life-save.mjs',
+    'storybook-holidays.mjs', 'storybook-holiday-panel.mjs', 'storybook-holiday-save.mjs'
+  ]) assert.ok(paths.has(`${prefix}ha-local/${name}`), `release manifest must include ${name}`);
+
+  const fixture = mkdtempSync(join(tmpdir(), 'roomcraft-release-inputs-'));
+  try {
+    mkdirSync(join(fixture, 'ha-local', 'private'), { recursive: true });
+    writeFileSync(join(fixture, 'ha-local', 'new-shared-module.mjs'), 'export const value = 1;\n');
+    writeFileSync(join(fixture, 'ha-local', 'new-live-save.mjs'), 'export const save = () => true;\n');
+    writeFileSync(join(fixture, 'ha-local', 'credentials.json'), '{"synthetic":true}\n');
+    writeFileSync(join(fixture, 'ha-local', 'unlisted.test.mjs'), 'throw new Error("not runtime");\n');
+    writeFileSync(join(fixture, 'ha-local', 'private', 'unrelated.mjs'), 'export const privateData = true;\n');
+    const first = buildReleaseManifest(fixture, fixture);
+    assert.deepEqual(first.inputs.map(input => input.path), [
+      'ha-local/new-live-save.mjs', 'ha-local/new-shared-module.mjs'
+    ]);
+    writeFileSync(join(fixture, 'ha-local', 'new-live-save.mjs'), 'export const save = () => false;\n');
+    const second = buildReleaseManifest(fixture, fixture);
+    assert.notEqual(second.rootDigest, first.rootDigest, 'Live-only changes must invalidate the release digest');
+    assert.equal(second.inputs[1].sha256, first.inputs[1].sha256);
+  } finally {
+    assert.equal(dirname(resolve(fixture)), resolve(tmpdir()));
+    assert.ok(basename(fixture).startsWith('roomcraft-release-inputs-'));
+    rmSync(fixture, { recursive: true, force: true });
   }
 });
 
