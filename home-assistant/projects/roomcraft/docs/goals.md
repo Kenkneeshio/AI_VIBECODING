@@ -2,6 +2,7 @@
 
 | Goal | Reason | Evidence of completion |
 | --- | --- | --- |
+| Celebrate holidays automatically while respecting individual preferences | Asian and other major celebrations should have editable art, lighting and events, and disabling one must not disable others | Independent calendar/settings/art modules and shared Home/Studio controls; exact verification is recorded in [holiday themes](holiday-themes.md) |
 | Bring familiar landmarks into the live miniature and demo | The neighborhood should have editable activity and each landmark should receive a clear tour stop | One-minute tour and per-building activity controls deployed with 658 tests, CI, built browser fixtures, exact readback and the actual tablet tour; evidence in [living landmarks](landmark-activity.md) |
 | Add the neighboring school as editable scenery | Familiar school buildings and playgrounds should belong to the same miniature landscape and connect naturally to its street | Detailed campus and connected left branch; 647 tests, CI, built editor, exact HA Save/readback and tablet inspection in [school campus](school-campus.md) |
 | Connect exterior landmarks through one editable straight road | The office should sit beside the ranch’s road, which should run parallel to the condo | Straight shared spine, three approaches and closer office placement; 642 tests, CI, actual Studio Save, HA/Site publication and tablet inspection in [road connections](road-connections.md) |

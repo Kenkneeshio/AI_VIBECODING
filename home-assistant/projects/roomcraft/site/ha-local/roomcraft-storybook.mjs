@@ -1,6 +1,9 @@
 import {createPersonPresence, personSource, readDetectionZones, trackingSnapshots, trackingStatus} from './storybook-tracking.mjs';
 import {bindLiveModelLibrary} from './storybook-library.mjs';
 import {createStorybookScene} from './storybook-scene.mjs';
+import {HOLIDAY_CATALOG} from './storybook-holidays.mjs';
+import {createStorybookHolidayPanel} from './storybook-holiday-panel.mjs';
+import {saveHolidaySettings} from './storybook-holiday-save.mjs';
 import {createStorybookDemo, DEMO_DURATION_MS, STORYBOOK_DEMO_VOICE_CUES} from './storybook-demo.mjs';
 import {createStorybookDemoScenario} from './storybook-demo-frame.mjs';
 import {createStorybookNarrator} from './storybook-demo-narration.mjs';
@@ -346,6 +349,7 @@ class RoomcraftStorybookCard extends HTMLElement {
                   <p class="menu-heading" aria-hidden="true">Household</p>
                   <button type="button" data-link-dialog="location" aria-haspopup="dialog">Location sharing</button>
                   <button type="button" data-link-dialog="commute" aria-haspopup="dialog">Commute traffic</button>
+                  <button type="button" class="holiday-settings" aria-haspopup="dialog">Holidays &amp; celebrations</button>
                   <button type="button" class="demo-start" disabled>1-minute demo</button>
                 </section>
               </div>
@@ -419,6 +423,33 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.clearDefaultButton = this.shadowRoot.querySelector('[data-camera=clear-default]');
     this.freeViewHint = this.shadowRoot.querySelector('#free-view-hint');
     this.cameraView = resolveDefaultCameraView(null);
+    this.holidayPanel = createStorybookHolidayPanel(this.shadowRoot, {
+      catalog:HOLIDAY_CATALOG,
+      getSettings:()=>this.model?.layout.sceneSettings?.holidays,
+      getDate:()=>this.frame?.environment.holidayDate,
+      getAutoPlacement:()=>this.scene?.getHolidayDefaultPlacement?.(),
+      onPreview:value=>this.previewHoliday(value),
+      onClose:()=>this.schedule(),
+      onSave:async value=>{
+        const session = this.session, dashboard = this.dashboard;
+        const result = await saveHolidaySettings(session, dashboard, this.holidayExpected, value, {
+          stillAuthorized:()=>this.isConnected && this.dashboard===dashboard && this.session?.user?.is_admin === true
+            && this.session?.user?.id===session?.user?.id && this.session?.connection===session?.connection,
+          savedAt:new Date().toISOString(),
+        });
+        if (result.status === 'saved') {
+          this.holidayExpected = result.value;
+          this.reset();
+          await this.load();
+        }
+        return result;
+      },
+    });
+    this.shadowRoot.querySelector('.holiday-settings').addEventListener('click',()=>{
+      this.setMainMenu(false, true);
+      this.holidayExpected = this.model?.layout.sceneSettings?.holidays;
+      this.holidayPanel.open();
+    });
     this.menuButton = this.shadowRoot.querySelector('.main-menu-button');
     this.mainMenu = this.shadowRoot.querySelector('.main-menu');
     this.menuShade = this.shadowRoot.querySelector('.menu-shade');
@@ -642,7 +673,22 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   get studioPath() { return `/${this.dashboard || 'roomcraft-home'}/studio`; }
   get weatherEntityId() { return this.weatherPanel.effectiveEntityId ?? this.model?.weather.weather_entity; }
-  get largePanelOpen() { return this.weatherDialog.open || this.powerDialog.open || this.lidarRuler.open; }
+  get largePanelOpen() { return this.weatherDialog.open || this.powerDialog.open || this.lidarRuler.open || this.holidayPanel?.isOpen; }
+
+  previewHoliday(value) {
+    if (value && !this.holidayPreview) this.holidayReturnView = this.scene?.getView();
+    this.holidayPreview = value;
+    if (value) {
+      this.stopDemo();
+      const focus = this.scene?.getHolidayFocus(value.settings) ?? this.scene?.getDemoFocus('holiday');
+      if (focus) this.scene.setView({preset:'top',azimuth:180,tilt:40,zoom:2}, {focus,demoZoom:8});
+    } else if (this.holidayReturnView) {
+      this.scene?.setView(this.holidayReturnView);
+      this.holidayReturnView = undefined;
+    }
+    this.anchorDirty = true;
+    this.schedule();
+  }
 
   set hass(value) {
     const previous = this.session;
@@ -846,6 +892,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this.holidayPanel.close();
     this.displaySettings.disconnect();
     this.snapshots.disconnect();
     this.setMainMenu(false);
@@ -1302,7 +1349,9 @@ class RoomcraftStorybookCard extends HTMLElement {
         const time = (demo?.sample.elapsedMs ?? at) / 1000;
         const options = {reduceMotion, transientTelemetry: Boolean(demo)};
         this.scene.setPeople(frame.people, time, options);
-        this.scene.render(time, frame.states, {...frame.environment, reduceMotion}, options);
+        this.scene.render(time, frame.states, {...frame.environment,
+          holidayDate:frame.environment.holidayDate ?? this.frame.environment.holidayDate,
+          holidayPreview:this.holidayPreview, reduceMotion}, options);
         this.lastSceneRenderAt = at;
         if (this.anchorDirty || (!demo && this.scene.trackedControlChanged)) {
           if (!demo) this.positionControls();

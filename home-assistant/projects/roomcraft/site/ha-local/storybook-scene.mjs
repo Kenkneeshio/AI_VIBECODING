@@ -8,6 +8,7 @@ import {makeStorybookSceneryHouse} from './storybook-scenery-house.mjs';
 import {makeStorybookOfficeCampus} from './storybook-office-campus.mjs';
 import {makeStorybookSchoolCampus} from './storybook-school-campus.mjs';
 import {createLandmarkLife} from './storybook-landmark-life.mjs';
+import {createHolidayRuntime, defaultHolidayPlacement, holidayPlacement, holidayPlacementBounds} from './storybook-holiday-runtime.mjs';
 import {isExteriorScenery, isExteriorBuilding, exteriorBounds, exteriorHouseContains, exteriorCameraBounds} from './storybook-exterior.mjs';
 import {compileStorybookSideRoads,buildStorybookSideRoads,storybookSideRoadContains,storybookSideRoadSupportPads} from './storybook-side-road.mjs';
 import '../public/inventory.js';
@@ -735,7 +736,7 @@ export function storybookPlantClearsStructures(structures, x, z, radius) {
   });
 }
 
-function buildYard(batch, groveBatch, plan, street, treeWind, heightAt, sandHeight, density, garageDriveways = [], sideRoads = []) {
+function buildYard(batch, groveBatch, plan, street, treeWind, heightAt, sandHeight, density, garageDriveways = [], sideRoads = [], holidayPad) {
   const { minX, maxX, minZ, maxZ } = plan.houseBounds;
   const width = maxX - minX;
   const depth = maxZ - minZ;
@@ -752,6 +753,8 @@ function buildYard(batch, groveBatch, plan, street, treeWind, heightAt, sandHeig
   const bushes = [[0.06, -0.075], [0.32, -0.09], [0.63, -0.11], [0.92, -0.075], [1.045, 0.32],
     [1.035, 0.74], [0.84, 1.085], [0.51, 1.08], [0.23, 1.075], [-0.135, 0.55]];
   const keepPlant = index => density >= 1 || Math.floor((index + 1) * density) > Math.floor(index * density);
+  const holidayClearing = (x,z,radius) => holidayPad && x+radius>holidayPad.minX && x-radius<holidayPad.maxX
+    && z+radius>holidayPad.minZ && z-radius<holidayPad.maxZ;
   for (const [index, [fx, fz]] of bushes.entries()) {
     if (!keepPlant(index)) continue;
     const x = minX + fx * width;
@@ -759,7 +762,7 @@ function buildYard(batch, groveBatch, plan, street, treeWind, heightAt, sandHeig
     const size = 21 + rand() * 24;
     // Include the outer leaves and flowers, not only the shrub's center.
     const radius = size * 1.26 + 4;
-    if (storybookGarageDrivewayContains(garageDriveways, x, z, radius) || storybookSideRoadContains(sideRoads,x,z,radius) ||
+    if (holidayClearing(x,z,radius) || storybookGarageDrivewayContains(garageDriveways, x, z, radius) || storybookSideRoadContains(sideRoads,x,z,radius) ||
         !storybookPlantClearsStructures(structures, x, z, radius)) continue;
     const groundY = heightAt(x, z);
     batch.ball(size * 0.94, 9, size * 0.67, '#6d886a', x, groundY + 7, z);
@@ -795,6 +798,7 @@ function buildYard(batch, groveBatch, plan, street, treeWind, heightAt, sandHeig
     ['olive', -.18, .94, 82],
   ];
   const clearsBuiltArea = (x, z, radius) => {
+    if (holidayClearing(x,z,radius)) return false;
     if (storybookGarageDrivewayContains(garageDriveways, x, z, radius) || storybookSideRoadContains(sideRoads,x,z,radius)) return false;
     if (z - radius <= street.sample(x, street.nearZ).z + 3) return false;
     if (x + radius > minX && x - radius < maxX && z + radius > minZ && z - radius < maxZ) return false;
@@ -1176,8 +1180,11 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   const street = storybookStreetBounds(plan, terrain);
   const garageDriveways = compileStorybookGarageDriveways(plan, street, GROUND_Y);
   const sideRoads = compileStorybookSideRoads(plan,street,GROUND_Y);
+  const holidayPose = holidayPlacement(plan, street, layout.sceneSettings?.holidays);
+  const holidayPad = holidayPlacementBounds(holidayPose);
   const meadow = createStorybookMeadow({plan, street, width:6200, depth:4200,
-    centerX:(minX + maxX) / 2, centerZ:(minZ + maxZ) / 2, groundY:GROUND_Y, terrain, terrainSampler, extraPads:storybookSideRoadSupportPads(sideRoads)});
+    centerX:(minX + maxX) / 2, centerZ:(minZ + maxZ) / 2, groundY:GROUND_Y, terrain, terrainSampler,
+    extraPads:[...storybookSideRoadSupportPads(sideRoads),holidayPad]});
   const groundMaterial = new THREE.MeshStandardMaterial({
     color: '#e8e8d2', map: meadowTexture(canvas.ownerDocument), roughness: 0.95, vertexColors:true,
   });
@@ -1220,7 +1227,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     coast: {x: water.cove.x, y: water.y + 9, z: water.cove.z - 20},
     beach: {x: water.focusX, y: water.y + 8, z: shoreCenter.z + 37},
   };
-  buildYard(batch, groveBatch, plan, street, treeWind, meadow.heightAt, water.sandHeight, (terrain?.planting ?? 100) / 100, garageDriveways, sideRoads);
+  buildYard(batch, groveBatch, plan, street, treeWind, meadow.heightAt, water.sandHeight, (terrain?.planting ?? 100) / 100, garageDriveways, sideRoads, holidayPad);
   buildPlacedLandscape(batch, groveBatch, terrain, terrainEngine.GRID_SIZE,
     (x,z) => coast.canEditTerrain(x,z) ? water.sandHeight(x,z) : meadow.heightAt(x,z), canEditTerrain);
   if (terrain?.yardAccess !== false) buildStorybookYardAccess(batch, plan, street, meadow.heightAt, GROUND_Y);
@@ -1241,6 +1248,8 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   const treeMeshes = scene.children.slice(firstTreeMesh);
   const structureMeshes = scene.children.filter(node => node.isMesh);
   const lighting = createStorybookLighting(renderer, scene, plan.bounds);
+  const holidays = createHolidayRuntime({plan, street, heightAt:meadow.heightAt});
+  scene.add(holidays.root);
   const fadeSolar = createStorybookSolarFade();
   lighting.markStructure();
   ground.castShadow = false;
@@ -1345,6 +1354,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
       scene.add(object.root);
       roots.set(item.id, object);
       if (isExteriorBuilding(item.type)) {
+        holidays.registerLandmark(item,object.root);
         const life = createLandmarkLife(item, {heightScale:object.root.scale.y});
         if (life) {
           life.root.position.copy(object.root.position);
@@ -1487,6 +1497,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   function getView() { return {...cameraView}; }
   function getDemoFocus(target) {
     if (typeof target === 'string') {
+      if (target === 'holiday') return {x:holidayPose.x, y:GROUND_Y+35*holidayPose.scale, z:holidayPose.y};
       if (Object.hasOwn(sceneryFocus, target)) return {...sceneryFocus[target]};
       const landmarkType = {'landmark-family':'sceneryRanchHouse', 'landmark-office':'sceneryOfficeCampus',
         'landmark-school':'scenerySchoolCampus'}[target];
@@ -1651,6 +1662,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
           vehicles:item.landmarkVehicles !== false, events:item.landmarkEvents !== false,
           satellites:item.landmarkSatellites !== false, speed:item.landmarkPace ?? 1}});
     }
+    holidays.update({elapsedSeconds:timeSeconds,environment,settings:sceneSettings?.holidays});
     lighting.update(environment, statesById, groundMaterial, placementChanged);
     if (scene.fog) horizonFog.color.copy(scene.background);
     const nextPeople = transientTelemetry ? demoPeople : livePeople;
@@ -1701,6 +1713,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     sidewalk.dispose();
     boats.dispose();
     beachPlay.dispose();
+    holidays.dispose();
     for (const {life} of landmarkLife.values()) { scene.remove(life.root); life.dispose(); }
     const geometries = new Set();
     const materials = new Set();
@@ -1726,6 +1739,10 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   const exteriorClearance = () => projectExteriorClearance(plan, camera, currentWidth, currentHeight);
   return {
     resize, render, anchor, setView, getView, getDemoFocus, projectToPlan, pickGarage, exteriorClearance, dispose,
+    getHolidayPlacement:()=>({...holidayPose}), getHolidayDefaultPlacement:()=>defaultHolidayPlacement(plan,street),
+    getHolidayFocus:settings=>{const p=holidayPlacement(plan,street,settings);
+      return {x:p.x,y:meadow.heightAt(p.x,p.y)+35*p.scale,z:p.y};},
+    getHolidayState:()=>holidays.getState(),
     hasAmbientMotion: true, setPeople, setDisplaySettings, setGraphicsSettings, setVacuumMapOverlay,
     setDetectionZones: coverage.setZones, setHeatMap: heatMap.setHistory,
     get trackedControlChanged() { return trackedControlChanged; },

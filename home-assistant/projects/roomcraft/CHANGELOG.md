@@ -1,5 +1,11 @@
 # Changelog
 
+## Independent holiday art and schedules — 12 November 2026
+
+- Add 31 holiday presets with emphasis on Asian celebrations, original animated art, neighborhood decorative lighting and independent Auto / Keep on / Off modes.
+- Share seven-day scheduling, local dates, previews, placement and intensity controls between Home and Studio. Save preserves existing objects, device states and other holidays.
+- Document coverage, regional conventions, extension points, proof and rollback in [holiday themes](docs/holiday-themes.md).
+
 ## Living landmarks and a one-minute demo — 12 November 2026
 
 - Extend the shared tour to 60 seconds with school, family-house and office chapters; optional narration remains muted by default.

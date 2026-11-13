@@ -7,7 +7,7 @@ import { compileStorybookPlan } from '../ha-local/storybook-scene.mjs';
 
 const source = readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
 const controlsSource = readFileSync(new URL('../public/object-controls.js', import.meta.url), 'utf8');
-const editorEngineSources = ['wall-joins.js', 'reference-geometry.js', 'scene-settings.js', 'terrain.js', 'edit-safety.js'].map(name =>
+const editorEngineSources = ['wall-joins.js', 'reference-geometry.js', 'holiday-settings.js', 'scene-settings.js', 'terrain.js', 'edit-safety.js'].map(name =>
   readFileSync(new URL(`../public/engine/${name}`, import.meta.url), 'utf8'));
 const storageKey = 'roomcraft.second-floor.v2';
 const crop = { x: 0, y: 80, width: 1536, height: 864 };
@@ -140,6 +140,23 @@ function safetyFixture() {
     items:[{id:'chair', type:'chair', name:'Chair', x:700, y:400, w:48, h:48, rotation:0,
       entityId:'switch.example'}]};
 }
+
+test('holiday settings use one Studio undo unit, reject malformed edits and preserve imported preferences', () => {
+  const original = {...safetyFixture(), sceneSettings: {sky:false, holidays:{modes:{halloween:'off'}}}};
+  const editor = boot(original), api = editor.window.RoomcraftEditorViewport;
+  assert.equal(api.getProject().sceneSettings.holidays.modes.halloween, 'off');
+  const before = editor.read(), commandCount = editor.window.RoomcraftEditorEngine.inspect().commandCount;
+  assert.equal(api.setHolidaySettings({modes:{halloween:'off', christmas:'on'}, intensity:.5}), true);
+  assert.equal(editor.window.RoomcraftEditorEngine.inspect().commandCount, commandCount + 1);
+  const saved = editor.read();
+  assert.equal(saved.sceneSettings.holidays.modes.christmas, 'on');
+  assert.equal(saved.sceneSettings.sky, false); assert.deepEqual(saved.items, before.items);
+  assert.equal(api.setHolidaySettings({intensity:2}), false); assert.deepEqual(editor.read(), saved);
+  editor.dispatch('undoButton', 'click'); assert.deepEqual(editor.read(), before);
+  editor.dispatch('redoButton', 'click'); assert.deepEqual(editor.read(), saved);
+  const imported = boot(JSON.parse(JSON.stringify(saved)));
+  assert.deepEqual(JSON.parse(JSON.stringify(imported.window.RoomcraftEditorViewport.getProject().sceneSettings)), saved.sceneSettings);
+});
 
 function beginCrossedRoom(editor) {
   editor.dispatch('tool:room', 'click', {});

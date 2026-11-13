@@ -32,6 +32,7 @@ export const REQUIRED_ENGINE_SOURCES = Object.freeze([
   'engine/verification-harness.js',
   'engine/wall-joins.js',
   'engine/reference-geometry.js',
+  'engine/holiday-settings.js',
   'engine/scene-settings.js',
   'engine/terrain.js',
   'engine/edit-safety.js'

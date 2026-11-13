@@ -1,5 +1,9 @@
 # Decision log
 
+## Schedule each holiday independently through one shared engine
+
+Use a curated catalog with primary-source date tables for variable calendars and explicit regional conventions. Fail closed outside verified coverage; allow user date overrides and Keep on instead of guessing lunar dates. Default to seven local days centered on the date, with persistent Off per holiday. Use original procedural art, explicit animation time, shared preview and saved settings, and lightweight festive roof trim. Decorations do not actuate devices or become occupancy reports. Preserve current layout data and use conflict-aware save/readback. See [holiday themes](holiday-themes.md).
+
 ## Keep landmark activity decorative, editable and shared
 
 Add deterministic explicit-time vignettes to the existing grouped landmark recipes. Keep actor proportions separate from building-height transforms, and drive Home/Studio through the same renderer. Optional authored category switches and pace use the existing Inspector, validation and history contracts. Public recipes use generic household/campus characters; private placement and identities stay outside Git. Extend the demo with three five-second stops while preserving the existing weather sequence, muted voice default and physical-device isolation. See [living landmarks](landmark-activity.md).

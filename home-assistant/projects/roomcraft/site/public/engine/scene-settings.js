@@ -14,7 +14,8 @@
   ]);
   const keys = new Set(features.map(({key}) => key));
   const dockChoices = new Set(['left', 'center', 'right']);
-  const fieldValue = (key, value) => key === 'dockAlignment' ? dockChoices.has(value) : keys.has(key) && typeof value === 'boolean';
+  const fieldValue = (key, value) => key === 'holidays' ? root.RoomcraftHolidaySettings?.valid(value) === true
+    : key === 'dockAlignment' ? dockChoices.has(value) : keys.has(key) && typeof value === 'boolean';
   const dockAlignment = settings => dockChoices.has(settings?.dockAlignment) ? settings.dockAlignment : 'right';
 
   function valid(value) {
@@ -27,6 +28,7 @@
   }
 
   function withFeature(settings, key, active) {
+    if (key === 'holidays') return root.RoomcraftHolidaySettings ? root.RoomcraftHolidaySettings.withSettings(settings, active) : settings;
     if (!fieldValue(key, active) || active === (key === 'dockAlignment' ? dockAlignment(settings) : enabled(settings, key))) return settings;
     const next = {...settings};
     if (active === (key === 'dockAlignment' ? 'right' : true)) delete next[key];

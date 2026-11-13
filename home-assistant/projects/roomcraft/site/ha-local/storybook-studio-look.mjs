@@ -2,6 +2,8 @@ import {COASTAL_SKY_MARKUP, COASTAL_SKY_STYLE, updateCoastalSky} from './storybo
 import {sceneDockAlignment, sceneFeatures, sceneFeatureEnabled, sceneWind} from './storybook-scene-settings.mjs';
 import {storybookMoonChoices, storybookWeatherChoices} from './storybook-weather.mjs';
 import {readStorybookVehicleStyle} from './storybook-commutes.mjs';
+import {createStorybookHolidayPanel} from './storybook-holiday-panel.mjs';
+import {HOLIDAY_CATALOG, holidayLocalDate} from './storybook-holidays.mjs';
 
 const LOOK_INTERVAL_MS = 2500;
 const DEFAULT_ENVIRONMENT = Object.freeze({
@@ -23,7 +25,7 @@ export function studioWeatherPreview({condition, daylight, moonPhase, windSpeed,
     sunRising, beachActivity};
 }
 
-export function mountStorybookStudioLook(document, host, {api, viewport, bridge, onChange}) {
+export function mountStorybookStudioLook(document, host, {api, viewport, bridge, onChange, getHolidayPlacement}) {
   const dialog = document.getElementById('sceneSettingsDialog');
   const open = document.getElementById('sceneSettingsButton');
   const features = document.getElementById('sceneFeatures');
@@ -32,6 +34,30 @@ export function mountStorybookStudioLook(document, host, {api, viewport, bridge,
   const motion = document.getElementById('scenePreviewMotion');
   const source = document.getElementById('scenePreviewSource');
   const custom = document.getElementById('scenePreviewWeather');
+  let holidayPreview;
+  const holidayButton = document.getElementById('holidaySettingsButton');
+  const holidayPanel = createStorybookHolidayPanel(document.body, {
+    catalog: HOLIDAY_CATALOG,
+    getSettings: () => api.getProject().sceneSettings?.holidays,
+    getDate: () => localHolidayDate(),
+    onSave: settings => {
+      api.setHolidaySettings(settings);
+      return {status: 'saved', notice: 'Applied to your draft. Select Save in Studio to publish.'};
+    },
+    onPreview: value => { holidayPreview = value; onChange(); },
+    onClose: onChange,
+    getAutoPlacement: () => {
+      const actual = getHolidayPlacement?.();
+      if (actual) return actual;
+      const points = api.getProject().rooms.flatMap(room => room.points ?? []);
+      const xs = points.map(point => point.x), ys = points.map(point => point.y);
+      return {x: xs.length ? (Math.min(...xs) + Math.max(...xs)) / 2 : 768,
+        y: ys.length ? Math.min(...ys) - 90 : 90, scale: 1, rotation: 0};
+    },
+    saveLabel: 'Apply to draft',
+  });
+  const openHolidays = () => holidayPanel.open();
+  holidayButton?.addEventListener('click', openHolidays);
   const styles = document.createElement('style');
   styles.textContent = COASTAL_SKY_STYLE;
   document.head.append(styles);
@@ -88,6 +114,11 @@ export function mountStorybookStudioLook(document, host, {api, viewport, bridge,
   let disposed = false;
   let timer;
   let liveAvailable = false;
+  function localHolidayDate() {
+    const dashboard = live ?? api.getPreview?.();
+    return dashboard?.environment?.holidayDate ?? holidayLocalDate(Date.now(),
+      dashboard?.environment?.holidayTimeZone ?? host.Intl?.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC');
+  }
 
   const openDialog = () => {
     if (!dialog.open) dialog.showModal();
@@ -169,7 +200,9 @@ export function mountStorybookStudioLook(document, host, {api, viewport, bridge,
           windSpeed: Math.min(30, Math.max(0, speed.valueAsNumber || 0)),
           windBearing: Math.min(360, Math.max(0, bearing.valueAsNumber || 0)),
         });
-      const environment = {...look, traffic: {...(look.traffic ?? DEFAULT_ENVIRONMENT.traffic),
+      const holidayDate = localHolidayDate();
+      const environment = {...look, holidayDate, holidayPreview: holidayPreview ?? undefined,
+        traffic: {...(look.traffic ?? DEFAULT_ENVIRONMENT.traffic),
         vehicleStyle: readStorybookVehicleStyle(host)}};
       sky.hidden = !active || !sceneFeatureEnabled(settings, 'sky');
       if (!sky.hidden) updateCoastalSky(sky, {...sceneWind(environment, settings), reduceMotion});
@@ -184,6 +217,8 @@ export function mountStorybookStudioLook(document, host, {api, viewport, bridge,
       dock.removeEventListener('change', changeDock);
       mode.removeEventListener('change', repaint);
       motion.removeEventListener('change', onChange);
+      holidayButton?.removeEventListener('click', openHolidays);
+      holidayPanel.destroy();
       dialog.close();
       for (const {input} of layers) input.parentElement.remove();
       custom.replaceChildren();

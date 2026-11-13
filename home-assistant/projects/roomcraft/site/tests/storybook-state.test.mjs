@@ -275,3 +275,19 @@ test('an unavoidable collision keeps the label in frame over the least occupied 
   ];
   assert.deepEqual(placeStorybookDetails(targets, 60, 40), [{id:'control', left:30, top:10}]);
 });
+
+
+test('holiday dates refresh at HA local midnight and match the Studio preview', () => {
+  const timeZone = 'America/Los_Angeles';
+  const before = Date.parse('2026-12-25T07:59:59.900Z');
+  const frame = storybookFrame(model, {}, before, timeZone);
+  assert.equal(frame.environment.holidayDate, '2026-12-24');
+  assert.equal(frame.environment.holidayTimeZone, timeZone);
+  assert.equal(frame.nextRefreshAt, before + 100);
+  const after = storybookFrame(model, {}, frame.nextRefreshAt, timeZone);
+  const studio = storybookPreview(config, {}, frame.nextRefreshAt, timeZone);
+  assert.equal(after.environment.holidayDate, '2026-12-25');
+  assert.equal(studio.environment.holidayDate, after.environment.holidayDate);
+  assert.equal(studio.environment.holidayTimeZone, timeZone);
+  assert.equal(storybookFrame(model, {}, before, 'Unknown/Zone').environment.holidayDate, null);
+});

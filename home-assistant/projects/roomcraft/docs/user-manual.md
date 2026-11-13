@@ -312,3 +312,9 @@ Choose **Main menu → Check & repair layout** to check the current draft. Repai
 | HA-hosted Studio opens but transfer is unavailable | Confirm you opened `/roomcraft-home/studio` while signed in to Home Assistant, or used its own-tab button while keeping Studio open. Direct `/local/roomcraft/editor.html` lacks the dashboard bridge. Publishing needs an administrator account. See the [deployment guide](deployment.md). |
 | Cloud editor transfer is unavailable | Confirm the owner-private Site sign-in and its server-side Home Assistant connection. |
 
+
+## Holiday themes
+
+Choose **Home → Menu → Household → Holidays & celebrations** or **Studio → Main menu → Holidays & celebrations**. Search the 31 presets, preview the art, and select **Auto**, **Keep on**, or **Off** for each. Auto runs for seven days centered on the holiday by default; Keep on continues until changed; Off disables only that holiday and stays saved in following years. Select **Save** in Home, or **Apply** then the main **Save** in Studio. End preview restores your previous view without saving.
+
+Change the window, intensity, decorative glow and animated events, or open placement controls to move/resize/rotate the display. Dates use Home Assistant's time zone. Regional conventions and verified coverage appear with each holiday; use an annual `MM-DD` or year-specific `YYYY-MM-DD` override for your family's observance. Missing future dates do not activate automatically. All holiday effects are decorative; actual lights and switches keep their real states. See the [illustrated holiday guide](holiday-themes.md).

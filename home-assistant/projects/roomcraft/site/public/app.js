@@ -2035,6 +2035,16 @@
       afterChange('Updated scene settings');
       return true;
     },
+    setHolidaySettings(value) {
+      if (!window.RoomcraftHolidaySettings.valid(value)) return false;
+      const next = window.RoomcraftHolidaySettings.withSettings(project.sceneSettings, value);
+      if (next === project.sceneSettings) return false;
+      snapshot();
+      if (next) project.sceneSettings = next;
+      else delete project.sceneSettings;
+      afterChange('Holiday settings updated in the draft. Select Save to publish.');
+      return true;
+    },
     setPersonPreview(people) {
       if (!people.length && !personPreview.length) return;
       personPreview = people;

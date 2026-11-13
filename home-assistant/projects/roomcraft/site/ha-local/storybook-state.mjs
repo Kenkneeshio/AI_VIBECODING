@@ -1,6 +1,7 @@
 import {combineCommuteReadings, commuteReading, readStorybookCommutes} from './storybook-commutes.mjs';
 import '../public/light-capabilities.js';
 import {vacuumMapMetadata} from './storybook-vacuum-alignment.mjs';
+import {holidayLocalDate} from './storybook-holidays.mjs';
 
 const CONTROL = 'custom:roomcraft-object-control';
 const CAMERA = 'custom:roomcraft-camera-thumbnail';
@@ -128,6 +129,8 @@ export function storybookFrame(model, snapshot = {}, now = 0, timeZone, weatherE
   const weatherAttributes = weather?.attributes ?? {};
   const daylightKnown = sun?.state === 'above_horizon' || sun?.state === 'below_horizon';
   const environment = {
+    holidayDate: holidayLocalDate(now, timeZone),
+    holidayTimeZone: timeZone,
     night: daylightKnown ? sun.state === 'below_horizon' : weather?.state === 'clear-night',
     daylightKnown,
     condition: weather?.state ?? 'unavailable',

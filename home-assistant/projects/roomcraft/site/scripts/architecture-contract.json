@@ -1,17 +1,76 @@
 {
   "version": 1,
-  "sourceRoots": ["app", "lib", "public", "ha-local"],
-  "exclude": ["public/storybook-editor.js"],
-  "excludeSuffixes": [".test.mjs", ".d.ts"],
-  "pureRoots": ["public/engine/"],
+  "sourceRoots": [
+    "app",
+    "lib",
+    "public",
+    "ha-local"
+  ],
+  "exclude": [
+    "public/storybook-editor.js"
+  ],
+  "excludeSuffixes": [
+    ".test.mjs",
+    ".d.ts"
+  ],
+  "pureRoots": [
+    "public/engine/"
+  ],
   "owners": [
-    {"id": "engine", "prefixes": ["public/engine/"]},
-    {"id": "transport", "files": ["public/ha-iframe-bridge.js", "ha-local/roomcraft-card.js", "ha-local/dashboard-project.mjs", "ha-local/dashboard-snapshots.mjs", "lib/dashboard-elements.ts"], "prefixes": ["app/api/"]},
-    {"id": "studio", "files": ["public/app.js", "ha-local/storybook-editor.mjs", "ha-local/storybook-terrain-editor.mjs", "ha-local/storybook-studio-look.mjs"]},
-    {"id": "live-runtime", "files": ["ha-local/roomcraft-storybook.mjs", "ha-local/roomcraft-weather-outdoor.js"]},
-    {"id": "scene-and-features", "prefixes": ["ha-local/storybook-"]},
-    {"id": "catalog-and-raster", "prefixes": ["public/"]},
-    {"id": "hosted-shell", "prefixes": ["app/", "lib/"]}
+    {
+      "id": "engine",
+      "prefixes": [
+        "public/engine/"
+      ]
+    },
+    {
+      "id": "transport",
+      "files": [
+        "public/ha-iframe-bridge.js",
+        "ha-local/roomcraft-card.js",
+        "ha-local/dashboard-project.mjs",
+        "ha-local/dashboard-snapshots.mjs",
+        "lib/dashboard-elements.ts"
+      ],
+      "prefixes": [
+        "app/api/"
+      ]
+    },
+    {
+      "id": "studio",
+      "files": [
+        "public/app.js",
+        "ha-local/storybook-editor.mjs",
+        "ha-local/storybook-terrain-editor.mjs",
+        "ha-local/storybook-studio-look.mjs"
+      ]
+    },
+    {
+      "id": "live-runtime",
+      "files": [
+        "ha-local/roomcraft-storybook.mjs",
+        "ha-local/roomcraft-weather-outdoor.js"
+      ]
+    },
+    {
+      "id": "scene-and-features",
+      "prefixes": [
+        "ha-local/storybook-"
+      ]
+    },
+    {
+      "id": "catalog-and-raster",
+      "prefixes": [
+        "public/"
+      ]
+    },
+    {
+      "id": "hosted-shell",
+      "prefixes": [
+        "app/",
+        "lib/"
+      ]
+    }
   ],
   "entrypoints": [
     "public/app.js",
@@ -24,15 +83,75 @@
     "app/api/dashboard/route.ts"
   ],
   "requiredImports": [
-    {"from": "ha-local/roomcraft-storybook.mjs", "to": "ha-local/storybook-scene.mjs", "reason": "Home uses the shared 3D scene"},
-    {"from": "ha-local/storybook-editor.mjs", "to": "ha-local/storybook-scene.mjs", "reason": "Studio uses the same 3D scene"},
-    {"from": "ha-local/storybook-scene.mjs", "to": "ha-local/storybook-landmark-life.mjs", "reason": "Home and Studio share deterministic landmark activity"},
-    {"from": "ha-local/roomcraft-card.js", "to": "ha-local/dashboard-project.mjs", "reason": "Native publish uses shared validation"},
-    {"from": "app/api/dashboard/route.ts", "to": "ha-local/dashboard-project.mjs", "reason": "Hosted publish uses shared validation"},
-    {"from": "ha-local/roomcraft-card.js", "to": "ha-local/dashboard-snapshots.mjs", "reason": "Native publish uses shared history"},
-    {"from": "app/api/dashboard/route.ts", "to": "ha-local/dashboard-snapshots.mjs", "reason": "Hosted publish uses shared history"},
-    {"from": "ha-local/storybook-scene.mjs", "to": "public/engine/terrain.js", "reason": "3D rendering consumes the authored terrain contract"},
-    {"from": "ha-local/dashboard-project.mjs", "to": "public/engine/terrain.js", "reason": "Both save transports validate the authored terrain contract"},
-    {"from": "ha-local/dashboard-project.mjs", "to": "public/engine/edit-safety.js", "reason": "Both save transports reject unsafe structure"}
+    {
+      "from": "ha-local/roomcraft-storybook.mjs",
+      "to": "ha-local/storybook-scene.mjs",
+      "reason": "Home uses the shared 3D scene"
+    },
+    {
+      "from": "ha-local/storybook-editor.mjs",
+      "to": "ha-local/storybook-scene.mjs",
+      "reason": "Studio uses the same 3D scene"
+    },
+    {
+      "from": "ha-local/storybook-scene.mjs",
+      "to": "ha-local/storybook-landmark-life.mjs",
+      "reason": "Home and Studio share deterministic landmark activity"
+    },
+    {
+      "from": "ha-local/roomcraft-card.js",
+      "to": "ha-local/dashboard-project.mjs",
+      "reason": "Native publish uses shared validation"
+    },
+    {
+      "from": "app/api/dashboard/route.ts",
+      "to": "ha-local/dashboard-project.mjs",
+      "reason": "Hosted publish uses shared validation"
+    },
+    {
+      "from": "ha-local/roomcraft-card.js",
+      "to": "ha-local/dashboard-snapshots.mjs",
+      "reason": "Native publish uses shared history"
+    },
+    {
+      "from": "app/api/dashboard/route.ts",
+      "to": "ha-local/dashboard-snapshots.mjs",
+      "reason": "Hosted publish uses shared history"
+    },
+    {
+      "from": "ha-local/storybook-scene.mjs",
+      "to": "public/engine/terrain.js",
+      "reason": "3D rendering consumes the authored terrain contract"
+    },
+    {
+      "from": "ha-local/dashboard-project.mjs",
+      "to": "public/engine/terrain.js",
+      "reason": "Both save transports validate the authored terrain contract"
+    },
+    {
+      "from": "ha-local/dashboard-project.mjs",
+      "to": "public/engine/edit-safety.js",
+      "reason": "Both save transports reject unsafe structure"
+    },
+    {
+      "from": "ha-local/storybook-scene.mjs",
+      "to": "ha-local/storybook-holiday-runtime.mjs",
+      "reason": "Home and Studio share holiday scheduling and decoration placement"
+    },
+    {
+      "from": "ha-local/storybook-holiday-runtime.mjs",
+      "to": "ha-local/storybook-holidays.mjs",
+      "reason": "Rendering uses the explicit-date holiday resolver"
+    },
+    {
+      "from": "ha-local/storybook-holiday-runtime.mjs",
+      "to": "ha-local/storybook-holiday-art.mjs",
+      "reason": "Holiday art uses one deterministic procedural factory"
+    },
+    {
+      "from": "ha-local/storybook-holiday-settings.mjs",
+      "to": "public/engine/holiday-settings.js",
+      "reason": "Holiday UI and transport use the same pure settings contract"
+    }
   ]
 }

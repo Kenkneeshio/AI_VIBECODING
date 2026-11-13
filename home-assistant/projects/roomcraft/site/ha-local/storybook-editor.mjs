@@ -73,7 +73,7 @@ export function mountStorybookEditor(document, host) {
   const calibrator = mountRadarCalibration(document, host, {api, bridge: trackingBridge});
   const vacuumAlignment = mountVacuumAlignment(document, host, {api, bridge: trackingBridge});
   const look = mountStorybookStudioLook(document, host, {
-    api, viewport, bridge: trackingBridge, onChange: () => draw(),
+    api, viewport, bridge: trackingBridge, onChange: () => draw(), getHolidayPlacement: () => scene?.getHolidayDefaultPlacement?.(),
   });
   const markerLayer = document.createElement('div');
   markerLayer.className = 'scene-placeholders';
