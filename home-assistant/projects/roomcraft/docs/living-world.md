@@ -27,7 +27,7 @@ Marine art and route planning belong to `storybook-marine-life.mjs`. `storybook-
 
 ## Art catalog and editable limits
 
-The ocean pool contains pearl and lagoon dolphins, a reef shark, humpback and orca whales, harbor and spotted seals, and a storybook walrus. Each has three restrained coat palettes and deterministic encounter scale from 80–100% at maximum variety (84–100% at the default). Existing conservative route reservations cover the largest form. Eight skinned actors share one material; foam uses one additional material, nine total draw submissions, at most 64 foam instances and 27,154 submitted triangles. Color buffers update on encounter changes without replacing geometry or materials.
+The ocean pool contains pearl and lagoon dolphins, a reef shark, humpback and orca whales, harbor and spotted seals, and a storybook walrus. Each has three restrained coat palettes and deterministic encounter scale from 80â€“100% at maximum variety (84â€“100% at the default). Existing conservative route reservations cover the largest form. Eight skinned actors share one material; foam uses one additional material, nine total draw submissions, at most 64 foam instances and 27,154 submitted triangles. Color buffers update on encounter changes without replacing geometry or materials.
 
 ![Original marine art, synthetic Chrome gallery](images/living-world-marine.png)
 
@@ -43,7 +43,40 @@ The current editor changes **recipe settings**, not each transient animal or lea
 
 ## Verification and release evidence
 
-Implementation and verification in progress. Record exact tests, visual proofs, native-scheduler UI checks, runtime source, HA/Site artifacts, actual tablet behavior and limits after they run. Public evidence must use synthetic layouts and generic identifiers.
+The exact runtime source passed **714 automated tests** plus architecture boundaries, deterministic release/manifest checks, TypeScript, lint, production build and whitespace validation. The full release gate ran after the last source correction. [GitHub runtime CI](https://github.com/Kenkneeshio/AI_VIBECODING/actions/runs/43350492644) passed. Existing framework build warnings are recorded in the local gate log; no new lint errors remain.
+
+The marine suite covers safe full-body coast/boat/actor clearance, actual skinned vertex bounds through articulated poses, all enabled species, high epoch times, appearance changes without allocation, quiet night/storm behavior, reduced motion and disposal. The scenery suite covers valid grounded placement, grouped proportions, weather/category gates, authored tree anchors, bounded buffers and traffic semantics. Clock tests cover reload continuity, preview isolation and live refreshes during the tour.
+
+Built Home and Studio Chrome fixtures exercised the actual animation scheduler, continuing frames, five-species preview, projected bounds, individual filters, master Off, exact decimal settings, native validation, rapid close/Escape, prior camera restoration, 390-pixel phone fit and zero physical device actions. Studio also exercised Undo/Redo, actual JSON file import and mock Save. The Home fixture saved through the real adapter against an in-memory server and verified 82 synthetic objects, holiday/device state preservation, prior-layout snapshot and readback.
+
+Three defects found during validation were corrected: preview camera framing now fits the complete enabled route envelope; demo time cannot overwrite the real-world clock anchor; household overlays disappear during offshore previews and return with the home view. Release input discovery now discovers direct authored HA runtime modules, so new modules cannot silently disappear from source provenance.
+
+| Released artifact | Exact evidence |
+| --- | --- |
+| Final source | `442666f6def0269c0923b0ad1cdd9d81d15f9fe3` |
+| Full-project manifest | `sha256:3a17a309d7c95b8383a2e6ae266b58fa4654c342c27f59cc2775eeecb5c26baa`, 414 inputs |
+| HA browser asset revision | `ec407312d1d413aa` |
+| HA readback | 14 exact asset hashes over LAN and remote access; Home/Studio/Controls routes and resource registrations match |
+| Authored data | Actual tablet Save persisted all Living world defaults. All 82 objects, holiday preferences, bindings and every other authored field stayed unchanged; previous layout retained in snapshots |
+| Owner-private Site | Version 115, deployment `appgdep_6af6723a026c8191beaa965f2e7d1573`, succeeded |
+| Site source | `1e07e77d0494f9e505effad66cbde84272b3aad1` |
+| Site subset manifest | `sha256:5848125838e3afe1a9f902db37d5727f69d1b6904ce068d985ac795b55296f0b` |
+| Local archive | `sha256:eaf3088fb335b87808894a4e812972848fd3fe400ffb4ffe94bf725d95ad5bc9` |
+| Stored Site archive | `sha256:2a136992f0107fe705f51f68c70b5aa1e8f3be0857fc51189860c05cb04f9515` |
+
+The 1920 Ã— 1080 Apolosign tablet cold-launched Companion 2026.10.1-full with its HOME alias intact. Actual menu, animated nighttime wildlife preview, clean offshore overlays, End preview, restored home controls and Save/readback were checked. The final browser assets are identical to those in this hardware proof. Observed counters were 26 FPS on Home and 29 then 43 FPS in the close preview; these are momentary samples, not a benchmark. Daytime activity/appearance galleries were checked in synthetic Chrome. No physical device was actuated.
+
+Public proof uses generic synthetic scenes. Private tablet images, full dashboard backups and the operational recovery record remain in the protected management folder. No separate hosted-Site visual check was performed; its native publication succeeded and the shared built source was exercised locally and on the HA tablet. Full gates and deployment evidence identify the runtime revision above; this documentation is a separate post-deployment commit.
+
+Reproduce after building from `site/`:
+
+```powershell
+$env:ROOMCRAFT_WORLD_LIFE_QA_DIST='1'
+node scripts/verify-world-life-browser.mjs
+$env:ROOMCRAFT_WORLD_LIFE_STUDIO_QA_DIST='1'
+node scripts/verify-world-life-studio-browser.mjs
+node scripts/verify-world-moments-browser.mjs
+```
 
 ## Rollback
 

@@ -26,6 +26,7 @@ The optional owner-private hosted Studio uses the same saved project through its
 - Catalog objects, variants, dimensions, placement, bindings and actions.
 - Terrain raise/lower/smooth/paint/erase brushes and individual trees, sage and rocks.
 - Coast and road presets, beach width, road setback, hill height, planting and grouped landmark visibility.
+- Living world species/categories, density, pace, variety and seeded activity; independent holiday themes.
 
 Generated scenery is not yet entirely selectable piece by piece. [Builder completeness](docs/architecture.md#builder-completeness-and-target-architecture) states the remaining work. The 2D PNG export remains a compatibility output and does not include the 3D coastline.
 
@@ -40,6 +41,7 @@ Generated scenery is not yet entirely selectable piece by piece. [Builder comple
 | Take over development | [Engineering handoff](docs/engineering-handoff.md) |
 | Determinism, module contracts and migrations | [Engine contract](docs/engine-contract.md) |
 | Release gates and rollback requirements | [Release standard](docs/release-standard.md) |
+| Marine wildlife, ambient variety and shared settings | [Living world](docs/living-world.md) |
 | Learn the editor | [Illustrated manual](docs/user-manual.md) |
 | Install and recover | [Deployment](docs/deployment.md), [tablet access](docs/tablet-access.md) |
 | Layout fields | [Format](docs/layout-format.md), [schema](layout.schema.json) |

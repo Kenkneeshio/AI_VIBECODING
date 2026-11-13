@@ -2,6 +2,8 @@
 
 ## Living world and marine wildlife — 12 November 2026
 
+- Verified 714 automated tests, full gates, CI, built Home/Studio interaction proofs, exact LAN/remote asset readback and actual tablet preview/Save. Published private Studio 115; retained all 82 objects and holiday settings.
+
 - Add eight articulated marine variants across dolphins, sharks, whales, seals and storybook walruses, with seeded encounters, body/coat variation, safe routes and quiet overnight behavior.
 - Add grounded beach activities, birds, butterflies, tree drift, water/weather accents and traffic appearance variations through shared, bounded animation modules.
 - Add Living world settings and preview to Home and Studio, preserving actual controls, layout data and holiday preferences. See [Living world](docs/living-world.md) for contracts, verification and rollback.
