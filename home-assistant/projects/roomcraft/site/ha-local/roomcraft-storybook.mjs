@@ -204,7 +204,7 @@ class RoomcraftStorybookCard extends HTMLElement {
           width:max-content;max-width:calc(100% - 18px);padding:5px 10px;border-radius:8px;
           background:#443649;color:#fffaf0;text-align:center;font-size:12px;pointer-events:none}
         .overlay{position:absolute;inset:0;pointer-events:none}
-        .world[data-demo-beat] :is(.overlay,.tethers,.zone-legend){visibility:hidden}
+        .world[data-demo-beat] :is(.overlay,.tethers,.zone-legend),.world[data-wildlife-preview] :is(.overlay,.tethers,.zone-legend){visibility:hidden}
         .demo{position:absolute;left:clamp(8px,1.5vw,24px);bottom:clamp(8px,1.5vw,24px);z-index:4;
           display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px 12px;
           box-sizing:border-box;width:min(470px,calc(100% - 16px));padding:7px 9px 7px 12px;border:1px solid #ae9c83;
@@ -701,6 +701,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     if(value) this.holidayPanel.close();
     if(value&&!this.worldLifePreview) this.worldLifeReturnView=this.scene?.getView();
     this.worldLifePreview=value;
+    this.world.toggleAttribute('data-wildlife-preview',Boolean(value));
     if(value) {
       this.stopDemo();
       if(!this.scene?.frameWorldLifePreview?.(value.settings) && this.worldLifeReturnView)

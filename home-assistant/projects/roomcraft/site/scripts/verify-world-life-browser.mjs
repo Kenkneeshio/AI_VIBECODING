@@ -112,6 +112,7 @@ try{
     await evaluate("card.shadowRoot.querySelector('[data-world-preview-start]').click()");
     await until(()=>evaluate(`card.lastSceneRenderAt>${before}&&card.scene.getWorldLifeState().marine.preview`),'automatic '+label+' frame');
     const first=await evaluate('({at:card.lastSceneRenderAt,state:card.scene.getWorldLifeState()})');
+    assert.equal(await evaluate('getComputedStyle(card.overlay).visibility'),'hidden','household controls stay off the offshore preview');
     await until(()=>evaluate(`card.lastSceneRenderAt>${first.at}`),'second automatic '+label+' frame');
     const screen=await evaluate('card.scene.getWorldLifeScreenBounds()');
     if(first.state.marine.actors.some(actor=>actor.visible))assert.ok(screen&&screen.minX>=0&&screen.maxX<=1&&screen.minY>=0&&screen.maxY<=1,
@@ -123,6 +124,7 @@ try{
     const before=await evaluate('card.lastSceneRenderAt');
     const view=await evaluate("(()=>{card.shadowRoot.querySelector('[data-world-preview-end]').click();return {view:card.scene.getView(),preview:card.worldLifePreview,hidden:card.shadowRoot.querySelector('.world-life-preview-strip').hidden};})()");
     assert.deepEqual(view.view,await evaluate('originalView'));assert.equal(view.preview,null);assert.equal(view.hidden,true);
+    assert.equal(await evaluate('getComputedStyle(card.overlay).visibility'),'visible','household controls return after preview');
     await until(()=>evaluate(`card.lastSceneRenderAt>${before}&&!card.scene.getWorldLifeState().marine.preview`),'normal render resumes');
   }
   const first=await startPreview('all-species');
