@@ -2,6 +2,7 @@
 
 | Goal | Reason | Evidence of completion |
 | --- | --- | --- |
+| Keep home controls primary while revealing occasional scenery discoveries | An untouched wall display should slowly explore existing holiday and activity art, then recover immediately and safely on touch | Pure director, actual-scene interests and Home adapter implemented; full gate, expanded browser wake checks and deployment pending in [Idle camera](idle-camera.md) |
 | Make the miniature rewarding to revisit without obscuring home controls | The household wants many varied wildlife, activity and scenery encounters with editable settings | Shared catalog deployed with 714 tests, CI, Home/Studio proofs and actual tablet preview/Save/readback; release evidence in [Living world](living-world.md) |
 | Celebrate holidays automatically while respecting individual preferences | Asian and other major celebrations should have editable art, lighting and events, and disabling one must not disable others | 31 independent presets deployed with 688 tests, CI, shared browser proofs and actual tablet preview/Save/readback; see [holiday themes](holiday-themes.md) |
 | Bring familiar landmarks into the live miniature and demo | The neighborhood should have editable activity and each landmark should receive a clear tour stop | One-minute tour and per-building activity controls deployed with 658 tests, CI, built browser fixtures, exact readback and the actual tablet tour; evidence in [living landmarks](landmark-activity.md) |

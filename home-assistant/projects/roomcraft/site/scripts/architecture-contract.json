@@ -14,7 +14,9 @@
     ".d.ts"
   ],
   "pureRoots": [
-    "public/engine/"
+    "public/engine/",
+    "ha-local/storybook-idle-camera.mjs",
+    "ha-local/storybook-idle-interests.mjs"
   ],
   "owners": [
     {
@@ -83,6 +85,21 @@
     "app/api/dashboard/route.ts"
   ],
   "requiredImports": [
+    {
+      "from": "ha-local/roomcraft-storybook.mjs",
+      "to": "ha-local/storybook-idle-runtime.mjs",
+      "reason": "Only Home owns idle camera activation and touch safety"
+    },
+    {
+      "from": "ha-local/storybook-idle-runtime.mjs",
+      "to": "ha-local/storybook-idle-camera.mjs",
+      "reason": "The browser delegates timing and selection to the explicit-time director"
+    },
+    {
+      "from": "ha-local/storybook-scene.mjs",
+      "to": "ha-local/storybook-idle-interests.mjs",
+      "reason": "Camera destinations come from actual shared scene activity"
+    },
     {
       "from": "ha-local/storybook-scene.mjs",
       "to": "ha-local/storybook-marine-life.mjs",

@@ -10,6 +10,12 @@ Open **Menu → View controls → Camera view** and choose **Waterfront · La Jo
 
 Use **On the map** for Object details and Presence tracking, and **View controls** for view presets, rotation, zoom and default view settings. **Manage** opens Layout Studio and popups for Object models, Devices and sensors, Indoor air and System health when configured. The labels from **Object details** show each linked control's name and current state. The toggle is saved in the current browser.
 
+### Let the idle view discover the scenery
+
+After 30 seconds without interaction, Home slowly pans and zooms toward existing holiday art, wildlife or neighborhood activity, then returns to **Default**. Each visit uses a 24-second approach, 16-second pause, 24-second return and 45 seconds at home. Choose **Menu → Display → Start idle view now** to begin immediately.
+
+Touch once to return to your saved default view; that wake gesture does not operate a home control. Touch again to use the desired control. Choose **Menu → Display → Idle view settings** to turn automatic visits off or change the wait, travel, discovery pause and home interval. **Save settings** applies to this browser only. Open Roomcraft menus and dialogs, previews and the demo pause idle movement. **Reduce motion** keeps the camera still. Studio and Controls do not tour automatically. [Idle camera details and release status](idle-camera.md)
+
 ### Explore energy use
 
 The Power meter shows the current reading and the last hour of recorded power. Its illustrated flow follows the direction and magnitude of the whole-home reading. Under **Energy map**, choose **Live power**, **Today**, **Calendar month**, or **Billing cycle**. Select the illustrated whole-home hub or a branch to see its readings. Use **Find a circuit or plug** to search all configured meters, including branches outside the visible tree. Tap a reading with an arrow to open its source in Home Assistant.

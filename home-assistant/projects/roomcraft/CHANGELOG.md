@@ -1,5 +1,11 @@
 # Changelog
 
+## Home-first idle camera — 12 November 2026 (release in progress)
+
+- Add slow automatic scenery visits after 30 seconds without interaction, an instant-start menu action, and browser-local timing settings.
+- Favor active holiday art and current scenery events; return to the saved default between visits and immediately on touch, consuming the wake gesture to protect controls.
+- Reuse existing art and preserve shared layout/device state. Contracts, pending verification, and rollback are tracked in [Idle camera](docs/idle-camera.md); deployment is not yet claimed.
+
 ## Living world and marine wildlife — 12 November 2026
 
 - Verified 714 automated tests, full gates, CI, built Home/Studio interaction proofs, exact LAN/remote asset readback and actual tablet preview/Save. Published private Studio 115; retained all 82 objects and holiday settings.

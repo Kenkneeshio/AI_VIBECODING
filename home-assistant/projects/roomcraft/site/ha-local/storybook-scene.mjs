@@ -12,6 +12,7 @@ import {createStorybookMarineLife} from './storybook-marine-life.mjs';
 import {createStorybookWorldMoments} from './storybook-world-moments.mjs';
 import {normalizeWorldLifeSettings} from './storybook-world-life-settings.mjs';
 import {createWorldClock} from './storybook-world-clock.mjs';
+import {selectIdleCameraInterests} from './storybook-idle-interests.mjs';
 import {createHolidayRuntime, defaultHolidayPlacement, holidayPlacement, holidayPlacementBounds} from './storybook-holiday-runtime.mjs';
 import {isExteriorScenery, isExteriorBuilding, exteriorBounds, exteriorHouseContains, exteriorCameraBounds} from './storybook-exterior.mjs';
 import {compileStorybookSideRoads,buildStorybookSideRoads,storybookSideRoadContains,storybookSideRoadSupportPads} from './storybook-side-road.mjs';
@@ -1270,6 +1271,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   const marineLife = createStorybookMarineLife(water);
   const worldMoments = createStorybookWorldMoments({water,street,plan,heightAt:meadow.heightAt,trees:treeWind.getTrees()});
   const worldClock = createWorldClock();
+  let idleSceneReady = false, idleScenePreview = false;
   scene.add(marineLife.root,worldMoments.root);
   scene.add(ocean.mesh, sidewalk.root, boats.root, beachPlay.root);
   const updatePrecipitation = buildPrecipitation(scene, plan, street.sceneryMinZ);
@@ -1547,6 +1549,35 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     if (![target?.x, target?.y].every(Number.isFinite)) return null;
     return {x: target.x, y: (floorForPerson(target.x, target.y) ?? 0) + 22, z: target.y};
   }
+  function getIdleCameraInterests() {
+    if (disposed || !idleSceneReady || idleScenePreview) return [];
+    const holiday = holidays.getState(), placement = holiday.placement;
+    const ground = placement && meadow.heightAt(placement.x, placement.y);
+    const holidayFocus = placement ? {x:placement.x, y:(Number.isFinite(ground) ? ground : 0)+35*placement.scale,
+      z:placement.y} : undefined;
+    const landmarks = [...landmarkLife].map(([id, {life}]) => {
+      const state = life.getState();
+      life.root.updateWorldMatrix(true, false);
+      const center = life.bounds.getCenter(new THREE.Vector3()).applyMatrix4(life.root.matrixWorld);
+      return {id, visible:roots.get(id)?.root.visible === true && life.root.visible,
+        enabled:state.enabled, active:state.actors.some(actor => actor.visible),
+        event:state.actors.some(actor => actor.visible && ['signal','play','garden','greet','arrival'].includes(actor.activity)),
+        focus:{x:center.x, y:center.y, z:center.z}};
+    });
+    const habitats = plan.placements.filter(({item}) =>
+      ['pets-fish-aquarium-oak','pets-lizard-terrarium-walnut'].includes(item.type)).map(({item}) => {
+      const object = roots.get(item.id);
+      return {id:item.id, visible:object?.root.visible === true, animated:object?.ambientMotion === true,
+        focus:getDemoFocus(item.id)};
+    });
+    return selectIdleCameraInterests({
+      holiday:{...holiday, visible:holidays.root.visible, focus:holidayFocus},
+      marine:marineLife.getState(), moments:worldMoments.getState(), landmarks, habitats,
+      scenery:[{id:'coast', visible:true, focus:sceneryFocus.coast},
+        {id:'beach', visible:true, focus:sceneryFocus.beach},
+        {id:'road', visible:traffic?.root.visible === true, focus:sceneryFocus.road}],
+    });
+  }
   function pointRay(x, y) {
     if (disposed || !Number.isFinite(x) || !Number.isFinite(y) || currentWidth <= 0 || currentHeight <= 0) return false;
     raycaster.setFromCamera(new THREE.Vector2(x / currentWidth * 2 - 1, 1 - y / currentHeight * 2), camera);
@@ -1717,6 +1748,8 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     people?.render(timeSeconds, reduceMotion, !draftPositions &&
       (transientTelemetry || displaySettings.seatedPoses !== false));
     draw(transientTelemetry);
+    idleSceneReady = true;
+    idleScenePreview = transientTelemetry || Boolean(environment.holidayPreview || environment.worldLifePreview);
   }
   function setPeople(tracks, timeSeconds, options = {}) {
     if (disposed) return;
@@ -1781,7 +1814,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   }
   const exteriorClearance = () => projectExteriorClearance(plan, camera, currentWidth, currentHeight);
   return {
-    resize, render, anchor, setView, getView, getDemoFocus, projectToPlan, pickGarage, exteriorClearance, dispose,
+    resize, render, anchor, setView, getView, getDemoFocus, getIdleCameraInterests, projectToPlan, pickGarage, exteriorClearance, dispose,
     getHolidayPlacement:()=>({...holidayPose}), getHolidayDefaultPlacement:()=>defaultHolidayPlacement(plan,street),
     getHolidayFocus:settings=>{const p=holidayPlacement(plan,street,settings);
       return {x:p.x,y:meadow.heightAt(p.x,p.y)+35*p.scale,z:p.y};},

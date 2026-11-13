@@ -1,5 +1,9 @@
 # Decision log
 
+## Let idle discovery change only temporary camera framing
+
+Use a pure explicit-time director and a separate Home browser adapter. Select weighted subjects from actual active scene modules; snapshot each destination, travel slowly and return to the saved default between visits. Consume the entire first wake gesture before resuming normal controls. Roomcraft menus/dialogs, previews, held gestures and reduced motion block movement. Keep timing preferences local to each screen and leave layout, device state and art ownership unchanged. Reuse the existing scene instead of creating a second renderer or a fake-state demo. See [Idle camera](idle-camera.md) for acceptance, contracts and pending release evidence.
+
 ## Make variety bounded, editable and truthful
 
 Use finite authored catalogs with reproducible seeds, explicit clocks and pooled geometry instead of random per-frame spawning. Derive marine routes from the actual coast and reserve boat/wake paths; ground beach activities on valid sand and keep plants tied to authored trees. Visual previews use the production scheduler and conservative route-envelope camera framing. Category switches, density, pace and variety are shared between Home and Studio; Home saves are conflict-aware with snapshots. Preserve measured traffic, device and presence semantics. A walrus is a named storybook visitor, not a local wildlife claim. See [Living world](living-world.md).

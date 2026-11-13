@@ -11,6 +11,7 @@ import {createStorybookDemoScenario} from './storybook-demo-frame.mjs';
 import {createStorybookNarrator} from './storybook-demo-narration.mjs';
 import {bindSnapshotDialog, SNAPSHOT_DIALOG_MARKUP} from './storybook-snapshots.mjs';
 import {enterFreeView, normalizeCameraView, populateCameraOptions, readSavedFreeView, resolveDefaultCameraView, storybookCameraTileSize} from './storybook-camera.mjs';
+import {bindIdleCamera} from './storybook-idle-runtime.mjs';
 import {bindFreeViewGestures} from './storybook-orbit.mjs';
 import {placeStorybookDetails, placeStorybookTargets, readStorybookConfig, storybookFrame, storybookPreview} from './storybook-state.mjs';
 import {storybookWeather, storybookWeatherMarkup, storybookWeatherStyles, updateStorybookWeather} from './storybook-weather.mjs';
@@ -204,7 +205,7 @@ class RoomcraftStorybookCard extends HTMLElement {
           width:max-content;max-width:calc(100% - 18px);padding:5px 10px;border-radius:8px;
           background:#443649;color:#fffaf0;text-align:center;font-size:12px;pointer-events:none}
         .overlay{position:absolute;inset:0;pointer-events:none}
-        .world[data-demo-beat] :is(.overlay,.tethers,.zone-legend),.world[data-wildlife-preview] :is(.overlay,.tethers,.zone-legend){visibility:hidden}
+        .world[data-demo-beat] :is(.overlay,.tethers,.zone-legend),.world[data-wildlife-preview] :is(.overlay,.tethers,.zone-legend),.world[data-idle-camera]:not([data-idle-camera="home"]) :is(.overlay,.tethers,.zone-legend){visibility:hidden}
         .demo{position:absolute;left:clamp(8px,1.5vw,24px);bottom:clamp(8px,1.5vw,24px);z-index:4;
           display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px 12px;
           box-sizing:border-box;width:min(470px,calc(100% - 16px));padding:7px 9px 7px 12px;border:1px solid #ae9c83;
@@ -304,6 +305,8 @@ class RoomcraftStorybookCard extends HTMLElement {
                 <section class="menu-group" aria-label="Display">
                   <p class="menu-heading" aria-hidden="true">Display</p>
                   <button type="button" class="menu-primary open-display-settings" aria-haspopup="dialog">Display settings</button>
+                  <button type="button" class="idle-start">Start idle view now</button>
+                  <button type="button" class="idle-settings" aria-haspopup="dialog">Idle view settings</button>
                   <button type="button" class="map-toggle toggle-fps" aria-pressed="false">FPS display <span class="menu-toggle" aria-hidden="true"></span></button>
                   <button type="button" class="map-toggle toggle-camera-tiles" aria-pressed="true" hidden>Camera tiles <span class="menu-toggle" aria-hidden="true"></span></button>
                   <button type="button" class="map-toggle toggle-reduced-motion" aria-pressed="false">Reduce motion <span class="menu-toggle" aria-hidden="true"></span></button>
@@ -639,6 +642,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.refresh();
     });
     this.onVisibility = () => {
+      this.idleCamera?.reset();
       this.heatMap.sync();
       if (document.hidden) {
         this.stopDemo(false);
@@ -668,6 +672,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.reset();
       this.load();
     });
+    this.idleCamera=bindIdleCamera(this);
   }
 
   setConfig(config) {
@@ -695,9 +700,10 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   get studioPath() { return `/${this.dashboard || 'roomcraft-home'}/studio`; }
   get weatherEntityId() { return this.weatherPanel.effectiveEntityId ?? this.model?.weather.weather_entity; }
-  get largePanelOpen() { return this.weatherDialog.open || this.powerDialog.open || this.lidarRuler.open || this.holidayPanel?.isOpen || this.worldLifePanel?.isOpen; }
+  get largePanelOpen() { return this.weatherDialog.open || this.powerDialog.open || this.lidarRuler.open || this.holidayPanel?.isOpen || this.worldLifePanel?.isOpen || this.idleCamera?.dialog.open; }
 
   previewWorldLife(value) {
+    this.idleCamera?.reset();
     if(value) this.holidayPanel.close();
     if(value&&!this.worldLifePreview) this.worldLifeReturnView=this.scene?.getView();
     this.worldLifePreview=value;
@@ -713,6 +719,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   previewHoliday(value) {
+    this.idleCamera?.reset();
     if(value)this.worldLifePanel?.close();
     if (value && !this.holidayPreview) this.holidayReturnView = this.scene?.getView();
     this.holidayPreview = value;
@@ -769,6 +776,7 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   startDemo() {
     if (!this.scene || !this.frame || this.demoRun || this.demoButton.disabled) return;
+    this.idleCamera?.reset();
     const view = this.cameraView;
     const scenario = createStorybookDemoScenario(this.model.layout);
     const timeline = createStorybookDemo(view, target => this.scene.getDemoFocus(
@@ -905,6 +913,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   connectedCallback() {
+    this.idleCamera.connect();
     this.displaySettings.connect();
     this.watchPublishedLayout();
     this.onObjectDetailsChange ??= () => this.syncObjectDetails();
@@ -930,6 +939,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this.idleCamera.disconnect();
     this.holidayPanel.close();
     this.worldLifePanel.close();
     this.displaySettings.disconnect();
@@ -1179,6 +1189,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   changeView(view, {announce = true, remember = true} = {}) {
+    this.idleCamera?.touch();
     if (remember) {
       this.cameraChanged = view !== 'default';
       this.defaultStatus.textContent = '';
@@ -1361,7 +1372,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         return;
       }
       const {frameRate, cameraFrameRate} = this.displaySettings.value;
-      const movingCamera = this.demoRun || at < this.cameraMotionUntil;
+      const movingCamera = this.demoRun || this.idleCamera?.getState().active || at < this.cameraMotionUntil;
       const interval = 1000 / Math.min(frameRate, (movingCamera ? cameraFrameRate : null) ?? frameRate);
       if (interval !== this.renderInterval) {
         this.renderInterval = interval;
@@ -1383,6 +1394,7 @@ class RoomcraftStorybookCard extends HTMLElement {
           this.pendingCameraView = undefined;
         }
         this.updateDemo(at);
+        this.idleCamera?.update(at);
         const demo = this.demoRun;
         const frame = demo?.frame ?? this.frame;
         const time = (demo?.sample.elapsedMs ?? at) / 1000;
@@ -1401,7 +1413,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         this.fail('The storybook renderer stopped.');
         return;
       }
-      const continuing = motion || this.demoRun || this.scene?.hasPendingReacquisition;
+      const continuing = motion || this.demoRun || this.idleCamera?.getState().active || this.scene?.hasPendingReacquisition;
       this.recordSceneFrame(at, continuing);
       if (continuing) this.schedule();
     });
@@ -1473,6 +1485,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   reset() {
+    this.idleCamera?.reset();
     this.heatMap.configure();
     this.weatherPanel.close();
     this.vacuumMapOverlay.configure(null);
