@@ -77,7 +77,7 @@ export function planStorybookWorldMoments({water,street,plan,trees=[],heightAt,e
  * from the caller; neither wall-clock access nor ambient randomness is used. */
 export function sampleStorybookWorldMoments(plan,seconds=0,options={}){
   const settings=normalizeWorldLifeSettings(options.worldLife);
-  const state={activities:[],birds:[],butterflies:[],drift:[],water:[],settings};
+  const state={activities:[],birds:[],mammals:[],butterflies:[],drift:[],water:[],settings};
   if(!settings.enabled||settings.density===0)return state;
   const frozen=options.reduceMotion===true;
   const time=frozen?0:(Number.isFinite(seconds)?Math.max(0,seconds):0)*settings.pace;
@@ -107,11 +107,16 @@ export function sampleStorybookWorldMoments(plan,seconds=0,options={}){
       const p=plan.waterSites[(i*5+3)%Math.max(1,plan.waterSites.length)];if(!p)continue;
       const angle=(frozen?.6:phase/91*TAU)+i*.7;
       state.birds.push({x:p.x+Math.cos(angle)*28,y:p.y+28+i*8+Math.sin(angle*2)*3,z:p.z+Math.sin(angle)*18,
-        yaw:-angle,flap:frozen?.18:Math.sin(time*4.3+i)*.45});
+        species:['brown-pelican','western-gull','red-tailed-hawk'][i%3],yaw:-angle,flap:frozen?.18:Math.sin(time*4.3+i)*.45});
     }
   }
   if(settings.vegetation)for(let i=0;i<Math.min(plan.trees.length,Math.ceil(settings.density*8));i++){
     const t=plan.trees[i];
+    if(!bad&&settings.surprises&&i<3&&(day||i===2)){
+      const phase=time*(.28+i*.07)+i*2,kind=['desert-cottontail','california-ground-squirrel','coyote'][i];
+      state.mammals.push({id:kind,kind,x:t.x+Math.cos(phase)*12,y:t.groundY+2,z:t.z+Math.sin(phase)*9,
+        yaw:phase,step:frozen?0:Math.sin(time*3+i)*.6});
+    }
     if(day&&!bad&&settings.surprises){
       const phase=time*(.25+worldMomentHash(seed,i+300)*.15)+i*2;
       state.butterflies.push({x:t.x+Math.cos(phase)*10,y:t.groundY+8+Math.sin(phase*1.7)*3,z:t.z+Math.sin(phase*.8)*10,
@@ -257,16 +262,28 @@ export function createStorybookWorldMoments(inputs={}){
     const visible=(x,y,z,r=30)=>!options.inView||options.inView(x,y,z,r);
     for(const a of state.activities)if(visible(a.x,a.y+25,a.z,56))drawActivity(brush,a);
     for(const b of state.birds)if(visible(b.x,b.y,b.z,10)){
-      brush.part('ball','#eee9db',b.x,b.y,b.z,1.6,1.35,3.7,0,b.yaw);
+      const plumage=b.species==='brown-pelican'?'#927967':b.species==='red-tailed-hawk'?'#8b684b':'#eee9db';
+      brush.part('ball',plumage,b.x,b.y,b.z,1.6,1.35,3.7,0,b.yaw);
       for(const side of [-1,1]){
         const x=b.x+Math.cos(b.yaw)*side*4.6,z=b.z-Math.sin(b.yaw)*side*4.6;
-        brush.part('ball','#e0dfd5',x,b.y+Math.abs(b.flap)*1.4,z,4.9,.3,1.9,0,b.yaw,side*b.flap);
+        brush.part('ball',plumage,x,b.y+Math.abs(b.flap)*1.4,z,4.9,.3,1.9,0,b.yaw,side*b.flap);
         brush.part('ball','#606875',x+Math.cos(b.yaw)*side*3.9,b.y+Math.abs(b.flap)*2,z-Math.sin(b.yaw)*side*3.9,1.4,.23,1.1,0,b.yaw,side*b.flap);
       }
       const hx=b.x+Math.sin(b.yaw)*3.2,hz=b.z+Math.cos(b.yaw)*3.2;
       brush.part('ball','#f5f0e3',hx,b.y+.65,hz,1.25,1.25,1.25,0,b.yaw);
       brush.part('cone','#d0a66a',hx+Math.sin(b.yaw)*1.5,b.y+.5,hz+Math.cos(b.yaw)*1.5,.65,2,.65,Math.PI/2,b.yaw);
       for(const side of [-1,1])brush.part('ball','#424c56',hx+Math.cos(b.yaw)*side*.78,b.y+1.0,hz-Math.sin(b.yaw)*side*.78,.16,.19,.16);
+    }
+    for(const a of state.mammals)if(visible(a.x,a.y,a.z,16)){
+      const c=a.kind==='coyote'?'#ae9271':a.kind==='desert-cottontail'?'#b39c81':'#927d61';
+      const size=a.kind==='coyote'?2.3:1.2;
+      brush.part('ball',c,a.x,a.y+size,a.z,size*1.6,size,size,0,a.yaw);
+      brush.part('ball',c,a.x+size*1.2,a.y+size*1.35,a.z,size*.7,size*.7,size*.6,0,a.yaw);
+      for(const side of [-1,1]){
+        brush.part('ball',c,a.x+size*1.35,a.y+size*2.05,a.z+side*size*.34,size*.22,size*.68,size*.2,0,a.yaw);
+        brush.part('ball',c,a.x-side*size*.7,a.y+.25+Math.abs(a.step)*.4,a.z+side*size*.48,size*.26,size*.52,size*.28);
+      }
+      brush.part('ball',a.kind==='desert-cottontail'?'#eee9d6':c,a.x-size*1.45,a.y+size*1.3,a.z,size*.55,size*.5,size*.55);
     }
     for(const b of state.butterflies)if(visible(b.x,b.y,b.z,5)){
       const color=PALETTES[b.palette].shirt;

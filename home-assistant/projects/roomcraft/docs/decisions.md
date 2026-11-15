@@ -1,5 +1,9 @@
 # Decision log
 
+## Keep local coastal life illustrative and idle brightness browser scoped
+
+Use a finite, researched coastal cast in the shared scene, with deterministic animation and safe route/ground reservations. Favor current events over static scenery for idle camera visits. Read Home Assistant's timezone for visual dimming; keep the Android hardware brightness and household controls untouched. Preserve old walrus settings as accepted legacy input while replacing that species with locally grounded turtle and sea lion art. See [coastal wildlife and idle release](coastal-wildlife-idle-2026-11-15.md).
+
 ## Store camera defaults with the frontend and derive landmark framing from the model
 
 Separate strict, lightweight camera DTOs from the Three.js renderer and browser persistence. Snapshot the legacy HA preference once per browser origin/profile/dashboard; save and reset only local storage, with a null reset tombstone, verified readback and explicit failure. Embedded Studio delegates to its HA parent so Home and Studio agree on that frontend without sharing another device's default. Derive front-view bounds and direction from actual authored models. Keep Studio overhead editing separate from a paused preview, and keep camera preferences outside layout Save/Undo. See [Device camera views](device-camera-views.md).

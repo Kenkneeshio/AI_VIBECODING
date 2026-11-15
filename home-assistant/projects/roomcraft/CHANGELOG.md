@@ -1,5 +1,11 @@
 # Changelog
 
+## Coastal wildlife, terrain and idle display — 15 November 2026
+
+- Replace the storybook walrus with a green sea turtle and California sea lion; give the local leopard shark visible markings. Add small coastal mammals and distinct bird types while keeping wildlife decorative and bounded.
+- Increase regional landscape relief without changing the road, building pads, or authored home. Prioritize current scene happenings during idle camera visits; restore the saved frontend default on the first touch. Set idle scene visual brightness to 60% after 7 p.m. and full brightness after 7 a.m. in Home Assistant's timezone.
+- See [coastal wildlife and idle release](docs/coastal-wildlife-idle-2026-11-15.md) for customer acceptance, module ownership, evidence, and rollback.
+
 ## Landmark front views and frontend-local defaults — 13 November 2026
 
 - Add model-derived front views for the family house, elementary school and office; save any supported view as this frontend's default.

@@ -53,7 +53,7 @@ test('meadow relief stays within the terrain budget and planting samples match r
   assert.equal(uv.count, position.count);
   let highest = 0;
   for (let index = 0; index < position.count; index++) {
-    assert.ok(position.getY(index) >= 0 && position.getY(index) <= 63);
+    assert.ok(position.getY(index) >= 0 && position.getY(index) <= 67);
     assert.ok(normal.getY(index) > Math.cos(Math.PI / 6));
     highest = Math.max(highest, position.getY(index));
   }

@@ -103,7 +103,7 @@ try{
   await until(()=>evaluate('card.scene.getWorldLifeState().marine.validWater'),'marine scene');
   await evaluate('openWorld()');
   assert.equal(await evaluate('card.worldLifePanel.isOpen'),true);
-  assert.equal(await evaluate("card.worldLifePanel.dialog.querySelectorAll('input[type=checkbox]').length"),13);
+  assert.equal(await evaluate("card.worldLifePanel.dialog.querySelectorAll('input[type=checkbox]').length"),14);
   assert.equal(await evaluate("card.worldLifePanel.dialog.querySelectorAll('input[type=number]').length"),4);
   await photo('world-life-menu-desktop');
   async function startPreview(label){
@@ -129,14 +129,14 @@ try{
   }
   const first=await startPreview('all-species');
   const visible=first.state.marine.actors.filter(actor=>actor.visible);
-  assert.deepEqual([...new Set(visible.map(actor=>actor.species))].sort(),['dolphins','seals','sharks','walruses','whales']);
+  assert.deepEqual([...new Set(visible.map(actor=>actor.species))].sort(),['dolphins','seaLions','seals','sharks','turtles','whales']);
   const positions=JSON.stringify(visible.map(actor=>[actor.id,actor.position,actor.joints]));
   await until(async()=>JSON.stringify((await evaluate('card.scene.getWorldLifeState().marine.actors')).filter(actor=>actor.visible).map(actor=>[actor.id,actor.position,actor.joints]))!==positions,'automatic articulated animation');
   const allPreview=await evaluate('({state:card.scene.getWorldLifeState(),renderedAt:card.lastSceneRenderAt})');
   await photo('world-life-wildlife-preview');await endPreview();
   await evaluate(`(()=>{openWorld();const set=(key,value)=>{const i=card.worldLifePanel.dialog.querySelector('[data-world-life="'+key+'"]');i.checked=value;i.dispatchEvent(new Event('change'));};set('dolphins',false);set('sharks',false);})()`);
   const filtered=await startPreview('filtered-species');
-  assert.deepEqual([...new Set(filtered.state.marine.actors.filter(actor=>actor.visible).map(actor=>actor.species))].sort(),['seals','walruses','whales']);
+  assert.deepEqual([...new Set(filtered.state.marine.actors.filter(actor=>actor.visible).map(actor=>actor.species))].sort(),['seaLions','seals','turtles','whales']);
   await photo('world-life-filtered-preview');await endPreview();
   await evaluate('openWorld()');
   assert.equal(await evaluate("card.worldLifePanel.dialog.querySelector('[data-world-life=dolphins]').checked"),true,'unsaved filter restored');
@@ -172,5 +172,5 @@ try{
   assert.ok(phone.x>=0&&phone.y>=0&&phone.right<=phone.width&&phone.bottom<=phone.height);assert.equal(phone.overflow,false);assert.ok(!phone.columns.includes(' '));
   await photo('world-life-menu-phone');assert.deepEqual(errors,[]);
   await writeFile(join(qa,'evidence.json'),JSON.stringify({allPreview,filtered,masterOff:off,saved,phone,errors},null,2));
-  console.log('PASS: actual Live Living world menu; real RAF resumes and continues; animated five-species preview, filters/master Off/normal restore, no physical actions, exact settings Save preserves 82 items/holidays/states with rollback+readback, persisted reopening and phone fit.');console.log(qa);
+  console.log('PASS: actual Live Living world menu; real RAF resumes and continues; animated six-species preview, filters/master Off/normal restore, no physical actions, exact settings Save preserves 82 items/holidays/states with rollback+readback, persisted reopening and phone fit.');console.log(qa);
 }finally{ws?.close();chrome.kill();server.close();}

@@ -18,7 +18,7 @@ test('active holiday displays and current wildlife events take priority over sce
   const before = structuredClone(source), result = selectIdleCameraInterests(source);
   assert.equal(result[0].id,'holiday:lunar-new-year');
   assert.equal(result[1].id,'marine:dolphin-1');
-  assert.ok(result[1].weight > result.find(candidate => candidate.id==='scenery:coast').weight);
+  assert.equal(result.some(candidate => candidate.id==='scenery:coast'),false,'active moments replace static scenery');
   for (const candidate of result) {
     assert.deepEqual(Object.keys(candidate).sort(),['focus','id','weight','zoomFactor']);
     assert.deepEqual(Object.keys(candidate.focus).sort(),['x','y','z']);
@@ -49,7 +49,7 @@ test('hidden, invalid-water, preview and disposed wildlife never become camera d
   const result = selectIdleCameraInterests({marine:{...marine,actors:[
     {...dolphin,id:'swimmer',behavior:'swim'},dolphin]}});
   assert.equal(result[0].id,'marine:dolphin-1');
-  assert.ok(result[0].weight > result[1].weight);
+  assert.equal(result.length,1,'routine swimming does not interrupt an event focused idle visit');
 });
 
 test('real world-moment samples honor weather, night and category settings even while offscreen', () => {
@@ -69,7 +69,7 @@ test('real world-moment samples honor weather, night and category settings even 
 });
 
 test('authored landmark life, animated habitats and scenery respect their availability gates', () => {
-  const landmark = {id:'home',visible:true,enabled:true,active:true,focus};
+  const landmark = {id:'home',visible:true,enabled:true,active:true,event:true,focus};
   assert.deepEqual(ids({landmarks:[landmark]}),['landmark:home']);
   for (const flag of ['visible','enabled','active']) {
     assert.deepEqual(ids({landmarks:[{...landmark,[flag]:false}]}),[]);
@@ -87,9 +87,10 @@ test('selection is replayable, unique, bounded and excludes non-finite positions
   const source = {holiday,marine,scenery};
   const result = selectIdleCameraInterests(source);
   assert.deepEqual(result,selectIdleCameraInterests(source));
-  assert.equal(result.length,16);
-  assert.equal(new Set(result.map(candidate => candidate.id)).size,16);
+  assert.equal(result.length,2,'active moments suppress static scenery');
+  assert.equal(new Set(result.map(candidate => candidate.id)).size,2);
   assert.equal(result.some(candidate => candidate.id==='scenery:invalid'),false);
   assert.equal(result[0].id,'holiday:lunar-new-year');
+  assert.equal(ids({scenery}).length,16,'static scenery remains a bounded fallback');
   assert.deepEqual(selectIdleCameraInterests(),[]);
 });

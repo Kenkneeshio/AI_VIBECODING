@@ -54,6 +54,15 @@ test('finite activity catalog varies across long cycles and seeds, while explici
   assert.deepEqual(sampleStorybookWorldMoments(layout,1,{...sunny,reduceMotion:true}),sampleStorybookWorldMoments(layout,1800000456,{...sunny,reduceMotion:true}));
 });
 
+test('representative local land wildlife stays grounded and is quiet in severe weather',()=>{
+  const habitat={...layout,trees:[...layout.trees,{kind:'coast-live-oak',x:1900,z:340,groundY:-111,height:90}]};
+  const day=sampleStorybookWorldMoments(habitat,50,sunny);
+  assert.deepEqual(day.mammals.map(a=>a.kind),['desert-cottontail','california-ground-squirrel','coyote']);
+  assert.ok(day.mammals.every(a=>Number.isFinite(a.x)&&Number.isFinite(a.z)&&a.y>=-111));
+  assert.deepEqual(sampleStorybookWorldMoments(habitat,50,{...sunny,condition:'pouring'}).mammals,[]);
+  assert.deepEqual(sampleStorybookWorldMoments(habitat,50,{...sunny,worldLife:{vegetation:false}}).mammals,[]);
+});
+
 test('night, severe weather, disabled categories and zero density suppress fictional activity independently',()=>{
   for(const options of [{night:true},{activity:'overnight'},{activity:'evening'},{condition:'pouring'},{condition:'lightning'}]){
     const state=sampleStorybookWorldMoments(layout,123,{...sunny,...options});

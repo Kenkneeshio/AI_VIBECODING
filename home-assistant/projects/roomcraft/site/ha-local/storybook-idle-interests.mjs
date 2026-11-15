@@ -21,7 +21,7 @@ export function selectIdleCameraInterests({holiday, marine, moments, landmarks=[
   if (marine?.validWater === true && marine.preview !== true && marine.disposed !== true) {
     for (const actor of marine.actors ?? []) {
       if (actor.visible !== true || !named(actor.id)) continue;
-      add('marine:'+actor.id, position(actor.position), MARINE_EVENTS.has(actor.behavior) ? 6 : 2, 2.7);
+      if(MARINE_EVENTS.has(actor.behavior))add('marine:'+actor.id, position(actor.position), 9, 2.7);
     }
   }
   if (moments?.settings?.enabled === true && moments.settings.characters === true && moments.settings.density > 0) {
@@ -29,17 +29,18 @@ export function selectIdleCameraInterests({holiday, marine, moments, landmarks=[
     // remains a subject; the renderer reveals it as the camera approaches.
     for (const activity of moments.activities ?? []) {
       if (!named(activity.id)) continue;
-      add('activity:'+activity.id, {x:activity.x, y:activity.y+12, z:activity.z}, 3, 2.5);
+      add('activity:'+activity.id, {x:activity.x, y:activity.y+12, z:activity.z}, 6, 2.5);
     }
   }
   for (const landmark of landmarks) {
     if (!named(landmark.id) || landmark.visible !== true || landmark.enabled !== true || landmark.active !== true) continue;
-    add('landmark:'+landmark.id, landmark.focus, landmark.event === true ? 4 : 1.5, 2.2);
+    if(landmark.event === true)add('landmark:'+landmark.id, landmark.focus, 7, 2.2);
   }
   for (const habitat of habitats) {
     if (!named(habitat.id) || habitat.visible !== true || habitat.animated !== true) continue;
-    add('habitat:'+habitat.id, habitat.focus, 2, 2.6);
+    add('habitat:'+habitat.id, habitat.focus, 3, 2.6);
   }
+  if(candidates.length)return candidates.sort((a,b) => b.weight-a.weight || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).slice(0,16);
   for (const view of scenery) {
     if (!named(view.id) || view.visible !== true) continue;
     add('scenery:'+view.id, view.focus, .7, 1.8);

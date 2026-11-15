@@ -12,8 +12,9 @@ const visible=life=>life.getState().actors.filter(a=>a.visible);
 
 test('eight detailed articulated animals remain a bounded nine-draw pool',()=>{
   const life=createStorybookMarineLife(water);life.update(17,{preview:true});
-  assert.equal(visible(life).length,8);assert.equal(new Set(visible(life).map(a=>a.species)).size,5);
-  assert.ok(visible(life).find(a=>a.species==='walruses').storybookVisitor);
+  assert.equal(visible(life).length,8);assert.equal(new Set(visible(life).map(a=>a.species)).size,6);
+  assert.ok(visible(life).some(a=>a.species==='turtles'&&a.variant==='green'));
+  assert.ok(visible(life).some(a=>a.species==='seaLions'));
   let triangles=0,draws=0,skin=0,material=new Set();
   life.root.traverse(o=>{if(o.geometry){draws++;triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3;material.add(o.material);assert.ok(o.geometry.attributes.position.count>0);if(o.isSkinnedMesh){skin++;assert.equal(o.skeleton.bones.length,4);assert.ok(o.geometry.attributes.color);assert.ok(o.geometry.attributes.skinWeight);}}});
   assert.equal(skin,8);assert.equal(draws,9);assert.ok(triangles<28000);assert.equal(material.size,2);
@@ -65,7 +66,7 @@ test('preview respects all draft switches and density while preserving quiet act
   const life=createStorybookMarineLife(water);
   for(const flag of ['enabled','marine']){life.update(50,{preview:true,worldLife:{[flag]:false}});assert.equal(visible(life).length,0);assert.equal(life.root.visible,false);}
   life.update(50,{preview:true,worldLife:{density:0}});assert.equal(visible(life).length,0);
-  for(const flag of ['dolphins','sharks','whales','seals','walruses']){life.update(50,{preview:true,worldLife:{[flag]:false}});assert.ok(visible(life).every(a=>a.species!==flag));assert.ok(visible(life).length>0);}
+  for(const flag of ['dolphins','sharks','whales','seals','seaLions','turtles']){life.update(50,{preview:true,worldLife:{[flag]:false}});assert.ok(visible(life).every(a=>a.species!==flag));assert.ok(visible(life).length>0);}
   for(const options of [{night:true},{activity:'overnight'}]){life.update(50,options);assert.equal(visible(life).length,0);assert.equal(life.getState().particles,0);life.update(27,{...options,preview:true});assert.equal(visible(life).length,8);assert.ok(visible(life).every(a=>!['leap','breach','spout','roll','flipper-wave'].includes(a.behavior)));}
   for(const condition of ['pouring','lightning-rainy']){life.update(27,{preview:true,condition});assert.ok(visible(life).every(a=>['swim','rest'].includes(a.behavior)));}
   life.update(27,{preview:true,worldLife:{surprises:false}});assert.ok(visible(life).every(a=>['swim','rest'].includes(a.behavior)));life.dispose();
@@ -106,8 +107,8 @@ test('encounters vary coat and size deterministically without geometry, attribut
 
 test('pure preview bounds are available before RAF, respect filters, and contain every showcase phase',()=>{
   const life=createStorybookMarineLife(water),before=life.getState(),bounds=life.getPreviewBounds({variety:1});assert.ok(bounds);assert.deepEqual(life.getState(),before);
-  for(const settings of [{enabled:false},{marine:false},{density:0},{dolphins:false,sharks:false,whales:false,seals:false,walruses:false}])assert.equal(life.getPreviewBounds(settings),null);
-  const filtered=life.getPreviewBounds({whales:false,seals:false,walruses:false});assert.ok(bounds.containsBox(filtered));assert.ok(filtered.max.z-filtered.min.z<bounds.max.z-bounds.min.z);
+  for(const settings of [{enabled:false},{marine:false},{density:0},{dolphins:false,sharks:false,whales:false,seals:false,seaLions:false,turtles:false}])assert.equal(life.getPreviewBounds(settings),null);
+  const filtered=life.getPreviewBounds({whales:false,seals:false,seaLions:false,turtles:false});assert.ok(bounds.containsBox(filtered));assert.ok(filtered.max.z-filtered.min.z<bounds.max.z-bounds.min.z);
   for(let t=0;t<360;t+=3){life.update(t,{preview:true,worldLife:{variety:0}});assert.ok(bounds.containsBox(life.getBounds()),'camera bounds missed active showcase extent');}
   const original=life.getPreviewBounds();original.min.set(99999,99999,99999);assert.ok(life.getPreviewBounds().min.x<99999);life.dispose();assert.equal(life.getPreviewBounds(),null);
 });

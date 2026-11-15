@@ -6,7 +6,7 @@ import {saveWorldLifeSettings} from '../ha-local/storybook-world-life-save.mjs';
 
 test('living world defaults, exact numeric values and species choices normalize deterministically',()=>{
   const defaults=normalizeWorldLifeSettings();
-  assert.equal(WORLD_LIFE_FLAGS.length,13);assert.ok(WORLD_LIFE_FLAGS.every(key=>defaults[key]===true));
+  assert.equal(WORLD_LIFE_FLAGS.length,14);assert.ok(WORLD_LIFE_FLAGS.every(key=>defaults[key]===true));
   assert.deepEqual([defaults.density,defaults.pace,defaults.variety,defaults.seed],[.65,1,.8,37]);
   const input=Object.freeze({marine:false,sharks:false,density:.65321,pace:1.037,variety:.84567,seed:0});
   const next=normalizeWorldLifeSettings(input);

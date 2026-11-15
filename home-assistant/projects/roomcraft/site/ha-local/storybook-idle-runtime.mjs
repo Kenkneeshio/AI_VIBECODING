@@ -2,6 +2,15 @@ import {createIdleCameraDirector, normalizeIdleCameraSettings} from './storybook
 import {resolveDefaultCameraView} from './storybook-camera.mjs';
 
 export const IDLE_CAMERA_SETTINGS_KEY='roomcraft.idle-camera.v1';
+const brightnessFormatters=new Map();
+export function idleBrightnessAt(date,zone='America/Los_Angeles') {
+  let hour;
+  try {
+    if(!brightnessFormatters.has(zone))brightnessFormatters.set(zone,new Intl.DateTimeFormat('en-US',{timeZone:zone,hour:'2-digit',hourCycle:'h23'}));
+    hour=Number(brightnessFormatters.get(zone).format(date));
+  } catch {hour=date.getHours();}
+  return hour>=19||hour<7?.6:1;
+}
 const fields=[
   ['idleAfterMs','Start after no touch',15,300,30],
   ['travelMs','Slow pan duration',12,90,24],
@@ -20,6 +29,7 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
   try {settings=readIdlePreferences(JSON.parse(host.localStorage.getItem(IDLE_CAMERA_SETTINGS_KEY)));}
   catch {settings=readIdlePreferences();}
   const now=()=>host.performance.now();
+  const idleBrightness=()=>idleBrightnessAt(new Date(),card.session?.config?.time_zone||'America/Los_Angeles');
   let director, state={active:false,phase:'waiting'}, connected=false, timer, interests=[], nextInterestAt=0;
   let suppressClickUntil=0, manual=false, lastAppliedFraming;
   const held=new Set(), wakePointers=new Set();
@@ -50,6 +60,7 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
     card.scene?.setView(view);card.viewSelect.value='default';
     card.freeViewGestures?.cancel();card.syncFreeViewMode();
     card.world.removeAttribute('data-idle-camera');
+    card.world.style.filter='';
     card.anchorDirty=true;lastAppliedFraming=undefined;
     card.schedule();
   }
@@ -70,6 +81,8 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
     const previous=state;
     state=director.sample(at,{blocked,reducedMotion:card.motionReduced,enabled:settings.enabled||manual,interests});
     if(state.active) {
+      const brightness=idleBrightness();
+      card.world.style.filter=brightness===1?'':`brightness(${brightness})`;
       const view=resolveDefaultCameraView(card.savedStartupView);
       if(!previous.active) {
         card.cameraView=view;card.pendingCameraView=undefined;card.viewSelect.value='default';
@@ -93,9 +106,10 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
   function consume(event) {if(event.cancelable)event.preventDefault();event.stopImmediatePropagation();}
   function pointerDown(event) {
     const wasIdle=state.active, inside=event.composedPath().includes(card);
+    const away=inside&&card.cameraView?.preset!=='default';
     if(!wakePointers.size)suppressClickUntil=0;
-    touch();held.add(event.pointerId);
-    if((wasIdle||wakePointers.size>0)&&inside) {
+    touch();if(away&&!wasIdle)restore();held.add(event.pointerId);
+    if((wasIdle||away||wakePointers.size>0)&&inside) {
       wakePointers.add(event.pointerId);suppressClickUntil=Infinity;consume(event);
     }
   }

@@ -1,10 +1,10 @@
 (function(root) {
   'use strict';
-  const flags = Object.freeze(['enabled', 'marine', 'dolphins', 'sharks', 'whales', 'seals', 'walruses',
+  const flags = Object.freeze(['enabled', 'marine', 'dolphins', 'sharks', 'whales', 'seals', 'seaLions', 'turtles',
     'characters', 'vehicles', 'vegetation', 'water', 'weatherAccents', 'surprises']);
   const numbers = Object.freeze({density: Object.freeze([0, 1, .65]), pace: Object.freeze([.25, 2, 1]),
     variety: Object.freeze([0, 1, .8]), seed: Object.freeze([0, 9999, 37])});
-  const knownFlags = new Set(flags);
+  const knownFlags = new Set([...flags,'walruses']); // Accept old saved settings; normalize away the retired species.
   const record = value => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const prototype = Object.getPrototypeOf(value);

@@ -11,18 +11,18 @@ const ROUGH=new Set(['pouring','lightning','lightning-rainy','windy','windy-vari
 const CAST=Object.freeze([
   {id:'pearl-dolphin',species:'dolphins',variant:'bottlenose',length:40,beam:10,color:'#699da9',belly:'#d5e7de',x:-630,offshore:153,radius:32},
   {id:'lagoon-dolphin',species:'dolphins',variant:'common',length:33,beam:8.5,color:'#526f91',belly:'#f1d7ac',x:-760,offshore:165,radius:26},
-  {id:'reef-shark',species:'sharks',variant:'reef',length:47,beam:14,color:'#778e9e',belly:'#e8e4d4',x:-610,offshore:320,radius:40},
+  {id:'leopard-shark',species:'sharks',variant:'leopard',length:41,beam:10,color:'#8f9e98',belly:'#e8e4d4',x:-610,offshore:230,radius:34},
   {id:'humpback-whale',species:'whales',variant:'humpback',length:86,beam:28,color:'#54788a',belly:'#c9dad6',x:-490,offshore:560,radius:54},
   {id:'orca-whale',species:'whales',variant:'orca',length:65,beam:21,color:'#253e4d',belly:'#f2eeda',x:-255,offshore:680,radius:43},
   {id:'harbor-seal',species:'seals',variant:'harbor',length:25,beam:13,color:'#b4a591',belly:'#e2d4ba',x:650,offshore:160,radius:18},
-  {id:'spotted-seal',species:'seals',variant:'spotted',length:22,beam:11,color:'#849caa',belly:'#dce0d6',x:760,offshore:175,radius:17},
-  {id:'storybook-walrus',species:'walruses',variant:'visitor',length:37,beam:21,color:'#aa806f',belly:'#cfab8c',x:690,offshore:320,radius:23},
+  {id:'california-sea-lion',species:'seaLions',variant:'seaLion',length:28,beam:12,color:'#a18267',belly:'#d3b79a',x:760,offshore:175,radius:21},
+  {id:'green-sea-turtle',species:'turtles',variant:'green',length:29,beam:16,color:'#637c62',belly:'#c8b598',x:690,offshore:245,radius:25},
 ]);
 const COATS=Object.freeze({
   bottlenose:['#699da9','#6b8fb0','#7aaba3'],common:['#526f91','#5c829b','#668d8b'],
-  reef:['#778e9e','#6d919c','#899c96'],humpback:['#54788a','#577f91','#658a85'],
+  leopard:['#8f9e98','#7f958f','#9aa998'],humpback:['#54788a','#577f91','#658a85'],
   orca:['#253e4d','#2d4358','#304f53'],harbor:['#b4a591','#a39782','#c7b89e'],
-  spotted:['#849caa','#7396a0','#9eaaa7'],visitor:['#aa806f','#b38b73','#97786c'],
+  seaLion:['#a18267','#9b8067','#b39778'],green:['#637c62','#6f8063','#698774'],
 });
 
 function validWater(water){
@@ -90,7 +90,7 @@ function painted(parts){
 
 function animalArt(recipe,material){
   const p=[],l=recipe.length,b=recipe.beam,top=recipe.color,belly=recipe.belly;
-  const seal=recipe.species==='seals',walrus=recipe.species==='walruses',shark=recipe.species==='sharks',orca=recipe.variant==='orca',whale=recipe.species==='whales',pinniped=seal||walrus;
+  const seal=recipe.species==='seals',seaLion=recipe.species==='seaLions',turtle=recipe.species==='turtles',shark=recipe.species==='sharks',orca=recipe.variant==='orca',whale=recipe.species==='whales',pinniped=seal||seaLion;
   const ell=(x,y,z,w,h,d,c,bone=0,segments=12)=>p.push([new THREE.SphereGeometry(1,segments,8).scale(w,h,d).translate(x,y,z),c,bone]);
   const line=(ax,ay,az,bx,by,bz,r,c,bone=0)=>{
     const a=new THREE.Vector3(ax,ay,az),end=new THREE.Vector3(bx,by,bz),dir=end.clone().sub(a),g=new THREE.CylinderGeometry(r,r,dir.length(),5);
@@ -103,6 +103,24 @@ function animalArt(recipe,material){
     for(let i=0;i<points.length;i++){const a=i+1,b=(i+1)%points.length+1;indices.push(0,a,b,mid,b,a);}
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.setIndex(indices);g.computeVertexNormals();p.push([g,c,bone]);
   };
+  if(turtle){
+    ell(-l*.03,0,0,l*.34,b*.32,b*.46,'#465e49',0,24);
+    ell(-l*.03,b*.08,0,l*.29,b*.34,b*.42,top,0,24);
+    ell(-l*.03,-b*.21,0,l*.30,b*.11,b*.35,belly,0,20);
+    ell(l*.37,-b*.02,0,l*.12,b*.16,b*.17,top,0,16);
+    for(const side of [-1,1]){
+      ell(l*.39,b*.035,side*b*.13,.58,.55,.52,'#182c29');
+      ell(l*.44,b*.17,side*b*.16,.19,.19,.19,'#eef7e8');
+      ell(-l*.12,-b*.06,side*b*.54,l*.23,b*.07,b*.17,top,side<0?2:3,14);
+      ell(-l*.37,-b*.08,side*b*.30,l*.11,b*.06,b*.12,top,1,12);
+    }
+    ell(-l*.40,-b*.03,0,l*.10,b*.06,b*.12,top,1,12);
+    for(let row=-1;row<=1;row++)for(let col=-1;col<=1;col++){
+      const x=l*(col*.16-.03),z=b*row*.21;
+      ell(x,b*(.36-.09*Math.abs(row)-.07*Math.abs(col)),z,l*.075,b*.012,b*.105,
+        (row+col)%2?'#82906b':'#7a8660',0,10);
+    }
+  }else{
   ell(-l*.015,0,0,l*.37,b*.43,b*.49,top,0,20);
   ell(l*.015,-b*.19,0,l*.335,b*.3,b*.39,belly,0,16);
   ell(-l*.325,-b*.04,0,l*.17,b*.19,b*.22,top,1,12);
@@ -124,14 +142,11 @@ function animalArt(recipe,material){
       ell(-l*.44,-b*.06,side*b*.19,l*.13,b*.08,b*.21,top,1);
       ell(l*.375,-b*.14,side*b*.13,l*.09,b*.2,b*.22,belly);
       for(let i=0;i<3;i++)line(l*.41,-b*.13+i*.6,side*b*.16,l*.48,-b*.11+i*.8,side*b*(.39+i*.035),.09,'#e9deca');
-      if(walrus){
-        const curve=new THREE.CatmullRomCurve3([new THREE.Vector3(l*.42,-b*.18,side*b*.17),new THREE.Vector3(l*.44,-b*.39,side*b*.18),new THREE.Vector3(l*.47,-b*.61,side*b*.15)]);
-        p.push([new THREE.TubeGeometry(curve,7,.65,7,false),'#eee3c4',0]);
-      }
+      if(seaLion)ell(l*.27,b*.34,side*b*.23,l*.035,b*.12,b*.065,top);
     }
     ell(l*.445,-b*.01,0,l*.035,b*.07,b*.085,'#554a48');
     if(seal)for(let i=0;i<12;i++){const x=(-.25+(i%4)*.13)*l,z=(i%2?1:-1)*b*(.27+(i%3)*.035),y=b*.43*Math.sqrt(Math.max(.01,1-((x+l*.015)/(l*.37))**2-(z/(b*.49))**2));ell(x,y,z,.65,.20,.55,'#617582');}
-    if(walrus)for(let i=0;i<4;i++)ell(-l*.18+i*2,b*.31,0,.35,.27,b*.31,'#997061');
+    if(seaLion)for(let i=0;i<4;i++)ell(-l*.18+i*2,b*.31,0,.35,.27,b*.31,'#997061');
   }
   for(const side of [-1,1]){
     const reach=b*(whale&&!orca?1.23:pinniped?.66:.88),bone=side<0?2:3;
@@ -146,6 +161,11 @@ function animalArt(recipe,material){
     ell(l*.22,b*.38,0,l*.035,.32,b*.06,'#314f60');
     if(orca)ell(-l*.15,b*.39,0,l*.09,b*.08,b*.28,'#acb9bd');
     else for(let i=-2;i<=2;i++)line(l*.03,-b*.415,i*b*.09,l*.33,-b*.35,i*b*.08,.15,'#9fbab9');
+  }
+  if(shark&&recipe.variant==='leopard')for(const side of [-1,1])for(let i=0;i<11;i++){
+    const x=l*(-.26+(i%6)*.095),z=side*b*(.2+Math.floor(i/6)*.13);
+    ell(x,b*(.355-Math.floor(i/6)*.12),z,.65,.13,.58,'#455c57',0,8);
+  }
   }
   const mesh=new THREE.SkinnedMesh(painted(p),material),bones=[];
   for(const xyz of [[0,0,0],[-l*.29,0,0],[l*.08,-b*.1,-b*.29],[l*.08,-b*.1,b*.29]]){const bone=new THREE.Bone();bone.position.set(...xyz);bones.push(bone);}
@@ -192,7 +212,7 @@ export function createStorybookMarineLife(water){
         }
       }
       const duty=clamp(.28+settings.density*.68,0,1),event=preview?mod(time+index*4,36)/36:phase;
-      const rare= a.species==='walruses'||a.variant==='orca';
+      const rare= a.species==='turtles'||a.variant==='orca';
       const visible=active&&settings[a.species]&&route&&(preview||(!quiet&&phase<duty&&(!rare||seed<.2+settings.variety*.8)));
       a.group.visible=Boolean(visible);a.behavior=visible?'swim':'hidden';
       if(!route)continue;
@@ -204,7 +224,7 @@ export function createStorybookMarineLife(water){
       for(let i=1;i<a.bones.length;i++)a.bones[i].rotation.set(0,0,0);
       const wave=Math.sin(mod(time,12)*TAU/2.6+seed*TAU);
       if(!reduced){
-        if(a.species==='sharks')a.bones[1].rotation.y=wave*.19;else a.bones[1].rotation.z=wave*.14;
+        if(a.species==='sharks')a.bones[1].rotation.y=wave*.19;else a.bones[1].rotation.z=wave*(a.species==='turtles'?.07:.14);
         a.bones[2].rotation.x=wave*.13;a.bones[3].rotation.x=-wave*.13;
         a.group.rotation.z=wave*.035;a.group.position.y+=Math.sin(mod(time,8)*TAU/4+index)*.4;
       }
@@ -219,8 +239,8 @@ export function createStorybookMarineLife(water){
           if(a.variant==='orca'){a.group.position.y+=lift*27;a.group.rotation.z=lift*.65;splash=1-lift;}else spout=lift;
         }else if(a.species==='seals'){
           a.behavior='roll';a.group.rotation.x=lift*TAU;a.group.position.y+=1.3;
-        }else if(a.species==='walruses'){a.behavior='flipper-wave';a.bones[3].rotation.x=Math.sin(f*TAU*2)*.55;}
-      }else if(visible&&(a.species==='seals'||a.species==='walruses')&&event<.30){a.behavior='rest';a.group.rotation.z=0;}
+        }else if(a.species==='turtles'||a.species==='seaLions'){a.behavior='flipper-wave';a.bones[3].rotation.x=Math.sin(f*TAU*2)*.4;}
+      }else if(visible&&(a.species==='seals'||a.species==='seaLions'||a.species==='turtles')&&event<.30){a.behavior='rest';a.group.rotation.z=0;}
       if(reduced){a.behavior=visible?'rest':'hidden';a.group.rotation.set(0,yaw,0);}
       if(!visible)continue;
       a.group.updateMatrix();
@@ -252,7 +272,7 @@ export function createStorybookMarineLife(water){
     }
     return result.isEmpty()?null:result;
   }
-  function getState(){return {decorative:true,validWater:Boolean(valid),disposed,preview:currentPreview,reducedMotion:currentReduced,particles:particleCount,actors:actors.map(a=>({id:a.id,species:a.species,variant:a.variant,storybookVisitor:a.species==='walruses',visible:root.visible&&a.group.visible,behavior:a.behavior,length:a.length,beam:a.beam,bodyScale:a.bodyScale,coatVariant:a.coatVariant,encounter:a.encounter,safetyRadius:a.radius,position:a.group.position.toArray(),rotation:a.group.rotation.toArray().slice(0,3),joints:a.bones.slice(1).map(b=>b.rotation.toArray().slice(0,3))}))};}
+  function getState(){return {decorative:true,validWater:Boolean(valid),disposed,preview:currentPreview,reducedMotion:currentReduced,particles:particleCount,actors:actors.map(a=>({id:a.id,species:a.species,variant:a.variant,visible:root.visible&&a.group.visible,behavior:a.behavior,length:a.length,beam:a.beam,bodyScale:a.bodyScale,coatVariant:a.coatVariant,encounter:a.encounter,safetyRadius:a.radius,position:a.group.position.toArray(),rotation:a.group.rotation.toArray().slice(0,3),joints:a.bones.slice(1).map(b=>b.rotation.toArray().slice(0,3))}))};}
   function dispose(){if(disposed)return;disposed=true;for(const a of actors){a.mesh.geometry.dispose();a.mesh.skeleton.dispose();}foam.geometry.dispose();foamMaterial.dispose();material.dispose();root.clear();root.visible=false;}
   update(0);return {root,update,dispose,getState,getFocus,getBounds,getPreviewBounds};
 }

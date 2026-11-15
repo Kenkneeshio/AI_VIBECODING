@@ -2,7 +2,7 @@ import {Color, Float32BufferAttribute, MathUtils, PlaneGeometry} from 'three';
 import {isExteriorBuilding} from './storybook-exterior.mjs';
 
 const {clamp, smootherstep} = MathUtils;
-const MAX_RELIEF = 15;
+const MAX_RELIEF = 19;
 const MAX_REGIONAL_RISE = 48;
 const CELL_SIZE = 52;
 const EDIT_TILE = 32;
@@ -27,6 +27,9 @@ const REGIONAL_RISES = [
   [.98, .17, .55, .66, .95],
   [1.47, .73, .66, .66, .72],
   [-1.48, 1.42, .79, .80, .82],
+  [-1.22, -.91, .43, .52, .61],
+  [.30, -1.12, .46, .48, .57],
+  [1.17, 1.47, .53, .69, .52],
 ];
 
 function padAround({item, x, z, angle}, runMin, runMax) {
