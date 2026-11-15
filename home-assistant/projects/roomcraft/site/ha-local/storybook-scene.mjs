@@ -37,6 +37,7 @@ import { createStorybookRadarHeatMap } from './storybook-radar-heatmap.mjs';
 import { createStorybookOcean } from './storybook-ocean.mjs';
 import { buildStorybookNeighborhood, buildStorybookStreet, storybookStreetBounds } from './storybook-street.mjs';
 import { createStorybookMeadow } from './storybook-meadow.mjs';
+import {createInlandWatercourse,createInlandBiomeDetails} from './storybook-inland-biomes.mjs';
 import { addCoastalPlanting } from './storybook-coastal-planting.mjs';
 import { buildStorybookYardAccess } from './storybook-yard-access.mjs';
 import {compileStorybookGarageDriveways, storybookGarageDrivewayContains, buildStorybookGarageDriveways} from './storybook-garage-driveway.mjs';
@@ -1211,6 +1212,8 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   const ground = new THREE.Mesh(meadow.geometry, groundMaterial);
   ground.position.set((minX + maxX) / 2, GROUND_Y, (minZ + maxZ) / 2);
   scene.add(ground);
+  const inlandWatercourse=createInlandWatercourse(plan.houseBounds,meadow.heightAt);
+  scene.add(inlandWatercourse);
   const batch = makeStaticBatch(scene);
   const treeBatch = makeStaticBatch(scene);
   const groveBatch = makeStaticBatch(scene);
@@ -1226,6 +1229,8 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   const canEditTerrain = (x,z) => !storybookGarageDrivewayContains(garageDriveways,x,z,10) &&
     !storybookSideRoadContains(sideRoads,x,z,10) && !exteriorHouseContains(plan.placements,x,z,5) &&
     (meadow.canEditTerrain(x,z) || coast.canEditTerrain(x,z));
+  const inlandDetails=createInlandBiomeDetails(plan.houseBounds,meadow.heightAt,canEditTerrain);
+  scene.add(inlandDetails);
   const shoreCenter = water.shoreline.reduce((closest, point) =>
     Math.abs(point.x - water.focusX) < Math.abs(closest.x - water.focusX) ? point : closest);
   const sceneryFocus = {
@@ -1270,7 +1275,8 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   const boats = createStorybookBoats(water);
   const beachPlay = createStorybookBeachPlay(water, street);
   const marineLife = createStorybookMarineLife(water);
-  const worldMoments = createStorybookWorldMoments({water,street,plan,heightAt:meadow.heightAt,trees:treeWind.getTrees()});
+  const worldMoments = createStorybookWorldMoments({water,street,plan,heightAt:meadow.heightAt,
+    canPlace:canEditTerrain,trees:treeWind.getTrees()});
   const worldClock = createWorldClock();
   let idleSceneReady = false, idleScenePreview = false;
   scene.add(marineLife.root,worldMoments.root);
@@ -1662,6 +1668,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     worldMoments.update(environment.worldSeconds,{...options,worldLife:{...worldLife,
       characters:worldLife.characters && (transientTelemetry || sceneFeatureEnabled(sceneSettings,'beachPlay')),
       vegetation:worldLife.vegetation && showTrees}});
+    inlandDetails.visible=worldLife.enabled&&worldLife.vegetation&&showTrees;
     for(const mesh of treeMeshes)mesh.visible=showTrees;
     if(showTrees)treeWind.update(timeSeconds,environment);
     ocean.update(timeSeconds,options.reflections ? environment : {...environment,reflections:false});
@@ -1796,7 +1803,8 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     sidewalk.dispose();
     boats.dispose();
     beachPlay.dispose();
-    marineLife.dispose();worldMoments.dispose();
+    marineLife.dispose();
+    worldMoments.dispose();
     holidays.dispose();
     for (const {life} of landmarkLife.values()) { scene.remove(life.root); life.dispose(); }
     const geometries = new Set();

@@ -56,7 +56,7 @@ test('real world-moment samples honor weather, night and category settings even 
   const plan = {sites:[{id:'beach-1',x:20,y:-100,z:-300,radius:26}],waterSites:[],trees:[]};
   const sampled = sampleStorybookWorldMoments(plan,0,{condition:'sunny',reduceMotion:true});
   assert.equal(sampled.activities.length,1);
-  assert.deepEqual(ids({moments:{...sampled,parts:0}}),['activity:beach-1'],
+  assert.deepEqual(ids({moments:{...sampled,parts:0}}),['wildlife:gull-beach-1','activity:beach-1'],
     'frustum-culling does not permanently hide an otherwise valid destination');
   for (const options of [{night:true},{condition:'lightning'},
     {worldLife:{enabled:false}},{worldLife:{characters:false}},{worldLife:{density:0}}]) {

@@ -1,5 +1,9 @@
 # Decision log
 
+## Keep inland wildlife numerous in identity and bounded on screen
+
+Represent a San Diego inspired regional cast with a researched catalog and 120 stable individual IDs. Rotate a small visible subset through pure explicit-time behaviors and paired encounters. Render canyon, wash and desert from the shared meadow height sampler, preserve authored pads and roads, and own all static detail geometry in scene disposal. Keep all wildlife decorative and separate from occupancy/device data. This gives the customer a changing world without trying to render 120 animated bodies on the wall tablet at once. See [inland landscape and wildlife](inland-wildlife-2026-11-15.md).
+
 ## Keep local coastal life illustrative and idle brightness browser scoped
 
 Use a finite, researched coastal cast in the shared scene, with deterministic animation and safe route/ground reservations. Favor current events over static scenery for idle camera visits. Read Home Assistant's timezone for visual dimming; keep the Android hardware brightness and household controls untouched. Preserve old walrus settings as accepted legacy input while replacing that species with locally grounded turtle and sea lion art. See [coastal wildlife and idle release](coastal-wildlife-idle-2026-11-15.md).

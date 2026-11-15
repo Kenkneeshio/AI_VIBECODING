@@ -32,6 +32,13 @@ export function selectIdleCameraInterests({holiday, marine, moments, landmarks=[
       add('activity:'+activity.id, {x:activity.x, y:activity.y+12, z:activity.z}, 6, 2.5);
     }
   }
+  if(moments?.settings?.enabled===true&&moments.settings.landWildlife===true&&moments.settings.density>0){
+    for(const actor of moments.wildlife??[]){
+      if(!named(actor.id)||!named(actor.interaction))continue;
+      if(actor.interaction==='forage-near-person'&&moments.settings.characters!==true)continue;
+      add('wildlife:'+actor.id,{x:actor.x,y:actor.y+actor.flyHeight+actor.size,z:actor.z},8,2.8);
+    }
+  }
   for (const landmark of landmarks) {
     if (!named(landmark.id) || landmark.visible !== true || landmark.enabled !== true || landmark.active !== true) continue;
     if(landmark.event === true)add('landmark:'+landmark.id, landmark.focus, 7, 2.2);

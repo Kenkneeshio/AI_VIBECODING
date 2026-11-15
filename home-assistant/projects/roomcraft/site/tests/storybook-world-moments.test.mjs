@@ -31,7 +31,7 @@ test('ambient actor envelopes stay in dry sand clear of the street, existing pla
     assert.ok(site.z+site.radius<plan.houseBounds.minZ);
     assert.equal(site.y,water.sandHeight(site.x,site.z));
   }
-  assert.deepEqual(planStorybookWorldMoments({}),{sites:[],waterSites:[],trees:[]});
+  assert.deepEqual(planStorybookWorldMoments({}),{sites:[],waterSites:[],trees:[],wildlife:[]});
   assert.equal(planStorybookWorldMoments({...inputs,water:{...water,sandHeight:(x)=>x}}).sites.length,0,'steep modifications fail closed');
   const blocked=planStorybookWorldMoments({...inputs,exclusions:[{minX:-1e4,maxX:1e4,minZ:-1e4,maxZ:1e4}]});
   assert.equal(blocked.sites.length,0);
@@ -105,7 +105,7 @@ test('renderer remains bounded, handles visibility pruning and disposes all owne
   let disposed=0;for(const resource of resources)resource.addEventListener('dispose',()=>disposed++);
   const matrix=new Matrix4(),p=new Vector3();
   for(const time of [0,100,600,1800000456]){
-    art.update(time,sunny);const state=art.getState();assert.ok(state.parts>50&&state.parts<500);
+    art.update(time,sunny);const state=art.getState();assert.ok(state.parts>50&&state.parts<900,`parts=${state.parts}`);
     assert.ok(art.root.children.length<=8);
     for(const mesh of art.root.children)for(let i=0;i<mesh.count;i++){
       mesh.getMatrixAt(i,matrix);assert.ok(matrix.elements.every(Number.isFinite));

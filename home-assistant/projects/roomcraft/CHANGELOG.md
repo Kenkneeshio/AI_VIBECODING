@@ -1,5 +1,11 @@
 # Changelog
 
+## Inland landscape and wildlife — 15 November 2026
+
+- Add canyon bluffs, seasonal creek with banks, desert relief, rocks and cacti beyond the authored home, with shared Home/Studio rendering and protected building/road pads.
+- Add a 42-species regional catalog and 120 persistent wildlife identities with multiple explicit-time activities and paired encounters. Bound the visible cast to tablet-safe counts and add an Inland wildlife setting and idle-camera interests.
+- See [inland landscape and wildlife](docs/inland-wildlife-2026-11-15.md) for customer acceptance, engine ownership, regional sources, limitations, release evidence and rollback.
+
 ## Coastal wildlife, terrain and idle display — 15 November 2026
 
 - Replace the storybook walrus with a green sea turtle and California sea lion; give the local leopard shark visible markings. Add small coastal mammals and distinct bird types while keeping wildlife decorative and bounded.

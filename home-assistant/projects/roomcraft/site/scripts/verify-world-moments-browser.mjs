@@ -22,7 +22,28 @@ renderer.setSize(width,height);renderer.setPixelRatio(1);renderer.outputColorSpa
 renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;
 document.querySelector('main').append(renderer.domElement);renderer.setScissorTest(true);
 const evidence=[];
-if(!location.search.includes('vehicles')){
+if(location.search.includes('wildlife')){
+ const selected=[];
+ for(const shape of ['cat','canid','mammal','deer','bird','lizard']){
+   let found;
+   for(let t=0;t<360;t+=2){const actor=sampleStorybookWorldMoments(layout,t,options).wildlife.find(a=>a.shape===shape);
+     if(actor){found={actor,seconds:t};break;}}
+   if(!found)throw Error('Missing wildlife shape '+shape);selected.push(found);
+ }
+ for(const [index,{actor,seconds}] of selected.entries()){
+   const scene=new THREE.Scene();scene.background=new THREE.Color('#d9dcc5');
+   scene.add(new THREE.HemisphereLight('#fff4df','#8c967f',2.1));const sun=new THREE.DirectionalLight('#fff1d4',3.5);sun.position.set(-40,95,60);scene.add(sun);
+   const ground=new THREE.Mesh(new THREE.PlaneGeometry(120,120),new THREE.MeshStandardMaterial({color:'#a8ac7c',roughness:1}));
+   ground.rotation.x=-Math.PI/2;ground.position.set(actor.x,actor.y-.10,actor.z);scene.add(ground);
+   const art=createStorybookWorldMoments(inputs);scene.add(art.root);
+   art.update(seconds,{...options,inView:(x,y,z)=>Math.hypot(x-actor.x,z-actor.z)<1});
+   const target=new THREE.Vector3(actor.x,actor.y+actor.size,actor.z),camera=new THREE.OrthographicCamera(-24,24,24,-24,.1,300);
+   camera.position.copy(target).add(new THREE.Vector3(38,42,65));camera.lookAt(target);camera.updateMatrixWorld(true);
+   const col=index%3,row=Math.floor(index/3);renderer.setViewport(col*500,(1-row)*500,500,500);renderer.setScissor(col*500,(1-row)*500,500,500);renderer.render(scene,camera);
+   evidence.push({shape:actor.shape,species:actor.species,mode:actor.mode,parts:art.getState().parts});
+   const label=document.createElement('div');label.className='label';label.style.left=(col*500+20)+'px';label.style.top=(row*500+15)+'px';label.textContent=actor.name;document.querySelector('main').append(label);
+ }
+}else if(!location.search.includes('vehicles')){
 for(const [index,kind] of WORLD_MOMENT_KINDS.entries()){
  let pose,seconds;
  for(let t=0;t<20000;t+=13){const state=sampleStorybookWorldMoments(layout,t,options);pose=state.activities.find(a=>a.kind===kind);if(pose){seconds=t;break;}}
@@ -60,7 +81,7 @@ document.body.dataset.result='pass';document.querySelector('#evidence').textCont
 const bundle=await build({stdin:{contents:source,resolveDir:process.cwd(),sourcefile:'world-moments-proof.mjs'},bundle:true,format:'iife',target:'es2022',write:false,minify:true});
 await writeFile(join(qa,'bundle.js'),bundle.outputFiles[0].contents);
 await writeFile(join(qa,'index.html'),`<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#ece3cf}main{position:relative;width:1500px;height:1000px}.label{position:absolute;font:24px Georgia;color:#53665b;text-transform:capitalize}#evidence{display:none}</style></head><body><main></main><pre id="evidence"></pre><script src="bundle.js"></script></body></html>`);
-for(const [name,query,count] of [['world-moments','',6],['vehicle-variety','?vehicles',4]]){
+for(const [name,query,count] of [['world-moments','',6],['inland-wildlife','?wildlife',6],['vehicle-variety','?vehicles',4]]){
 const child=spawn(process.env.ROOMCRAFT_QA_CHROME||'C:/Program Files/Google/Chrome/Application/chrome.exe',[
   '--headless','--disable-gpu-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader','--no-first-run',
   '--no-default-browser-check','--hide-scrollbars','--disable-background-networking','--window-size=1500,1000',
@@ -74,4 +95,4 @@ assert.equal(evidence.length,count);assert.ok(evidence.every(e=>e.parts>0));
 assert.ok((await readFile(join(qa,name+'.png'))).length>10000);
 await writeFile(join(qa,name+'-evidence.json'),JSON.stringify(evidence,null,2));
 }
-console.log('PASS: six production ambient activities and four cosmetic vehicles rendered in Chrome; no device APIs.');console.log(qa);
+console.log('PASS: six ambient activities, six inland wildlife silhouettes and four cosmetic vehicles rendered in Chrome; no device APIs.');console.log(qa);

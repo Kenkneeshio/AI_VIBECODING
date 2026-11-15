@@ -4,7 +4,7 @@ const GROUPS = [
   {title:'Ocean wildlife', note:'Marine life is decorative. Individual species choices are kept when the ocean group is paused.',
     flags:[['marine','Ocean wildlife'],['dolphins','Dolphins'],['sharks','Leopard sharks'],['whales','Whales'],['seals','Harbor seals'],['seaLions','Sea lions'],['turtles','Sea turtles']]},
   {title:'Coastal life', note:'Choose the ambient activities around your home.',
-    flags:[['characters','People and activities'],['vehicles','Ambient vehicles'],['vegetation','Trees and plants'],['water','Water details'],
+    flags:[['characters','People and activities'],['vehicles','Ambient vehicles'],['vegetation','Trees and plants'],['landWildlife','Inland wildlife'],['water','Water details'],
       ['weatherAccents','Weather accents'],['surprises','Occasional surprises']]},
 ];
 const NUMBER_LABELS = {

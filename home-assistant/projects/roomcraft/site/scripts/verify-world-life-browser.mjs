@@ -103,7 +103,7 @@ try{
   await until(()=>evaluate('card.scene.getWorldLifeState().marine.validWater'),'marine scene');
   await evaluate('openWorld()');
   assert.equal(await evaluate('card.worldLifePanel.isOpen'),true);
-  assert.equal(await evaluate("card.worldLifePanel.dialog.querySelectorAll('input[type=checkbox]').length"),14);
+  assert.equal(await evaluate("card.worldLifePanel.dialog.querySelectorAll('input[type=checkbox]').length"),15);
   assert.equal(await evaluate("card.worldLifePanel.dialog.querySelectorAll('input[type=number]').length"),4);
   await photo('world-life-menu-desktop');
   async function startPreview(label){

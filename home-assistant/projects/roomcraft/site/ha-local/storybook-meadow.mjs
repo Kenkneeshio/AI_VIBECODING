@@ -1,5 +1,6 @@
 import {Color, Float32BufferAttribute, MathUtils, PlaneGeometry} from 'three';
 import {isExteriorBuilding} from './storybook-exterior.mjs';
+import {sampleInlandBiomes} from './storybook-inland-biomes.mjs';
 
 const {clamp, smootherstep} = MathUtils;
 const MAX_RELIEF = 19;
@@ -160,17 +161,19 @@ export function createStorybookMeadow({plan, street, width, depth, centerX, cent
     const u = (x - houseX) / spanX, v = (z - houseZ) / spanZ;
     const local = hillsideCover(u, v, RISES);
     const regional = hillsideCover(u + Math.sin(v * 4.9) * .045, v + Math.sin(u * 4.6) * .05, REGIONAL_RISES);
+    const biome=sampleInlandBiomes(x,z,house);
     const openGround = structure * roadside * border;
     const edit = terrainSampler && editWeight(x, z, verge[column]);
     const sample = edit ? terrainSampler(x, z) : null;
-    const height = (MAX_RELIEF * local + MAX_REGIONAL_RISE * regional) * openGround * hillHeight
+    const height = (MAX_RELIEF * local + MAX_REGIONAL_RISE * regional + biome.height) * openGround * hillHeight
       + (sample ? sample.height * edit : 0);
     position.setXYZ(i, localX, height, localZ);
     uv.setXY(i, localX / width + .5, .5 - localZ / depth);
     const shade = regional * openGround;
     const dry = (.5 + .5 * Math.sin(u * 6.8 - v * 4.1 + Math.sin(v * 5.2))) * openGround;
-    colors.set([1 - shade * .28 + dry * .055, 1 - shade * .15 - dry * .036,
-      1 - shade * .23 - dry * .17], i * 3);
+    colors.set([1 - shade * .28 + dry * .055 + biome.desert*.12 + biome.canyon*.16 - biome.riparian*.10,
+      1 - shade * .15 - dry * .036 - biome.desert*.18 - biome.canyon*.34 + biome.riparian*.07,
+      1 - shade * .23 - dry * .17 - biome.desert*.41 - biome.canyon*.48 + biome.riparian*.01], i * 3);
     if (!sample) continue;
     let red = 0, green = 0, blue = 0, coverage = 0;
     for (const [cover, weight] of Object.entries(sample.covers)) {

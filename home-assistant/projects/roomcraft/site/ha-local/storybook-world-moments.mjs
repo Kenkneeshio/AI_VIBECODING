@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {normalizeWorldLifeSettings} from './storybook-world-life-settings.mjs';
 import {planStorybookBeachPlay} from './storybook-beach-play.mjs';
+import {planInlandWildlife,sampleInlandWildlife} from './storybook-inland-wildlife.mjs';
 
 const TAU=Math.PI*2;
 const RAIN=new Set(['rainy','pouring','lightning-rainy']);
@@ -33,9 +34,9 @@ const inside=(x,z,b,pad=0)=>b&&x>=b.minX-pad&&x<=b.maxX+pad&&z>=b.minZ-pad&&z<=b
 
 /** Reserve complete vignette envelopes in dry sand. Invalid/steep/narrow
  * terrain produces fewer sites, never an actor in the sea, home or street. */
-export function planStorybookWorldMoments({water,street,plan,trees=[],heightAt,exclusions=[]}={}){
+export function planStorybookWorldMoments({water,street,plan,trees=[],heightAt,canPlace,exclusions=[]}={}){
   const bounds=plan?.houseBounds??plan?.bounds;
-  const empty={sites:[],waterSites:[],trees:[]};
+  const empty={sites:[],waterSites:[],trees:[],wildlife:[]};
   if(!bounds||![bounds.minX,bounds.maxX,bounds.minZ,bounds.maxZ,street?.farZ,water?.y,water?.focusX].every(Number.isFinite))return empty;
   const span=bounds.maxX-bounds.minX;if(span<100||!Array.isArray(water.shoreline)||water.shoreline.length<2)return empty;
   if(!water.shoreline.every((p,i,a)=>Number.isFinite(p?.x)&&Number.isFinite(p?.z)&&(!i||p.x>a[i-1].x)))return empty;
@@ -70,14 +71,14 @@ export function planStorybookWorldMoments({water,street,plan,trees=[],heightAt,e
     .filter(t=>t.z>shoreAt(water,t.x)+10&&!inside(t.x,t.z,{minX:-Infinity,maxX:Infinity,
       minZ:(street.sample?.(t.x,street.farZ)?.z??street.farZ)-22,maxZ:(street.sample?.(t.x,street.nearZ)?.z??street.nearZ)+22},20))
     .slice(0,24).map(t=>({...t}));
-  return {sites,waterSites,trees:safeTrees};
+  return {sites,waterSites,trees:safeTrees,wildlife:planInlandWildlife({plan,heightAt,canPlace})};
 }
 
 /** A pure, bounded, finite catalog of fictional scenery moments. Time comes
  * from the caller; neither wall-clock access nor ambient randomness is used. */
 export function sampleStorybookWorldMoments(plan,seconds=0,options={}){
   const settings=normalizeWorldLifeSettings(options.worldLife);
-  const state={activities:[],birds:[],mammals:[],butterflies:[],drift:[],water:[],settings};
+  const state={activities:[],birds:[],mammals:[],wildlife:[],butterflies:[],drift:[],water:[],settings};
   if(!settings.enabled||settings.density===0)return state;
   const frozen=options.reduceMotion===true;
   const time=frozen?0:(Number.isFinite(seconds)?Math.max(0,seconds):0)*settings.pace;
@@ -86,6 +87,7 @@ export function sampleStorybookWorldMoments(plan,seconds=0,options={}){
   const wind=Number.isFinite(options.windSpeed)?clamp(options.windSpeed,0,22):['windy','windy-variant'].includes(options.condition)?6:0;
   const bearing=Number.isFinite(options.windBearing)?options.windBearing:270;
   const wx=-Math.sin(bearing*Math.PI/180),wz=Math.cos(bearing*Math.PI/180);
+  state.wildlife=sampleInlandWildlife(plan.wildlife??[],seconds,{...options,worldLife:settings});
   if(day&&!bad&&settings.characters){
     const count=Math.min(plan.sites.length,Math.ceil(settings.density*4));
     for(let i=0;i<count;i++){
@@ -100,6 +102,14 @@ export function sampleStorybookWorldMoments(plan,seconds=0,options={}){
         palette:Math.floor(worldMomentHash(seed,i+41)*PALETTES.length),phase:frozen?.25:phase,
         yaw:(worldMomentHash(seed,i+72)-.5)*.8,wind,wx,wz});
     }
+  }
+  if(day&&!bad&&settings.landWildlife&&settings.characters){
+    const gull={id:'beach-companion-gull',name:'Western gull',species:'western-gull',habitat:'beach',
+      shape:'bird',color:'#e7e7df',size:3,flyHeight:0,yaw:0,beat:frozen?0:Math.sin(time*3),
+      mode:'forage',visible:true};
+    for(const activity of state.activities.slice(0,2))state.wildlife.push({...gull,id:`gull-${activity.id}`,
+      partnerId:activity.id,x:activity.x+activity.radius*.72,y:activity.y,z:activity.z+activity.radius*.32,
+      interaction:'forage-near-person'});
   }
   if(day&&!bad&&settings.surprises){
     const phase=mod(time+seed*1.37,173);
@@ -254,13 +264,87 @@ function drawActivity(brush,a){
   }
 }
 
+function drawInlandWildlife(brush,a){
+  const s=a.size,y=a.y+a.flyHeight,bob=(a.mode==='walk'||a.mode==='interact'||a.mode==='sprint'?Math.abs(a.beat):0)*s*.12;
+  const cosine=Math.cos(a.yaw),sine=Math.sin(a.yaw);
+  const part=(shape,color,dx,dy,dz,w,h,d,rx=0,ry=0,rz=0)=>
+    brush.part(shape,color,a.x+dx*cosine-dz*sine,y+dy+bob,a.z+dx*sine+dz*cosine,w,h,d,rx,ry+a.yaw,rz);
+  const body=a.color;
+  if(a.flyHeight<1)part('shadow','#515349',0,.07,0,s*1.4,.15,s*.7);
+  if(a.shape==='snake'){
+    for(let i=0;i<6;i++)part('ball',i%2?'#6d6558':body,(i-2.5)*s*.52,s*.15,Math.sin(i*1.1)*s*.37,s*.48,s*.17,s*.34);
+    part('ball',body,s*1.7,s*.22,0,s*.58,s*.24,s*.4);
+    for(const side of [-1,1])part('ball','#1f2825',s*1.9,s*.32,side*s*.22,s*.07,s*.08,s*.06);
+    return;
+  }
+  if(a.shape==='lizard'){
+    part('ball',body,0,s*.27,0,s*1.1,s*.33,s*.51);
+    part('ball',body,s*.96,s*.29,0,s*.46,s*.28,s*.39);
+    for(let i=0;i<3;i++)part('ball',body,-s*(1.2+i*.4),s*.16,0,s*.45,s*.15,s*.19);
+    for(const side of [-1,1])for(const x of [-.55,.55])part('ball',body,x*s,s*.13,side*s*.45,s*.29,s*.12,s*.18);
+    for(const side of [-1,1])part('ball','#25302b',s*1.16,s*.41,side*s*.25,s*.08,s*.08,s*.07);
+    return;
+  }
+  if(a.shape==='bird'){
+    const flap=a.mode==='soar'||a.mode==='hover'||a.mode==='flit'||a.mode==='dive'?a.beat:0;
+    part('ball',body,0,s*.58,0,s*.85,s*.49,s*.5);
+    part('ball',body,s*.66,s*.86,0,s*.35,s*.39,s*.36);
+    for(const side of [-1,1]){
+      part('ball',body,-s*.15,s*(.85+Math.abs(flap)*.35),side*s*.62,s*.87,s*.13,s*.39,0,0,side*flap*.5);
+      part('ball','#3c4650',s*.78,s*.99,side*s*.23,s*.07,s*.08,s*.07);
+      if(a.flyHeight<1)part('rod','#8c755e',0,s*.17,side*s*.21,s*.08,s*.4,s*.08);
+    }
+    part('cone','#d4a56b',s*1.03,s*.75,0,s*.20,s*.39,s*.20,0,0,-Math.PI/2);
+    if(a.species==='california-quail')part('rod','#37383d',s*.66,s*1.32,0,s*.06,s*.46,s*.06,0,0,-.45);
+    if(a.species==='greater-roadrunner')for(let i=0;i<3;i++)part('ball',body,-s*(.7+i*.32),s*.62,0,s*.35,s*.11,s*.16);
+    return;
+  }
+  const feline=a.shape==='cat',canid=a.shape==='canid',deer=a.shape==='deer',rabbit=a.shape==='rabbit';
+  const bodyY=s*(deer?1.65:.78),headX=s*(deer?1.22:.99),headY=bodyY+s*(deer?.67:.26);
+  part('ball',body,0,bodyY,0,s*(deer?1.26:1.12),s*(deer?.48:.46),s*.47);
+  part('ball',deer?'#ddc6a3':'#d8c2a2',s*.23,bodyY-s*.24,0,s*.76,s*.16,s*.38);
+  if(deer)part('ball',body,s*.83,bodyY+s*.31,0,s*.33,s*.68,s*.29,0,0,-.35);
+  part('ball',body,headX,headY,0,s*(deer?.37:.46),s*(deer?.32:.41),s*.36);
+  part('ball',rabbit?'#e7d9c6':'#d6bb9e',headX+s*.34,headY-s*.12,0,s*.27,s*.16,s*.26);
+  part('ball','#353934',headX+s*.59,headY-s*.11,0,s*.095,s*.075,s*.11);
+  for(const side of [-1,1]){
+    const stride=(a.mode==='walk'||a.mode==='sprint'||a.mode==='interact')?a.beat*s*.18:0;
+    for(const x of [-.73,.73]){
+      part('ball',body,x*s+side*stride,s*(deer?.72:.36),side*s*.34,s*.17,s*(deer?.75:.40),s*.16);
+      part('ball',deer?'#49463e':body,x*s+side*stride,s*.12,side*s*.34,s*.21,s*.12,s*.21);
+    }
+    part(feline?'cone':'ball',body,headX-s*.12,headY+s*.43,side*s*.31,
+      s*(rabbit?.16:.17),rabbit?s*.64:s*(deer?.37:.31),s*.17,0,0,side*.23);
+    part('ball','#242d2c',headX+s*.22,headY+s*.08,side*s*.32,s*.075,s*.08,s*.06);
+    part('ball','#f4e8d1',headX+s*.24,headY+s*.11,side*s*.37,s*.03,s*.035,s*.025);
+  }
+  if(deer){
+    for(const side of [-1,1]){
+      part('rod','#d7c6a1',headX-s*.08,headY+s*.60,side*s*.24,s*.07,s*.52,s*.07,0,0,side*.25);
+      if(a.species==='mule-deer')part('rod','#d7c6a1',headX+s*.02,headY+s*.87,side*s*.39,s*.06,s*.30,s*.06,0,0,side*.72);
+      if(a.species==='bighorn-sheep')part('ball','#9e8662',headX-s*.12,headY+s*.30,side*s*.46,s*.35,s*.28,s*.18);
+    }
+  }
+  if(a.species==='raccoon'){
+    for(const side of [-1,1])part('ball','#343d3c',headX+s*.28,bodyY+s*.43,side*s*.34,s*.24,s*.14,s*.11);
+    for(let i=0;i<3;i++)part('ball',i%2?'#343d3c':'#d7d1c1',-s*(1.15+i*.22),bodyY,0,s*.27,s*.20,s*.20);
+  }else if(a.species==='striped-skunk')part('ball','#f1e8d9',-s*.25,bodyY+s*.49,0,s*.75,s*.07,s*.22);
+  else if(feline){
+    part('ball','#454139',-s*1.17,bodyY+s*.08,0,s*.25,s*.17,s*.18);
+    for(const side of [-1,1])for(let i=0;i<4;i++)part('ball','#715b48',-s*(.68-i*.39),bodyY+s*(i%2?.15:.31),side*s*.38,s*.09,s*.09,s*.06);
+  }else part('ball',rabbit?'#efe9d8':body,-s*1.27,bodyY+(canid?s*.1:0),0,
+    canid?s*.74:s*.22,canid?s*.25:s*.17,s*.22,0,0,canid?.4:0);
+  if(a.interaction)part('glint','#efe1ab',0,bodyY+s*1.55,0,s*.28,s*.28,s*.28);
+}
+
 export function createStorybookWorldMoments(inputs={}){
   const plan=planStorybookWorldMoments(inputs),root=new THREE.Group();root.name='living-world-moments';
   const brush=createBrush(root);let state=sampleStorybookWorldMoments(plan,0,{worldLife:{enabled:false}}),disposed=false;
   function update(seconds,options={}){
-    if(disposed)return;state=sampleStorybookWorldMoments(plan,seconds,options);brush.begin();
+    if(disposed)return;state=sampleStorybookWorldMoments(plan,seconds,{...options,heightAt:inputs.heightAt});brush.begin();
     const visible=(x,y,z,r=30)=>!options.inView||options.inView(x,y,z,r);
     for(const a of state.activities)if(visible(a.x,a.y+25,a.z,56))drawActivity(brush,a);
+    for(const a of state.wildlife)if(visible(a.x,a.y+a.flyHeight,a.z,18))drawInlandWildlife(brush,a);
     for(const b of state.birds)if(visible(b.x,b.y,b.z,10)){
       const plumage=b.species==='brown-pelican'?'#927967':b.species==='red-tailed-hawk'?'#8b684b':'#eee9db';
       brush.part('ball',plumage,b.x,b.y,b.z,1.6,1.35,3.7,0,b.yaw);
