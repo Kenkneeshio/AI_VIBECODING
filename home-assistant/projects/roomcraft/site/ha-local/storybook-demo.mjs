@@ -27,6 +27,18 @@ const shots = [
     caption: 'Visit grandparents’ home and its garden.'},
   {beat: 'landmark-office', duration: 5000, title: 'Office campus', azimuth: 332, tilt: 39, zoom: 5.2, target: 'landmark-office',
     caption: 'Visit the office campus and its connected parking.'},
+  {beat: 'wildlife-canyon', duration: 4000, title: 'Canyon morning', azimuth: 150, tilt: 38, zoom: 7.2,
+    target: 'wildlife-canyon', focusTime: 59, caption: 'Layered bluffs shelter foxes, bobcats and canyon birds.',
+    narration: 'Morning light moves across the canyon, where wild neighbors explore the bluffs.'},
+  {beat: 'wildlife-riparian', duration: 4000, title: 'The creek', azimuth: 12, tilt: 31, zoom: 7.2,
+    target: 'wildlife-riparian', focusTime: 63, caption: 'A seasonal creek draws raccoons, egrets and smaller visitors.',
+    narration: 'By the winding creek, birds and mammals meet at the water.'},
+  {beat: 'wildlife-desert', duration: 4000, title: 'Desert at golden hour', azimuth: 34, tilt: 38, zoom: 7.2,
+    target: 'wildlife-desert', focusTime: 67, caption: 'Roadrunners, kit foxes and lizards move through the desert.',
+    narration: 'Golden light warms the desert as its animals cross the sand.'},
+  {beat: 'wildlife-scrub', duration: 4000, title: 'Night in the scrub', azimuth: 350, tilt: 33, zoom: 7.2,
+    target: 'wildlife-scrub', focusTime: 71, caption: 'Coyotes, skunks and other night visitors appear under the moon.',
+    narration: 'As the moon rises, nocturnal wildlife emerges among the shrubs.'},
   {beat: 'finale', duration: 2000, title: 'Back to your live home', caption: 'Back to your live home.'},
 ];
 
@@ -65,7 +77,8 @@ export function createStorybookDemo(initialView, resolveFocus = () => null) {
     ...shot,
     view: shot.zoom ? normalizeCameraView({...shot, preset: initial.preset}) : initial,
     zoom: shot.zoom ?? initial.zoom,
-    focus: shot.zoom ? resolveFocus(shot.target ?? shot.beat) ?? (shot.fallback ? resolveFocus(shot.fallback) : null) : null,
+    focus: shot.zoom ? resolveFocus(shot.target ?? shot.beat,shot.focusTime) ??
+      (shot.fallback ? resolveFocus(shot.fallback) : null) : null,
   }));
   // Give optional shots' time to the features present in the published layout.
   const featured = configured.filter(shot => shot.focus);

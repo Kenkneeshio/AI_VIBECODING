@@ -134,6 +134,13 @@ try{
   await until(async()=>JSON.stringify((await evaluate('card.scene.getWorldLifeState().marine.actors')).filter(actor=>actor.visible).map(actor=>[actor.id,actor.position,actor.joints]))!==positions,'automatic articulated animation');
   const allPreview=await evaluate('({state:card.scene.getWorldLifeState(),renderedAt:card.lastSceneRenderAt})');
   await photo('world-life-wildlife-preview');await endPreview();
+  await evaluate('openWorld()');
+  assert.equal(await evaluate("card.worldLifePanel.dialog.querySelectorAll('.world-life-roster li').length"),42);
+  await evaluate("card.worldLifePanel.dialog.querySelector('[data-world-habitat=desert]').click()");
+  await until(()=>evaluate("card.worldLifePreview?.focus==='desert'&&card.scene.getWorldLifeState().moments.wildlife.some(a=>a.habitat==='desert')"),
+    'inland habitat preview');
+  assert.notDeepEqual(await evaluate('card.scene.getView()'),await evaluate('originalView'));
+  await photo('world-life-desert-preview');await endPreview();
   await evaluate(`(()=>{openWorld();const set=(key,value)=>{const i=card.worldLifePanel.dialog.querySelector('[data-world-life="'+key+'"]');i.checked=value;i.dispatchEvent(new Event('change'));};set('dolphins',false);set('sharks',false);})()`);
   const filtered=await startPreview('filtered-species');
   assert.deepEqual([...new Set(filtered.state.marine.actors.filter(actor=>actor.visible).map(actor=>actor.species))].sort(),['seaLions','seals','turtles','whales']);

@@ -161,6 +161,14 @@ function demoEnvironment(beat, time) {
   if (beat === 'weather') return sampleDemoWeather(time);
   if (beat === 'traffic') return {...GOLDEN_HOUR,
     traffic: time < 1250 ? {severity: 'clear', speedFactor: 1} : {severity: 'heavy', speedFactor: .32}};
+  if (beat === 'wildlife-canyon') return {...DAY,condition:'sunny',sunElevation:29,
+    sunAzimuth:106,windSpeed:2,worldLifeDemo:true};
+  if (beat === 'wildlife-riparian') return {...DAY,condition:'partlycloudy',sunElevation:39,
+    sunAzimuth:185,windSpeed:4,worldLifeDemo:true};
+  if (beat === 'wildlife-desert') return {...GOLDEN_HOUR,sunElevation:8,
+    sunAzimuth:262,windSpeed:6,worldLifeDemo:true};
+  if (beat === 'wildlife-scrub') return {...MOON,moonPhase:'full_moon',sunElevation:-7,
+    moonElevation:45,windSpeed:1,worldLifeDemo:true};
   if (beat === 'finale') {
     const sunElevation = 8 - 14 * Math.min(1, time / 2000);
     return {...GOLDEN_HOUR, sunElevation, night: sunElevation < -.83,

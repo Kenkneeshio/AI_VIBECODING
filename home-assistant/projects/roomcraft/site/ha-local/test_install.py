@@ -120,7 +120,7 @@ class InstallResourceTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             root = Path(directory)
             for name in ("editor.html", "ha-iframe-bridge.js", "app.js", "storybook-editor.js",
-                         "demo-narration-v1.mp3", install.STORYBOOK_RESOURCE):
+                         "demo-narration-v2.mp3", install.STORYBOOK_RESOURCE):
                 (root / name).write_bytes(name.encode())
 
             class Reply(BytesIO):
@@ -131,7 +131,7 @@ class InstallResourceTests(unittest.TestCase):
                 return Reply(b"stale audio" if name.endswith(".mp3") else (root / name).read_bytes())
 
             with patch.object(install, "run"), patch.object(install, "urlopen", side_effect=served):
-                with self.assertRaisesRegex(RuntimeError, "unexpected bytes for demo-narration-v1.mp3"):
+                with self.assertRaisesRegex(RuntimeError, "unexpected bytes for demo-narration-v2.mp3"):
                     install.copy_assets("ha.example.test", "root", root / "test-key", root,
                                         (root / install.STORYBOOK_RESOURCE,))
 

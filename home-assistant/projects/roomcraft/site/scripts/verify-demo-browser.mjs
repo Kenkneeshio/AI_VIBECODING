@@ -18,7 +18,7 @@ const project={version:2,editableReferenceVersion:10,hotspots:[],walls:[],rooms:
   points:[{x:420,y:210},{x:1450,y:210},{x:1450,y:870},{x:420,y:870}],
 }],items:[
   {...item('garage','garageDoor',306,112,132,120),garageRoof:'full',garageDriveway:true,garageDrivewayWidth:60},
-  item('presence','presenceSwitch',800,330,18,24),item('lamp','lamp',700,430,30,30),
+  {...item('presence','presenceSwitch',800,330,18,24),presenceTrackEntityId:'sensor.roomcraft_presence_radar_target_count',presenceEntityId:'binary_sensor.roomcraft_presence'},item('lamp','lamp',700,430,30,30),
   item('fan','fans-five-blade-fan-white',800,610,80,80),
   item('vacuum','cleaning-round-robot-vac-white',1100,650,28,28),
   item('aquarium','pets-fish-aquarium-oak',1230,350,90,55),
@@ -131,15 +131,21 @@ try{
         environment:frame.environment,focus:run.sample.focus,view:card.scene.getView(),progress:run.sample.progress};
     };
     return {label:card.demoButton.textContent.trim(),muted:card.demoMuted,hidden:card.demo.hidden,
-      inert:card.overlay.inert&&card.dock.inert,timer:window.timerDurations.includes(60000),
+      inert:card.overlay.inert&&card.dock.inert,timer:window.timerDurations.includes(76000),
       focuses:['landmark-school','landmark-family','landmark-office'].map(name=>card.scene.getDemoFocus(name))};
   })()`);
-  assert.equal(started.label,'1-minute demo');assert.equal(started.muted,true);assert.equal(started.hidden,false);
+  assert.equal(started.label,'World tour · 76 sec');assert.equal(started.muted,true);assert.equal(started.hidden,false);
   assert.equal(started.inert,true);assert.equal(started.timer,true);
   assert.ok(started.focuses.every(point=>[point?.x,point?.y,point?.z].every(Number.isFinite)));
+  const zoneSafety=await evaluate(`Object.entries(card.presenceZoneMap.anchors).map(([name,anchor])=>{
+    const point=card.scene.nearestPersonPoint(anchor.x,anchor.y,135);
+    return {name,safe:Boolean(point&&card.scene.canPlacePerson(point.x,point.y))};})`);
+  assert.ok(zoneSafety.every(zone=>zone.safe),'all four coarse presence anchors must be reachable floor points');
   const beats=[[0,'overview'],[2300,'presence'],[5800,'lamps'],[8800,'fan'],[11800,'vacuum'],
     [14800,'garage'],[17800,'habitat'],[20800,'beach'],[23800,'weather'],[39800,'traffic'],
-    [43000,'landmark-school'],[48000,'landmark-family'],[53000,'landmark-office'],[58000,'finale']];
+    [43000,'landmark-school'],[48000,'landmark-family'],[53000,'landmark-office'],
+    [58000,'wildlife-canyon'],[62000,'wildlife-riparian'],[66000,'wildlife-desert'],
+    [70000,'wildlife-scrub'],[74000,'finale']];
   for(const [time,beat] of beats)assert.equal((await evaluate('sampleDemo('+time+')')).beat,beat);
   const weather=await evaluate(`Array.from({length:14},(_,i)=>card.demoRun.scenario.sampleFrame({beat:'weather',beatTimeMs:i*800}).environment.condition)`);
   assert.equal(new Set(weather).size,14);
@@ -153,11 +159,18 @@ try{
     assert.ok(anchor.x>.2&&anchor.x<.8&&anchor.y>.15&&anchor.y<.85,'landmark remains in the visible camera center');
     chapters.push({time,...sample,anchor});await photo('demo-'+name);
   }
+  for(const [time,habitat] of [[59000,'canyon'],[63000,'riparian'],[67000,'desert'],[71000,'scrub']]){
+    const sample=await evaluate('sampleDemo('+time+')');
+    assert.equal(sample.beat,'wildlife-'+habitat);
+    assert.equal(sample.environment.worldLifeDemo,true);
+    assert.ok([sample.focus?.x,sample.focus?.y,sample.focus?.z].every(Number.isFinite));
+    await photo('demo-wildlife-'+habitat);
+  }
   assert.equal(await evaluate('audioPlays.length'),0,'fresh browser keeps narration muted');
   await until(()=>evaluate('audioInstances[0]?.readyState>=1'),'bundled narration metadata');
   const audio=await evaluate('({duration:audioInstances[0].duration,url:audioUrls[0]})');
-  assert.ok(audio.duration>=60&&audio.duration<60.2,'new narration includes all sixty seconds');
-  assert.ok(audio.url.endsWith('demo-narration-v1.mp3?timeline=landmarks-60-v2'));
+  assert.ok(audio.duration>=76&&audio.duration<76.2,'narration covers the 76-second world tour');
+  assert.ok(audio.url.endsWith('demo-narration-v2.mp3?timeline=world-tour-76'));
   const seeks=[];
   for(const [time,start] of [[45500,43],[50500,48],[55500,53]]){
     await evaluate('sampleDemo('+time+');if(card.demoMuted)card.demoMuteButton.click()');
@@ -166,8 +179,8 @@ try{
     assert.ok(position>=start&&position<start+1,`landmark voice starts at ${start}s, observed ${position}s`);seeks.push(position);
   }
   await evaluate('card.demoMuteButton.click()');
-  assert.equal((await evaluate('sampleDemo(59999)')).beat,'finale');
-  assert.equal((await evaluate('sampleDemo(60000)')).done,true);
+  assert.equal((await evaluate('sampleDemo(75999)')).beat,'finale');
+  assert.equal((await evaluate('sampleDemo(76000)')).done,true);
   const restored=await evaluate(`(()=>{
     if(card.pendingCameraView){card.scene.setView(card.pendingCameraView);card.pendingCameraView=undefined;}
     card.scene.render(60,card.frame.states,card.frame.environment);
@@ -181,7 +194,23 @@ try{
   const escaped=await evaluate(`(()=>{card.demoButton.click();clearTimeout(card.demoRun.timer);
     window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}));return !card.demoRun&&card.demo.hidden;})()`);
   assert.equal(escaped,true);assert.deepEqual(errors,[]);
-  await writeFile(join(qa,'evidence.json'),JSON.stringify({started,chapters,weather,moons,audio,seeks,restored,escaped,errors},null,2));
-  console.log('PASS: actual card one-minute tour, 3 centered landmark chapters, 14 weather states and 8 moon phases, default mute, bundled 60s audio cue seeks, view restoration/Escape, unchanged layout/states and no HA writes');
+  const presence=await evaluate(`(()=>{
+    const item=card.model.layout.items.find(value=>value.type==='presenceSwitch');
+    const now=Date.now();
+    card.session.states[item.presenceTrackEntityId]={state:'1',attributes:{tracking_schema:'roomcraft-presence-v1',
+      observed_at:now,tracks:[{id:1,x:-190,y:451,z:0,speed:0}],zones:[true,false,false,false]}};
+    card.session.states[item.presenceEntityId]={state:'on'};
+    card.trackingButton.click();card.trackingDialog.querySelector('[data-capture-zone=hall]').click();
+    const record=JSON.parse(localStorage.getItem('roomcraft.presence-zones.v1'));
+    const marker=card.frame.people.find(point=>point.zone==='hall');
+    const safe=marker&&card.scene.canPlacePerson(marker.x,marker.y);
+    const status=card.trackingDialog.querySelector('[data-zone-status]').textContent;
+    card.trackingDialog.close();return {record,zone:marker?.zone,safe,status,entity:item.presenceTrackEntityId};
+  })()`);
+  assert.ok(presence.record,JSON.stringify(presence));
+  assert.deepEqual(presence.record.hall,{x:-190,y:451});
+  assert.equal(presence.zone,'hall');assert.equal(presence.safe,true);
+  await writeFile(join(qa,'evidence.json'),JSON.stringify({started,chapters,weather,moons,audio,seeks,restored,escaped,presence,errors},null,2));
+  console.log('PASS: actual card 76-second world tour, 3 centered landmarks and 4 framed inland habitats, 14 weather states and 8 moon phases, default mute, bundled 76s audio cue seeks, view restoration/Escape, unchanged layout/states and no HA writes');
   console.log(qa);
 }finally{ws?.close();chrome.kill();server.close();}

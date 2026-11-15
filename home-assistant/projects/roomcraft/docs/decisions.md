@@ -1,5 +1,9 @@
 # Decision log
 
+## Present mmWave occupancy as calibrated rooms and stage wildlife only inside the tour
+
+Treat the single presence switch as an area detector with four safe visual anchors, a stable transition and per-screen owner-captured raw-radar centroids. Keep the existing occupancy freshness and real HA states; do not present a radar coordinate as an exact place at a table. Stage wildlife density, camera and day-to-night light only in the 76-second no-actuation tour, with a local rebuilt narration asset and reversible preview. Migrate only an untouched idle wait to the new one-minute default. See [wildlife world tour and room presence](wildlife-world-tour-presence-zones-2026-11-15.md).
+
 ## Keep inland wildlife numerous in identity and bounded on screen
 
 Represent a San Diego inspired regional cast with a researched catalog and 120 stable individual IDs. Rotate a small visible subset through pure explicit-time behaviors and paired encounters. Render canyon, wash and desert from the shared meadow height sampler, preserve authored pads and roads, and own all static detail geometry in scene disposal. Keep all wildlife decorative and separate from occupancy/device data. This gives the customer a changing world without trying to render 120 animated bodies on the wall tablet at once. See [inland landscape and wildlife](inland-wildlife-2026-11-15.md).

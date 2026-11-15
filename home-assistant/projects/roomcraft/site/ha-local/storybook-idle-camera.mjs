@@ -2,7 +2,7 @@
  * input; this module never reads a clock, operates a device or changes a layout.
  */
 export const IDLE_CAMERA_DEFAULTS = Object.freeze({
-  idleAfterMs: 30_000, travelMs: 24_000, lingerMs: 16_000, homeMs: 45_000, seed: 37,
+  idleAfterMs: 60_000, travelMs: 24_000, lingerMs: 16_000, homeMs: 45_000, seed: 37,
 });
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));

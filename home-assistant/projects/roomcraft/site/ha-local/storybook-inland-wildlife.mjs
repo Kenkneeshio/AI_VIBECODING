@@ -99,13 +99,14 @@ export function sampleInlandWildlife(groups,seconds=0,options={}){
       for(const member of group.members){
         const mode=encounter?'interact':phase<6?'forage':phase<11?'walk':phase<15?'rest':member.species.signature;
         const side=member.side?1:-1,beat=options.reduceMotion?0:Math.sin(time*2+member.side);
-        const x=group.x+side*(encounter?3:7)+Math.sin(time*.22+member.side)*2;
+        const separation=member.species.size*(encounter?1.05:1.4)+4;
+        const x=group.x+side*separation+Math.sin(time*.22+member.side)*2;
         const z=group.z+Math.cos(time*.19+member.side)*3;
         const bird=member.species.shape==='bird';
         const flying=bird&&['hover','soar','dive','flit'].includes(mode);
         actors.push({id:member.id,partnerId:group.members[1-member.side].id,species:member.species.id,
           name:member.species.name,habitat,shape:member.species.shape,color:member.species.color,
-          size:member.species.size*(.86+.22*hash(settings.seed,Number(member.id.slice(-3)))),
+          size:member.species.size*2.05*(.86+.22*hash(settings.seed,Number(member.id.slice(-3)))),
           x,y:options.heightAt?.(x,z)??group.y,z,flyHeight:flying?10+member.species.size*2:0,
           yaw:side>0?Math.PI:0,mode,interaction:encounter?(member.species.shape==='bird'?'flock':
             member.species.shape==='cat'||member.species.shape==='canid'?'watch':'greet'):null,

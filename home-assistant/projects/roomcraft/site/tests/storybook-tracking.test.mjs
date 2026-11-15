@@ -137,3 +137,15 @@ test('an occupancy-only switch can mark its area without inventing radar coordin
   }]);
   assert.deepEqual(model.read([item], {'binary_sensor.occupied':{state:'off'}}, 20001, supports), []);
 });
+
+test('coarse zone resolver receives raw radar data and keeps only snapped floor positions',()=>{
+  const model=createPersonPresence();
+  const seen=[];
+  const options={contains:(x,y)=>x===600&&y===420,nearest:(x,y)=>({x,y}),
+    resolveZone:(point,raw)=>{seen.push(raw);return {...point,x:600,y:420,zone:'living'};}};
+  const [point]=model.read([source],{'sensor.radar_a':snapshot()},9000,options);
+  assert.deepEqual(seen,[{x:20,y:100}]);
+  assert.equal(point.zone,'living');
+  assert.deepEqual([point.x,point.y],[600,420]);
+  assert.equal(Object.hasOwn(point,'radar'),false);
+});

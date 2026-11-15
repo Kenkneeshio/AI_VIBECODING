@@ -12,13 +12,16 @@ export function idleBrightnessAt(date,zone='America/Los_Angeles') {
   return hour>=19||hour<7?.6:1;
 }
 const fields=[
-  ['idleAfterMs','Start after no touch',15,300,30],
+  ['idleAfterMs','Start after no touch',15,300,60],
   ['travelMs','Slow pan duration',12,90,24],
   ['lingerMs','Pause at a discovery',5,60,16],
   ['homeMs','Stay at home between visits',30,180,45],
 ];
 export function readIdlePreferences(value) {
-  return {...normalizeIdleCameraSettings(value),enabled:value?.enabled!==false};
+  const legacyDefault=value?.idleAfterMs===30_000&&value?.travelMs===24_000&&
+    value?.lingerMs===16_000&&value?.homeMs===45_000;
+  return {...normalizeIdleCameraSettings(legacyDefault?{...value,idleAfterMs:60_000}:value),
+    enabled:value?.enabled!==false};
 }
 
 /** Browser interaction and persistence boundary. The director receives explicit

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createIdleCameraDirector, IDLE_CAMERA_DEFAULTS, normalizeIdleCameraSettings} from '../ha-local/storybook-idle-camera.mjs';
+import {readIdlePreferences} from '../ha-local/storybook-idle-runtime.mjs';
 
 const interests = [
   {id:'home-holiday', focus:{x:500,y:30,z:200}, weight:6, zoomFactor:2},
@@ -9,18 +10,24 @@ const interests = [
 ];
 const cycleMs = IDLE_CAMERA_DEFAULTS.travelMs * 2 + IDLE_CAMERA_DEFAULTS.lingerMs + IDLE_CAMERA_DEFAULTS.homeMs;
 
-test('30 seconds of inactivity starts a slow excursion; touch immediately restores home and restarts the deadline', () => {
+test('the menu defaults to one minute and migrates the prior untouched 30-second preference',()=>{
+  assert.equal(readIdlePreferences().idleAfterMs,60_000);
+  assert.equal(readIdlePreferences({idleAfterMs:30_000,travelMs:24_000,lingerMs:16_000,homeMs:45_000}).idleAfterMs,60_000);
+  assert.equal(readIdlePreferences({idleAfterMs:30_000,travelMs:30_000,lingerMs:16_000,homeMs:45_000}).idleAfterMs,30_000);
+});
+
+test('60 seconds of inactivity starts a slow excursion; touch immediately restores home and restarts the deadline', () => {
   const director=createIdleCameraDirector();
-  assert.deepEqual(director.sample(100,{interests}),{active:false,targetId:null,focus:undefined,zoomFactor:1,phase:'waiting',nextWakeAt:30100});
-  assert.equal(director.sample(30099,{interests}).active,false);
-  const start=director.sample(30100,{interests});
+  assert.deepEqual(director.sample(100,{interests}),{active:false,targetId:null,focus:undefined,zoomFactor:1,phase:'waiting',nextWakeAt:60100});
+  assert.equal(director.sample(60099,{interests}).active,false);
+  const start=director.sample(60100,{interests});
   assert.equal(start.active,true);assert.equal(start.phase,'outbound');assert.equal(start.focus.weight,0);assert.equal(start.zoomFactor,1);
-  const midway=director.sample(42100,{interests});
+  const midway=director.sample(72100,{interests});
   assert.equal(midway.focus.weight,.5);assert.ok(midway.zoomFactor>1&&midway.zoomFactor<2.5);
-  const home=director.touch(42101);
+  const home=director.touch(72101);
   assert.equal(home.active,false);assert.equal(home.focus,undefined);assert.equal(home.zoomFactor,1);
-  assert.equal(director.sample(72100,{interests}).active,false);
-  assert.equal(director.sample(72101,{interests}).active,true);
+  assert.equal(director.sample(132100,{interests}).active,false);
+  assert.equal(director.sample(132101,{interests}).active,true);
 });
 
 test('instant start travels and returns smoothly then spends 45 seconds at home', () => {
@@ -45,7 +52,7 @@ test('blocked, disabled and reduced-motion states cannot accumulate a pending ex
     assert.deepEqual(state,{active:false,targetId:null,focus:undefined,zoomFactor:1,phase:'blocked',nextWakeAt:null});
     assert.equal(director.sample(1_000_000,{interests}).active,false);
     assert.equal(director.sample(1_029_999,{interests}).active,false);
-    assert.equal(director.sample(1_030_000,{interests}).active,true);
+    assert.equal(director.sample(1_060_000,{interests}).active,true);
   }
 });
 
@@ -84,5 +91,5 @@ test('invalid interests and settings remain finite and harmless, including backw
   assert.equal(director.sample(2000,{interests:invalid}).phase,'home');
   assert.equal(director.sample(3000,{interests:null}).targetId,null);
   const safe=director.sample(NaN);assert.ok(Number.isFinite(safe.zoomFactor));
-  const backwards=director.sample(500,{interests});assert.equal(backwards.active,false);assert.equal(backwards.nextWakeAt,30500);
+  const backwards=director.sample(500,{interests});assert.equal(backwards.active,false);assert.equal(backwards.nextWakeAt,60500);
 });

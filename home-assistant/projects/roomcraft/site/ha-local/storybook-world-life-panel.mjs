@@ -1,10 +1,13 @@
 import {normalizeWorldLifeSettings, validWorldLifeSettings, WORLD_LIFE_NUMBERS} from './storybook-world-life-settings.mjs';
+import {INLAND_SPECIES,INLAND_POPULATION} from './storybook-inland-wildlife.mjs';
 
 const GROUPS = [
+  {title:'Inland wildlife', note:`${INLAND_POPULATION} illustrated animals from ${INLAND_SPECIES.length} regional species. Select a habitat below to visit it.`,
+    flags:[['landWildlife','Show inland animals']]},
   {title:'Ocean wildlife', note:'Marine life is decorative. Individual species choices are kept when the ocean group is paused.',
     flags:[['marine','Ocean wildlife'],['dolphins','Dolphins'],['sharks','Leopard sharks'],['whales','Whales'],['seals','Harbor seals'],['seaLions','Sea lions'],['turtles','Sea turtles']]},
   {title:'Coastal life', note:'Choose the ambient activities around your home.',
-    flags:[['characters','People and activities'],['vehicles','Ambient vehicles'],['vegetation','Trees and plants'],['landWildlife','Inland wildlife'],['water','Water details'],
+    flags:[['characters','People and activities'],['vehicles','Ambient vehicles'],['vegetation','Trees and plants'],['water','Water details'],
       ['weatherAccents','Weather accents'],['surprises','Occasional surprises']]},
 ];
 const NUMBER_LABELS = {
@@ -24,11 +27,13 @@ export const WORLD_LIFE_PANEL_STYLE = `
 .world-life-body{overflow:auto;min-height:0;padding:20px 22px}.world-life-enabled{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:600}
 .roomcraft-world-life input[type=checkbox]{min-height:22px;width:22px;margin:0;accent-color:#427b72}.world-life-intro{font-size:13px;line-height:1.5;color:#61786c;margin:12px 0 20px}
 .world-life-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.world-life-group{margin:0;min-width:0;padding:16px;border:1px solid #d3ddcf;border-radius:17px;background:linear-gradient(140deg,#fffef6,#edf3e7)}
+.world-life-inland{grid-column:1/-1;background:linear-gradient(135deg,#f4e9d4,#dce9dc)}
 .world-life-group legend{font:600 20px Georgia,serif;padding:0 7px}.world-life-group p{font-size:12px;line-height:1.5;color:#627a70;margin:0 0 12px}.world-life-checks{display:grid;gap:11px}.world-life-checks label{display:flex;align-items:center;gap:10px;min-height:30px}
+.world-life-habitats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:14px}.world-life-habitat{min-width:0;padding:10px;border:1px solid #bbcab8;border-radius:13px;background:#fffdf1}.world-life-habitat strong{display:block;font:600 17px Georgia,serif}.world-life-habitat p{min-height:64px;margin:6px 0 10px}.world-life-habitat button{width:100%;font-size:12px}.world-life-roster{margin-top:12px}.world-life-roster summary{cursor:pointer;font-weight:650}.world-life-roster ul{columns:2;line-height:1.75;font-size:12px;padding-left:18px;margin:8px 0 0}.world-life-roster li{break-inside:avoid}
 .world-life-tuning{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin:20px 0 0}.world-life-tuning label{display:grid;gap:7px;font-size:14px;align-content:start}.world-life-tuning small{font-size:12px;color:#627a70}.world-life-tuning input{width:100%;max-width:180px}
 .world-life-actions{flex-wrap:wrap;border-top:1px solid #d0ddd1;padding-block:12px}.world-life-actions p{flex:1;margin:0;font-size:13px}.world-life-actions button[type=submit]{background:#386f65;border-color:#386f65;color:white}.world-life-actions button:disabled{opacity:.55;cursor:wait}
 .world-life-preview-strip{position:fixed;z-index:10000;left:50%;bottom:18px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;max-width:calc(100vw - 24px);padding:10px 12px;background:#f6faef;color:#2e4b47;border:1px solid #b7cbc0;border-radius:15px;box-shadow:0 8px 30px #18364055;font:14px system-ui}.world-life-preview-strip[hidden]{display:none}
-@media(max-width:640px){.roomcraft-world-life{width:calc(100vw - 12px);max-height:96dvh;border-radius:16px}.roomcraft-world-life form{max-height:95dvh}.world-life-header,.world-life-actions{padding:13px}.world-life-body{padding:16px 12px}.world-life-groups{grid-template-columns:1fr}.world-life-preview-strip{width:max-content;flex-wrap:wrap;justify-content:center}.world-life-actions p{flex-basis:100%}.world-life-tuning{gap:14px 10px}}
+@media(max-width:640px){.roomcraft-world-life{width:calc(100vw - 12px);max-height:96dvh;border-radius:16px}.roomcraft-world-life form{max-height:95dvh}.world-life-header,.world-life-actions{padding:13px}.world-life-body{padding:16px 12px}.world-life-groups{grid-template-columns:1fr}.world-life-habitats{grid-template-columns:repeat(2,minmax(0,1fr))}.world-life-habitat p{min-height:0}.world-life-roster ul{columns:1}.world-life-preview-strip{width:max-content;flex-wrap:wrap;justify-content:center}.world-life-actions p{flex-basis:100%}.world-life-tuning{gap:14px 10px}}
 `;
 
 /** Shared DOM adapter; previews and preferences never operate physical devices. */
@@ -37,11 +42,11 @@ export function createStorybookWorldLifePanel(container, {getSettings, onSave, o
   const doc=container.ownerDocument??container, mount=container.nodeType===9?container.body:container;
   const style=doc.createElement('style');style.textContent=WORLD_LIFE_PANEL_STYLE;
   const dialog=doc.createElement('dialog');dialog.className='roomcraft-world-life';dialog.setAttribute('aria-label','Living world');
-  dialog.innerHTML=`<form><header class="world-life-header"><div><h2>Living world</h2><p>A little more life along the coast.</p></div><button type="button" data-world-close>Close</button></header>
+  dialog.innerHTML=`<form><header class="world-life-header"><div><h2>Living world</h2><p>Coast, canyon, creek and desert.</p></div><button type="button" data-world-close>Close</button></header>
     <div class="world-life-body"><label class="world-life-enabled"><input type="checkbox" data-world-life="enabled">Living world enabled</label>
     <p class="world-life-intro">These are visual activities, not real animal or occupancy tracking. Weather accents follow actual weather. The vehicle option changes decorative variation, not measured traffic. Pausing Living world keeps real weather and device controls working. Your reduced-motion and graphics preferences still apply.</p>
     <div class="world-life-groups"></div><div class="world-life-tuning"></div></div>
-    <footer class="world-life-actions"><p role="status" aria-live="polite"></p><button type="button" data-world-preview-start>Preview wildlife</button><button type="submit"></button></footer></form>`;
+    <footer class="world-life-actions"><p role="status" aria-live="polite"></p><button type="button" data-world-preview-start>Preview ocean</button><button type="submit"></button></footer></form>`;
   const strip=doc.createElement('div');strip.className='world-life-preview-strip';strip.hidden=true;
   strip.innerHTML='<span>Living world · preview</span><button type="button" data-world-preview-settings>Settings</button><button type="button" data-world-preview-end>End preview</button>';
   mount.append(style,dialog,strip);
@@ -50,6 +55,7 @@ export function createStorybookWorldLifePanel(container, {getSettings, onSave, o
   let draft, preview=false, busy=false, disposed=false, generation=0;
   for(const group of GROUPS){
     const fieldset=doc.createElement('fieldset');fieldset.className='world-life-group';
+    if(group.title==='Inland wildlife')fieldset.classList.add('world-life-inland');
     const legend=doc.createElement('legend');legend.textContent=group.title;
     const note=doc.createElement('p');note.textContent=group.note;
     const checks=doc.createElement('div');checks.className='world-life-checks';
@@ -57,6 +63,25 @@ export function createStorybookWorldLifePanel(container, {getSettings, onSave, o
       input.type='checkbox';input.dataset.worldLife=key;controls[key]=input;row.append(input,label);checks.append(row);}
     fieldset.append(legend,note,checks);query('.world-life-groups').append(fieldset);
   }
+  const inland=query('.world-life-inland');
+  const habitats=doc.createElement('div');habitats.className='world-life-habitats';
+  const habitatCopy={canyon:['Canyon','Bobcats, foxes, deer and canyon birds among layered bluffs.'],
+    riparian:['Creek','Raccoons, egrets and other creek visitors by the seasonal wash.'],
+    desert:['Desert','Kit foxes, roadrunners, lizards and bighorn sheep in arid relief.'],
+    scrub:['Coastal scrub','Quail, coyotes, hummingbirds and small mammals among shrubs.']};
+  for(const [habitat,[title,note]] of Object.entries(habitatCopy)){
+    const card=doc.createElement('section');card.className='world-life-habitat';
+    const heading=doc.createElement('strong');heading.textContent=title;
+    const copy=doc.createElement('p');copy.textContent=note;
+    const button=doc.createElement('button');button.type='button';button.dataset.worldHabitat=habitat;
+    button.textContent=`Explore ${title.toLowerCase()}`;card.append(heading,copy,button);habitats.append(card);
+  }
+  const roster=doc.createElement('details');roster.className='world-life-roster';
+  const summary=doc.createElement('summary');summary.textContent=`Browse all ${INLAND_SPECIES.length} species and activities`;
+  const list=doc.createElement('ul');
+  for(const species of INLAND_SPECIES){const entry=doc.createElement('li');
+    entry.textContent=`${species.name} · ${species.signature}`;list.append(entry);}
+  roster.append(summary,list);inland.append(habitats,roster);
   for(const [key,[min,max]] of Object.entries(WORLD_LIFE_NUMBERS)){
     const row=doc.createElement('label'),input=doc.createElement('input'),note=doc.createElement('small');
     Object.assign(input,{type:'number',min,max,step:key==='seed'?1:'any'});input.dataset.worldLife=key;
@@ -74,12 +99,16 @@ export function createStorybookWorldLifePanel(container, {getSettings, onSave, o
     if(closed?.generation!==generation||closed?.reason==='preview'||dialog.open)return;
     endPreview();onClose?.();
   });
-  query('[data-world-preview-start]').addEventListener('click',()=>{
+  function startPreview(focus){
     if(!validWorldLifeSettings(draft)){status.textContent='Check the number limits before previewing.';return;}
     preview=true;strip.hidden=false;closeDialog('preview');
     // The rendering pause is released synchronously before scheduling a frame.
-    onPreview?.({settings:normalizeWorldLifeSettings(draft)});
-  });
+    onPreview?.({settings:normalizeWorldLifeSettings(focus?{...draft,enabled:true,landWildlife:true}:draft),focus});
+    strip.querySelector('span').textContent=`Living world · ${focus ? habitatCopy[focus][0] : 'ocean'} preview`;
+  }
+  query('[data-world-preview-start]').addEventListener('click',()=>startPreview(null));
+  for(const button of inland.querySelectorAll('[data-world-habitat]'))button.addEventListener('click',()=>
+    startPreview(button.dataset.worldHabitat));
   strip.querySelector('[data-world-preview-end]').addEventListener('click',endPreview);
   strip.querySelector('[data-world-preview-settings]').addEventListener('click',()=>open(true));
   query('form').addEventListener('submit',async event=>{

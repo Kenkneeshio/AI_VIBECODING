@@ -130,7 +130,7 @@ export function trackingStatus(item, snapshot, now) {
 }
 
 /** Turn current device coordinates into anonymous layout markers. */
-export function readPersonTracks(items, snapshots, now = Date.now()) {
+export function readPersonTracks(items, snapshots, now = Date.now(), {includeRaw=false}={}) {
   const result = [];
   const used = new Set();
   for (const item of items) {
@@ -146,7 +146,8 @@ export function readPersonTracks(items, snapshots, now = Date.now()) {
     for (const track of tracks) {
       const {x, y} = projectRadarPoint(transform, track.x, track.y);
       if (inPlan(x, y)) {
-        result.push({id: entity + ':' + track.id, x, y, expiresAt: observed + TRACK_MAX_AGE});
+        result.push({id: entity + ':' + track.id, x, y, expiresAt: observed + TRACK_MAX_AGE,
+          ...(includeRaw?{radar:{x:track.x,y:track.y}}:{})});
       }
     }
   }
@@ -182,7 +183,13 @@ function approximatePoint(item, nearest) {
 export function createPersonPresence() {
   const history = new Map();
   return {
-    read(items, snapshots, now, {contains, nearest}) {
+    read(items, snapshots, now, {contains, nearest, resolveZone}) {
+      const mapped=(point,raw=point?.radar)=>{
+        if(!point)return null;
+        if(!resolveZone)return point;
+        const {radar,...clean}=point;
+        return resolveZone(clean,raw,now,nearest);
+      };
       const sources = new Map();
       for (const item of items) {
         const id = personSource(item);
@@ -220,7 +227,8 @@ export function createPersonPresence() {
           history.delete(id);
           cached = undefined;
         }
-        const measured = readPersonTracks([item], snapshots, now).filter(point => contains(point.x, point.y));
+        const measured = readPersonTracks([item], snapshots, now,{includeRaw:Boolean(resolveZone)})
+          .map(point=>mapped(point)).filter(point=>point&&contains(point.x, point.y));
         let memory = measured[0];
         if (!memory && occupied && radar?.state !== 'unavailable' && validTrackTransform(transform)) {
           const time = attributes?.last_observed_at ?? attributes?.observed_at;
@@ -228,8 +236,10 @@ export function createPersonPresence() {
           if (Number.isFinite(time) && time <= now + 1000 && (!cached || time > cached.observedAt)) {
             for (const track of tracks) {
               const point = projectRadarPoint(transform, track.x, track.y);
-              if (!inPlan(point.x, point.y) || !contains(point.x, point.y)) continue;
-              memory = {id: id + ':' + track.id, ...point, expiresAt: time + TRACK_MAX_AGE};
+              if (!inPlan(point.x, point.y)) continue;
+              memory = mapped({id:id+':'+track.id,...point,expiresAt:time+TRACK_MAX_AGE},
+                {x:track.x,y:track.y});
+              if(!memory||!contains(memory.x,memory.y)){memory=null;continue;}
               break;
             }
           }
@@ -249,8 +259,10 @@ export function createPersonPresence() {
             result.push({id: old.id, x:old.x, y:old.y, quality:'last-known', keepVisible:true, expiresAt,
               fallback: nearest(old.x, old.y, 52) ?? approximatePoint(item, nearest)});
           } else {
-            const point = approximatePoint(item, nearest);
-            if (point) result.push({id: id + ':area', ...point, quality:'area', keepVisible:true, expiresAt});
+            const approximate=approximatePoint(item,nearest);
+            const point=approximate?mapped({id:id+':area',...approximate,quality:'area',
+              keepVisible:true,expiresAt}):null;
+            if (point&&contains(point.x,point.y)) result.push(point);
           }
         }
       }

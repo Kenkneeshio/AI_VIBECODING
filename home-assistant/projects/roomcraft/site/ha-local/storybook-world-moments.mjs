@@ -344,7 +344,7 @@ export function createStorybookWorldMoments(inputs={}){
     if(disposed)return;state=sampleStorybookWorldMoments(plan,seconds,{...options,heightAt:inputs.heightAt});brush.begin();
     const visible=(x,y,z,r=30)=>!options.inView||options.inView(x,y,z,r);
     for(const a of state.activities)if(visible(a.x,a.y+25,a.z,56))drawActivity(brush,a);
-    for(const a of state.wildlife)if(visible(a.x,a.y+a.flyHeight,a.z,18))drawInlandWildlife(brush,a);
+    for(const a of state.wildlife)if(visible(a.x,a.y+a.flyHeight,a.z,36))drawInlandWildlife(brush,a);
     for(const b of state.birds)if(visible(b.x,b.y,b.z,10)){
       const plumage=b.species==='brown-pelican'?'#927967':b.species==='red-tailed-hawk'?'#8b684b':'#eee9db';
       brush.part('ball',plumage,b.x,b.y,b.z,1.6,1.35,3.7,0,b.yaw);
@@ -385,5 +385,24 @@ export function createStorybookWorldMoments(inputs={}){
     brush.finish();root.visible=brush.count()>0;
   }
   function dispose(){if(disposed)return;disposed=true;brush.dispose();root.clear();root.removeFromParent();}
-  return {root,update,dispose,getState:()=>({...structuredClone(state),parts:brush.count(),sites:plan.sites.map(s=>({...s}))})};
+  function getHabitatFocus(habitat,seconds,night=false){
+    const bounds=inputs.plan?.houseBounds;
+    if(!bounds)return null;
+    const center={
+      canyon:[bounds.minX-900,bounds.maxZ+700],riparian:[bounds.maxX+610,bounds.maxZ+760],
+      desert:[bounds.maxX+1250,bounds.maxZ+800],scrub:[bounds.minX-280,bounds.maxZ+570],
+    }[habitat];
+    if(!center)return null;
+    const sampled=seconds===undefined&&state.wildlife.some(actor=>actor.habitat===habitat)
+      ? state.wildlife:sampleInlandWildlife(plan.wildlife,seconds??0,{night,heightAt:inputs.heightAt,
+        worldLife:{enabled:true,landWildlife:true,density:1,pace:1,seed:37}});
+    const actors=sampled.filter(actor=>actor.habitat===habitat);
+    const ranked=actors.sort((a,b)=>
+      (a.species==='coyote'&&habitat==='scrub'?-1:0)-(b.species==='coyote'&&habitat==='scrub'?-1:0)||
+      Math.hypot(a.x-center[0],a.z-center[1])-Math.hypot(b.x-center[0],b.z-center[1]));
+    const actor=ranked[0];
+    const x=actor?.x??center[0],z=actor?.z??center[1];
+    return {x,y:(actor?.y??inputs.heightAt?.(x,z)??0)+(actor?.size??12),z};
+  }
+  return {root,update,dispose,getHabitatFocus,getState:()=>({...structuredClone(state),parts:brush.count(),sites:plan.sites.map(s=>({...s}))})};
 }

@@ -1,4 +1,5 @@
 import {createPersonPresence, personSource, readDetectionZones, trackingSnapshots, trackingStatus} from './storybook-tracking.mjs';
+import {createPresenceZoneMap,PRESENCE_ZONE_KEY,PRESENCE_ZONE_NAMES} from './storybook-presence-zones.mjs';
 import {bindLiveModelLibrary} from './storybook-library.mjs';
 import {createStorybookScene} from './storybook-scene.mjs';
 import {createStorybookWorldLifePanel} from './storybook-world-life-panel.mjs';
@@ -43,7 +44,7 @@ const DETECTION_ZONE_KEY = 'roomcraft.show-detection-zone.v1';
 const CAMERA_TILES_KEY = 'roomcraft.show-camera-tiles.v1';
 const REDUCE_MOTION_KEY = 'roomcraft.reduce-motion.v1';
 const DEMO_MUTED_KEY = 'roomcraft.demo-muted.v2';
-const DEMO_NARRATION_URL = new URL('./demo-narration-v1.mp3?timeline=landmarks-60-v2', import.meta.url).href;
+const DEMO_NARRATION_URL = new URL('./demo-narration-v2.mp3?timeline=world-tour-76', import.meta.url).href;
 const AMBIENT_TRAFFIC = Object.freeze({severity: 'ambient'});
 
 function readPreference(key, fallback) {
@@ -168,6 +169,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         .utility-issues small::before{content:'• '}
         .tracking-list p{margin:10px 0 0;padding:8px;border:1px solid #eee2cf;border-radius:7px}
         .tracking-list small{display:block;margin-top:3px}
+        .presence-zone-calibration{margin:14px 0;padding:12px;border:1px solid #d6d7c4;border-radius:12px;background:#f6f6e9}.presence-zone-calibration p{margin:0 0 10px;font-size:13px;line-height:1.45}.presence-zone-calibration div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.presence-zone-calibration button{min-height:42px}.presence-zone-calibration small{display:block;margin-top:9px}
         .tracking-legend{display:flex;gap:4px 12px;flex-wrap:wrap;list-style:none;margin:10px 0 0;padding:0;
           color:#5a5449;font-size:11px}
         .tracking-legend li{display:flex;align-items:center;gap:4px}
@@ -357,7 +359,7 @@ class RoomcraftStorybookCard extends HTMLElement {
                   <button type="button" data-link-dialog="commute" aria-haspopup="dialog">Commute traffic</button>
                   <button type="button" class="world-life-settings" aria-haspopup="dialog">Living world &amp; wildlife</button>
                   <button type="button" class="holiday-settings" aria-haspopup="dialog">Holidays &amp; celebrations</button>
-                  <button type="button" class="demo-start" disabled>1-minute demo</button>
+                  <button type="button" class="demo-start" disabled>World tour · 76 sec</button>
                 </section>
               </div>
             </div>
@@ -367,6 +369,10 @@ class RoomcraftStorybookCard extends HTMLElement {
       <dialog class="tracking-dialog" aria-label="Presence tracking">
         <header><h2>Presence tracking</h2><button type="button" class="close-tracking">Close</button></header>
         <div class="tracking-list"></div>
+        <section class="presence-zone-calibration" aria-label="Room zone calibration"><p>Characters stay in four home areas. Stand alone in an area, then capture its current radar reading. The calibration stays on this screen.</p><div>
+          <button type="button" data-capture-zone="living">Set living room</button><button type="button" data-capture-zone="dining">Set dining room</button>
+          <button type="button" data-capture-zone="kitchen">Set kitchen</button><button type="button" data-capture-zone="hall">Set start of hall</button>
+        </div><small data-zone-status role="status" aria-live="polite"></small></section>
         <ul class="tracking-legend" aria-label="Radar indicator">
           <li><i style="--dot:#428dcc" aria-hidden="true"></i>Targets on map</li>
           <li><i style="--dot:#b87c2d" aria-hidden="true"></i>Presence only</li>
@@ -555,6 +561,21 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.trackingDialog.showModal();
     });
     this.shadowRoot.querySelector('.close-tracking').addEventListener('click', () => this.trackingDialog.close());
+    for(const button of this.trackingDialog.querySelectorAll('[data-capture-zone]'))button.addEventListener('click',()=>{
+      const item=this.model?.layout.items.find(entry=>entry.type==='presenceSwitch'&&entry.presenceTrackEntityId);
+      const entity=item?.presenceTrackEntityId;
+      const radar=entity?trackingSnapshots(this.session?.states??{},[entity])[entity]:null;
+      const tracks=radar?.attributes?.tracks??[],observed=radar?.attributes?.observed_at;
+      const status=this.trackingDialog.querySelector('[data-zone-status]');
+      if(tracks.length!==1||!Number.isFinite(observed)||Date.now()-observed>8000){
+        status.textContent='Wait for one fresh radar target, then capture again.';return;
+      }
+      if(!this.presenceZoneMap?.calibrate(button.dataset.captureZone,tracks[0]))return;
+      try{window.localStorage.setItem(PRESENCE_ZONE_KEY,JSON.stringify(this.presenceZoneMap.calibration));}
+      catch{status.textContent='This browser could not save the zone calibration.';return;}
+      this.personPresence.clear();this.refresh();
+      status.textContent=`${PRESENCE_ZONE_NAMES[button.dataset.captureZone]} captured on this screen.`;
+    });
     this.linkDialogs = [];
     for (const trigger of this.shadowRoot.querySelectorAll('[data-link-dialog]')) {
       const dialog = this.shadowRoot.querySelector(`.${trigger.dataset.linkDialog}-dialog`);
@@ -717,7 +738,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.world.toggleAttribute('data-wildlife-preview',Boolean(value));
     if(value) {
       this.stopDemo();
-      if(!this.scene?.frameWorldLifePreview?.(value.settings) && this.worldLifeReturnView)
+      if(!this.scene?.frameWorldLifePreview?.(value.settings,value.focus) && this.worldLifeReturnView)
         this.scene?.setView(this.worldLifeReturnView);
     } else if(this.worldLifeReturnView) {
       this.scene?.setView(this.worldLifeReturnView);this.worldLifeReturnView=undefined;
@@ -786,8 +807,9 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.idleCamera?.reset();
     const view = this.cameraView;
     const scenario = createStorybookDemoScenario(this.model.layout);
-    const timeline = createStorybookDemo(view, target => this.scene.getDemoFocus(
-      ['beach', 'coast', 'road', 'landmark-school', 'landmark-family', 'landmark-office'].includes(target) ? target : scenario.targets[target]));
+    const timeline = createStorybookDemo(view, (target,seconds) => this.scene.getDemoFocus(
+      ['beach', 'coast', 'road', 'landmark-school', 'landmark-family', 'landmark-office'].includes(target)
+        || target?.startsWith('wildlife-') ? target : scenario.targets[target],seconds));
     this.demoRun = {startedAt: performance.now(), view, timeline, scenario,
       timer: setTimeout(() => this.stopDemo(), DEMO_DURATION_MS)};
     this.heatMap.sync();
@@ -998,6 +1020,8 @@ class RoomcraftStorybookCard extends HTMLElement {
       if (!this.isConnected || this.loading !== request) return;
       this.loadStartupView();
       this.model = readStorybookConfig(config);
+      let zoneCalibration;try{zoneCalibration=JSON.parse(window.localStorage.getItem(PRESENCE_ZONE_KEY));}catch{zoneCalibration={};}
+      this.presenceZoneMap=createPresenceZoneMap(this.model.layout,zoneCalibration);
       this.weatherPanel.update(this.session, this.model.weather.weather_entity, {reduceMotion:this.motionReduced});
       for (const id of this.commutes.configure(config?.roomcraft_commutes)) this.model.watch.add(id);
       this.locationPanel.configure(config?.roomcraft_location);
@@ -1254,11 +1278,13 @@ class RoomcraftStorybookCard extends HTMLElement {
       const source = personSource(item);
       const mapped = this.frame?.mappedTargetCounts.get(source) ?? 0;
       const fallback = this.frame?.occupancyFallbacks.get(source);
+      const area=this.frame?.people.find(point=>point.id.startsWith(source+':'))?.zone;
       status.textContent = fallback === 'last-known' ? 'Occupied · showing the last known position' :
         fallback === 'area' ? 'Occupied · showing the approximate area' :
         count === null ? 'Awaiting a recent radar report' :
         `${count} ${count === 1 ? 'radar target' : 'radar targets'}${mapped < count ? ` · ${mapped} on map` : ''}`;
       row.append(label, status);
+      if(area){const room=document.createElement('small');room.textContent=`Shown in ${PRESENCE_ZONE_NAMES[area]}.`;row.append(room);}
       if (zones.some(value => value !== null)) {
         const details = document.createElement('small');
         details.textContent = zones.map((value, index) => value === null ? '' :
@@ -1336,6 +1362,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.frame.moving = true;
     this.frame.people = this.personPresence.read(this.model.layout.items, states, now, {
       contains: this.scene.canPlacePerson, nearest: this.scene.nearestPersonPoint,
+      resolveZone:(point,raw,time,nearest)=>this.presenceZoneMap?.resolve(point,raw,time,nearest),
     });
     const mappedTargetCounts = new Map();
     const occupancyFallbacks = new Map();

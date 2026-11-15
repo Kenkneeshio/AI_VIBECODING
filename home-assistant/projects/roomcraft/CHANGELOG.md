@@ -1,5 +1,11 @@
 # Changelog
 
+## Wildlife world tour and coarse room presence — 15 November 2026
+
+- Bring Inland wildlife to the top of the Living world menu with all 42 species and four habitat previews. Extend the demo to a 76-second day-to-night world tour with canyon, creek, desert and nocturnal scrub chapters and a rebuilt narration track.
+- Display mmWave targets only at four indoor room anchors, with a short stable-zone delay and per-screen one-tap room calibration. Change the idle view's untouched default from 30 to 60 seconds while retaining its menu controls.
+- See [wildlife world tour and room presence](docs/wildlife-world-tour-presence-zones-2026-11-15.md) for customer outcome, module boundaries, verification, calibration limits and rollback.
+
 ## Inland landscape and wildlife — 15 November 2026
 
 - Add canyon bluffs, seasonal creek with banks, desert relief, rocks and cacti beyond the authored home, with shared Home/Studio rendering and protected building/road pads.

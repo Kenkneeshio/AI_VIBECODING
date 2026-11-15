@@ -134,7 +134,7 @@ try{
   await tap('.world-life-settings');
   assert.equal(await evaluate('card.worldLifePanel.isOpen'),true);
   await delay(31000);
-  assert.equal(await activeIdle(),false,'an open settings modal prevents automatic idle after 30 seconds');
+  assert.equal(await activeIdle(),false,'an open settings modal prevents automatic idle');
   await tap('[data-world-close]');
   await tap('.main-menu-button');
   const instantAt=await tap('.idle-start');
@@ -163,14 +163,14 @@ try{
   assert.equal(await evaluate('wakeClicks'),1,'next normal touch reaches the control');
   await photo('idle-touch-return');
 
-  // This is a real 30-second inactivity test, including a fresh touch halfway.
-  await delay(17000);
+  // This is a real one-minute inactivity test, including a fresh touch halfway.
+  await delay(32000);
   const lastTouchAt=await tap('.fixture-wake-target');
-  await delay(17000);
+  await delay(32000);
   assert.equal(await activeIdle(),false,'fresh touch restarts the full inactivity wait');
-  await until(activeIdle,'automatic idle after 30 real seconds',18000);
+  await until(activeIdle,'automatic idle after 60 real seconds',35000);
   const autoAt=await evaluate('performance.now()');
-  assert.ok(autoAt-lastTouchAt>=29500&&autoAt-lastTouchAt<37000,'30-second automatic boundary');
+  assert.ok(autoAt-lastTouchAt>=59500&&autoAt-lastTouchAt<67000,'one-minute automatic boundary');
   const automatic=await state();
   await tap('.fixture-wake-target');
   const clicked=await evaluate('wakeClicks');
@@ -261,7 +261,7 @@ try{
   await tap('.idle-camera-dialog button[type="submit"]');
   const savedPreferences=await evaluate("JSON.parse(localStorage.getItem('roomcraft.idle-camera.v1'))");
   assert.equal(savedPreferences.enabled,false);
-  assert.equal(savedPreferences.idleAfterMs,30000);
+  assert.equal(savedPreferences.idleAfterMs,60000);
   assert.equal(savedPreferences.travelMs,30000);
   assert.equal(savedPreferences.lingerMs,12000);
   assert.equal(savedPreferences.homeMs,60000);
@@ -287,7 +287,7 @@ try{
   assert.ok((await evaluate('ops')).every(request=>request.type==='lovelace/config'),'reload does not save or operate devices');
   assert.deepEqual(errors,[]);
   await writeFile(join(qa,'evidence.json'),JSON.stringify({instant,staleFrame,traveling,automatic,realIdleWaitMs:autoAt-lastTouchAt,longPressMs:1800,multiTouchContacts:2,phone,savedPreferences,errors,physicalActions:0},null,2));
-  console.log('PASS: real RAF idle camera; instant menu start, slow framing, true 30-second inactivity and touch reset, touch/assistive/long-press/multi-touch wake isolation/default restore, modal/demo/reduced-motion blockers, phone settings fit, local settings save/reload/manual override and no layout/device writes.');
+  console.log('PASS: real RAF idle camera; instant menu start, slow framing, true 60-second inactivity and touch reset, touch/assistive/long-press/multi-touch wake isolation/default restore, modal/demo/reduced-motion blockers, phone settings fit, local settings save/reload/manual override and no layout/device writes.');
   console.log(qa);
 }finally{ws?.close();chrome.kill();server.close();}
 

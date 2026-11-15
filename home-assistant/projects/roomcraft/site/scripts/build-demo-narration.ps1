@@ -6,7 +6,7 @@ $sampleRate = 44100
 $voiceName = 'Microsoft Zira Desktop'
 $invariant = [Globalization.CultureInfo]::InvariantCulture
 $sourceRoot = Split-Path -Parent $PSScriptRoot
-if (!$OutputPath) { $OutputPath = Join-Path $sourceRoot 'public/demo-narration-v1.mp3' }
+if (!$OutputPath) { $OutputPath = Join-Path $sourceRoot 'public/demo-narration-v2.mp3' }
 $OutputPath = [IO.Path]::GetFullPath($OutputPath)
 
 function Invoke-Ffmpeg([string[]] $Arguments) {
@@ -36,7 +36,7 @@ foreach ($cue in $cues) {
     }
     $durationMs += $cue.durationMs
 }
-if ($durationMs -ne 60000) { throw 'Expected a 60-second narration timeline.' }
+if ($durationMs -ne 76000) { throw 'Expected a 76-second narration timeline.' }
 
 Add-Type -AssemblyName System.Speech
 $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer

@@ -73,7 +73,7 @@ export function createInlandBiomeDetails(house,heightAt,canPlace=()=>true){
   }
   const canyonX=house.minX-900,canyonZ=house.maxZ+700;
   for(let i=0;i<7;i++){
-    const side=i%2?-1:1,x=canyonX+side*(210+(i%3)*145),z=canyonZ+(i-3)*130;
+    const side=i%2?-1:1,x=canyonX+side*(210+(i%3)*145-(i===0?100:0)),z=canyonZ+(i-3)*130;
     const base=heightAt(x,z),wide=105+(i%3)*27,tall=72+(i%4)*16;
     add('mesa','#795e4f',x,base+tall*.29,z,wide*1.2,tall*.63,wide*.72,i*.42);
     add('mesa','#a47d64',x,base+tall*.68,z,wide*.98,tall*.25,wide*.62,i*.42);

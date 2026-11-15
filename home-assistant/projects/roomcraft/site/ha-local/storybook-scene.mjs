@@ -1515,7 +1515,14 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     return getView();
   }
   function getView() { return {...cameraView}; }
-  function frameWorldLifePreview(settings) {
+  function frameWorldLifePreview(settings, focus) {
+    if (['canyon','riparian','desert','scrub'].includes(focus)) {
+      const point=worldMoments.getHabitatFocus(focus);
+      if (!point) return false;
+      setView({preset:'top',azimuth:focus==='canyon'?150:focus==='desert'?30:10,
+        tilt:focus==='riparian'?31:38,zoom:1}, {focus:point,demoZoom:7.2});
+      return true;
+    }
     const bounds = marineLife.getPreviewBounds(settings);
     if (!bounds || bounds.isEmpty()) return false;
     const {min, max} = bounds;
@@ -1537,8 +1544,10 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     }
     return result;
   }
-  function getDemoFocus(target) {
+  function getDemoFocus(target,seconds=0) {
     if (typeof target === 'string') {
+      if (target.startsWith('wildlife-')) return worldMoments.getHabitatFocus(target.slice(9),seconds,
+        target==='wildlife-scrub');
       if (target === 'holiday') return {x:holidayPose.x, y:GROUND_Y+35*holidayPose.scale, z:holidayPose.y};
       if (Object.hasOwn(sceneryFocus, target)) return {...sceneryFocus[target]};
       const landmarkType = {'landmark-family':'sceneryRanchHouse', 'landmark-office':'sceneryOfficeCampus',
@@ -1682,7 +1691,9 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     const solar = storybookSolar(environment);
     environment = {...environment, solar: transientTelemetry ? solar : fadeSolar(solar, time, reduceMotion)};
     const telemetryTime = animateTelemetry ? time : 0;
-    const worldLife=normalizeWorldLifeSettings(environment.worldLifePreview?.settings ?? sceneSettings?.worldLife);
+    const worldLife=normalizeWorldLifeSettings(environment.worldLifeDemo
+      ? {...sceneSettings?.worldLife,enabled:true,landWildlife:true,density:1,pace:1,seed:37}
+      : environment.worldLifePreview?.settings ?? sceneSettings?.worldLife);
     const worldSeconds=worldClock(timeSeconds,{epochSeconds:environment.worldTimeSeconds,
       preview:Boolean(environment.worldLifePreview),transientTelemetry,reduceMotion});
     environment={...environment,worldLife,worldSeconds};
