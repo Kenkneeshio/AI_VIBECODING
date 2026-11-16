@@ -8,7 +8,7 @@ import {compileStorybookInteractions} from '../ha-local/storybook-person-interac
 
 function setup(floorAt, geometry) {
   const scene = new THREE.Scene();
-  const people = createStorybookPeople(scene, floorAt, geometry);
+  const people = createStorybookPeople(scene, floorAt, {...geometry,familyPriority:'dad'});
   const report = (x, y, time, options, expiresAt) => people.setTracks([{id: 'radar:1', x, y, expiresAt}], time, options);
   const avatar = () => scene.getObjectByName('radar-avatar-papa');
   const ring = () => scene.getObjectByName('radar-track-mark');
@@ -143,6 +143,7 @@ test('an occupied avatar stays visible on the reachable side of a barrier', () =
   const blocks = (fromX, toX, radius) => Math.max(fromX,toX) + radius >= 58 &&
     Math.min(fromX,toX) - radius <= 72;
   const people = createStorybookPeople(scene, (_x,z) => z >= 0 && z <= 100 ? 0 : null, {occlusionScene:cues,
+    familyPriority:'dad',
     allowsBodyPoint: (x, _z, radius) => !blocks(x, x, radius),
     allowsBodyRoute: (x, _z, toX, _toZ, radius) => !blocks(x, toX, radius),
   });
@@ -209,16 +210,17 @@ test('a wall blocks a nearby cushion and a walk-by never accumulates seating evi
   }
 });
 
-test('two characters cannot share a cushion and reduced motion keeps the desk pose still', () => {
+test('two nearby characters chat instead of stacking at a desk and reduced motion keeps the pose still', () => {
   const scene = new THREE.Scene();
-  const people = createStorybookPeople(scene, () => 0, {seats:[{...cushion, pose:'desk'}]});
+  const people = createStorybookPeople(scene, () => 0, {seats:[{...cushion, pose:'desk'}],familyPriority:'dad'});
   for (const time of [1,2,3,4]) people.setTracks([
     {id:'radar:2', x:66, y:61, expiresAt:time*1000}, {id:'radar:1', x:65, y:60, expiresAt:time*1000},
   ], time, {reduceMotion:true});
   const papa = scene.getObjectByName('radar-avatar-papa');
   const mama = scene.getObjectByName('radar-avatar-mama');
-  assert.equal(poseOf(papa).userData.pose, 'desk');
-  assert.equal(poseOf(mama).userData.pose, 'standing');
+  assert.equal(poseOf(papa).userData.pose, 'chat');
+  assert.equal(poseOf(mama).userData.pose, 'chat');
+  assert.ok(papa.position.distanceTo(mama.position)>=42);
   const transforms = () => poseOf(papa).children[0].children.map(child => child.rotation.toArray());
   const before = transforms();
   people.render(12, true);

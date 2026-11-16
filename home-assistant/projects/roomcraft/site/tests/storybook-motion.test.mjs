@@ -61,7 +61,7 @@ test('presence uses the upper condo slab, authored landing and rotated stair tre
     floorClearance:presence.clearance, supportsRoute:presence.supportsRoute,
   });
   layer.setTracks([{id:'test:1',x:100,y:387}], 1, {reduceMotion:true});
-  const character = scene.getObjectByName('radar-avatar-papa');
+  const character = scene.getObjectByName('tracked-people').children.find(child=>child.name.startsWith('radar-avatar-'));
   assert.equal(character.visible, true);
   assert.equal(character.position.y, presence.floorAt(100, 387));
   layer.dispose();

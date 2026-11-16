@@ -1,5 +1,9 @@
 # Decision log
 
+## Separate anonymous bodies and keep congestion controls presentation-only
+
+Resolve collisions after each avatar follows an authored route, using the same floor and furniture clearance. Preserve raw radar history, as it is evidence for calibration. Family look priority changes the visual cast only; the mmWave switch does not identify household members. Treat traffic mode overrides as explicit local previews and keep sensor-derived travel times untouched. A heavy traffic state uses a near-stop lattice and brighter red tail lamps. See [family spacing and traffic art](family-traffic-art-2026-11-15.md).
+
 ## Present mmWave occupancy as calibrated rooms and stage wildlife only inside the tour
 
 Treat the single presence switch as an area detector with four safe visual anchors, a stable transition and per-screen owner-captured raw-radar centroids. Keep the existing occupancy freshness and real HA states; do not present a radar coordinate as an exact place at a table. Stage wildlife density, camera and day-to-night light only in the 76-second no-actuation tour, with a local rebuilt narration asset and reversible preview. Migrate only an untouched idle wait to the new one-minute default. See [wildlife world tour and room presence](wildlife-world-tour-presence-zones-2026-11-15.md).

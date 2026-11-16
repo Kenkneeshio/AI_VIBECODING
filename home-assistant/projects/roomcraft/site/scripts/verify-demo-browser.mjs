@@ -204,13 +204,31 @@ try{
     const record=JSON.parse(localStorage.getItem('roomcraft.presence-zones.v1'));
     const marker=card.frame.people.find(point=>point.zone==='hall');
     const safe=marker&&card.scene.canPlacePerson(marker.x,marker.y);
+    const family=card.trackingDialog.querySelector('.family-priority');family.value='baby';
+    family.dispatchEvent(new Event('change',{bubbles:true}));
     const status=card.trackingDialog.querySelector('[data-zone-status]').textContent;
-    card.trackingDialog.close();return {record,zone:marker?.zone,safe,status,entity:item.presenceTrackEntityId};
+    card.trackingDialog.close();return {record,zone:marker?.zone,safe,status,entity:item.presenceTrackEntityId,
+      family:localStorage.getItem('roomcraft.family-priority.v1')};
   })()`);
   assert.ok(presence.record,JSON.stringify(presence));
   assert.deepEqual(presence.record.hall,{x:-190,y:451});
   assert.equal(presence.zone,'hall');assert.equal(presence.safe,true);
-  await writeFile(join(qa,'evidence.json'),JSON.stringify({started,chapters,weather,moons,audio,seeks,restored,escaped,presence,errors},null,2));
+  assert.equal(presence.family,'baby');
+  const traffic=await evaluate(`(()=>{
+    card.shadowRoot.querySelector('[data-link-dialog="commute"]').click();
+    const dialog=card.shadowRoot.querySelector('.commute-dialog');
+    for(const [key,value] of [['mode','heavy'],['density','100'],['crawlSpeed','1'],['tailGlow','3']]){
+      const input=dialog.querySelector('[data-traffic-setting="'+key+'"]');input.value=value;
+      input.dispatchEvent(new Event('input',{bubbles:true}));
+    }
+    const settings=JSON.parse(localStorage.getItem('roomcraft.traffic-appearance.v1'));
+    const profile=card.frame.environment.traffic;
+    dialog.close();return {settings,profile};
+  })()`);
+  assert.equal(traffic.settings.mode,'heavy');assert.equal(traffic.profile.severity,'heavy');
+  assert.equal(traffic.profile.crawlSpeed,1);assert.equal(traffic.profile.tailGlow,3);
+  assert.equal(traffic.profile.preview,true);
+  await writeFile(join(qa,'evidence.json'),JSON.stringify({started,chapters,weather,moons,audio,seeks,restored,escaped,presence,traffic,errors},null,2));
   console.log('PASS: actual card 76-second world tour, 3 centered landmarks and 4 framed inland habitats, 14 weather states and 8 moon phases, default mute, bundled 76s audio cue seeks, view restoration/Escape, unchanged layout/states and no HA writes');
   console.log(qa);
 }finally{ws?.close();chrome.kill();server.close();}

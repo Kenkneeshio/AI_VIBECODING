@@ -86,7 +86,7 @@ test('scenic and measured traffic keep shared positions and ease into the next s
   for (let tick = 3; tick < 30; tick++) motion.update(tick / 10, heavy);
   const settled = motion.update(3, heavy)[0].x;
   const afterSettle = motion.update(3.1, heavy)[0].x - settled;
-  assert.ok(Math.abs(afterSettle - 2) < .03);
+  assert.ok(Math.abs(afterSettle - .15) < .03);
 });
 
 test('a measured speed factor varies speed smoothly within one density', () => {
@@ -266,7 +266,7 @@ test('night lights are disabled in daylight and follow replay and reduced-motion
   traffic.dispose();
 });
 
-test('headlight brightness changes both night shaders and lamp emissivity without changing poses', () => {
+test('headlight brightness changes the front beams while independent brighter tail lamps keep their setting', () => {
   const traffic = createStorybookTraffic(road);
   const beams = traffic.root.getObjectByName('road-headlight-beams');
   const halos = traffic.root.getObjectByName('road-lamp-halos');
@@ -278,11 +278,12 @@ test('headlight brightness changes both night shaders and lamp emissivity withou
   assert.equal(beams.material.uniforms.lightStrength.value, .65);
   assert.equal(halos.material.uniforms.lightStrength.value, .65);
   assert.equal(headlamp.material.emissiveIntensity, 2.45 * .65);
-  assert.equal(taillamp.material.emissiveIntensity, 1.13 * .65);
+  assert.equal(taillamp.material.emissiveIntensity, 1.15 * 2);
   traffic.update(4, sedan, {...options, headlightBrightness:2});
   assert.equal(beams.material.uniforms.lightStrength.value, 1.6);
   assert.equal(halos.material.uniforms.lightStrength.value, 1.6);
   assert.equal(headlamp.material.emissiveIntensity, 2.45 * 1.6);
+  assert.equal(taillamp.material.emissiveIntensity, 1.15 * 2);
   assert.deepEqual(beams.instanceMatrix.array.slice(0, beams.count * 16), poses);
   traffic.update(5, sedan, {...options, headlightBrightness:0});
   assert.equal(beams.material.uniforms.lightStrength.value, .35);

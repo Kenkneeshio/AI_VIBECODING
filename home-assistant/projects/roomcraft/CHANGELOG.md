@@ -1,5 +1,11 @@
 # Changelog
 
+## Family spacing and traffic art — 15 November 2026
+
+- Separate characters sharing a coarse room anchor on reachable floor. Nearby stationary family characters face one another and chat or peek; a per-screen menu priority selects Dad, Mom, Baby, or balanced random visual casting without claiming identity.
+- Give heavy traffic tightly packed lanes and a configurable near-stop crawl. Add stronger red tail-light art and per-screen density, crawl, glow, and visual preview options in Commute traffic.
+- See [family spacing and traffic art](docs/family-traffic-art-2026-11-15.md) for customer acceptance, contracts, verification, limits, and rollback.
+
 ## Wildlife world tour and coarse room presence — 15 November 2026
 
 - Bring Inland wildlife to the top of the Living world menu with all 42 species and four habitat previews. Extend the demo to a 76-second day-to-night world tour with canyon, creek, desert and nocturnal scrub chapters and a rebuilt narration track.

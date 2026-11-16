@@ -28,6 +28,8 @@ import {bindStorybookLightPanel, STORYBOOK_LIGHT_PANEL, STORYBOOK_LIGHT_PANEL_ST
 import {bindVacuumMapOverlay, VACUUM_MAP_TOGGLE} from './storybook-vacuum-map.mjs';
 import {bindLidarRuler, LIDAR_RULER_BUTTON, LIDAR_RULER_MARKUP, LIDAR_RULER_STYLE} from './storybook-lidar-ruler.mjs';
 import {bindStorybookCommutes, COMMUTE_DIALOG_MARKUP, COMMUTE_DIALOG_STYLE} from './storybook-commutes.mjs';
+import {trafficWithPreferences} from './storybook-traffic-preferences.mjs';
+import {FAMILY_PRIORITY_KEY,normalizeFamilyPriority} from './storybook-family-settings.mjs';
 import {createStorybookLocation, STORYBOOK_LOCATION_MARKUP, STORYBOOK_LOCATION_STYLE} from './storybook-location.mjs';
 import {bindStorybookHeatMap, HEAT_MAP_LEGEND, HEAT_MAP_STYLE, HEAT_MAP_TOGGLE} from './storybook-heatmap-panel.mjs';
 import './storybook-controls-view.mjs';
@@ -169,6 +171,8 @@ class RoomcraftStorybookCard extends HTMLElement {
         .utility-issues small::before{content:'• '}
         .tracking-list p{margin:10px 0 0;padding:8px;border:1px solid #eee2cf;border-radius:7px}
         .tracking-list small{display:block;margin-top:3px}
+        .family-priority-label{display:grid;gap:5px;margin:13px 0 5px}
+        .family-priority-label select{min-height:40px;padding:6px;border:1px solid #c9b8a0;border-radius:8px;background:#fff8ec;color:#352d2b;font:inherit}
         .presence-zone-calibration{margin:14px 0;padding:12px;border:1px solid #d6d7c4;border-radius:12px;background:#f6f6e9}.presence-zone-calibration p{margin:0 0 10px;font-size:13px;line-height:1.45}.presence-zone-calibration div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.presence-zone-calibration button{min-height:42px}.presence-zone-calibration small{display:block;margin-top:9px}
         .tracking-legend{display:flex;gap:4px 12px;flex-wrap:wrap;list-style:none;margin:10px 0 0;padding:0;
           color:#5a5449;font-size:11px}
@@ -369,6 +373,8 @@ class RoomcraftStorybookCard extends HTMLElement {
       <dialog class="tracking-dialog" aria-label="Presence tracking">
         <header><h2>Presence tracking</h2><button type="button" class="close-tracking">Close</button></header>
         <div class="tracking-list"></div>
+        <label class="family-priority-label">First illustrated character <select class="family-priority"><option value="random">Balanced random</option><option value="dad">Dad first</option><option value="mom">Mom first</option><option value="baby">Baby first</option></select></label>
+        <small>These are anonymous visual roles, not identification of household members.</small>
         <section class="presence-zone-calibration" aria-label="Room zone calibration"><p>Characters stay in four home areas. Stand alone in an area, then capture its current radar reading. The calibration stays on this screen.</p><div>
           <button type="button" data-capture-zone="living">Set living room</button><button type="button" data-capture-zone="dining">Set dining room</button>
           <button type="button" data-capture-zone="kitchen">Set kitchen</button><button type="button" data-capture-zone="hall">Set start of hall</button>
@@ -555,6 +561,16 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.trackingButton = this.shadowRoot.querySelector('.open-tracking');
     this.trackingDialog = this.shadowRoot.querySelector('.tracking-dialog');
     this.trackingList = this.shadowRoot.querySelector('.tracking-list');
+    const familySelect=this.trackingDialog.querySelector('.family-priority');
+    try{familySelect.value=normalizeFamilyPriority(window.localStorage.getItem(FAMILY_PRIORITY_KEY));}
+    catch{familySelect.value='random';}
+    this.familyPriority=familySelect.value;
+    familySelect.addEventListener('change',()=>{
+      this.familyPriority=normalizeFamilyPriority(familySelect.value);
+      try{window.localStorage.setItem(FAMILY_PRIORITY_KEY,this.familyPriority);}catch{}
+      this.scene?.setFamilyPriority(this.familyPriority);
+      this.refresh();
+    });
     this.trackingButton.addEventListener('click', () => {
       this.setMainMenu(false, true);
       this.paintTracking();
@@ -1029,6 +1045,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.prepareUtilities(config);
       this.scene = createStorybookScene(this.canvas, this.model.layout,
         {insaneGraphics: this.displaySettings.value.insaneGraphics, assetBase: '/local/roomcraft/'});
+      this.scene.setFamilyPriority(this.familyPriority);
       const vacuum = this.model.layout.items.find(item => item.entityId?.startsWith('vacuum.') && item.vacuumMapEntityId);
       this.vacuumMapOverlay.configure(vacuum);
       this.lidarRuler.configure(vacuum);
@@ -1358,6 +1375,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.frame = storybookFrame(this.model, states, now, this.session?.config?.time_zone, this.weatherEntityId);
     const commute = this.commutes.update(offline ? undefined : states, now);
     this.frame.environment.traffic = {...(commute.profile ?? AMBIENT_TRAFFIC),
+      ...trafficWithPreferences(commute.profile ?? AMBIENT_TRAFFIC,this.commutes.appearance()),
       vehicleStyle: this.commutes.vehicleStyle()};
     this.frame.moving = true;
     this.frame.people = this.personPresence.read(this.model.layout.items, states, now, {

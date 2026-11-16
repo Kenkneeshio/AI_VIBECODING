@@ -1,5 +1,6 @@
 import {stableDashboardJson} from './dashboard-snapshots.mjs';
 import {STORYBOOK_VEHICLES} from './storybook-vehicles.mjs';
+import {normalizeTrafficPreferences,TRAFFIC_PREFERENCES_KEY} from './storybook-traffic-preferences.mjs';
 
 const SENSOR = /^sensor\.[a-z0-9_]+$/;
 const EXPIRY_MS = 20 * 60 * 1000;
@@ -23,6 +24,13 @@ export const COMMUTE_DIALOG_MARKUP = `
     <p class="commute-ambient" hidden>Road preview · About one vehicle passes every three seconds while live traffic is unavailable.</p>
     <ul class="commute-breakdown" aria-label="Travel times by route" hidden></ul>
     <label class="commute-route commute-vehicle-picker">Vehicle style <select class="commute-vehicle-style"></select></label>
+    <fieldset class="traffic-art-options"><legend>Animated road</legend>
+      <label>Traffic view <select data-traffic-setting="mode"><option value="live">Live or scenic fallback</option><option value="clear">Preview clear</option><option value="slow">Preview slow</option><option value="heavy">Preview heavy jam</option></select></label>
+      <label>Road density <input data-traffic-setting="density" type="range" min="50" max="100" step="10"><output data-traffic-value="density"></output></label>
+      <label>Heavy-traffic crawl <input data-traffic-setting="crawlSpeed" type="range" min="0" max="8" step="0.5"><output data-traffic-value="crawlSpeed"></output></label>
+      <label>Tail-light glow <input data-traffic-setting="tailGlow" type="range" min="0.5" max="4" step="0.25"><output data-traffic-value="tailGlow"></output></label>
+      <small>Preview changes only this screen's artwork. Live travel-time sensors remain unchanged.</small>
+    </fieldset>
     <button type="button" class="commute-details" hidden>Travel-time sensor details</button>
     <a href="https://www.home-assistant.io/integrations/google_travel_time/" target="_blank" rel="noopener noreferrer"
       class="commute-setup">Set up Google Maps Travel Time ↗</a>
@@ -43,6 +51,12 @@ export const COMMUTE_DIALOG_MARKUP = `
 export const COMMUTE_DIALOG_STYLE = `
   .commute-dialog .commute-ambient{font-size:.84em}
   .commute-vehicle-picker{margin-bottom:10px}
+  .traffic-art-options{display:grid;gap:12px;border:1px solid #d6c6ae;border-radius:10px;margin:8px 0 12px;padding:12px}
+  .traffic-art-options label{display:grid;grid-template-columns:minmax(115px,1fr) minmax(130px,1.5fr) auto;align-items:center;gap:10px}
+  .traffic-art-options label:first-of-type{grid-template-columns:minmax(115px,1fr) minmax(130px,1.5fr)}
+  .traffic-art-options input{width:100%}
+  .traffic-art-options small{color:#665849}
+  @media(max-width:520px){.traffic-art-options label{grid-template-columns:1fr auto}.traffic-art-options label input,.traffic-art-options label select{grid-column:1 / -1;grid-row:2}}
   .commute-breakdown{list-style:none;margin:0 0 12px;padding:0;border-block:1px solid #dfd1bc}
   .commute-breakdown li{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:7px 3px}
   .commute-breakdown li+li{border-top:1px solid #eee4d3}
@@ -184,6 +198,22 @@ export function bindStorybookCommutes(card) {
   const dialog = card.shadowRoot.querySelector('.commute-dialog');
   const select = dialog.querySelector('.commute-select');
   const vehicles = dialog.querySelector('.commute-vehicle-style');
+  const trafficInputs=[...dialog.querySelectorAll('[data-traffic-setting]')];
+  let appearance;try{appearance=normalizeTrafficPreferences(JSON.parse(window.localStorage.getItem(TRAFFIC_PREFERENCES_KEY)));}
+  catch{appearance=normalizeTrafficPreferences();}
+  const paintAppearance=()=>{
+    for(const input of trafficInputs){const key=input.dataset.trafficSetting;input.value=String(appearance[key]);
+      const output=dialog.querySelector(`[data-traffic-value="${key}"]`);
+      if(output)output.textContent=key==='density'?`${appearance[key]}%`:key==='crawlSpeed'?`${appearance[key]} /s`:`${appearance[key]}×`;
+    }
+  };
+  paintAppearance();
+  for(const input of trafficInputs)input.addEventListener('input',()=>{
+    appearance=normalizeTrafficPreferences({...appearance,[input.dataset.trafficSetting]:input.value});
+    paintAppearance();
+    try{window.localStorage.setItem(TRAFFIC_PREFERENCES_KEY,JSON.stringify(appearance));}catch{}
+    card.refresh();
+  });
   const ambient = dialog.querySelector('.commute-ambient');
   const status = dialog.querySelector('.commute-reading');
   const details = dialog.querySelector('.commute-details');
@@ -406,6 +436,7 @@ export function bindStorybookCommutes(card) {
     configure,
     sync,
     vehicleStyle: () => vehicles.value || undefined,
+    appearance:()=>appearance,
     update(states, now) {
       sync();
       const readings = routes.map(route => commuteReading(route, states, now));

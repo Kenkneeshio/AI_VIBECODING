@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import {createStorybookPersonMotion, createStorybookPersonSignal} from './storybook-person-motion.mjs';
 import {createStorybookPersonNavigation} from './storybook-person-navigation.mjs';
 import {canUseStorybookSeat} from './storybook-seating.mjs';
+import {separateStorybookPeople} from './storybook-person-spacing.mjs';
+import {chooseStorybookFamilyLook,normalizeFamilyPriority} from './storybook-family-settings.mjs';
 import {createStorybookInteractionProps, findStorybookInteraction, storybookInteractionPose,
   storybookSeatedActivity, storybookSeatedPose} from './storybook-person-interactions.mjs';
 
@@ -40,7 +42,7 @@ function animateFace(character, idle, reducedMotion, forwardTilt = 0, lookAside 
  */
 export function createStorybookPeople(scene, floorAt = () => 0,
   {supportsRoute, floorClearance, allowsBodyPoint, allowsBodyRoute, geometryRevision,
-    seats = [], interactions = [], occlusionScene} = {}) {
+    seats = [], interactions = [], occlusionScene, familyPriority='random'} = {}) {
   const group = new THREE.Group();
   group.name = 'tracked-people';
   scene.add(group);
@@ -60,6 +62,7 @@ export function createStorybookPeople(scene, floorAt = () => 0,
   let hasVisibleTracks = false;
   let activitiesEnabled = true;
   let previousSnapshot;
+  let preferredLook=normalizeFamilyPriority(familyPriority);
 
   function makeArt() {
     const head = new THREE.Shape();
@@ -284,7 +287,9 @@ export function createStorybookPeople(scene, floorAt = () => 0,
     track.planned = signal;
     track.revision = revision;
     track.activitiesAllowed = allowActivities;
-    if (eligible) {
+    const nearFamily=[...tracks.values()].some(other=>other!==track&&other.point&&
+      Math.hypot(other.point.x-point.x,other.point.y-point.y)<95);
+    if (eligible&&!nearFamily) {
       track.activity = chooseActivity(track, signal.target, taken);
       if (track.activity) return;
     }
@@ -293,7 +298,8 @@ export function createStorybookPeople(scene, floorAt = () => 0,
   }
 
   function drawCharacter(track, sample, blend) {
-    const {character, activity} = track;
+    const {character} = track;
+    const activity=track.social??track.activity;
     const seat = activity?.seat;
     const {x, y:z, heading, walking, step} = sample;
     const floor = floorAt(x, z);
@@ -301,7 +307,7 @@ export function createStorybookPeople(scene, floorAt = () => 0,
     const sin = Math.sin(heading);
     const dx = (seat ? seat.x - x : 0) * blend;
     const dz = (seat ? seat.z - z : 0) * blend;
-    const duration = lastTime - (track.poseAt ?? lastTime);
+    const duration = lastTime - (track.social ? track.socialSince : track.poseAt ?? lastTime);
     const pose = seat ? storybookSeatedActivity(seat, reduced ? 0 : duration) : activity?.pose;
     const posture = (seat ? storybookSeatedPose(seat, duration, reduced) :
       storybookInteractionPose(pose, duration, reduced)) ?? STANDING;
@@ -339,17 +345,9 @@ export function createStorybookPeople(scene, floorAt = () => 0,
     const taken = new Set();
     const reserve = activity => taken.add(activity.seat ? activity.id : activity.itemId);
     for (const {activity} of tracks.values()) if (activity) reserve(activity);
-    for (const track of tracks.values()) {
+    const samples=[];
+    for (const [id,track] of tracks) {
       const {character} = track;
-      const {x, y:z} = track.point;
-      const floor = floorAt(x, z);
-      const clearance = floorClearance?.(x, z) ?? GROUND_RING_RADIUS;
-      character.groundMark.visible = Number.isFinite(floor) && clearance > 0;
-      if (character.groundMark.visible) {
-        character.groundMark.material = track.point.quality ? art.retainedMark : art.groundMark;
-        character.groundMark.position.set(x, floor + .26, z);
-        character.groundMark.scale.setScalar(Math.min(1, clearance / GROUND_RING_RADIUS));
-      }
       const elapsed = Math.max(0, lastTime - track.renderedAt);
       track.renderedAt = lastTime;
       if (track.leaving) {
@@ -363,6 +361,7 @@ export function createStorybookPeople(scene, floorAt = () => 0,
       const previousActivity = track.activity;
       planTrack(track, track.motion.sample(lastTime, reduced), taken, allowActivities);
       const sample = track.motion.sample(lastTime, reduced);
+      samples.push({id,track,sample,radius:character.radius});
       if (track.activity) {
         reserve(track.activity);
         if (sample && !sample.walking && !track.leaving) {
@@ -371,7 +370,35 @@ export function createStorybookPeople(scene, floorAt = () => 0,
             (track.activity === previousActivity ? elapsed / POSE_SECONDS : 0));
         }
       }
-      const blend = track.blend * track.blend * (3 - 2 * track.blend);
+    }
+    const spaced=separateStorybookPeople(samples,{
+      allowsPoint:clearBodyPoint,
+      allowsRoute:(x,z,toX,toZ)=>clearBodyRoute(x,z,toX,toZ,0),
+    });
+    const displayed=new Map(spaced.map(entry=>[entry.id,entry.sample]));
+    for(const [id,track] of tracks){
+      const {character}=track;
+      const sample=displayed.get(id);
+      const {x,y:z}=track.point;
+      const floor=floorAt(x,z);
+      const clearance=floorClearance?.(x,z)??GROUND_RING_RADIUS;
+      character.groundMark.visible=Number.isFinite(floor)&&clearance>0;
+      if(character.groundMark.visible){
+        character.groundMark.material=track.point.quality?art.retainedMark:art.groundMark;
+        character.groundMark.position.set(x,floor+.26,z);
+        character.groundMark.scale.setScalar(Math.min(1,clearance/GROUND_RING_RADIUS));
+      }
+      const neighbor=allowActivities&&spaced.find(other=>other.id!==id&&other.sample&&!other.sample.walking&&
+        sample&&!sample.walking&&!track.activity&&!other.track.activity&&
+        Math.hypot(other.sample.x-sample.x,other.sample.y-sample.y)<95);
+      if(neighbor){
+        if(track.social?.partner!==neighbor.id)track.socialSince=lastTime;
+        track.social={partner:neighbor.id,pose:character.baby?'peek':'chat',
+          heading:Math.atan2(neighbor.sample.x-sample.x,neighbor.sample.y-sample.y)};
+      }else track.social=null;
+      const socialBlend=track.social?(reduced?1:clampUnit((lastTime-track.socialSince)/POSE_SECONDS)):0;
+      const amount=track.social?socialBlend:track.blend;
+      const blend = amount * amount * (3 - 2 * amount);
       character.root.visible = Boolean(sample);
       character.root.userData.locationQuality = track.point.quality ?? 'measured';
       if (sample) drawCharacter(track, sample, blend);
@@ -409,12 +436,12 @@ export function createStorybookPeople(scene, floorAt = () => 0,
     const styleCounts = STYLES.map(() => 0);
     for (const {character} of tracks.values()) styleCounts[character.styleIndex]++;
     for (const id of [...next.keys()].filter(id => !tracks.has(id)).sort()) {
-      const styleIndex = styleCounts.indexOf(Math.min(...styleCounts));
+      const styleIndex = chooseStorybookFamilyLook(id,styleCounts,preferredLook);
       styleCounts[styleIndex]++;
       const character = unused[styleIndex].pop() ?? makeCharacter(styleIndex);
-      const navigator = navigatorFor(character.radius);
+      const navigator = navigatorFor(STORYBOOK_PERSON_RADIUS);
       const motion = createStorybookPersonMotion({
-        allowsPoint: (x, z) => clearBodyPoint(x, z, character.radius),
+        allowsPoint: (x, z) => clearBodyPoint(x, z, STORYBOOK_PERSON_RADIUS),
         findRoute:navigator.findRoute, geometryRevision,
       });
       tracks.set(id, {character, motion, navigator, filter:createStorybookPersonSignal(),
@@ -454,6 +481,19 @@ export function createStorybookPeople(scene, floorAt = () => 0,
 
   return {
     setTracks,
+    setFamilyPriority(value){
+      const next=normalizeFamilyPriority(value);
+      if(next===preferredLook)return;
+      preferredLook=next;
+      const entries=[...tracks].sort(([a],[b])=>a.localeCompare(b));
+      for(const [,track] of entries){track.character.root.visible=false;track.character.groundMark.visible=false;
+        if(track.character.cue)track.character.cue.visible=false;
+        unused[track.character.styleIndex].push(track.character);}
+      const counts=STYLES.map(()=>0);
+      for(const [id,track] of entries){const index=chooseStorybookFamilyLook(id,counts,preferredLook);counts[index]++;
+        track.character=unused[index].pop()??makeCharacter(index);track.social=null;}
+      render(lastTime,reduced);
+    },
     render,
     dispose,
     setVisible(visible) { group.visible = occlusion.visible = visible; },

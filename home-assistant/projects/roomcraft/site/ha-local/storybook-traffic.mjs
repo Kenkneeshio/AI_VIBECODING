@@ -4,13 +4,13 @@ import {STORYBOOK_VEHICLES, buildStorybookVehicle} from './storybook-vehicles.mj
 import {normalizeWorldLifeSettings} from './storybook-world-life-settings.mjs';
 
 const PATTERNS = new Map([
-  ['clear', {stride: 4, speed: 70}],
-  ['slow', {stride: 2, speed: 44}],
-  ['heavy', {stride: 1, speed: 20}],
+  ['clear', {stride: 10, speed: 70}],
+  ['slow', {stride: 5, speed: 44}],
+  ['heavy', {stride: 1, speed: 1.5}],
 ]);
-const AMBIENT = {stride: 4, crossingSeconds: 3.2};
-const SLOT_SPACING = 242;
-const DENSITY_CYCLE = 12;
+const AMBIENT = {stride: 10, crossingSeconds: 3.2};
+const SLOT_SPACING = 102;
+const DENSITY_CYCLE = 60;
 const TRANSITION_SECONDS = .38;
 const MAX_HEADLIGHT_LENGTH = 86;
 const VEHICLES = new Map(STORYBOOK_VEHICLES.map(vehicle => [vehicle.id, vehicle]));
@@ -20,7 +20,7 @@ const NEIGHBORHOOD_FLEET = [
   'lavender-delivery', 'pine-suv', 'teal-semi', 'indigo-motorcycle',
 ].map(id => VEHICLES.get(id));
 const HEADLIGHT_COLOR = new THREE.Color('#fff1cf');
-const TAILLIGHT_COLOR = new THREE.Color('#db514c');
+const TAILLIGHT_COLOR = new THREE.Color('#ff3028');
 
 function lampMounts(geometry) {
   geometry.computeBoundingBox();
@@ -172,6 +172,7 @@ export function createTrafficMotion({centerX, width, lanes}) {
   let distance = 0;
   let previousTime;
   let previousPattern;
+  let previousDensity;
   let velocity;
   let easing = false;
   let visible = [];
@@ -180,13 +181,15 @@ export function createTrafficMotion({centerX, width, lanes}) {
     const step = Number.isFinite(previousTime) && Number.isFinite(time)
       ? THREE.MathUtils.clamp(time - previousTime, 0, .25) : 0;
     previousTime = time;
-    if (pattern !== previousPattern) {
+    const density=Number.isFinite(profile?.density)?THREE.MathUtils.clamp(profile.density,50,100):100;
+    if (pattern !== previousPattern || density!==previousDensity) {
       easing = Boolean(previousPattern && pattern && (pattern === AMBIENT || previousPattern === AMBIENT));
-      const stride = Math.min(count, pattern?.stride ?? 1);
+      const stride = Math.min(count,Math.max(1,Math.round((pattern?.stride ?? 1)*100/density)));
       const laneStep = pattern === AMBIENT ? Math.floor(stride / 2) : 1;
       visible = pattern ? slots.flatMap((lane, side) =>
         lane.filter(({index}) => index % stride === side * laneStep % stride)) : [];
       previousPattern = pattern;
+      previousDensity = density;
     }
     if (!pattern) {
       velocity = undefined;
@@ -197,8 +200,10 @@ export function createTrafficMotion({centerX, width, lanes}) {
     // by half their spacing so their crossings alternate at the midpoint.
     const speed = pattern === AMBIENT
       ? spacing * Math.min(count, AMBIENT.stride) / (2 * AMBIENT.crossingSeconds)
+      : pattern === PATTERNS.get('heavy')
+        ? THREE.MathUtils.clamp(Number.isFinite(profile?.crawlSpeed)?profile.crawlSpeed:1.5,0,8)
       : Number.isFinite(factor) && factor > 0
-        ? PATTERNS.get('clear').speed * THREE.MathUtils.clamp(factor, .22, 1) : pattern.speed;
+        ? PATTERNS.get('clear').speed * THREE.MathUtils.clamp(factor, .015, 1) : pattern.speed;
     if (fromDemoClock) {
       distance = !reduceMotion && Number.isFinite(time) ? Math.max(0, time) * speed : 0;
     } else if (!reduceMotion) {
@@ -254,12 +259,14 @@ export function createStorybookTraffic(road) {
   const laneHalf = Math.abs(road.lanes[0] - road.lanes[1]) / 2;
   let lastNight;
   let lastBrightness = 1;
+  let lastHeavy;
+  let lastTailGlow=2;
   root.visible = false;
 
   function setLamps(model, night) {
     for (const {mesh, role} of model.layers) {
       if (role === 'headlamp') mesh.material.emissiveIntensity = night ? 2.45 * lastBrightness : .26;
-      if (role === 'taillamp') mesh.material.emissiveIntensity = night ? 1.13 * lastBrightness : .28;
+      if (role === 'taillamp') mesh.material.emissiveIntensity = (lastHeavy ? 2.3 : night ? 1.15 : .36)*lastTailGlow;
     }
   }
 
@@ -288,7 +295,7 @@ export function createStorybookTraffic(road) {
   }
 
   function haloAt(index, x, z, lamp, front) {
-    const size = front ? 12.4 : 8.6;
+    const size = front ? 12.4 : 8.6*lastTailGlow;
     placeLamp(x, z, lamp, front ? 1.1 : -1, lamp.y + .8);
     transform.scale.set(size, size, 1);
     transform.updateMatrix();
@@ -302,14 +309,19 @@ export function createStorybookTraffic(road) {
     const clock = transientTelemetry ? demoMotion : motion;
     const slots = clock.update(time, profile, reduceMotion, transientTelemetry);
     root.visible = slots.length > 0;
-    beams.visible = halos.visible = night && root.visible;
+    const heavy=profile?.severity==='heavy';
+    const tailGlow=Number.isFinite(profile?.tailGlow)?THREE.MathUtils.clamp(profile.tailGlow,.5,4):2;
+    beams.visible = night && root.visible;
+    halos.visible = (night||heavy) && root.visible;
     beams.count = halos.count = 0;
     for(const mesh of cargo.values()){mesh.count=0;mesh.visible=false;}
     if (!root.visible) return;
     const brightness = Number.isFinite(headlightBrightness) ? THREE.MathUtils.clamp(headlightBrightness, .35, 1.6) : 1;
-    if (night !== lastNight || brightness !== lastBrightness) {
+    if (night !== lastNight || brightness !== lastBrightness || heavy!==lastHeavy || tailGlow!==lastTailGlow) {
       lastNight = night;
       lastBrightness = brightness;
+      lastHeavy=heavy;
+      lastTailGlow=tailGlow;
       beams.material.uniforms.lightStrength.value = brightness;
       halos.material.uniforms.lightStrength.value = brightness;
       for (const model of models.values()) setLamps(model, night);
@@ -341,10 +353,10 @@ export function createStorybookTraffic(road) {
       transform.scale.set(vehicle.length * .55, 1, vehicle.width * .62);
       transform.updateMatrix();
       shadows.setMatrixAt(shadowCount++, transform.matrix);
-      if (!night) continue;
+      if (!night&&!heavy) continue;
       const normalHalf = laneHalf * Math.cos(yaw);
       const length = THREE.MathUtils.clamp(vehicle.length * 1.10, 53, MAX_HEADLIGHT_LENGTH);
-      for (const lamp of model.headlamps) {
+      for (const lamp of night ? model.headlamps : []) {
         const width = Math.max(5, Math.min(16, normalHalf - Math.abs(lamp.z) - 1));
         placeLamp(x, z, lamp, 1, 0);
         transform.scale.set(length, 1, width);
@@ -354,7 +366,7 @@ export function createStorybookTraffic(road) {
       }
       for (const lamp of model.taillamps) haloAt(haloIndex++, x, z, lamp, false);
     }
-    if (night) {
+    if (night||heavy) {
       beams.count = beamIndex;
       halos.count = haloIndex;
       beams.instanceMatrix.needsUpdate = halos.instanceMatrix.needsUpdate = true;

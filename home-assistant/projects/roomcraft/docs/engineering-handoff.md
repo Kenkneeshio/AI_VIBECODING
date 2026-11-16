@@ -1,6 +1,8 @@
 # Roomcraft engineering handoff
 
-**In progress:** [Wildlife world tour and room presence](wildlife-world-tour-presence-zones-2026-11-15.md) raises the 42-species inland roster in the menu, adds four habitat previews and a day-to-night 76-second narrated tour, and snaps displayed radar characters to four safe room anchors with local calibration. Idle defaults to one minute. Exact gate, deployment and tablet evidence are recorded in the release guide after completion.
+**Current release:** [Family spacing and traffic art](family-traffic-art-2026-11-15.md) owns anonymous avatar separation/social poses and per-screen family/traffic appearance settings. Traffic preview must not be confused with measured route data; the radar heatmap retains raw measurements. The release note records exact verification and rollback.
+
+**Previous verified release:** [Wildlife world tour and room presence](wildlife-world-tour-presence-zones-2026-11-15.md) raises the 42-species inland roster in the menu, adds four habitat previews and a day-to-night 76-second narrated tour, and snaps displayed radar characters to four safe room anchors with local calibration. Idle defaults to one minute. Exact gate, deployment and tablet evidence are recorded in the release guide after completion.
 
 **Current verified release:** [Inland landscape and wildlife](inland-wildlife-2026-11-15.md), source `3b95747680dc1182bbc099a266e4fb5ad55dbd8f`, HA `1359d4fba792608d`, private Studio 121. A shared canyon, creek and desert layer plus 120 persistent animal identities from a 42-species regional catalog use an explicit-time scheduler with bounded concurrent actors, safe placement and varied encounters. The 646-test gate, GitHub CI, built Chrome fixtures, 14-asset LAN/remote readback and actual wall-tablet loaded screenshot passed. The saved tablet camera does not frame the distant terrain; the close-up art evidence is the built Chrome fixture.
 
