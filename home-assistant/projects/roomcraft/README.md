@@ -10,6 +10,8 @@ Roomcraft turns a Home Assistant dashboard into an illustrated 3D home with inte
 
 On your Home Assistant host, sign in and open these routes.
 
+Dashboard sidebar names are **Home Dash** (`/roomcraft-home`), **Cell Dash** (`/cell-dash`), and **Reference Dash** (`/dashboard-dashboard`). Cell Dash is an independent copy of the original conventional controls. [Android default setup](docs/dashboard-names-and-android-defaults-2026-11-16.md) uses one HA user profile per device.
+
 | View | Route | Purpose |
 | --- | --- | --- |
 | Home | `/roomcraft-home/home` | Live 3D controls and utility popups |

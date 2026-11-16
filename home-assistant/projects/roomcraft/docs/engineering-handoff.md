@@ -1,5 +1,7 @@
 # Roomcraft engineering handoff
 
+**Dashboard naming release:** [Dashboard names and Android defaults](dashboard-names-and-android-defaults-2026-11-16.md) records Cell Dash cloning, Reference Dash/Home Dash title changes, unchanged routes and content, exact API readback, tablet cold-launch evidence, per-user Android default semantics, and private rollback. Future installers should retain the Home Dash title and stable `roomcraft-home` path.
+
 **Current release:** [Presence walking paths and collision rules](presence-path-collision-2026-11-15.md) adds a planned-route overlay, route appearance controls, direct-only/furniture-detour policy, object clearance and person spacing. Unsafe wall, floor and solid-object movement remains blocked. The release note owns exact verification, deployment evidence and rollback after publication.
 
 **Previous verified release:** [Vacuum survey and character behavior](vacuum-survey-and-presence-behavior-2026-11-15.md), runtime `473e4b2c`, HA resource `8cf4b81ac284af1a`, private Studio 127. Presence tracking adds raw/area placement and animation rules while retaining anonymous counts, calibration and overlays. The vacuum panel records a bounded local route during ordinary cleaning, flags map/bounds issues, exports a review JSON, and shows the authenticated last-run image. Its dedicated mapping mode reports unavailable; it was not started. The release guide records the exact gate, CI, readback, tablet evidence and rollback.

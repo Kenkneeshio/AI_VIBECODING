@@ -11,7 +11,7 @@ from tempfile import NamedTemporaryFile
 
 DASHBOARD = "roomcraft-home"
 SOURCE = "second-floor"
-TITLE = "Roomcraft Home"
+TITLE = "Home Dash"
 ICON = "mdi:book-open-variant"
 RESOURCE = "/local/roomcraft/roomcraft-storybook.js"
 CONFIG = {

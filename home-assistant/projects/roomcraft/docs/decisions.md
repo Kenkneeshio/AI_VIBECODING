@@ -1,5 +1,9 @@
 # Decision log
 
+## Keep dashboard names distinct and use HA user profiles for Android defaults
+
+Clone the existing conventional dashboard once as an independent Cell Dash, retaining its original as Reference Dash. Rename the illustrated Roomcraft dashboard Home Dash without changing its URL or stored layout. Current HA defaults are per user profile, so device-specific Android defaults require separate device users; do not simulate a per-device HA preference in local storage or change the system default. Preserve the wall tablet's current owner-profile Home Dash default until a dedicated tablet login is set up. See [dashboard names and Android defaults](dashboard-names-and-android-defaults-2026-11-16.md).
+
 ## Make walking paths visible without weakening collision safety
 
 Use the character's remaining computed waypoints for the optional path line; it is a plan, not a recorded trail. Treat object clearance as an addition to the fixed body radius, and spacing as a deterministic presentation rule. When furniture detours are off, accept only a clear direct route and hold at an obstruction. Invalidate cached routes when clearance or detour policy changes, retaining the last safe position. Keep floor, wall, furniture and sensor evidence contracts unchanged. See [presence walking paths and collision rules](presence-path-collision-2026-11-15.md).

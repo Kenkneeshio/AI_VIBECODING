@@ -65,7 +65,7 @@ Home Assistant Green is a 4 GB ARM appliance with a diagnostic-only HDMI port, a
    ```
 
    Require state `device` and model `Apolosign Calendar` before sending a screen action. If the host is forgotten or authorization was revoked, select **Pair device with pairing code** on the tablet. Run `adb pair <TABLET_IP>:<PAIRING_PORT>` on the HA host and enter the temporary code at its prompt. Then use `adb connect` with the **separate main-screen port**. Never put the code in a script, shell history, GitHub, or a URL.
-3. If Home Assistant is not visible, press the tablet's Home button first. Home Assistant is the configured default Home app. If it opens to the wrong dashboard, set **Second Floor** as the default on this device in Home Assistant **Settings → Dashboards**. If Home does not bring up the Companion app, check or restore the default launcher as described below. To open the plan directly for recovery, use:
+3. If Home Assistant is not visible, press the tablet's Home button first. Home Assistant is the configured default Home app. If it opens to the wrong dashboard, set **Home Dash** as the default in the signed-in user's **Profile → Appearance → Dashboard**. A distinct default per Android device requires a distinct HA user for each device. If Home does not bring up the Companion app, check or restore the default launcher as described below. To open the plan directly for recovery, use:
 
    ```sh
    adb -s <TABLET_IP>:<CURRENT_DEBUG_PORT> shell am start -a android.intent.action.VIEW -d homeassistant://navigate/second-floor/plan -p io.homeassistant.companion.android
@@ -93,7 +93,7 @@ The resolve output should name `io.homeassistant.companion.android/.launch.Launc
 adb -s <TABLET_IP>:<CURRENT_DEBUG_PORT> shell cmd package set-home-activity com.elclcd.launcher
 ```
 
-Changing the default Home app is distinct from choosing which Home Assistant dashboard opens. Set **Second Floor** as default **on this device** in Home Assistant's dashboard settings while signed in as the tablet user. Recheck after an HA account change. A Home app that launches into an authentication or connection error still needs HA login and network recovery.
+Changing the default Home app is distinct from choosing which Home Assistant dashboard opens. The tablet currently uses the owner's Home Dash profile default. For a tablet-only default that cannot be changed by the same owner's other devices, give the tablet a dedicated HA user and set **Home Dash** in that user's **Profile → Appearance → Dashboard**. Recheck after an HA account change. A Home app that launches into an authentication or connection error still needs HA login and network recovery.
 
 ### Investigating another unexpected restart
 
@@ -129,7 +129,7 @@ Read the current connection port from the tablet's main Wireless debugging scree
 
 ## Making the display more self-recovering
 
-The tablet now uses Home Assistant Companion as its default Home app, so Android should return to the dashboard after an ordinary restart. The Home key was verified, but **automatic launch after a reboot remains untested on this device**. During the next supervised restart, capture the screen before interaction, verify Home Assistant opens to Second Floor, check the login and controls, and read Android's boot reason and crash logs before clearing any state. Avoid a remote-only reboot while the physical tablet is unattended: wireless debugging can disconnect or change ports, and an unexpected setup or lock screen may require local recovery. If the reboot check fails, use the default-Home and ADB recovery steps above and record the observed screen and reason; do not assume the launcher setting fixes the underlying restart cause.
+The tablet now uses Home Assistant Companion as its default Home app, so Android should return to the dashboard after an ordinary restart. The Home key and a Companion cold launch were verified with **Home Dash**, but **automatic launch after a reboot remains untested on this device**. During the next supervised restart, capture the screen before interaction, verify Home Assistant opens to Home Dash, check the login and controls, and read Android's boot reason and crash logs before clearing any state. Avoid a remote-only reboot while the physical tablet is unattended: wireless debugging can disconnect or change ports, and an unexpected setup or lock screen may require local recovery. If the reboot check fails, use the default-Home and ADB recovery steps above and record the observed screen and reason; do not assume the launcher setting fixes the underlying restart cause.
 
 The current no-touch policy uses Android's five-minute screen timeout together with plugged-in stay-awake. While powered, the tablet can dim after inactivity but remains awake so touch restores normal brightness without the power button. If external power is lost, normal Android sleep is still possible. The lock screen is disabled and HA is the default Home app. This policy is separate from future occupancy-based control.
 

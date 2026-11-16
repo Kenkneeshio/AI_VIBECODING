@@ -1,5 +1,11 @@
 # Changelog
 
+## Dashboard names and Android defaults — 16 November 2026
+
+- Copy the conventional Main Dashboard to independent **Cell Dash**, rename the original **Reference Dash**, and title the illustrated `roomcraft-home` dashboard **Home Dash** while preserving its route and layout.
+- Document the supported per-Android-device default workflow using a separate HA user per device. The wall tablet still opens Home Dash on its current owner profile; no new device users were created.
+- See [dashboard names and Android defaults](docs/dashboard-names-and-android-defaults-2026-11-16.md) for routes, verification, the device-profile limitation, and rollback.
+
 ## Presence walking paths and collision rules — 15 November 2026
 
 - Add a planned walking-route overlay with color and visibility controls, and an optional radar ground marker. The line follows the same safe route the character uses and updates at a tablet-friendly cadence.
