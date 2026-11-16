@@ -1,6 +1,8 @@
 # Roomcraft engineering handoff
 
-**Current release:** [Presence area controls](presence-area-controls-2026-11-15.md) owns per-area live/retained counts, calibration diagnostics and bounded radar-driven character movement. The existing heat map, detection range and full transform editor remain the source of truth for their respective measurements. The release note carries verification and rollback.
+**Current release:** [Vacuum survey and character behavior](vacuum-survey-and-presence-behavior-2026-11-15.md), runtime `473e4b2c`, HA resource `8cf4b81ac284af1a`, private Studio 127. Presence tracking adds raw/area placement and animation rules while retaining anonymous counts, calibration and overlays. The vacuum panel records a bounded local route during ordinary cleaning, flags map/bounds issues, exports a review JSON, and shows the authenticated last-run image. Its dedicated mapping mode reports unavailable; it was not started. The release guide records the exact gate, CI, readback, tablet evidence and rollback.
+
+**Previous verified release:** [Presence area controls](presence-area-controls-2026-11-15.md) owns per-area live/retained counts, calibration diagnostics and bounded radar-driven character movement. The existing heat map, detection range and full transform editor remain the source of truth for their respective measurements. Runtime `46770a1`, HA `67b0780379e051c3`, private Studio 124. The release note carries verification and rollback.
 
 **Previous verified release:** [Family spacing and traffic art](family-traffic-art-2026-11-15.md) owns anonymous avatar separation/social poses and per-screen family/traffic appearance settings. Traffic preview must not be confused with measured route data; the radar heatmap retains raw measurements. The release note records exact verification and rollback.
 
