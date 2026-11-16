@@ -1,5 +1,9 @@
 # Decision log
 
+## Keep room counts and within-area motion illustrative
+
+Count current rendered radar targets by the four coarse home areas and label retained markers separately. Move characters with bounded radar deltas around the room anchor, then snap through the existing safe-floor query; do not rewrite raw radar history or treat the resulting pose as a measured seat location. Keep full transform calibration in Studio and expose its existing overlay and history tools from the Presence menu. See [presence area controls](presence-area-controls-2026-11-15.md).
+
 ## Separate anonymous bodies and keep congestion controls presentation-only
 
 Resolve collisions after each avatar follows an authored route, using the same floor and furniture clearance. Preserve raw radar history, as it is evidence for calibration. Family look priority changes the visual cast only; the mmWave switch does not identify household members. Treat traffic mode overrides as explicit local previews and keep sensor-derived travel times untouched. A heavy traffic state uses a near-stop lattice and brighter red tail lamps. See [family spacing and traffic art](family-traffic-art-2026-11-15.md).

@@ -1,5 +1,11 @@
 # Changelog
 
+## Presence area controls — 15 November 2026
+
+- Restore detection range, radar heat map, and full tracking correction access inside Presence tracking. Show per-area live/retained target counts, sensor freshness, raw target coordinates, and calibration status with clear actions.
+- Animate bounded within-area movement from radar deltas. Add local motion gain, radius, room delay, and calibration match-range controls without changing raw history or Home Assistant entities.
+- See [presence area controls](docs/presence-area-controls-2026-11-15.md) for customer acceptance, module ownership, verification, limits, and rollback.
+
 ## Family spacing and traffic art — 15 November 2026
 
 - Separate characters sharing a coarse room anchor on reachable floor. Nearby stationary family characters face one another and chat or peek; a per-screen menu priority selects Dad, Mom, Baby, or balanced random visual casting without claiming identity.

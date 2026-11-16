@@ -18,7 +18,9 @@ const project={version:2,editableReferenceVersion:10,hotspots:[],walls:[],rooms:
   points:[{x:420,y:210},{x:1450,y:210},{x:1450,y:870},{x:420,y:870}],
 }],items:[
   {...item('garage','garageDoor',306,112,132,120),garageRoof:'full',garageDriveway:true,garageDrivewayWidth:60},
-  {...item('presence','presenceSwitch',800,330,18,24),presenceTrackEntityId:'sensor.roomcraft_presence_radar_target_count',presenceEntityId:'binary_sensor.roomcraft_presence'},item('lamp','lamp',700,430,30,30),
+  {...item('presence','presenceSwitch',800,330,18,24),presenceTrackEntityId:'sensor.roomcraft_presence_radar_target_count',
+    presenceEntityId:'binary_sensor.roomcraft_presence',presenceTrackTransform:[1,0,900,0,1,0],
+    presenceTrackZone:[-220,220,0,600]},item('lamp','lamp',700,430,30,30),
   item('fan','fans-five-blade-fan-white',800,610,80,80),
   item('vacuum','cleaning-round-robot-vac-white',1100,650,28,28),
   item('aquarium','pets-fish-aquarium-oak',1230,350,90,55),
@@ -204,15 +206,38 @@ try{
     const record=JSON.parse(localStorage.getItem('roomcraft.presence-zones.v1'));
     const marker=card.frame.people.find(point=>point.zone==='hall');
     const safe=marker&&card.scene.canPlacePerson(marker.x,marker.y);
+    const gain=card.trackingDialog.querySelector('[data-presence-setting="movementGain"]');
+    gain.value='1';gain.dispatchEvent(new Event('input',{bubbles:true}));
+    card.session.states[item.presenceTrackEntityId].attributes={...card.session.states[item.presenceTrackEntityId].attributes,
+      observed_at:Date.now(),tracks:[{id:1,x:-170,y:451,z:0,speed:0}]};
+    card.refresh();card.paintTracking();
+    const moved=card.frame.people.find(point=>point.zone==='hall');
+    const areas=card.trackingDialog.querySelector('.presence-area-grid').textContent;
+    const calibration=card.trackingDialog.querySelector('.presence-calibration-list').textContent;
+    const sensor=card.trackingDialog.querySelector('.presence-sensor-details').textContent;
+    const overlay=card.trackingDialog.querySelector('[data-presence-overlay="detection"]');
+    overlay.click();const overlayVisible=overlay.getAttribute('aria-pressed')==='true';
+    overlay.click();
+    const heat=card.trackingDialog.querySelector('[data-presence-overlay="heatmap"]');
+    heat.click();const heatVisible=heat.getAttribute('aria-pressed')==='true';heat.click();
     const family=card.trackingDialog.querySelector('.family-priority');family.value='baby';
     family.dispatchEvent(new Event('change',{bubbles:true}));
     const status=card.trackingDialog.querySelector('[data-zone-status]').textContent;
-    card.trackingDialog.close();return {record,zone:marker?.zone,safe,status,entity:item.presenceTrackEntityId,
+    card.trackingDialog.close();return {record,zone:marker?.zone,initial:{x:marker?.x,y:marker?.y},safe,status,entity:item.presenceTrackEntityId,
+      moved:{x:moved?.x,y:moved?.y},areas,calibration,sensor,overlayVisible,heatVisible,
+      movement:JSON.parse(localStorage.getItem('roomcraft.presence-zone-settings.v1')),
       family:localStorage.getItem('roomcraft.family-priority.v1')};
   })()`);
   assert.ok(presence.record,JSON.stringify(presence));
   assert.deepEqual(presence.record.hall,{x:-190,y:451});
   assert.equal(presence.zone,'hall');assert.equal(presence.safe,true);
+  assert.ok(presence.moved.x>presence.initial.x);
+  assert.match(presence.areas,/Start of hall.*1 live/);
+  assert.match(presence.calibration,/Start of hall: -190 cm sideways, 451 cm forward/);
+  assert.match(presence.sensor,/-170 cm sideways/);
+  assert.equal(presence.overlayVisible,true);
+  assert.equal(presence.heatVisible,true);
+  assert.equal(presence.movement.movementGain,1);
   assert.equal(presence.family,'baby');
   const traffic=await evaluate(`(()=>{
     card.shadowRoot.querySelector('[data-link-dialog="commute"]').click();

@@ -1,6 +1,8 @@
 # Roomcraft engineering handoff
 
-**Current release:** [Family spacing and traffic art](family-traffic-art-2026-11-15.md) owns anonymous avatar separation/social poses and per-screen family/traffic appearance settings. Traffic preview must not be confused with measured route data; the radar heatmap retains raw measurements. The release note records exact verification and rollback.
+**Current release:** [Presence area controls](presence-area-controls-2026-11-15.md) owns per-area live/retained counts, calibration diagnostics and bounded radar-driven character movement. The existing heat map, detection range and full transform editor remain the source of truth for their respective measurements. The release note carries verification and rollback.
+
+**Previous verified release:** [Family spacing and traffic art](family-traffic-art-2026-11-15.md) owns anonymous avatar separation/social poses and per-screen family/traffic appearance settings. Traffic preview must not be confused with measured route data; the radar heatmap retains raw measurements. The release note records exact verification and rollback.
 
 **Previous verified release:** [Wildlife world tour and room presence](wildlife-world-tour-presence-zones-2026-11-15.md) raises the 42-species inland roster in the menu, adds four habitat previews and a day-to-night 76-second narrated tour, and snaps displayed radar characters to four safe room anchors with local calibration. Idle defaults to one minute. Exact gate, deployment and tablet evidence are recorded in the release guide after completion.
 

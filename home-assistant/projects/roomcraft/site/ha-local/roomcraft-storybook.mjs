@@ -1,5 +1,6 @@
 import {createPersonPresence, personSource, readDetectionZones, trackingSnapshots, trackingStatus} from './storybook-tracking.mjs';
-import {createPresenceZoneMap,PRESENCE_ZONE_KEY,PRESENCE_ZONE_NAMES} from './storybook-presence-zones.mjs';
+import {createPresenceZoneMap,normalizePresenceZoneSettings,summarizePresenceAreas,
+  PRESENCE_ZONE_KEY,PRESENCE_ZONE_SETTINGS_KEY,PRESENCE_ZONE_NAMES} from './storybook-presence-zones.mjs';
 import {bindLiveModelLibrary} from './storybook-library.mjs';
 import {createStorybookScene} from './storybook-scene.mjs';
 import {createStorybookWorldLifePanel} from './storybook-world-life-panel.mjs';
@@ -171,6 +172,21 @@ class RoomcraftStorybookCard extends HTMLElement {
         .utility-issues small::before{content:'• '}
         .tracking-list p{margin:10px 0 0;padding:8px;border:1px solid #eee2cf;border-radius:7px}
         .tracking-list small{display:block;margin-top:3px}
+        .tracking-dialog{width:min(580px,calc(100% - 24px))}
+        .tracking-dialog section{margin:12px 0;padding:12px;border:1px solid #d6d7c4;border-radius:12px;background:#f9f7ee}
+        .tracking-dialog h3{font-size:14px;margin:0 0 8px}
+        .presence-area-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+        .presence-area-grid span{display:flex;justify-content:space-between;gap:8px;padding:8px;border-radius:8px;background:#e8eee4}
+        .presence-area-grid small,.presence-calibration-list small{color:#665f55}
+        .presence-motion-settings label{display:grid;grid-template-columns:minmax(125px,1fr) minmax(120px,1.3fr) auto;align-items:center;gap:8px;margin:9px 0}
+        .presence-motion-settings input{width:100%}
+        .presence-calibration-list{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:5px}
+        .presence-calibration-list li{display:flex;align-items:center;justify-content:space-between;gap:8px}
+        .presence-calibration-list button{min-height:36px!important}
+        .presence-overlays{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+        .presence-overlays h3,.presence-overlays a{grid-column:1/-1}
+        .presence-overlays button[aria-pressed=true]{background:#d6e9d9;border-color:#6eaa81}
+        @media(max-width:520px){.presence-motion-settings label{grid-template-columns:1fr auto}.presence-motion-settings label input{grid-column:1/-1;grid-row:2}}
         .family-priority-label{display:grid;gap:5px;margin:13px 0 5px}
         .family-priority-label select{min-height:40px;padding:6px;border:1px solid #c9b8a0;border-radius:8px;background:#fff8ec;color:#352d2b;font:inherit}
         .presence-zone-calibration{margin:14px 0;padding:12px;border:1px solid #d6d7c4;border-radius:12px;background:#f6f6e9}.presence-zone-calibration p{margin:0 0 10px;font-size:13px;line-height:1.45}.presence-zone-calibration div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.presence-zone-calibration button{min-height:42px}.presence-zone-calibration small{display:block;margin-top:9px}
@@ -373,19 +389,31 @@ class RoomcraftStorybookCard extends HTMLElement {
       <dialog class="tracking-dialog" aria-label="Presence tracking">
         <header><h2>Presence tracking</h2><button type="button" class="close-tracking">Close</button></header>
         <div class="tracking-list"></div>
+        <section aria-label="People by room"><h3>People by area</h3><div class="presence-area-grid"></div><small class="presence-area-note">Counts are anonymous radar targets on the map. Retained locations are shown separately.</small></section>
         <label class="family-priority-label">First illustrated character <select class="family-priority"><option value="random">Balanced random</option><option value="dad">Dad first</option><option value="mom">Mom first</option><option value="baby">Baby first</option></select></label>
         <small>These are anonymous visual roles, not identification of household members.</small>
-        <section class="presence-zone-calibration" aria-label="Room zone calibration"><p>Characters stay in four home areas. Stand alone in an area, then capture its current radar reading. The calibration stays on this screen.</p><div>
+        <section class="presence-motion-settings" aria-label="Character movement settings"><h3>Character movement</h3>
+          <label>Movement gain <input data-presence-setting="movementGain" type="range" min="0" max="1.5" step="0.05"><output data-presence-value="movementGain"></output></label>
+          <label>Room movement radius <input data-presence-setting="movementRadius" type="range" min="0" max="90" step="5"><output data-presence-value="movementRadius"></output></label>
+          <label>Room change delay <input data-presence-setting="switchDelayMs" type="range" min="0" max="3000" step="100"><output data-presence-value="switchDelayMs"></output></label>
+          <label>Calibration match range <input data-presence-setting="matchDistanceCm" type="range" min="40" max="200" step="5"><output data-presence-value="matchDistanceCm"></output></label>
+          <small>Characters follow bounded radar movement within an area. The floor and furniture still limit their route.</small>
+        </section>
+        <section class="presence-zone-calibration" aria-label="Room zone calibration"><h3>Room calibration</h3><p>Stand alone in each area, then capture one fresh radar reading. The samples stay on this screen.</p><div>
           <button type="button" data-capture-zone="living">Set living room</button><button type="button" data-capture-zone="dining">Set dining room</button>
           <button type="button" data-capture-zone="kitchen">Set kitchen</button><button type="button" data-capture-zone="hall">Set start of hall</button>
-        </div><small data-zone-status role="status" aria-live="polite"></small></section>
+        </div><ul class="presence-calibration-list"></ul><small data-zone-status role="status" aria-live="polite"></small></section>
+        <section class="presence-overlays" aria-label="Presence calibration tools"><h3>Calibration tools</h3>
+          <button type="button" data-presence-overlay="detection" aria-pressed="false">Detection range overlay</button>
+          <button type="button" data-presence-overlay="heatmap" aria-pressed="false">Radar heat map</button>
+          <a class="tracking-calibration" href="/roomcraft-home/studio#tracking-range-correction">Open range and alignment editor ↗</a></section>
+        <section aria-label="Raw radar report"><h3>Sensor report</h3><div class="presence-sensor-details"></div></section>
         <ul class="tracking-legend" aria-label="Radar indicator">
           <li><i style="--dot:#428dcc" aria-hidden="true"></i>Targets on map</li>
           <li><i style="--dot:#b87c2d" aria-hidden="true"></i>Presence only</li>
           <li><i aria-hidden="true"></i>Clear</li>
           <li class="unavailable"><i aria-hidden="true"></i>Unavailable</li>
         </ul>
-        <a class="tracking-calibration" href="/roomcraft-home/studio#tracking-range-correction">Tracking range correction</a>
       </dialog>
       <dialog class="utility-dialog" aria-labelledby="utility-title">
         <header><h2 id="utility-title"></h2><button type="button" class="close-utility">Close</button></header>
@@ -561,6 +589,37 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.trackingButton = this.shadowRoot.querySelector('.open-tracking');
     this.trackingDialog = this.shadowRoot.querySelector('.tracking-dialog');
     this.trackingList = this.shadowRoot.querySelector('.tracking-list');
+    try{this.presenceZoneSettings=normalizePresenceZoneSettings(JSON.parse(window.localStorage.getItem(PRESENCE_ZONE_SETTINGS_KEY)));}
+    catch{this.presenceZoneSettings=normalizePresenceZoneSettings();}
+    this.paintPresenceSettings=()=>{
+      for(const input of this.trackingDialog.querySelectorAll('[data-presence-setting]')){
+        const key=input.dataset.presenceSetting,value=this.presenceZoneSettings[key];
+        input.value=String(value);
+        const output=this.trackingDialog.querySelector(`[data-presence-value="${key}"]`);
+        output.textContent=key==='switchDelayMs'?`${(value/1000).toFixed(1)} s`:
+          key==='matchDistanceCm'?`${value} cm`:key==='movementRadius'?`${value} px`:`${Math.round(value*100)}%`;
+      }
+    };
+    this.paintPresenceSettings();
+    for(const input of this.trackingDialog.querySelectorAll('[data-presence-setting]'))input.addEventListener('input',()=>{
+      this.presenceZoneSettings=normalizePresenceZoneSettings({...this.presenceZoneSettings,[input.dataset.presenceSetting]:input.value});
+      this.paintPresenceSettings();
+      try{window.localStorage.setItem(PRESENCE_ZONE_SETTINGS_KEY,JSON.stringify(this.presenceZoneSettings));}catch{}
+      this.presenceZoneMap?.setSettings(this.presenceZoneSettings);
+      this.personPresence.clear();this.refresh();
+    });
+    for(const button of this.trackingDialog.querySelectorAll('[data-presence-overlay]'))button.addEventListener('click',()=>{
+      const source=button.dataset.presenceOverlay==='detection'?this.detectionZoneButton:
+        this.shadowRoot.querySelector('.toggle-heat-map');
+      source?.click();this.paintTracking();
+    });
+    this.trackingDialog.querySelector('.presence-calibration-list').addEventListener('click',event=>{
+      const zone=event.target.closest('[data-clear-zone]')?.dataset.clearZone;
+      if(!zone||!this.presenceZoneMap?.removeCalibration(zone))return;
+      try{window.localStorage.setItem(PRESENCE_ZONE_KEY,JSON.stringify(this.presenceZoneMap.calibration));}catch{}
+      this.personPresence.clear();this.refresh();this.paintTracking();
+      this.trackingDialog.querySelector('[data-zone-status]').textContent=`${PRESENCE_ZONE_NAMES[zone]} sample cleared.`;
+    });
     const familySelect=this.trackingDialog.querySelector('.family-priority');
     try{familySelect.value=normalizeFamilyPriority(window.localStorage.getItem(FAMILY_PRIORITY_KEY));}
     catch{familySelect.value='random';}
@@ -590,6 +649,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       try{window.localStorage.setItem(PRESENCE_ZONE_KEY,JSON.stringify(this.presenceZoneMap.calibration));}
       catch{status.textContent='This browser could not save the zone calibration.';return;}
       this.personPresence.clear();this.refresh();
+      this.paintTracking();
       status.textContent=`${PRESENCE_ZONE_NAMES[button.dataset.captureZone]} captured on this screen.`;
     });
     this.linkDialogs = [];
@@ -1037,7 +1097,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.loadStartupView();
       this.model = readStorybookConfig(config);
       let zoneCalibration;try{zoneCalibration=JSON.parse(window.localStorage.getItem(PRESENCE_ZONE_KEY));}catch{zoneCalibration={};}
-      this.presenceZoneMap=createPresenceZoneMap(this.model.layout,zoneCalibration);
+      this.presenceZoneMap=createPresenceZoneMap(this.model.layout,zoneCalibration,this.presenceZoneSettings);
       this.weatherPanel.update(this.session, this.model.weather.weather_entity, {reduceMotion:this.motionReduced});
       for (const id of this.commutes.configure(config?.roomcraft_commutes)) this.model.watch.add(id);
       this.locationPanel.configure(config?.roomcraft_location);
@@ -1286,6 +1346,35 @@ class RoomcraftStorybookCard extends HTMLElement {
   paintTracking() {
     const sources = this.model?.layout.items.filter(personSource) || [];
     this.trackingList.replaceChildren();
+    const counts=summarizePresenceAreas(this.frame?.people);
+    const grid=this.trackingDialog.querySelector('.presence-area-grid');
+    grid.replaceChildren(...Object.entries(PRESENCE_ZONE_NAMES).map(([id,name])=>{
+      const row=document.createElement('span'),label=document.createElement('strong'),value=document.createElement('small');
+      label.textContent=name;
+      const {live,retained}=counts[id];
+      value.textContent=`${live} live${retained?` · ${retained} retained`:''}`;
+      row.append(label,value);return row;
+    }));
+    const calibration=this.presenceZoneMap?.calibration??{};
+    const list=this.trackingDialog.querySelector('.presence-calibration-list');
+    list.replaceChildren(...Object.entries(PRESENCE_ZONE_NAMES).map(([id,name])=>{
+      const row=document.createElement('li'),status=document.createElement('small');
+      const sample=calibration[id];
+      status.textContent=sample?`${name}: ${sample.x} cm sideways, ${sample.y} cm forward`:
+        `${name}: not captured`;
+      row.append(status);
+      if(sample){const clear=document.createElement('button');clear.type='button';clear.dataset.clearZone=id;
+        clear.textContent='Clear';clear.setAttribute('aria-label',`Clear ${name} calibration`);row.append(clear);}
+      return row;
+    }));
+    for(const button of this.trackingDialog.querySelectorAll('[data-presence-overlay]')){
+      const source=button.dataset.presenceOverlay==='detection'?this.detectionZoneButton:
+        this.shadowRoot.querySelector('.toggle-heat-map');
+      button.disabled=Boolean(source?.hidden);
+      button.setAttribute('aria-pressed',source?.getAttribute('aria-pressed')??'false');
+    }
+    const sensorDetails=this.trackingDialog.querySelector('.presence-sensor-details');
+    sensorDetails.replaceChildren();
     for (const item of sources) {
       const {count, zones} = trackingStatus(item, this.session?.connected ? this.session.states : {}, Date.now());
       const row = document.createElement('p');
@@ -1309,6 +1398,19 @@ class RoomcraftStorybookCard extends HTMLElement {
         row.append(details);
       }
       this.trackingList.append(row);
+      const radar=trackingSnapshots(this.session?.states??{},[item.presenceTrackEntityId])[item.presenceTrackEntityId];
+      const report=document.createElement('p'),heading=document.createElement('strong'),readings=document.createElement('small');
+      heading.textContent=item.name;
+      const observed=radar?.attributes?.observed_at;
+      const age=Number.isFinite(observed)?Math.max(0,Math.floor((Date.now()-observed)/1000)):null;
+      const raw=radar?.attributes?.tracks??[];
+      readings.textContent=age===null?'No recent coordinate report':
+        `${age} s since report · ${raw.length} raw ${raw.length===1?'target':'targets'}`;
+      report.append(heading,readings);
+      for(const target of raw){const line=document.createElement('small');
+        line.textContent=`Track ${target.id}: ${target.x} cm sideways, ${target.y} cm forward`;
+        report.append(line);}
+      sensorDetails.append(report);
     }
   }
 
