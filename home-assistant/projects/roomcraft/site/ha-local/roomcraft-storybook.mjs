@@ -184,6 +184,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         .presence-motion-settings input[type=checkbox]{grid-column:2/4;width:22px;height:22px;justify-self:start}
         .presence-calibration-list{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:5px}
         .presence-calibration-list li{display:flex;align-items:center;justify-content:space-between;gap:8px}
+        .presence-sensor-details strong,.presence-sensor-details small{display:block;line-height:1.5}
         .presence-calibration-list button{min-height:36px!important}
         .presence-overlays{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
         .presence-overlays h3,.presence-overlays a{grid-column:1/-1}
