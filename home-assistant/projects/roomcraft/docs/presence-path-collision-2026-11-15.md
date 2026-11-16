@@ -23,4 +23,12 @@ No character may be drawn on unsupported floor or inside a solid. The minimum an
 
 Focused tests cover normalization, path visibility, direct-only hold, safe detour, and unchanged wall/floor restrictions. The browser fixture changes the actual panel settings without Home Assistant writes. The complete release gate, GitHub CI, exact HA asset/config readback, private Site version, and wall-tablet visual check must pass before handoff. Record those artifacts below after publication. Roll back by restoring the private pre-install dashboard backup and prior Site version; old code ignores the new preference fields.
 
-Release evidence: pending deployment verification.
+Release evidence (source commit `9b4f4d0c36c588c807e07f7a12ab6435ae8f6503`):
+
+- Complete local release gate passed: 658 core tests, 68 card/weather tests, 30 installer tests, 8 presence tests, TypeScript, lint, build, manifest, architecture, and diff checks. Log: `C:/Users/kenny/AppData/Local/Temp/roomcraft-view-final-gate.log` (private local evidence).
+- Browser fixture passed, including changing the new Presence panel controls with zero HA writes. GitHub [CI run 43809304209](https://github.com/Kenkneeshio/AI_VIBECODING/actions/runs/43809304209) passed on the source commit.
+- Home Assistant dashboard `roomcraft-home` deployed and read back. Resource ID `64a14b7f6cce0839`; all 14 assets matched on LAN and Nabu Casa, and eight non-view dashboard fields were preserved. Pre-install backup: `C:/Users/kenny/HomeAssistantManagement/backups/roomcraft-home-before-roomcraft-lan-20261115-211758-960096.json` (private).
+- Matching owner-only Studio Site version 128 published at `https://second-floor-layout-studio-1031.fizzyjay128.chatgpt.site` from Site source commit `1dd00aaf53e8ff74ee3f328450f1627349a87e94`; deployment `appgdep_6afa92647780819197f34a9638c695ae`. Previous version: 127.
+- Wall tablet cold-launched Home Assistant and rendered the live view. The `Presence tracking` dialog was opened and scrolled to `Walking path & collision rules`; the controls were visible and usable at 1920x1080. Private screenshots: `C:/Users/kenny/HomeAssistantManagement/backups/roomcraft-tablet-visual-20261116T052008Z/loaded.png` and `presence-path-options.png`. The path was verified by deterministic tests, not visually on a moving live target; the radar was stationary during the tablet check.
+
+Rollback: restore the named HA backup and prior HA resource, publish private Site version 127, then cold-launch the tablet and verify Home and Presence tracking. Never commit the private backup or screenshots containing household context.
