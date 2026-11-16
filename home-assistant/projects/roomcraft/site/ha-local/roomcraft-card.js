@@ -1218,7 +1218,7 @@ class RoomcraftObjectControl extends HTMLElement {
     surveyButtons.append(surveyToggle,surveyFlag,surveyExport,surveyClear,historyButton);
     const historyStatus=document.createElement('p');
     survey.append(surveyTitle,surveyStatus,surveyButtons,historyStatus,historyImage);
-    vacuumPanel.append(vacuumHead, vacuumMap, vacuumActions, vacuumRoomsTitle, vacuumRooms, survey);
+    vacuumPanel.append(vacuumHead, vacuumMap, vacuumActions, survey, vacuumRoomsTitle, vacuumRooms);
     this.shadowRoot.append(style, button, detail, vacuumPanel);
     this._button = button;
     this._icon = null;

@@ -180,7 +180,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         .presence-area-grid small,.presence-calibration-list small{color:#665f55}
         .presence-motion-settings label{display:grid;grid-template-columns:minmax(125px,1fr) minmax(120px,1.3fr) auto;align-items:center;gap:8px;margin:9px 0}
         .presence-motion-settings input{width:100%}
-        .presence-motion-settings select{grid-column:2/4;min-height:38px;padding:4px;border:1px solid #c9b8a0;border-radius:8px;background:#fff8ec}
+        .presence-motion-settings select{grid-column:2/4;min-height:38px;padding:4px;border:1px solid #c9b8a0;border-radius:8px;background:#fff8ec;color:#352d2b}
         .presence-motion-settings input[type=checkbox]{grid-column:2/4;width:22px;height:22px;justify-self:start}
         .presence-calibration-list{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:5px}
         .presence-calibration-list li{display:flex;align-items:center;justify-content:space-between;gap:8px}
