@@ -74,6 +74,7 @@ export function createStorybookPersonSignal() {
 
 /** Advance the actor along an already swept path. Hold the last safe point when disconnected. */
 export function createStorybookPersonMotion({allowsPoint, findRoute, geometryRevision}) {
+  let walkSpeed = WALK_SPEED;
   let position;
   let destination;
   let route = [];
@@ -83,7 +84,7 @@ export function createStorybookPersonMotion({allowsPoint, findRoute, geometryRev
   let revision;
 
   function sample(seconds, reduceMotion) {
-    let remaining = lastTime === undefined ? 0 : Math.max(0, seconds - lastTime) * WALK_SPEED;
+    let remaining = lastTime === undefined ? 0 : Math.max(0, seconds - lastTime) * walkSpeed;
     lastTime = seconds;
     if (geometryRevision && revision !== geometryRevision()) {
       route = [];
@@ -132,5 +133,5 @@ export function createStorybookPersonMotion({allowsPoint, findRoute, geometryRev
     return true;
   }
 
-  return {aim, sample};
+  return {aim, sample, setSpeed(value) { if (Number.isFinite(value)) walkSpeed=Math.max(20,Math.min(240,value)); }};
 }

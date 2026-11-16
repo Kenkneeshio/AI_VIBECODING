@@ -1,5 +1,9 @@
 # Decision log
 
+## Survey the vacuum during cleaning; keep character behavior separate from radar evidence
+
+The installed robot reports no dedicated mapping mode, so the dashboard arms a local, bounded position log during an ordinary cleaning run and displays its authenticated latest history route on request. Map-ID and out-of-plan flags identify review candidates; manual marks add owner observations. Export is an explicit JSON handoff, never an automatic layout mutation or device command. Character speed and interactions affect animation only; raw versus calibrated-room placement is clearly labeled and retains the shared route and floor constraints. See [vacuum survey and presence behavior](vacuum-survey-and-presence-behavior-2026-11-15.md).
+
 ## Keep room counts and within-area motion illustrative
 
 Count current rendered radar targets by the four coarse home areas and label retained markers separately. Move characters with bounded radar deltas around the room anchor, then snap through the existing safe-floor query; do not rewrite raw radar history or treat the resulting pose as a measured seat location. Keep full transform calibration in Studio and expose its existing overlay and history tools from the Presence menu. See [presence area controls](presence-area-controls-2026-11-15.md).

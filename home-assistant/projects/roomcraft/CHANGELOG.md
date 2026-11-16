@@ -1,5 +1,11 @@
 # Changelog
 
+## Vacuum survey and character behavior — 15 November 2026
+
+- Add a local, bounded LiDAR position survey during ordinary vacuum cleaning, automatic map/plan-bound flags, manual review marks, an exportable AI report, and the latest cleaning-history route image. The panel reports that dedicated mapping is unavailable on this robot; these read-only tools do not start it.
+- Add precise radar or calibrated room display, walking speed, social distance, furniture-use and social-interaction settings to Presence tracking. Movement still follows safe floor routes, and anonymous sensor targets are never treated as named people.
+- See [vacuum survey and character behavior](docs/vacuum-survey-and-presence-behavior-2026-11-15.md) for contracts, limits, verification, and rollback.
+
 ## Presence area controls — 15 November 2026
 
 - Restore detection range, radar heat map, and full tracking correction access inside Presence tracking. Show per-area live/retained target counts, sensor freshness, raw target coordinates, and calibration status with clear actions.

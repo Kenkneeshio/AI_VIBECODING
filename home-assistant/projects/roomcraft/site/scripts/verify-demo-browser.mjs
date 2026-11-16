@@ -222,9 +222,17 @@ try{
     heat.click();const heatVisible=heat.getAttribute('aria-pressed')==='true';heat.click();
     const family=card.trackingDialog.querySelector('.family-priority');family.value='baby';
     family.dispatchEvent(new Event('change',{bubbles:true}));
+    const speed=card.trackingDialog.querySelector('[data-presence-setting="walkingSpeed"]');
+    speed.value='160';speed.dispatchEvent(new Event('input',{bubbles:true}));
+    const social=card.trackingDialog.querySelector('[data-presence-setting="socialInteractions"]');
+    social.checked=false;social.dispatchEvent(new Event('change',{bubbles:true}));
+    const mode=card.trackingDialog.querySelector('[data-presence-setting="trackingMode"]');
+    mode.value='precise';mode.dispatchEvent(new Event('change',{bubbles:true}));
+    const preciseMode=card.presenceZoneSettings.trackingMode;
+    mode.value='areas';mode.dispatchEvent(new Event('change',{bubbles:true}));
     const status=card.trackingDialog.querySelector('[data-zone-status]').textContent;
     card.trackingDialog.close();return {record,zone:marker?.zone,initial:{x:marker?.x,y:marker?.y},safe,status,entity:item.presenceTrackEntityId,
-      moved:{x:moved?.x,y:moved?.y},areas,calibration,sensor,overlayVisible,heatVisible,
+      moved:{x:moved?.x,y:moved?.y},areas,calibration,sensor,overlayVisible,heatVisible,preciseMode,
       movement:JSON.parse(localStorage.getItem('roomcraft.presence-zone-settings.v1')),
       family:localStorage.getItem('roomcraft.family-priority.v1')};
   })()`);
@@ -238,6 +246,9 @@ try{
   assert.equal(presence.overlayVisible,true);
   assert.equal(presence.heatVisible,true);
   assert.equal(presence.movement.movementGain,1);
+  assert.equal(presence.movement.walkingSpeed,160);
+  assert.equal(presence.movement.socialInteractions,false);
+  assert.equal(presence.preciseMode,'precise');
   assert.equal(presence.family,'baby');
   const traffic=await evaluate(`(()=>{
     card.shadowRoot.querySelector('[data-link-dialog="commute"]').click();

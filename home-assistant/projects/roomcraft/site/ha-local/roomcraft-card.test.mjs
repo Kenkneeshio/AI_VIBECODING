@@ -818,6 +818,27 @@ test('vacuum artwork opens map controls and calls safe vacuum and room services'
   object.disconnectedCallback();
 });
 
+test('vacuum survey records a normal cleaning route and shows the latest history image without a command', () => {
+  const object=new ObjectControl();const now=Date.now();
+  object.setConfig({entity:'vacuum.survey_example',roomcraft_visual_kind:'vacuum',
+    roomcraft_vacuum_map_entity:'camera.survey_map',roomcraft_vacuum_map_id:5,
+    roomcraft_vacuum_position_transform:[1,0,100,0,1,100]});
+  const calls=[];object._vacuumSurvey.enabled=true;
+  object.hass={states:{
+    'vacuum.survey_example':{state:'cleaning',attributes:{mapping_available:false}},
+    'camera.survey_map':{state:'map',last_updated:new Date(now).toISOString(),attributes:{saved_map_id:5,
+      vacuum_position:{x:100,y:200},cleaning_history_picture:{'1: latest':'/api/history/latest.png'}}},
+    'sensor.survey_example_cleaning_history':{attributes:{'latest':{timestamp:Math.floor(now/1000),
+      status:'Completed',cleanup_method:'Sweeping and mopping',mop_pad:'Installed'}}},
+  },hassUrl:path=>'http://ha.test'+path,callService:(...args)=>calls.push(args)};
+  assert.equal(object._vacuumSurvey.points.length,1);
+  assert.match(object._vacuumSurveyStatus.textContent,/1 recorded positions/);
+  assert.match(object._vacuumHistoryImage.src,/latest\.png/);
+  assert.match(object._vacuumHistoryStatus.textContent,/does not prove every point was mopped/);
+  assert.deepEqual(calls,[]);
+  object.disconnectedCallback();
+});
+
 test('tracked vacuum moves only from a calibrated fresh position and animates only while active', () => {
   const object = new ObjectControl();
   object.setConfig({ type: 'custom:roomcraft-object-control', roomcraft_item_id: 'vacuum',

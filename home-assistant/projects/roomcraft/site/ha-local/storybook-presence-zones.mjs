@@ -15,7 +15,12 @@ export function normalizePresenceZoneSettings(value={}){
   return {movementGain:bounded(value.movementGain,.75,0,1.5),
     movementRadius:bounded(value.movementRadius,45,0,90),
     switchDelayMs:bounded(value.switchDelayMs,1200,0,3000),
-    matchDistanceCm:bounded(value.matchDistanceCm,85,40,200)};
+    matchDistanceCm:bounded(value.matchDistanceCm,85,40,200),
+    walkingSpeed:bounded(value.walkingSpeed,115,20,240),
+    socialRadius:bounded(value.socialRadius,95,0,180),
+    furnitureInteractions:value.furnitureInteractions!==false,
+    socialInteractions:value.socialInteractions!==false,
+    trackingMode:value.trackingMode==='precise'?'precise':'areas'};
 }
 
 export function summarizePresenceAreas(people=[]){

@@ -180,6 +180,8 @@ class RoomcraftStorybookCard extends HTMLElement {
         .presence-area-grid small,.presence-calibration-list small{color:#665f55}
         .presence-motion-settings label{display:grid;grid-template-columns:minmax(125px,1fr) minmax(120px,1.3fr) auto;align-items:center;gap:8px;margin:9px 0}
         .presence-motion-settings input{width:100%}
+        .presence-motion-settings select{grid-column:2/4;min-height:38px;padding:4px;border:1px solid #c9b8a0;border-radius:8px;background:#fff8ec}
+        .presence-motion-settings input[type=checkbox]{grid-column:2/4;width:22px;height:22px;justify-self:start}
         .presence-calibration-list{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:5px}
         .presence-calibration-list li{display:flex;align-items:center;justify-content:space-between;gap:8px}
         .presence-calibration-list button{min-height:36px!important}
@@ -337,6 +339,7 @@ class RoomcraftStorybookCard extends HTMLElement {
                 <section class="menu-group" aria-label="On the map">
                   <p class="menu-heading" aria-hidden="true">On the map</p>
                   <a class="menu-primary" href="/roomcraft-home/studio#lidar-alignment" data-lidar-alignment-link>Align robot to LiDAR map</a>
+                  <button type="button" class="open-vacuum-survey" hidden>Vacuum survey &amp; cleaning routes</button>
                   ${LIDAR_RULER_BUTTON}
                   ${VACUUM_MAP_TOGGLE}
                   <button type="button" class="map-toggle toggle-object-details" aria-pressed="false">Object details <span class="menu-toggle" aria-hidden="true"></span></button>
@@ -393,10 +396,15 @@ class RoomcraftStorybookCard extends HTMLElement {
         <label class="family-priority-label">First illustrated character <select class="family-priority"><option value="random">Balanced random</option><option value="dad">Dad first</option><option value="mom">Mom first</option><option value="baby">Baby first</option></select></label>
         <small>These are anonymous visual roles, not identification of household members.</small>
         <section class="presence-motion-settings" aria-label="Character movement settings"><h3>Character movement</h3>
+          <label>Character placement <select data-presence-setting="trackingMode"><option value="areas">Calibrated room areas</option><option value="precise">Raw radar position</option></select></label>
           <label>Movement gain <input data-presence-setting="movementGain" type="range" min="0" max="1.5" step="0.05"><output data-presence-value="movementGain"></output></label>
           <label>Room movement radius <input data-presence-setting="movementRadius" type="range" min="0" max="90" step="5"><output data-presence-value="movementRadius"></output></label>
+          <label>Walking speed <input data-presence-setting="walkingSpeed" type="range" min="20" max="240" step="5"><output data-presence-value="walkingSpeed"></output></label>
+          <label>Social distance <input data-presence-setting="socialRadius" type="range" min="0" max="180" step="5"><output data-presence-value="socialRadius"></output></label>
           <label>Room change delay <input data-presence-setting="switchDelayMs" type="range" min="0" max="3000" step="100"><output data-presence-value="switchDelayMs"></output></label>
           <label>Calibration match range <input data-presence-setting="matchDistanceCm" type="range" min="40" max="200" step="5"><output data-presence-value="matchDistanceCm"></output></label>
+          <label>Use nearby furniture <input data-presence-setting="furnitureInteractions" type="checkbox"></label>
+          <label>Interact with nearby people <input data-presence-setting="socialInteractions" type="checkbox"></label>
           <small>Characters follow bounded radar movement within an area. The floor and furniture still limit their route.</small>
         </section>
         <section class="presence-zone-calibration" aria-label="Room zone calibration"><h3>Room calibration</h3><p>Stand alone in each area, then capture one fresh radar reading. The samples stay on this screen.</p><div>
@@ -587,6 +595,13 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.load();
     });
     this.trackingButton = this.shadowRoot.querySelector('.open-tracking');
+    this.vacuumSurveyButton=this.shadowRoot.querySelector('.open-vacuum-survey');
+    this.vacuumSurveyButton.addEventListener('click',()=>{
+      const control=this.controls?.find(row=>row.config.entity?.startsWith('vacuum.')&&row.element?._vacuumPanel);
+      if(!control)return;
+      this.setMainMenu(false,true);control.element._vacuumPanel.hidden=false;
+      control.element._refreshVacuumPanel();
+    });
     this.trackingDialog = this.shadowRoot.querySelector('.tracking-dialog');
     this.trackingList = this.shadowRoot.querySelector('.tracking-list');
     try{this.presenceZoneSettings=normalizePresenceZoneSettings(JSON.parse(window.localStorage.getItem(PRESENCE_ZONE_SETTINGS_KEY)));}
@@ -594,18 +609,22 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.paintPresenceSettings=()=>{
       for(const input of this.trackingDialog.querySelectorAll('[data-presence-setting]')){
         const key=input.dataset.presenceSetting,value=this.presenceZoneSettings[key];
-        input.value=String(value);
+        if(input.type==='checkbox')input.checked=value;
+        else input.value=String(value);
         const output=this.trackingDialog.querySelector(`[data-presence-value="${key}"]`);
-        output.textContent=key==='switchDelayMs'?`${(value/1000).toFixed(1)} s`:
-          key==='matchDistanceCm'?`${value} cm`:key==='movementRadius'?`${value} px`:`${Math.round(value*100)}%`;
+        if(output)output.textContent=key==='switchDelayMs'?`${(value/1000).toFixed(1)} s`:
+          key==='matchDistanceCm'?`${value} cm`:key==='movementRadius'||key==='socialRadius'?`${value} px`:
+          key==='walkingSpeed'?`${value} px/s`:`${Math.round(value*100)}%`;
       }
     };
     this.paintPresenceSettings();
-    for(const input of this.trackingDialog.querySelectorAll('[data-presence-setting]'))input.addEventListener('input',()=>{
-      this.presenceZoneSettings=normalizePresenceZoneSettings({...this.presenceZoneSettings,[input.dataset.presenceSetting]:input.value});
+    for(const input of this.trackingDialog.querySelectorAll('[data-presence-setting]'))input.addEventListener(input.type==='range'?'input':'change',()=>{
+      this.presenceZoneSettings=normalizePresenceZoneSettings({...this.presenceZoneSettings,
+        [input.dataset.presenceSetting]:input.type==='checkbox'?input.checked:input.value});
       this.paintPresenceSettings();
       try{window.localStorage.setItem(PRESENCE_ZONE_SETTINGS_KEY,JSON.stringify(this.presenceZoneSettings));}catch{}
       this.presenceZoneMap?.setSettings(this.presenceZoneSettings);
+      this.scene?.setPresenceBehavior(this.presenceZoneSettings);
       this.personPresence.clear();this.refresh();
     });
     for(const button of this.trackingDialog.querySelectorAll('[data-presence-overlay]'))button.addEventListener('click',()=>{
@@ -1106,6 +1125,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.scene = createStorybookScene(this.canvas, this.model.layout,
         {insaneGraphics: this.displaySettings.value.insaneGraphics, assetBase: '/local/roomcraft/'});
       this.scene.setFamilyPriority(this.familyPriority);
+      this.scene.setPresenceBehavior(this.presenceZoneSettings);
       const vacuum = this.model.layout.items.find(item => item.entityId?.startsWith('vacuum.') && item.vacuumMapEntityId);
       this.vacuumMapOverlay.configure(vacuum);
       this.lidarRuler.configure(vacuum);
@@ -1126,6 +1146,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         return {config, element, camera};
       });
       this.cameraTilesButton.hidden = !this.controls.some(control => control.camera);
+      this.vacuumSurveyButton.hidden=!this.controls.some(control=>control.config.entity?.startsWith('vacuum.'));
       this.status.hidden = true;
       this.syncObjectDetails();
       this.updateDefaultViewButtons();
@@ -1347,6 +1368,10 @@ class RoomcraftStorybookCard extends HTMLElement {
     const sources = this.model?.layout.items.filter(personSource) || [];
     this.trackingList.replaceChildren();
     const counts=summarizePresenceAreas(this.frame?.people);
+    this.trackingDialog.querySelector('.presence-area-note').textContent=
+      this.presenceZoneSettings.trackingMode==='precise'
+        ? 'Raw radar position is selected. Area counts need calibrated room mode; raw target totals remain in Sensor report.'
+        : 'Counts are anonymous radar targets on the map. Retained locations are shown separately.';
     const grid=this.trackingDialog.querySelector('.presence-area-grid');
     grid.replaceChildren(...Object.entries(PRESENCE_ZONE_NAMES).map(([id,name])=>{
       const row=document.createElement('span'),label=document.createElement('strong'),value=document.createElement('small');
@@ -1482,7 +1507,8 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.frame.moving = true;
     this.frame.people = this.personPresence.read(this.model.layout.items, states, now, {
       contains: this.scene.canPlacePerson, nearest: this.scene.nearestPersonPoint,
-      resolveZone:(point,raw,time,nearest)=>this.presenceZoneMap?.resolve(point,raw,time,nearest),
+      resolveZone:this.presenceZoneSettings.trackingMode==='precise'?undefined:
+        (point,raw,time,nearest)=>this.presenceZoneMap?.resolve(point,raw,time,nearest),
     });
     const mappedTargetCounts = new Map();
     const occupancyFallbacks = new Map();

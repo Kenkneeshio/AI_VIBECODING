@@ -1407,6 +1407,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   let demoPeople;
   let people = livePeople;
   let currentFamilyPriority='random';
+  let currentPresenceBehavior;
   let lastDraftPositions;
   let trackedControlChanged = false;
   const cameraBounds = {...exteriorCameraBounds(plan), sceneryMinZ: street.sceneryMinZ, coastalFrames};
@@ -1783,6 +1784,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     if (options.transientTelemetry) {
       if (!demoPeople && tracks?.length) {
         demoPeople = createStorybookPeople(trackingOverlay, floorForPerson, {...peopleOptions,familyPriority:currentFamilyPriority});
+        if(currentPresenceBehavior)demoPeople.setBehaviorSettings(currentPresenceBehavior);
         demoPeople.setVisible(false);
       }
       demoPeople?.setTracks(tracks, timeSeconds, options);
@@ -1851,7 +1853,8 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
     getWorldLifeState:()=>({marine:marineLife.getState(),moments:worldMoments.getState()}),
     hasAmbientMotion: true, setPeople, setFamilyPriority:value=>{
       currentFamilyPriority=value;livePeople.setFamilyPriority(value);demoPeople?.setFamilyPriority(value);
-    }, setDisplaySettings, setGraphicsSettings, setVacuumMapOverlay,
+    }, setPresenceBehavior:value=>{currentPresenceBehavior=value;livePeople.setBehaviorSettings(value);demoPeople?.setBehaviorSettings(value);},
+    setDisplaySettings, setGraphicsSettings, setVacuumMapOverlay,
     setDetectionZones: coverage.setZones, setHeatMap: heatMap.setHistory,
     get trackedControlChanged() { return trackedControlChanged; },
     get hasPendingReacquisition() { return [...roots.values()].some(object => object.liveMotion?.pendingReacquisition); },

@@ -48,5 +48,10 @@ test('area counts distinguish fresh tracks from retained locations and settings 
   assert.deepEqual(counts.hall,{live:0,retained:1});
   assert.deepEqual(normalizePresenceZoneSettings({movementGain:99,movementRadius:-5,
     switchDelayMs:99999,matchDistanceCm:0}),
-    {movementGain:1.5,movementRadius:0,switchDelayMs:3000,matchDistanceCm:40});
+    {movementGain:1.5,movementRadius:0,switchDelayMs:3000,matchDistanceCm:40,
+      walkingSpeed:115,socialRadius:95,furnitureInteractions:true,socialInteractions:true,trackingMode:'areas'});
+  const behavior=normalizePresenceZoneSettings({walkingSpeed:999,socialRadius:-2,
+    furnitureInteractions:false,socialInteractions:false,trackingMode:'precise'});
+  assert.deepEqual([behavior.walkingSpeed,behavior.socialRadius,behavior.furnitureInteractions,
+    behavior.socialInteractions,behavior.trackingMode],[240,0,false,false,'precise']);
 });

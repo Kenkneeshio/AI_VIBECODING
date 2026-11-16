@@ -5,6 +5,7 @@ import {createCameraPreferences, legacyCameraPreferencesKey} from './storybook-c
 import {storybookLightControlLabels} from './storybook-state.mjs';
 import {loadVacuumMap} from './storybook-vacuum-map.mjs';
 import {vacuumMapMetadata} from './storybook-vacuum-alignment.mjs';
+import {readVacuumSurvey, sampleVacuumSurvey, markVacuumMismatch, vacuumSurveyKey} from './storybook-vacuum-survey.mjs';
 import '../public/control-actions.js';
 
 /**
@@ -815,6 +816,7 @@ class RoomcraftObjectControl extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
+    this._vacuumSurvey = null;
     this._holdTimer = null;
     this._feedbackTimer = null;
     this._held = false;
@@ -859,6 +861,8 @@ class RoomcraftObjectControl extends HTMLElement {
       throw new Error('The Roomcraft object has an invalid device binding.');
     }
     this._config = config;
+    if (config.entity?.startsWith('vacuum.') && this._vacuumSurvey?.entity !== config.entity)
+      this._vacuumSurvey = readVacuumSurvey(window.localStorage, config.entity);
     if (!this._button) this._build();
     this._refresh();
   }
@@ -1072,6 +1076,7 @@ class RoomcraftObjectControl extends HTMLElement {
       .vacuum-map{position:relative;min-height:142px;overflow:hidden;border-radius:11px;background:#07171b}.vacuum-map img{display:block;width:100%;height:auto;max-height:240px;object-fit:contain;background:#07171b}.vacuum-map img[hidden]{display:none}.vacuum-map-note{position:absolute;left:7px;bottom:7px;padding:3px 6px;border-radius:6px;background:#14282dd9;color:#dbeae5;font-size:10px}
       .vacuum-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:9px}.vacuum-action{display:flex;min-height:58px;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:1px solid #6f9f94;border-radius:10px;background:#21423f;color:#f2fff9;cursor:pointer;font:600 10px/1.1 system-ui}.vacuum-action:active{filter:brightness(1.25)}.vacuum-action[disabled]{opacity:.42;cursor:default}.vacuum-action ha-icon{width:22px;height:22px;color:#aeead8}
       .vacuum-rooms-title{margin:11px 1px 6px;color:#a9c9c0;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.vacuum-rooms{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.vacuum-room{min-height:38px;overflow:hidden;border:1px solid #618a82;border-radius:9px;background:#1c3738;color:#e8f5ef;padding:7px 8px;cursor:pointer;text-align:left;text-overflow:ellipsis;white-space:nowrap;font:600 11px system-ui}.vacuum-room:active{filter:brightness(1.25)}.vacuum-empty{color:#9ebcb5;font-size:11px}
+      .vacuum-survey{margin-top:12px;padding:10px;border:1px solid #668d83;border-radius:11px;background:#173635}.vacuum-survey strong{display:block;margin-bottom:5px;color:#ddf8e8}.vacuum-survey p{margin:5px 0 8px;color:#bbd8ce;font-size:11px}.vacuum-survey-actions{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}.vacuum-survey-actions button{min-height:34px;padding:5px;border:1px solid #7ca99b;border-radius:8px;background:#274d47;color:#effff7;cursor:pointer;font:600 11px system-ui}.vacuum-survey-actions button[disabled]{opacity:.45}.vacuum-survey img{width:100%;max-height:220px;object-fit:contain;border-radius:8px;background:#07171b}.vacuum-survey img[hidden]{display:none}
       @keyframes roomcraft-vacuum-pulse{50%{transform:scale(.96)}}
       @keyframes roomcraft-vacuum-brush{to{transform:rotate(360deg)}}
       @keyframes roomcraft-mist{0%{transform:translateY(7px) scale(.8);opacity:0}30%{opacity:.8}100%{transform:translateY(-15px) scale(1.35);opacity:0}}
@@ -1195,7 +1200,25 @@ class RoomcraftObjectControl extends HTMLElement {
     const vacuumRoomsTitle = document.createElement('div');
     vacuumRoomsTitle.className = 'vacuum-rooms-title'; vacuumRoomsTitle.textContent = 'Clean a room';
     const vacuumRooms = document.createElement('div'); vacuumRooms.className = 'vacuum-rooms';
-    vacuumPanel.append(vacuumHead, vacuumMap, vacuumActions, vacuumRoomsTitle, vacuumRooms);
+    const survey = document.createElement('section'); survey.className='vacuum-survey';
+    const surveyTitle=document.createElement('strong');surveyTitle.textContent='LiDAR layout survey';
+    const surveyStatus=document.createElement('p');
+    const surveyButtons=document.createElement('div');surveyButtons.className='vacuum-survey-actions';
+    const surveyToggle=document.createElement('button');surveyToggle.type='button';
+    surveyToggle.addEventListener('click',event=>{event.stopPropagation();this._vacuumSurvey.enabled=!this._vacuumSurvey.enabled;this._saveVacuumSurvey();this._refreshVacuumPanel();});
+    const surveyFlag=document.createElement('button');surveyFlag.type='button';surveyFlag.textContent='Mark layout error';
+    surveyFlag.addEventListener('click',event=>{event.stopPropagation();this._vacuumSurvey=markVacuumMismatch(this._vacuumSurvey,this._hass?.states?.[this._config.roomcraft_vacuum_map_entity]);this._saveVacuumSurvey();this._refreshVacuumPanel();});
+    const surveyExport=document.createElement('button');surveyExport.type='button';surveyExport.textContent='Export AI report';
+    surveyExport.addEventListener('click',event=>{event.stopPropagation();this._exportVacuumSurvey();});
+    const surveyClear=document.createElement('button');surveyClear.type='button';surveyClear.textContent='Clear survey';
+    surveyClear.addEventListener('click',event=>{event.stopPropagation();this._vacuumSurvey={...this._vacuumSurvey,points:[],flags:[]};this._saveVacuumSurvey();this._refreshVacuumPanel();});
+    const historyButton=document.createElement('button');historyButton.type='button';historyButton.textContent='Last cleaned route';
+    const historyImage=document.createElement('img');historyImage.alt='Latest vacuum cleaning history map';historyImage.hidden=true;
+    historyButton.addEventListener('click',event=>{event.stopPropagation();historyImage.hidden=!historyImage.hidden;});
+    surveyButtons.append(surveyToggle,surveyFlag,surveyExport,surveyClear,historyButton);
+    const historyStatus=document.createElement('p');
+    survey.append(surveyTitle,surveyStatus,surveyButtons,historyStatus,historyImage);
+    vacuumPanel.append(vacuumHead, vacuumMap, vacuumActions, vacuumRoomsTitle, vacuumRooms, survey);
     this.shadowRoot.append(style, button, detail, vacuumPanel);
     this._button = button;
     this._icon = null;
@@ -1211,6 +1234,9 @@ class RoomcraftObjectControl extends HTMLElement {
     this._vacuumActionButtons = actionButtons;
     this._vacuumRoomsTitle = vacuumRoomsTitle;
     this._vacuumRooms = vacuumRooms;
+    this._vacuumSurveyStatus=surveyStatus;this._vacuumSurveyToggle=surveyToggle;this._vacuumSurveyFlag=surveyFlag;
+    this._vacuumSurveyExport=surveyExport;this._vacuumSurveyClear=surveyClear;
+    this._vacuumHistoryButton=historyButton;this._vacuumHistoryImage=historyImage;this._vacuumHistoryStatus=historyStatus;
     this._refreshDetailVisibility();
   }
 
@@ -1406,6 +1432,20 @@ class RoomcraftObjectControl extends HTMLElement {
     } catch { this._showDetails(entityId); }
   }
 
+  _saveVacuumSurvey() {
+    try { window.localStorage?.setItem(vacuumSurveyKey(this._config.entity), JSON.stringify(this._vacuumSurvey)); }
+    catch { this._vacuumSurveyStatus.textContent='This browser cannot save the survey. Export the report before leaving.'; }
+  }
+
+  _exportVacuumSurvey() {
+    if (!this._vacuumSurvey) return;
+    const report={...this._vacuumSurvey, exportedAt:new Date().toISOString(),
+      note:'Coordinates are anonymous vacuum telemetry. Flags require human review; they do not automatically change the layout.'};
+    const url=URL.createObjectURL(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}));
+    const link=document.createElement('a');link.href=url;link.download='roomcraft-vacuum-layout-survey.json';
+    link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+
   _refreshVacuumPanel() {
     if (!this._vacuumPanel || controlVisualKind(this._config || {}) !== 'vacuum') {
       if (this._vacuumPanel) this._vacuumPanel.hidden = true;
@@ -1421,6 +1461,29 @@ class RoomcraftObjectControl extends HTMLElement {
 
     const mapId = this._config.roomcraft_vacuum_map_entity;
     const mapState = mapId ? this._hass?.states?.[mapId] : null;
+    if (this._vacuumSurvey) {
+      const sampled=sampleVacuumSurvey(this._vacuumSurvey,{state:value,map:mapState,
+        expectedMapId:this._config.roomcraft_vacuum_map_id,
+        transform:this._config.roomcraft_vacuum_position_transform});
+      if (sampled!==this._vacuumSurvey) {this._vacuumSurvey=sampled;this._saveVacuumSurvey();}
+      this._vacuumSurveyToggle.textContent=this._vacuumSurvey.enabled?'Survey during cleaning: On':'Survey during cleaning: Off';
+      this._vacuumSurveyToggle.setAttribute('aria-pressed',String(this._vacuumSurvey.enabled));
+      this._vacuumSurveyStatus.textContent=`${this._vacuumSurvey.points.length} recorded positions · ${this._vacuumSurvey.flags.length} review flags. `+
+        (state?.attributes?.mapping_available===true?'Dedicated mapping is available.':'Dedicated mapping is unavailable on this robot right now.');
+      this._vacuumSurveyFlag.disabled=!mapState;this._vacuumSurveyExport.disabled=!this._vacuumSurvey.points.length&&!this._vacuumSurvey.flags.length;
+      this._vacuumSurveyClear.disabled=this._vacuumSurveyExport.disabled;
+    }
+    const history=mapState?.attributes?.cleaning_history_picture;
+    const historyEntry=history && typeof history==='object' ? Object.entries(history).find(([name])=>/^1:/.test(name)) : null;
+    const historyPath=historyEntry?.[1];
+    this._vacuumHistoryButton.disabled=typeof historyPath!=='string'||!historyPath.startsWith('/');
+    if (!this._vacuumHistoryButton.disabled) {
+      this._vacuumHistoryImage.src=typeof this._hass?.hassUrl==='function'?this._hass.hassUrl(historyPath):historyPath;
+    } else {this._vacuumHistoryImage.hidden=true;this._vacuumHistoryImage.removeAttribute('src');}
+    const historyEntity=`sensor.${entityId.split('.')[1]}_cleaning_history`;
+    const records=this._hass?.states?.[historyEntity]?.attributes||{};
+    const latest=Object.values(records).filter(entry=>entry&&typeof entry==='object'&&Number.isFinite(Number(entry.timestamp))).sort((a,b)=>Number(b.timestamp)-Number(a.timestamp))[0];
+    this._vacuumHistoryStatus.textContent=latest?`Latest run: ${latest.status||'recorded'} · ${latest.cleanup_method||'cleaning'} · mop pad ${latest.mop_pad||'unknown'}. The route image shows where the vacuum traveled; it does not prove every point was mopped.`:'Cleaning history unavailable.';
     const picture = mapState?.attributes?.entity_picture;
     let source = picture && typeof this._hass?.hassUrl === 'function' ? this._hass.hassUrl(picture) : picture || '';
     if (source) {

@@ -63,6 +63,7 @@ export function createStorybookPeople(scene, floorAt = () => 0,
   let activitiesEnabled = true;
   let previousSnapshot;
   let preferredLook=normalizeFamilyPriority(familyPriority);
+  let behavior={walkingSpeed:115,socialRadius:95,furnitureInteractions:true,socialInteractions:true};
 
   function makeArt() {
     const head = new THREE.Shape();
@@ -268,7 +269,7 @@ export function createStorybookPeople(scene, floorAt = () => 0,
   function planTrack(track, current, taken, allowActivities) {
     const {signal, point, motion, navigator} = track;
     const revision = geometryRevision?.();
-    const eligible = allowActivities && !point.quality && signal.settled;
+    const eligible = allowActivities && behavior.furnitureInteractions && !point.quality && signal.settled;
     if (track.activity && (!allowActivities || revision !== track.revision)) {
       track.blend = 0;
       track.activity = null;
@@ -359,7 +360,7 @@ export function createStorybookPeople(scene, floorAt = () => 0,
         }
       }
       const previousActivity = track.activity;
-      planTrack(track, track.motion.sample(lastTime, reduced), taken, allowActivities);
+      planTrack(track, track.motion.sample(lastTime, reduced), taken, allowActivities&&behavior.furnitureInteractions);
       const sample = track.motion.sample(lastTime, reduced);
       samples.push({id,track,sample,radius:character.radius});
       if (track.activity) {
@@ -388,9 +389,9 @@ export function createStorybookPeople(scene, floorAt = () => 0,
         character.groundMark.position.set(x,floor+.26,z);
         character.groundMark.scale.setScalar(Math.min(1,clearance/GROUND_RING_RADIUS));
       }
-      const neighbor=allowActivities&&spaced.find(other=>other.id!==id&&other.sample&&!other.sample.walking&&
+      const neighbor=allowActivities&&behavior.socialInteractions&&behavior.socialRadius>0&&spaced.find(other=>other.id!==id&&other.sample&&!other.sample.walking&&
         sample&&!sample.walking&&!track.activity&&!other.track.activity&&
-        Math.hypot(other.sample.x-sample.x,other.sample.y-sample.y)<95);
+        Math.hypot(other.sample.x-sample.x,other.sample.y-sample.y)<behavior.socialRadius);
       if(neighbor){
         if(track.social?.partner!==neighbor.id)track.socialSince=lastTime;
         track.social={partner:neighbor.id,pose:character.baby?'peek':'chat',
@@ -444,6 +445,7 @@ export function createStorybookPeople(scene, floorAt = () => 0,
         allowsPoint: (x, z) => clearBodyPoint(x, z, STORYBOOK_PERSON_RADIUS),
         findRoute:navigator.findRoute, geometryRevision,
       });
+      motion.setSpeed(behavior.walkingSpeed);
       tracks.set(id, {character, motion, navigator, filter:createStorybookPersonSignal(),
         born:time, renderedAt:time, blend:0});
     }
@@ -481,6 +483,14 @@ export function createStorybookPeople(scene, floorAt = () => 0,
 
   return {
     setTracks,
+    setBehaviorSettings(settings={}) {
+      behavior={walkingSpeed:Math.max(20,Math.min(240,Number(settings.walkingSpeed)||115)),
+        socialRadius:Math.max(0,Math.min(180,Number.isFinite(Number(settings.socialRadius))?Number(settings.socialRadius):95)),
+        furnitureInteractions:settings.furnitureInteractions!==false,
+        socialInteractions:settings.socialInteractions!==false};
+      for(const track of tracks.values())track.motion.setSpeed(behavior.walkingSpeed);
+      render(lastTime,reduced);
+    },
     setFamilyPriority(value){
       const next=normalizeFamilyPriority(value);
       if(next===preferredLook)return;
