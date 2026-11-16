@@ -137,6 +137,37 @@ test('a moving avatar detours around a cabinet while the radar ring stays at the
   assert.equal(avatar().scale.x, 1);
 });
 
+test('path preview and furniture detour rule never permit a shortcut through the cabinet', () => {
+  const scene=new THREE.Scene();
+  const blocked=(x,z,radius)=>Math.hypot(x-125,z-100)<24+radius;
+  const geometry={allowsBodyPoint:(x,z,r)=>!blocked(x,z,r),
+    allowsBodyRoute:(x,z,toX,toZ,r)=>{
+      const dx=toX-x,dz=toZ-z;
+      const t=dx||dz?Math.max(0,Math.min(1,((125-x)*dx+(100-z)*dz)/(dx*dx+dz*dz))):0;
+      return !blocked(x+t*dx,z+t*dz,r);
+    }};
+  const people=createStorybookPeople(scene,()=>0,{...geometry,familyPriority:'dad'});
+  people.setBehaviorSettings({showWalkingPaths:true,detourFurniture:false,objectClearance:4,
+    personSpacing:12,pathColor:'amber',pathOpacity:.8});
+  const report=(x,time)=>people.setTracks([{id:'one',x,y:100,expiresAt:time*1000}],time);
+  report(65,1);report(187,2);
+  const actor=scene.getObjectByName('radar-avatar-papa');
+  const path=scene.getObjectByName('radar-avatar-walking-path');
+  people.render(2.5);
+  assert.equal(path.visible,false);
+  assert.equal(actor.position.x,65);
+  people.setBehaviorSettings({showWalkingPaths:true,detourFurniture:true,objectClearance:4,
+    personSpacing:12,pathColor:'amber',pathOpacity:.8});
+  people.render(2.6);
+  assert.equal(path.visible,true);
+  assert.equal(path.material.opacity,.8);
+  let detoured=false;
+  for(let time=2.7;time<5;time+=.05){people.render(time);assert.equal(blocked(actor.position.x,actor.position.z,20),false);
+    if(Math.abs(actor.position.z-100)>38)detoured=true;}
+  assert.equal(detoured,true);
+  people.dispose();
+});
+
 test('an occupied avatar stays visible on the reachable side of a barrier', () => {
   const scene = new THREE.Scene();
   const cues = new THREE.Scene();

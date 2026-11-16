@@ -20,6 +20,13 @@ export function normalizePresenceZoneSettings(value={}){
     socialRadius:bounded(value.socialRadius,95,0,180),
     furnitureInteractions:value.furnitureInteractions!==false,
     socialInteractions:value.socialInteractions!==false,
+    showWalkingPaths:value.showWalkingPaths===true,
+    showRadarMarkers:value.showRadarMarkers!==false,
+    pathOpacity:bounded(value.pathOpacity,.6,.15,1),
+    pathColor:['teal','amber','violet'].includes(value.pathColor)?value.pathColor:'teal',
+    detourFurniture:value.detourFurniture!==false,
+    objectClearance:bounded(value.objectClearance,0,0,18),
+    personSpacing:bounded(value.personSpacing,5,0,30),
     trackingMode:value.trackingMode==='precise'?'precise':'areas'};
 }
 

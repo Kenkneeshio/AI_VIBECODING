@@ -1,5 +1,11 @@
 # Changelog
 
+## Presence walking paths and collision rules — 15 November 2026
+
+- Add a planned walking-route overlay with color and visibility controls, and an optional radar ground marker. The line follows the same safe route the character uses and updates at a tablet-friendly cadence.
+- Add direct-only versus furniture-detour routing, extra object clearance, and adjustable spacing between illustrated people. A blocked direct route holds the character in place; floor, wall, and solid-object constraints remain enforced.
+- See [walking paths and collision rules](docs/presence-path-collision-2026-11-15.md) for the customer contract, module ownership, validation and rollback.
+
 ## Vacuum survey and character behavior — 15 November 2026
 
 - Add a local, bounded LiDAR position survey during ordinary vacuum cleaning, automatic map/plan-bound flags, manual review marks, an exportable AI report, and the latest cleaning-history route image. The panel reports that dedicated mapping is unavailable on this robot; these read-only tools do not start it.

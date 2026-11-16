@@ -178,10 +178,10 @@ class RoomcraftStorybookCard extends HTMLElement {
         .presence-area-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
         .presence-area-grid span{display:flex;justify-content:space-between;gap:8px;padding:8px;border-radius:8px;background:#e8eee4}
         .presence-area-grid small,.presence-calibration-list small{color:#665f55}
-        .presence-motion-settings label{display:grid;grid-template-columns:minmax(125px,1fr) minmax(120px,1.3fr) auto;align-items:center;gap:8px;margin:9px 0}
-        .presence-motion-settings input{width:100%}
-        .presence-motion-settings select{grid-column:2/4;min-height:38px;padding:4px;border:1px solid #c9b8a0;border-radius:8px;background:#fff8ec;color:#352d2b}
-        .presence-motion-settings input[type=checkbox]{grid-column:2/4;width:22px;height:22px;justify-self:start}
+        .presence-motion-settings label,.presence-route-settings label{display:grid;grid-template-columns:minmax(125px,1fr) minmax(120px,1.3fr) auto;align-items:center;gap:8px;margin:9px 0}
+        .presence-motion-settings input,.presence-route-settings input{width:100%}
+        .presence-motion-settings select,.presence-route-settings select{grid-column:2/4;min-height:38px;padding:4px;border:1px solid #c9b8a0;border-radius:8px;background:#fff8ec;color:#352d2b}
+        .presence-motion-settings input[type=checkbox],.presence-route-settings input[type=checkbox]{grid-column:2/4;width:22px;height:22px;justify-self:start}
         .presence-calibration-list{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:5px}
         .presence-calibration-list li{display:flex;align-items:center;justify-content:space-between;gap:8px}
         .presence-sensor-details strong,.presence-sensor-details small{display:block;line-height:1.5}
@@ -189,7 +189,7 @@ class RoomcraftStorybookCard extends HTMLElement {
         .presence-overlays{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
         .presence-overlays h3,.presence-overlays a{grid-column:1/-1}
         .presence-overlays button[aria-pressed=true]{background:#d6e9d9;border-color:#6eaa81}
-        @media(max-width:520px){.presence-motion-settings label{grid-template-columns:1fr auto}.presence-motion-settings label input{grid-column:1/-1;grid-row:2}}
+        @media(max-width:520px){.presence-motion-settings label,.presence-route-settings label{grid-template-columns:1fr auto}.presence-motion-settings label input[type=range],.presence-route-settings label input[type=range]{grid-column:1/-1;grid-row:2}}
         .family-priority-label{display:grid;gap:5px;margin:13px 0 5px}
         .family-priority-label select{min-height:40px;padding:6px;border:1px solid #c9b8a0;border-radius:8px;background:#fff8ec;color:#352d2b;font:inherit}
         .presence-zone-calibration{margin:14px 0;padding:12px;border:1px solid #d6d7c4;border-radius:12px;background:#f6f6e9}.presence-zone-calibration p{margin:0 0 10px;font-size:13px;line-height:1.45}.presence-zone-calibration div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.presence-zone-calibration button{min-height:42px}.presence-zone-calibration small{display:block;margin-top:9px}
@@ -408,6 +408,16 @@ class RoomcraftStorybookCard extends HTMLElement {
           <label>Interact with nearby people <input data-presence-setting="socialInteractions" type="checkbox"></label>
           <small>Characters follow bounded radar movement within an area. The floor and furniture still limit their route.</small>
         </section>
+        <section class="presence-route-settings" aria-label="Walking path and collision rules"><h3>Walking path &amp; collision rules</h3>
+          <label>Show planned walking path <input data-presence-setting="showWalkingPaths" type="checkbox"></label>
+          <label>Path color <select data-presence-setting="pathColor"><option value="teal">Teal</option><option value="amber">Amber</option><option value="violet">Violet</option></select></label>
+          <label>Path visibility <input data-presence-setting="pathOpacity" type="range" min="0.15" max="1" step="0.05"><output data-presence-value="pathOpacity"></output></label>
+          <label>Detour around furniture <input data-presence-setting="detourFurniture" type="checkbox"></label>
+          <label>Object clearance <input data-presence-setting="objectClearance" type="range" min="0" max="18" step="2"><output data-presence-value="objectClearance"></output></label>
+          <label>Space between people <input data-presence-setting="personSpacing" type="range" min="0" max="30" step="2"><output data-presence-value="personSpacing"></output></label>
+          <label>Show radar ground markers <input data-presence-setting="showRadarMarkers" type="checkbox"></label>
+          <small>The line previews a safe planned route, not past travel. With detours off, a blocked character waits. Walls, unsupported floors and solid furniture always stay blocked.</small>
+        </section>
         <section class="presence-zone-calibration" aria-label="Room zone calibration"><h3>Room calibration</h3><p>Stand alone in each area, then capture one fresh radar reading. The samples stay on this screen.</p><div>
           <button type="button" data-capture-zone="living">Set living room</button><button type="button" data-capture-zone="dining">Set dining room</button>
           <button type="button" data-capture-zone="kitchen">Set kitchen</button><button type="button" data-capture-zone="hall">Set start of hall</button>
@@ -614,7 +624,8 @@ class RoomcraftStorybookCard extends HTMLElement {
         else input.value=String(value);
         const output=this.trackingDialog.querySelector(`[data-presence-value="${key}"]`);
         if(output)output.textContent=key==='switchDelayMs'?`${(value/1000).toFixed(1)} s`:
-          key==='matchDistanceCm'?`${value} cm`:key==='movementRadius'||key==='socialRadius'?`${value} px`:
+          key==='matchDistanceCm'?`${value} cm`:
+          ['movementRadius','socialRadius','objectClearance','personSpacing'].includes(key)?`${value} px`:
           key==='walkingSpeed'?`${value} px/s`:`${Math.round(value*100)}%`;
       }
     };

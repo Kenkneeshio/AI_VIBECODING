@@ -230,6 +230,14 @@ try{
     mode.value='precise';mode.dispatchEvent(new Event('change',{bubbles:true}));
     const preciseMode=card.presenceZoneSettings.trackingMode;
     mode.value='areas';mode.dispatchEvent(new Event('change',{bubbles:true}));
+    const path=card.trackingDialog.querySelector('[data-presence-setting="showWalkingPaths"]');
+    path.checked=true;path.dispatchEvent(new Event('change',{bubbles:true}));
+    const detour=card.trackingDialog.querySelector('[data-presence-setting="detourFurniture"]');
+    detour.checked=false;detour.dispatchEvent(new Event('change',{bubbles:true}));
+    const clearance=card.trackingDialog.querySelector('[data-presence-setting="objectClearance"]');
+    clearance.value='8';clearance.dispatchEvent(new Event('input',{bubbles:true}));
+    const color=card.trackingDialog.querySelector('[data-presence-setting="pathColor"]');
+    color.value='amber';color.dispatchEvent(new Event('change',{bubbles:true}));
     const status=card.trackingDialog.querySelector('[data-zone-status]').textContent;
     card.trackingDialog.close();return {record,zone:marker?.zone,initial:{x:marker?.x,y:marker?.y},safe,status,entity:item.presenceTrackEntityId,
       moved:{x:moved?.x,y:moved?.y},areas,calibration,sensor,overlayVisible,heatVisible,preciseMode,
@@ -248,6 +256,10 @@ try{
   assert.equal(presence.movement.movementGain,1);
   assert.equal(presence.movement.walkingSpeed,160);
   assert.equal(presence.movement.socialInteractions,false);
+  assert.equal(presence.movement.showWalkingPaths,true);
+  assert.equal(presence.movement.detourFurniture,false);
+  assert.equal(presence.movement.objectClearance,8);
+  assert.equal(presence.movement.pathColor,'amber');
   assert.equal(presence.preciseMode,'precise');
   assert.equal(presence.family,'baby');
   const traffic=await evaluate(`(()=>{

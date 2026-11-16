@@ -133,5 +133,8 @@ export function createStorybookPersonMotion({allowsPoint, findRoute, geometryRev
     return true;
   }
 
-  return {aim, sample, setSpeed(value) { if (Number.isFinite(value)) walkSpeed=Math.max(20,Math.min(240,value)); }};
+  return {aim, sample,
+    plannedPath() { return position && route.length ? [{...position},...route.map(point=>({...point}))] : []; },
+    clearRoute() { route=[]; destination=undefined; },
+    setSpeed(value) { if (Number.isFinite(value)) walkSpeed=Math.max(20,Math.min(240,value)); }};
 }

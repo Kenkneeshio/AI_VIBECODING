@@ -1,5 +1,9 @@
 # Decision log
 
+## Make walking paths visible without weakening collision safety
+
+Use the character's remaining computed waypoints for the optional path line; it is a plan, not a recorded trail. Treat object clearance as an addition to the fixed body radius, and spacing as a deterministic presentation rule. When furniture detours are off, accept only a clear direct route and hold at an obstruction. Invalidate cached routes when clearance or detour policy changes, retaining the last safe position. Keep floor, wall, furniture and sensor evidence contracts unchanged. See [presence walking paths and collision rules](presence-path-collision-2026-11-15.md).
+
 ## Survey the vacuum during cleaning; keep character behavior separate from radar evidence
 
 The installed robot reports no dedicated mapping mode, so the dashboard arms a local, bounded position log during an ordinary cleaning run and displays its authenticated latest history route on request. Map-ID and out-of-plan flags identify review candidates; manual marks add owner observations. Export is an explicit JSON handoff, never an automatic layout mutation or device command. Character speed and interactions affect animation only; raw versus calibrated-room placement is clearly labeled and retains the shared route and floor constraints. See [vacuum survey and presence behavior](vacuum-survey-and-presence-behavior-2026-11-15.md).

@@ -63,7 +63,10 @@ export function createStorybookPeople(scene, floorAt = () => 0,
   let activitiesEnabled = true;
   let previousSnapshot;
   let preferredLook=normalizeFamilyPriority(familyPriority);
-  let behavior={walkingSpeed:115,socialRadius:95,furnitureInteractions:true,socialInteractions:true};
+  let behavior={walkingSpeed:115,socialRadius:95,furnitureInteractions:true,socialInteractions:true,
+    showWalkingPaths:false,showRadarMarkers:true,pathOpacity:.6,pathColor:'teal',
+    detourFurniture:true,objectClearance:0,personSpacing:5};
+  const pathMaterial=new THREE.LineBasicMaterial({color:0x70e4ce,transparent:true,opacity:.6,depthWrite:false});
 
   function makeArt() {
     const head = new THREE.Shape();
@@ -211,10 +214,11 @@ export function createStorybookPeople(scene, floorAt = () => 0,
 
   const allowsPoint = (x, z) => Number.isFinite(floorAt(x, z)) && (!floorClearance || floorClearance(x, z) > 0);
   const clearBodyPoint = (x, z, radius, exceptItemId) => allowsPoint(x, z) &&
-    (!floorClearance || floorClearance(x, z) >= radius) && (allowsBodyPoint?.(x, z, radius, exceptItemId) ?? true);
+    (!floorClearance || floorClearance(x, z) >= radius+behavior.objectClearance) &&
+    (allowsBodyPoint?.(x, z, radius+behavior.objectClearance, exceptItemId) ?? true);
   const clearBodyRoute = (x, z, toX, toZ, radius, exceptItemId) =>
-    (supportsRoute?.(x, z, toX, toZ, radius) ?? true) &&
-    (allowsBodyRoute?.(x, z, toX, toZ, radius, exceptItemId) ?? true);
+    (supportsRoute?.(x, z, toX, toZ, radius+behavior.objectClearance) ?? true) &&
+    (allowsBodyRoute?.(x, z, toX, toZ, radius+behavior.objectClearance, exceptItemId) ?? true);
 
   function navigatorFor(radius) {
     if (!navigators.has(radius)) {
@@ -375,6 +379,7 @@ export function createStorybookPeople(scene, floorAt = () => 0,
     const spaced=separateStorybookPeople(samples,{
       allowsPoint:clearBodyPoint,
       allowsRoute:(x,z,toX,toZ)=>clearBodyRoute(x,z,toX,toZ,0),
+      margin:behavior.personSpacing,
     });
     const displayed=new Map(spaced.map(entry=>[entry.id,entry.sample]));
     for(const [id,track] of tracks){
@@ -383,7 +388,7 @@ export function createStorybookPeople(scene, floorAt = () => 0,
       const {x,y:z}=track.point;
       const floor=floorAt(x,z);
       const clearance=floorClearance?.(x,z)??GROUND_RING_RADIUS;
-      character.groundMark.visible=Number.isFinite(floor)&&clearance>0;
+      character.groundMark.visible=behavior.showRadarMarkers&&Number.isFinite(floor)&&clearance>0;
       if(character.groundMark.visible){
         character.groundMark.material=track.point.quality?art.retainedMark:art.groundMark;
         character.groundMark.position.set(x,floor+.26,z);
@@ -401,6 +406,15 @@ export function createStorybookPeople(scene, floorAt = () => 0,
       const amount=track.social?socialBlend:track.blend;
       const blend = amount * amount * (3 - 2 * amount);
       character.root.visible = Boolean(sample);
+      const path=behavior.showWalkingPaths?track.motion.plannedPath():[];
+      track.path.visible=Boolean(path.length>=2&&sample);
+      if(track.path.visible&&lastTime-(track.lastPathUpdate??-Infinity)>.12){
+        const points=path.filter(point=>Number.isFinite(floorAt(point.x,point.y)))
+          .map(point=>new THREE.Vector3(point.x,floorAt(point.x,point.y)+1.1,point.y));
+        track.path.geometry.dispose();
+        track.path.geometry=new THREE.BufferGeometry().setFromPoints(points);
+        track.lastPathUpdate=lastTime;
+      }
       character.root.userData.locationQuality = track.point.quality ?? 'measured';
       if (sample) drawCharacter(track, sample, blend);
       if (character.cue) {
@@ -428,6 +442,7 @@ export function createStorybookPeople(scene, floorAt = () => 0,
       if (next.has(id)) continue;
       track.character.root.visible = false;
       track.character.groundMark.visible = false;
+      track.path.removeFromParent();track.path.geometry.dispose();
       if (track.character.cue) track.character.cue.visible = false;
       unused[track.character.styleIndex].push(track.character);
       tracks.delete(id);
@@ -443,11 +458,15 @@ export function createStorybookPeople(scene, floorAt = () => 0,
       const navigator = navigatorFor(STORYBOOK_PERSON_RADIUS);
       const motion = createStorybookPersonMotion({
         allowsPoint: (x, z) => clearBodyPoint(x, z, STORYBOOK_PERSON_RADIUS),
-        findRoute:navigator.findRoute, geometryRevision,
+        findRoute:(from,to)=>behavior.detourFurniture?navigator.findRoute(from,to):
+          clearBodyRoute(from.x,from.y,to.x,to.y,STORYBOOK_PERSON_RADIUS)?[to]:null,
+        geometryRevision,
       });
       motion.setSpeed(behavior.walkingSpeed);
+      const path=new THREE.Line(new THREE.BufferGeometry(),pathMaterial);path.name='radar-avatar-walking-path';
+      path.visible=false;group.add(path);
       tracks.set(id, {character, motion, navigator, filter:createStorybookPersonSignal(),
-        born:time, renderedAt:time, blend:0});
+        path,born:time, renderedAt:time, blend:0});
     }
     for (const [id, point] of next) {
       const track = tracks.get(id);
@@ -476,6 +495,8 @@ export function createStorybookPeople(scene, floorAt = () => 0,
     group.clear();
     occlusion.clear();
     for (const pool of unused) pool.length = 0;
+    for(const track of tracks.values())track.path.geometry.dispose();
+    pathMaterial.dispose();
     tracks.clear();
     navigators.clear();
     art = undefined;
@@ -484,11 +505,25 @@ export function createStorybookPeople(scene, floorAt = () => 0,
   return {
     setTracks,
     setBehaviorSettings(settings={}) {
+      const previous=behavior;
       behavior={walkingSpeed:Math.max(20,Math.min(240,Number(settings.walkingSpeed)||115)),
         socialRadius:Math.max(0,Math.min(180,Number.isFinite(Number(settings.socialRadius))?Number(settings.socialRadius):95)),
         furnitureInteractions:settings.furnitureInteractions!==false,
-        socialInteractions:settings.socialInteractions!==false};
-      for(const track of tracks.values())track.motion.setSpeed(behavior.walkingSpeed);
+        socialInteractions:settings.socialInteractions!==false,
+        showWalkingPaths:settings.showWalkingPaths===true,showRadarMarkers:settings.showRadarMarkers!==false,
+        pathOpacity:Math.max(.15,Math.min(1,Number(settings.pathOpacity)||.6)),
+        pathColor:['teal','amber','violet'].includes(settings.pathColor)?settings.pathColor:'teal',
+        detourFurniture:settings.detourFurniture!==false,
+        objectClearance:Math.max(0,Math.min(18,Number(settings.objectClearance)||0)),
+        personSpacing:Math.max(0,Math.min(30,Number.isFinite(Number(settings.personSpacing))?Number(settings.personSpacing):5))};
+      pathMaterial.opacity=behavior.pathOpacity;
+      pathMaterial.color.setHex({teal:0x70e4ce,amber:0xf3c16b,violet:0xbca2ed}[behavior.pathColor]);
+      for(const track of tracks.values()){
+        track.motion.setSpeed(behavior.walkingSpeed);
+        if(previous.objectClearance!==behavior.objectClearance||previous.detourFurniture!==behavior.detourFurniture){
+          track.navigator.invalidate();track.motion.clearRoute();track.planned=null;
+        }
+      }
       render(lastTime,reduced);
     },
     setFamilyPriority(value){
