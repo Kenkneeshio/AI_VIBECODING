@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Camera Lab</title>
+<style>
+body{font:16px system-ui;color:#eaf1fa;background:#172231;max-width:900px;margin:24px auto;padding:0 16px}
+canvas{width:100%;background:#101822;border-radius:8px}
+#controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:12px 0}
+label{display:grid;gap:4px}button,select{font:inherit;padding:8px;margin-right:6px}
+</style>
+<h1>Camera Lab</h1>
+<select id="camera" aria-label="Camera"></select>
+<button id="toggle" disabled>Start preview</button>
+<button id="reset">Reset adjustments</button>
+<div id="controls"></div>
+<canvas id="preview" width="480" height="270" aria-label="Adjusted camera preview"></canvas>
+<p id="status" role="status">Loading cameras…</p>
+<script type="module" src="./camera.js"></script>
+</html>
