@@ -793,3 +793,12 @@ All notable Roomcraft changes are recorded here. Deployment status is tracked se
 For each release, include the user-visible change, model migration if any, tested HA and browser versions, verification performed, deployment outcome, and rollback route.
 
 
+
+## Home camera, wildlife and power flow — 23 November 2026
+
+- Put Free view on the live dock and let it receive drag gestures while the idle camera waits. The idle delay defaults to 60 seconds. Default frames the house and nearby yard. Idle outings give more weight to active holiday events and marine leaps or breaches.
+- Keep the dashboard at normal brightness until its configured radar sources have reported vacant for three minutes. The existing night idle dimming then applies. This changes the dashboard overlay only.
+- Stage paired wildlife near the house on clear terrain and sharpen the raccoon silhouette and animal gaits. Animate live power branches in their measured direction. Historical and reduced-motion displays stay still.
+- Roll back by restoring the previous Roomcraft runtime and the private pre-install dashboard backup produced by the installer.
+
+The release gate passed for the deployed build. LAN and Nabu Casa matched all 14 assets for resource `ada8db235e0e6152`. Home, Studio and Controls retained the eight non-view configuration fields. The 1920 × 1080 wall tablet cold-launched Home, entered Free view, orbited on the first drag, returned to Default, and displayed live power traces. The pre-update rollback backup ends in `20261123-085326-579226.json` in the private management backup directory. The three-minute vacancy hold and individual animal interactions were not timed or observed on the tablet.

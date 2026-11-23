@@ -320,6 +320,7 @@ class RoomcraftStorybookCard extends HTMLElement {
               <span class="planner-glyph" aria-hidden="true"></span>
               <span class="planner-long-label">Calendar &amp; to-dos</span><span class="planner-short-label">Calendar</span>
             </button>
+            <button type="button" class="dock-button quick-free-view" aria-pressed="false">Free view</button>
             <a class="dock-button" data-controls-link href="/roomcraft-home/controls">
               <span class="controls-glyph" aria-hidden="true"></span> Controls
             </a>
@@ -710,6 +711,12 @@ class RoomcraftStorybookCard extends HTMLElement {
     });
     this.mainMenu.addEventListener('click', event => {
       if (event.target.closest('a')) this.setMainMenu(false);
+    });
+    this.quickFreeView = this.shadowRoot.querySelector('.quick-free-view');
+    this.quickFreeView.addEventListener('click', () => {
+      const current = this.scene?.getView() ?? this.cameraView;
+      this.changeView(this.cameraView.preset === 'free' ? 'default' : enterFreeView(current));
+      if (this.cameraView.preset === 'free') this.canvas.focus({preventScroll:true});
     });
     populateCameraOptions(this.viewSelect);
     this.viewSelect.addEventListener('change', () => {
@@ -1135,7 +1142,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.locationPanel.update(this.session);
       this.prepareUtilities(config);
       this.scene = createStorybookScene(this.canvas, this.model.layout,
-        {insaneGraphics: this.displaySettings.value.insaneGraphics, assetBase: '/local/roomcraft/'});
+        {insaneGraphics: this.displaySettings.value.insaneGraphics, assetBase: '/local/roomcraft/', houseFirst:true});
       this.scene.setFamilyPriority(this.familyPriority);
       this.scene.setPresenceBehavior(this.presenceZoneSettings);
       const vacuum = this.model.layout.items.find(item => item.entityId?.startsWith('vacuum.') && item.vacuumMapEntityId);
@@ -1269,6 +1276,7 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   syncFreeViewMode() {
     const active = Boolean(this.scene) && !this.demoRun && this.cameraView.preset === 'free';
+    this.quickFreeView?.setAttribute('aria-pressed', String(active));
     this.canvas.toggleAttribute('data-free-view', active);
     this.freeViewHint.hidden = !active;
     if (active) {
@@ -1284,6 +1292,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     const available = Boolean(this.scene) && Boolean(this.session?.connected);
     this.demoButton.disabled = !this.scene || Boolean(this.startupViewRequest);
     this.saveDefaultButton.hidden = !this.scene;
+    this.quickFreeView.disabled = !this.scene || Boolean(this.demoRun);
     this.clearDefaultButton.hidden = !this.scene || !this.savedStartupView;
     this.saveDefaultButton.disabled = this.clearDefaultButton.disabled =
       !available || Boolean(this.startupViewRequest);

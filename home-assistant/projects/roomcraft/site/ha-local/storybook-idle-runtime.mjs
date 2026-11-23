@@ -1,3 +1,4 @@
+import {personSource} from './storybook-tracking.mjs';
 import {createIdleCameraDirector, normalizeIdleCameraSettings} from './storybook-idle-camera.mjs';
 import {resolveDefaultCameraView} from './storybook-camera.mjs';
 
@@ -34,6 +35,7 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
   const now=()=>host.performance.now();
   const idleBrightness=()=>idleBrightnessAt(new Date(),card.session?.config?.time_zone||'America/Los_Angeles');
   let director, state={active:false,phase:'waiting'}, connected=false, timer, interests=[], nextInterestAt=0;
+  let vacantSince;
   let suppressClickUntil=0, manual=false, lastAppliedFraming;
   const held=new Set(), wakePointers=new Set();
   function freshDirector() {
@@ -53,7 +55,7 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
   root.append(dialog);
   const startButton=root.querySelector('.idle-start'), settingsButton=root.querySelector('.idle-settings');
   const block=()=>!connected||!card.isConnected||!card.scene||!card.frame||doc.hidden
-    ||held.size>0||Boolean(card.startupViewRequest)||Boolean(card.demoRun||card.holidayPreview||card.worldLifePreview)
+    ||held.size>0||card.cameraView?.preset==='free'||Boolean(card.startupViewRequest)||Boolean(card.demoRun||card.holidayPreview||card.worldLifePreview)
     ||!card.mainMenu.hidden||Boolean(root.querySelector('dialog[open]'))
     ||Boolean(card.devicesDrawer?.isOpen)
     ||card.stage.getBoundingClientRect().width<1;
@@ -77,6 +79,10 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
     // A queued RAF timestamp can precede an input handled in that same frame.
     // Keep adapter samples after touch/start so a busy WebView cannot undo them.
     at=Math.max(Number.isFinite(at)?at:0,now());
+    const sources = card.model?.layout?.items?.filter(personSource) ?? [];
+    const states = card.session?.connected === false ? {} : card.session?.states ?? {};
+    const vacant = sources.length > 0 && sources.every(item => states[item.presenceEntityId]?.state === 'off');
+    vacantSince = vacant ? (vacantSince ?? at) : undefined;
     const blocked=block();
     if(!blocked&&at>=nextInterestAt) {
       interests=card.scene.getIdleCameraInterests?.()??[];nextInterestAt=at+1000;
@@ -84,14 +90,14 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
     const previous=state;
     state=director.sample(at,{blocked,reducedMotion:card.motionReduced,enabled:settings.enabled||manual,interests});
     if(state.active) {
-      const brightness=idleBrightness();
+      const brightness=vacantSince !== undefined && at-vacantSince >= 180_000 ? idleBrightness() : 1;
       card.world.style.filter=brightness===1?'':`brightness(${brightness})`;
       const view=resolveDefaultCameraView(card.savedStartupView);
       if(!previous.active) {
         card.cameraView=view;card.pendingCameraView=undefined;card.viewSelect.value='default';
         card.freeViewGestures?.cancel();card.syncFreeViewMode();
       }
-      lastAppliedFraming=state.focus?{focus:{...state.focus},demoZoom:Math.min(4.5,view.zoom*state.zoomFactor)}:undefined;
+      lastAppliedFraming=state.focus?{focus:{...state.focus},demoZoom:Math.min(4.5,(view.framePreset ? view.zoom : Math.min(1,view.zoom))*state.zoomFactor)}:undefined;
       card.scene.setView(view,lastAppliedFraming);
       card.world.setAttribute('data-idle-camera',state.phase);
       if(previous.phase!==state.phase||!previous.active)card.anchorDirty=true;
@@ -109,10 +115,9 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
   function consume(event) {if(event.cancelable)event.preventDefault();event.stopImmediatePropagation();}
   function pointerDown(event) {
     const wasIdle=state.active, inside=event.composedPath().includes(card);
-    const away=inside&&card.cameraView?.preset!=='default';
     if(!wakePointers.size)suppressClickUntil=0;
-    touch();if(away&&!wasIdle)restore();held.add(event.pointerId);
-    if((wasIdle||away||wakePointers.size>0)&&inside) {
+    touch();held.add(event.pointerId);
+    if((wasIdle||wakePointers.size>0)&&inside) {
       wakePointers.add(event.pointerId);suppressClickUntil=Infinity;consume(event);
     }
   }

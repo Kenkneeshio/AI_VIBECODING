@@ -1149,14 +1149,14 @@ function loadCoastSandstone(document, assetBase) {
   return texture;
 }
 
-export function createStorybookScene(canvas, layout, {insaneGraphics = false, assetBase} = {}) {
+export function createStorybookScene(canvas, layout, {insaneGraphics = false, assetBase, houseFirst = false} = {}) {
   const plan = compileStorybookPlan(layout);
   const renderer = new THREE.WebGLRenderer({
     canvas, antialias: true, alpha: false, powerPreference: insaneGraphics ? 'high-performance' : 'low-power',
   });
   try {
     renderer.resetState();
-    return buildStorybookScene(canvas, layout, plan, renderer, assetBase);
+    return buildStorybookScene(canvas, layout, plan, renderer, assetBase, houseFirst);
   } catch (error) {
     releaseRenderer(renderer);
     throw error;
@@ -1173,7 +1173,7 @@ function releaseRenderer(renderer) {
   }
 }
 
-function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
+function buildStorybookScene(canvas, layout, plan, renderer, assetBase, houseFirst) {
   let sceneSettings = layout.sceneSettings;
   let displaySettings = {};
   const scene = new THREE.Scene();
@@ -1276,7 +1276,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   const beachPlay = createStorybookBeachPlay(water, street);
   const marineLife = createStorybookMarineLife(water);
   const worldMoments = createStorybookWorldMoments({water,street,plan,heightAt:meadow.heightAt,
-    canPlace:canEditTerrain,trees:treeWind.getTrees()});
+    canPlace:canEditTerrain,trees:treeWind.getTrees(),nearHome:houseFirst});
   const worldClock = createWorldClock();
   let idleSceneReady = false, idleScenePreview = false;
   scene.add(marineLife.root,worldMoments.root);
@@ -1454,7 +1454,10 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase) {
   function updateCamera() {
     landmarkCameraFrames ??= storybookLandmarkCameraFrames(plan.placements, roots);
     cameraBounds.frames = {...coastalFrames, ...landmarkCameraFrames};
-    cameraView = fitStorybookCamera(camera, cameraFraming?.bounds ?? cameraBounds, currentWidth, currentHeight, cameraView, cameraFraming);
+    const homeFrame = houseFirst && cameraView.preset === 'default' && !cameraFramePreset(cameraView);
+    const frame = homeFrame ? {...plan.houseBounds, minX:plan.houseBounds.minX-110, maxZ:plan.houseBounds.maxZ+85, maxY:92} : cameraBounds;
+    cameraView = fitStorybookCamera(camera, cameraFraming?.bounds ?? frame, currentWidth, currentHeight, cameraView,
+      homeFrame && !cameraFraming ? {demoZoom:Math.min(cameraView.zoom,1)} : cameraFraming);
     updateSceneryView();
     const haze = storybookHorizonFog(cameraView.tilt);
     scene.fog = haze ? horizonFog : null;

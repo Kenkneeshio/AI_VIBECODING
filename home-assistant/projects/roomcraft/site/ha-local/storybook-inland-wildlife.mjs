@@ -56,7 +56,7 @@ const hash=(seed,index)=>{let n=Math.imul((seed|0)^(index*0x9e3779b9),0x85ebca6b
 
 /** World-coordinate pairs stay beyond the home and road. `canPlace` is the
  * shared structure/road/terrain exclusion used by the editor and live scene. */
-export function planInlandWildlife({plan,heightAt,canPlace=()=>true}={}){
+export function planInlandWildlife({plan,heightAt,canPlace=()=>true,nearHome=false}={}){
   const bounds=plan?.houseBounds??plan?.bounds;
   if(!bounds||![bounds.minX,bounds.maxX,bounds.maxZ].every(Number.isFinite)||typeof heightAt!=='function')return[];
   const cx=(bounds.minX+bounds.maxX)/2,groups=[];
@@ -78,6 +78,16 @@ export function planInlandWildlife({plan,heightAt,canPlace=()=>true}={}){
         species:side?second:first,side}))),
     }));
   }
+  if(nearHome){
+    for(const [index,names] of [['desert-cottontail','california-quail'],['raccoon','coyote']].entries()){
+      const z=bounds.maxZ+78+index*18;
+      const x=[cx,cx-170,cx+170].find(px=>[-36,0,36].every(dx=>
+        [-12,0,12].every(dz=>canPlace(px+dx,z+dz)&&Number.isFinite(heightAt(px+dx,z+dz)))));
+      if(x===undefined)continue;
+      groups.push({id:'home-wildlife-'+index,habitat:'home',x,y:heightAt(x,z),z,
+        members:names.map((name,side)=>({id:'wild-'+(120+index*2+side),side,species:INLAND_SPECIES.find(item=>item.id===name)}))});
+    }
+  }
   return groups;
 }
 
@@ -90,8 +100,8 @@ export function sampleInlandWildlife(groups,seconds=0,options={}){
   const cycle=Math.floor(time/24),phase=time%24;
   const perHabitat=Math.max(1,Math.ceil(settings.density*4));
   const actors=[];
-  for(const habitat of habitats){
-    const eligible=groups.filter(group=>group.habitat===habitat);
+  for(const habitat of ['home',...habitats]){
+    const eligible=groups.filter(group=>group.habitat===habitat && (habitat!=='home' || group.id==='home-wildlife-'+Number(options.night===true)));
     if(!eligible.length)continue;
     for(let j=0;j<Math.min(perHabitat,eligible.length);j++){
       const group=eligible[(cycle*perHabitat+j*3+habitats.indexOf(habitat))%eligible.length];
@@ -105,8 +115,8 @@ export function sampleInlandWildlife(groups,seconds=0,options={}){
         const bird=member.species.shape==='bird';
         const flying=bird&&['hover','soar','dive','flit'].includes(mode);
         actors.push({id:member.id,partnerId:group.members[1-member.side].id,species:member.species.id,
-          name:member.species.name,habitat,shape:member.species.shape,color:member.species.color,
-          size:member.species.size*2.05*(.86+.22*hash(settings.seed,Number(member.id.slice(-3)))),
+          name:member.species.name,habitat:habitat==='home'?member.species.habitat:habitat,shape:member.species.shape,color:member.species.color,
+          size:member.species.size*(habitat==='home'?2.6:2.05)*(.86+.22*hash(settings.seed,Number(member.id.slice(-3)))),
           x,y:options.heightAt?.(x,z)??group.y,z,flyHeight:flying?10+member.species.size*2:0,
           yaw:side>0?Math.PI:0,mode,interaction:encounter?(member.species.shape==='bird'?'flock':
             member.species.shape==='cat'||member.species.shape==='canid'?'watch':'greet'):null,

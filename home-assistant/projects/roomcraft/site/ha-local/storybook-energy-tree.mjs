@@ -15,6 +15,7 @@ export const ENERGY_TREE_MARKUP = `
     </header>
     <div class="energy-tree-stage">
       <canvas class="energy-tree-traces" aria-hidden="true"></canvas>
+      <svg class="energy-flow" aria-hidden="true"></svg>
       <button type="button" class="energy-tree-hub" aria-pressed="true">
         <span class="energy-tree-home" aria-hidden="true"></span>
         <span class="energy-tree-hub-label"></span>
@@ -106,6 +107,12 @@ export const ENERGY_TREE_STYLE = `
   .energy-tree-node[data-tone=reverse] .energy-tree-node-reading{color:#9ce7d4}
   .energy-tree-node[data-tone=unavailable] .energy-tree-node-reading{color:#d0d5ce}
   .energy-tree-caption{margin:1px 4px 3px;color:#e0d6c2;font-size:11px;text-align:center}
+  .energy-flow{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .energy-flow path{fill:none;stroke-dasharray:3 18;stroke-linecap:round;animation:energy-flow 1.2s linear infinite}
+  .energy-flow path[data-reverse]{animation-direction:reverse}
+  @keyframes energy-flow{to{stroke-dashoffset:-21}}
+  [data-reduced-motion] .energy-flow{display:none}
+  @media(prefers-reduced-motion:reduce){.energy-flow{display:none}}
   .energy-tree-caption[hidden]{display:none}
   @container (max-width: 410px){
     .energy-tree-stage{aspect-ratio:1.07}
@@ -209,6 +216,7 @@ export function bindEnergyTree(root, onSelect) {
   const element = root.matches?.('.energy-tree') ? root : root.querySelector('.energy-tree');
   const stage = element.querySelector('.energy-tree-stage');
   const canvas = element.querySelector('.energy-tree-traces');
+  const flow = element.querySelector('.energy-flow');
   const branches = element.querySelector('.energy-tree-branches');
   const caption = element.querySelector('.energy-tree-caption');
   const periodName = element.querySelector('.energy-tree-period');
@@ -288,6 +296,17 @@ export function bindEnergyTree(root, onSelect) {
     caption.textContent = note;
     caption.hidden = !note;
     drawTree(canvas, width, height, positions);
+    flow.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    const paths = positions.filter(({tone}) => tone === 'draw' || tone === 'reverse');
+    flow.replaceChildren(...paths.map(({x,y,angle,tone,strength}) => {
+      const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+      const cx = width/2, cy = height/2, end = y-13;
+      path.setAttribute('d', `M ${cx} ${cy} Q ${cx+(x-cx)*.52-13*Math.sin(angle)} ${cy+(end-cy)*.52+13*Math.cos(angle)} ${x} ${end}`);
+      path.setAttribute('stroke', tone === 'reverse' ? '#a5ffe1' : '#ffe1a0');
+      path.setAttribute('stroke-width', String(1+strength*2));
+      path.toggleAttribute('data-reverse', tone === 'reverse');
+      return path;
+    }));
   }
 
   const resize = new ResizeObserver(paint);
@@ -301,6 +320,7 @@ export function bindEnergyTree(root, onSelect) {
     clear() {
       state = undefined;
       resize.disconnect();
+      flow.replaceChildren();
     },
   };
 }

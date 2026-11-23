@@ -16,12 +16,12 @@ export function selectIdleCameraInterests({holiday, marine, moments, landmarks=[
   }
   if (holiday?.visible === true && named(holiday.selection) && holiday.active?.includes(holiday.selection)
       && holiday.stage?.intensity > 0) {
-    add('holiday:'+holiday.selection, holiday.focus, holiday.stage.events ? 9 : 7, 3);
+    add('holiday:'+holiday.selection, holiday.focus, holiday.stage.events ? 20 : 7, 3);
   }
   if (marine?.validWater === true && marine.preview !== true && marine.disposed !== true) {
     for (const actor of marine.actors ?? []) {
       if (actor.visible !== true || !named(actor.id)) continue;
-      if(MARINE_EVENTS.has(actor.behavior))add('marine:'+actor.id, position(actor.position), 9, 2.7);
+      if(MARINE_EVENTS.has(actor.behavior))add('marine:'+actor.id, position(actor.position), 18, 3);
     }
   }
   if (moments?.settings?.enabled === true && moments.settings.characters === true && moments.settings.density > 0) {

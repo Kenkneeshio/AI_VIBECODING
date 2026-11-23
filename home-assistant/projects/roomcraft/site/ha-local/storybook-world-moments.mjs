@@ -34,7 +34,7 @@ const inside=(x,z,b,pad=0)=>b&&x>=b.minX-pad&&x<=b.maxX+pad&&z>=b.minZ-pad&&z<=b
 
 /** Reserve complete vignette envelopes in dry sand. Invalid/steep/narrow
  * terrain produces fewer sites, never an actor in the sea, home or street. */
-export function planStorybookWorldMoments({water,street,plan,trees=[],heightAt,canPlace,exclusions=[]}={}){
+export function planStorybookWorldMoments({water,street,plan,trees=[],heightAt,canPlace,exclusions=[],nearHome=false}={}){
   const bounds=plan?.houseBounds??plan?.bounds;
   const empty={sites:[],waterSites:[],trees:[],wildlife:[]};
   if(!bounds||![bounds.minX,bounds.maxX,bounds.minZ,bounds.maxZ,street?.farZ,water?.y,water?.focusX].every(Number.isFinite))return empty;
@@ -71,7 +71,7 @@ export function planStorybookWorldMoments({water,street,plan,trees=[],heightAt,c
     .filter(t=>t.z>shoreAt(water,t.x)+10&&!inside(t.x,t.z,{minX:-Infinity,maxX:Infinity,
       minZ:(street.sample?.(t.x,street.farZ)?.z??street.farZ)-22,maxZ:(street.sample?.(t.x,street.nearZ)?.z??street.nearZ)+22},20))
     .slice(0,24).map(t=>({...t}));
-  return {sites,waterSites,trees:safeTrees,wildlife:planInlandWildlife({plan,heightAt,canPlace})};
+  return {sites,waterSites,trees:safeTrees,wildlife:planInlandWildlife({plan,heightAt,canPlace,nearHome})};
 }
 
 /** A pure, bounded, finite catalog of fictional scenery moments. Time comes
@@ -270,6 +270,7 @@ function drawInlandWildlife(brush,a){
   const part=(shape,color,dx,dy,dz,w,h,d,rx=0,ry=0,rz=0)=>
     brush.part(shape,color,a.x+dx*cosine-dz*sine,y+dy+bob,a.z+dx*sine+dz*cosine,w,h,d,rx,ry+a.yaw,rz);
   const body=a.color;
+  const gait = ['walk','sprint','trot','stalk','hop','interact'].includes(a.mode);
   if(a.flyHeight<1)part('shadow','#515349',0,.07,0,s*1.4,.15,s*.7);
   if(a.shape==='snake'){
     for(let i=0;i<6;i++)part('ball',i%2?'#6d6558':body,(i-2.5)*s*.52,s*.15,Math.sin(i*1.1)*s*.37,s*.48,s*.17,s*.34);
@@ -308,7 +309,7 @@ function drawInlandWildlife(brush,a){
   part('ball',rabbit?'#e7d9c6':'#d6bb9e',headX+s*.34,headY-s*.12,0,s*.27,s*.16,s*.26);
   part('ball','#353934',headX+s*.59,headY-s*.11,0,s*.095,s*.075,s*.11);
   for(const side of [-1,1]){
-    const stride=(a.mode==='walk'||a.mode==='sprint'||a.mode==='interact')?a.beat*s*.18:0;
+    const stride=gait?a.beat*s*.23:0;
     for(const x of [-.73,.73]){
       part('ball',body,x*s+side*stride,s*(deer?.72:.36),side*s*.34,s*.17,s*(deer?.75:.40),s*.16);
       part('ball',deer?'#49463e':body,x*s+side*stride,s*.12,side*s*.34,s*.21,s*.12,s*.21);
@@ -327,7 +328,7 @@ function drawInlandWildlife(brush,a){
   }
   if(a.species==='raccoon'){
     for(const side of [-1,1])part('ball','#343d3c',headX+s*.28,bodyY+s*.43,side*s*.34,s*.24,s*.14,s*.11);
-    for(let i=0;i<3;i++)part('ball',i%2?'#343d3c':'#d7d1c1',-s*(1.15+i*.22),bodyY,0,s*.27,s*.20,s*.20);
+    for(let i=0;i<6;i++)part('ball',i%2?'#343d3c':'#b9b3a5',-s*(1.12+i*.20),bodyY+i*s*.04,Math.sin(a.beat)*i*s*.035,s*.20,s*.24-i*s*.018,s*.23-i*s*.016);
   }else if(a.species==='striped-skunk')part('ball','#f1e8d9',-s*.25,bodyY+s*.49,0,s*.75,s*.07,s*.22);
   else if(feline){
     part('ball','#454139',-s*1.17,bodyY+s*.08,0,s*.25,s*.17,s*.18);
