@@ -816,3 +816,9 @@ Verification: full release gate passed. A simulated peer test verified default o
 Home Dash now returns to a 75-second home interlude by default and uses three of every four outings for rotating nearby activities when available. The fourth can explore farther away. The render preview explains when the Windows broadcaster is missing, when HTTPS is required, and when no video arrived. The Windows broadcaster is still required for live rendering.
 
 The release gate passed, including the ordered idle-outing regression. LAN and remote readback matched all 14 assets for resource 6ad1a7a1d3930142. The wall tablet cold-launched Home Dash in full screen. Restore the previous runtime and private installer backup ending 20261126-214511-431602.json to roll back.
+
+## Keep Home Dash on its verified renderer
+
+Removed the stream viewer from Home Dash. The Green had no Roomcraft render service installed and the viewer required an external broadcaster. The tablet renders the scene directly. A server option should be exposed only after an HA-hosted renderer can deliver live frames and preserve touch controls on the actual tablet.
+
+Full release checks passed. LAN and Nabu Casa readback matched all 14 assets for resource 307134117b47e932. The wall tablet cold-launched at 1920 × 1080, showed the Display section without the stream viewer, and returned to full-screen Home Dash. The private pre-install backup ends in 20261126-220226-156458.json.

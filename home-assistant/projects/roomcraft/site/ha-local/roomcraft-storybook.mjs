@@ -1,4 +1,3 @@
-import {bindRenderStream} from './storybook-render-stream.mjs';
 import {createPersonPresence, personSource, readDetectionZones, trackingSnapshots, trackingStatus} from './storybook-tracking.mjs';
 import {createPresenceZoneMap,normalizePresenceZoneSettings,summarizePresenceAreas,
   PRESENCE_ZONE_KEY,PRESENCE_ZONE_SETTINGS_KEY,PRESENCE_ZONE_NAMES} from './storybook-presence-zones.mjs';
@@ -219,12 +218,6 @@ class RoomcraftStorybookCard extends HTMLElement {
         .bar button{border:0;background:transparent;border-radius:8px;cursor:pointer}
         a:hover,.bar button:hover{text-decoration:underline}
         :focus-visible{outline:2px solid #74516f;outline-offset:2px}
-        .render-stream-video{display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#172130}
-        [data-render-stream] .render-stream-video{display:block}
-        [data-render-stream] :is(.overlay,.tethers,.zone-legend,.free-view-hint){visibility:hidden}
-        .render-stream-dialog{position:absolute;inset:auto 12px 52px auto;margin:0;z-index:12;max-width:min(340px,85vw);padding:14px;border:0;border-radius:12px;background:#fff8eb;color:#382f28}
-        .render-stream-dialog label,.render-stream-dialog input{display:block;width:100%;box-sizing:border-box}
-        .render-stream-dialog button{min-height:40px;margin:3px}
         .stage{position:relative;min-height:0;isolation:isolate}
         .menu-shade{position:absolute;inset:0;z-index:4;background:#11223550}
         .scene-fps{position:absolute;z-index:5;top:10px;right:12px;pointer-events:none;
@@ -284,16 +277,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       </style>
       <section class="world" aria-label="Roomcraft Storybook">
         ${COASTAL_SKY_MARKUP}
-        <dialog class="render-stream-dialog" aria-label="Streamed rendering">
-          <label>Render host WHEP endpoint <input type="url" autocomplete="off"></label>
-          <p role="status">Local rendering is active.</p>
-          <button type="button" data-stream-start>Enable preview</button>
-          <button type="button" data-stream-keep disabled>Keep stream</button>
-          <button type="button" data-stream-stop>Turn off</button>
-          <button type="button" data-stream-close>Close</button>
-        </dialog>
         <div class="stage">
-          <video class="render-stream-video" muted playsinline aria-label="Server rendered home"></video>
           <canvas role="img" aria-label="Three-dimensional cutaway of the second floor"></canvas>
           <output class="scene-fps" aria-label="Scene frame rate" aria-live="off" hidden>— FPS</output>
           <span id="free-view-hint" class="free-view-hint" hidden>Drag or use arrow keys to orbit. Pinch, scroll, or use +/− to zoom.</span>
@@ -348,7 +332,6 @@ class RoomcraftStorybookCard extends HTMLElement {
                 <section class="menu-group" aria-label="Display">
                   <p class="menu-heading" aria-hidden="true">Display</p>
                   <button type="button" class="menu-primary open-display-settings" aria-haspopup="dialog">Display settings</button>
-                  <button type="button" class="open-render-stream">Streamed rendering</button>
                   <button type="button" class="idle-start">Start idle view now</button>
                   <button type="button" class="idle-settings" aria-haspopup="dialog">Idle view settings</button>
                   <button type="button" class="map-toggle toggle-fps" aria-pressed="false">FPS display <span class="menu-toggle" aria-hidden="true"></span></button>
@@ -832,7 +815,6 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.load();
     });
     this.idleCamera=bindIdleCamera(this);
-    this.renderStream=bindRenderStream(this);
   }
 
   setConfig(config) {
@@ -1103,7 +1085,6 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   disconnectedCallback() {
     this.idleCamera.disconnect();
-    this.renderStream.stop();
     window.removeEventListener(CAMERA_PREFERENCE_EVENT,this.onCameraPreferenceChange);
     window.removeEventListener('storage',this.onCameraPreferenceChange);
     this.holidayPanel.close();
@@ -1588,10 +1569,9 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   schedule() {
-    if (this.renderStream?.playing || this.animationFrame !== undefined || !this.scene || !this.frame || document.hidden || this.largePanelOpen) return;
+    if (this.animationFrame !== undefined || !this.scene || !this.frame || document.hidden || this.largePanelOpen) return;
     this.animationFrame = requestAnimationFrame(at => {
       this.animationFrame = undefined;
-      if (this.renderStream?.playing) return;
       if (this.largePanelOpen) {
         if (!this.fpsDisplay.hidden) this.resetFpsSample('0 FPS');
         return;
