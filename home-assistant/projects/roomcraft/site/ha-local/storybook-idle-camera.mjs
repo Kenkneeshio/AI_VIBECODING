@@ -2,7 +2,7 @@
  * input; this module never reads a clock, operates a device or changes a layout.
  */
 export const IDLE_CAMERA_DEFAULTS = Object.freeze({
-  idleAfterMs: 60_000, travelMs: 24_000, lingerMs: 16_000, homeMs: 45_000, seed: 37,
+  idleAfterMs: 60_000, travelMs: 24_000, lingerMs: 16_000, homeMs: 75_000, seed: 37,
 });
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -48,8 +48,14 @@ function interestsFrom(value) {
 }
 
 function chooseInterest(interests, seed, excursion) {
+  const candidates = interestsFrom(interests);
+  const local = candidates.filter(item => /^(marine|activity|habitat|near-home):|^scenery:(beach|coast)$/.test(item.id));
+  const categories = [...new Set(local.map(item => item.id.split(':')[0]))];
+  const category = categories[(excursion - Math.floor(excursion / 4)) % categories.length];
+  const pool = excursion % 4 !== 3 && category
+    ? local.filter(item => item.id.startsWith(category + ':')) : candidates;
   let selected, best = Infinity;
-  for (const item of interestsFrom(interests)) {
+  for (const item of pool) {
     const score = -Math.log(hash(`${seed}:${excursion}:${item.id}`)) / item.weight;
     if (score < best) { selected = item; best = score; }
   }

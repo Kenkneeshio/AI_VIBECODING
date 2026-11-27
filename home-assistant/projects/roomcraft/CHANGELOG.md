@@ -810,3 +810,9 @@ The release gate passed for the deployed build. LAN and Nabu Casa matched all 14
 - This release supplies the viewer and fallback. The Windows render host is a separate service and has not been provisioned.
 
 Verification: full release gate passed. A simulated peer test verified default off, playing preview, confirmation deadline, and stall recovery. LAN and remote readback matched 14 assets for resource 9bdcc53cc46062ed. The wall tablet loaded Home Dash and opened the stream controls with local rendering active. Live stream playback was not tested. Rollback uses the previous runtime and private installer receipt ending 20261126-212631-334644.json.
+
+## Home and beach idle rotation
+
+Home Dash now returns to a 75-second home interlude by default and uses three of every four outings for rotating nearby activities when available. The fourth can explore farther away. The render preview explains when the Windows broadcaster is missing, when HTTPS is required, and when no video arrived. The Windows broadcaster is still required for live rendering.
+
+The release gate passed, including the ordered idle-outing regression. LAN and remote readback matched all 14 assets for resource 6ad1a7a1d3930142. The wall tablet cold-launched Home Dash in full screen. Restore the previous runtime and private installer backup ending 20261126-214511-431602.json to roll back.

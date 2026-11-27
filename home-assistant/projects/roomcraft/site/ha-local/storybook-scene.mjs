@@ -1594,13 +1594,17 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase, houseFir
       return {id:item.id, visible:object?.root.visible === true, animated:object?.ambientMotion === true,
         focus:getDemoFocus(item.id)};
     });
-    return selectIdleCameraInterests({
+    const interests = selectIdleCameraInterests({
       holiday:{...holiday, visible:holidays.root.visible, focus:holidayFocus},
       marine:marineLife.getState(), moments:worldMoments.getState(), landmarks, habitats,
       scenery:[{id:'coast', visible:true, focus:sceneryFocus.coast},
         {id:'beach', visible:true, focus:sceneryFocus.beach},
         {id:'road', visible:traffic?.root.visible === true, focus:sceneryFocus.road}],
     });
+    const beach = {id:'scenery:beach', focus:sceneryFocus.beach, weight:1, zoomFactor:1.35};
+    if (!interests.some(item => item.id === beach.id)) interests.push(beach);
+    return interests.map(item => /^wildlife:wild-12[0-3]$/.test(item.id)
+      ? {...item,id:item.id.replace('wildlife:', 'near-home:')} : item);
   }
   function pointRay(x, y) {
     if (disposed || !Number.isFinite(x) || !Number.isFinite(y) || currentWidth <= 0 || currentHeight <= 0) return false;

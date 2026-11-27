@@ -30,7 +30,7 @@ test('60 seconds of inactivity starts a slow excursion; touch immediately restor
   assert.equal(director.sample(132101,{interests}).active,true);
 });
 
-test('instant start travels and returns smoothly then spends 45 seconds at home', () => {
+test('instant start travels and returns smoothly then spends 75 seconds at home', () => {
   const director=createIdleCameraDirector();director.start(1000);
   const beginning=director.sample(1000,{interests}), end=director.sample(25000,{interests});
   assert.equal(beginning.focus.weight,0);assert.equal(end.phase,'linger');assert.equal(end.focus.weight,1);
@@ -40,9 +40,9 @@ test('instant start travels and returns smoothly then spends 45 seconds at home'
   const almost=director.sample(64999,{interests});
   assert.ok(almost.focus.weight<.000001);assert.ok(almost.zoomFactor<1.000001);
   const home=director.sample(65000,{interests});
-  assert.equal(home.phase,'home');assert.equal(home.focus,undefined);assert.equal(home.zoomFactor,1);assert.equal(home.nextWakeAt,110000);
-  assert.equal(director.sample(109999,{interests}).phase,'home');
-  assert.equal(director.sample(110000,{interests}).phase,'outbound');
+  assert.equal(home.phase,'home');assert.equal(home.focus,undefined);assert.equal(home.zoomFactor,1);assert.equal(home.nextWakeAt,140000);
+  assert.equal(director.sample(139999,{interests}).phase,'home');
+  assert.equal(director.sample(140000,{interests}).phase,'outbound');
 });
 
 test('blocked, disabled and reduced-motion states cannot accumulate a pending excursion', () => {
@@ -85,11 +85,21 @@ test('one snapshotted destination prevents jumps when moving interests change or
 test('invalid interests and settings remain finite and harmless, including backward or unavailable time', () => {
   assert.deepEqual(normalizeIdleCameraSettings(null),IDLE_CAMERA_DEFAULTS);
   assert.deepEqual(normalizeIdleCameraSettings({idleAfterMs:-1,travelMs:Infinity,lingerMs:1,homeMs:NaN,seed:1.8}),
-    {idleAfterMs:5000,travelMs:24000,lingerMs:5000,homeMs:45000,seed:1});
+    {idleAfterMs:5000,travelMs:24000,lingerMs:5000,homeMs:75000,seed:1});
   const invalid=[{id:'bad',focus:{x:Infinity,y:0,z:0}},{id:'zero',focus:{x:0,y:0,z:0},weight:0},null];
   const director=createIdleCameraDirector();director.start(1000);
   assert.equal(director.sample(2000,{interests:invalid}).phase,'home');
   assert.equal(director.sample(3000,{interests:null}).targetId,null);
   const safe=director.sample(NaN);assert.ok(Number.isFinite(safe.zoomFactor));
   const backwards=director.sample(500,{interests});assert.equal(backwards.active,false);assert.equal(backwards.nextWakeAt,60500);
+});
+
+test('three outings per cycle favor varied activity near home and the beach', () => {
+  const director = createIdleCameraDirector();
+  director.start(0);
+  const focus = {x:20,y:10,z:30};
+  const subjects = ['activity:kite','marine:whale','scenery:beach','landmark:office']
+    .map(id => ({id,focus,weight:id.startsWith('landmark:') ? 20 : 1}));
+  const local = [0,1,2].map(index => director.sample(index*cycleMs+1000,{interests:subjects}).targetId);
+  assert.deepEqual(local,['activity:kite','marine:whale','scenery:beach']);
 });

@@ -26,11 +26,19 @@ export function bindRenderStream(card) {
 
   async function start() {
     stop();
+    if (!endpoint.value.trim()) {
+      status.textContent = 'No render host is configured. Local rendering is active.';
+      return;
+    }
     let url;
     let peer;
     try {
       url = new URL(endpoint.value);
       if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error();
+      if (window.location.protocol === 'https:' && url.protocol !== 'https:') {
+        status.textContent = 'This dashboard connection requires an HTTPS render host.';
+        return;
+      }
       peer = new RTCPeerConnection();
     } catch {
       status.textContent = 'Enter a valid HTTP or HTTPS WHEP stream endpoint.';
@@ -48,12 +56,14 @@ export function bindRenderStream(card) {
         card.world.setAttribute('data-render-stream','');
       }
       if (!session.confirmed && now >= deadline) {
-        stop('Preview expired. Local rendering restored.');
+        stop(session.lastTime ? 'Preview expired. Local rendering restored.' : 'No video arrived within 10 seconds. Local rendering restored.');
       } else if (session.confirmed && now-session.lastFrame > 4000) {
         stop('Stream paused or disconnected. Local rendering restored.');
       } else if (!session.confirmed) {
         keep.disabled = !session.lastTime;
-        status.textContent = `Keep this stream within ${Math.ceil((deadline-now)/1000)} seconds.`;
+        const seconds = Math.ceil((deadline-now)/1000);
+        status.textContent = session.lastTime ? `Keep this stream within ${seconds} seconds.`
+          : `Waiting for the render host · ${seconds} seconds left.`;
       }
     }, 150);
     peer.ontrack = event => {

@@ -16,12 +16,15 @@ const fields=[
   ['idleAfterMs','Start after no touch',15,300,60],
   ['travelMs','Slow pan duration',12,90,24],
   ['lingerMs','Pause at a discovery',5,60,16],
-  ['homeMs','Stay at home between visits',30,180,45],
+  ['homeMs','Stay at home between visits',30,180,75],
 ];
 export function readIdlePreferences(value) {
   const legacyDefault=value?.idleAfterMs===30_000&&value?.travelMs===24_000&&
     value?.lingerMs===16_000&&value?.homeMs===45_000;
-  return {...normalizeIdleCameraSettings(legacyDefault?{...value,idleAfterMs:60_000}:value),
+  const oldHomeDefault = value?.homeMs === 45_000 && value?.travelMs === 24_000 && value?.lingerMs === 16_000;
+  const current = {...value, ...(legacyDefault ? {idleAfterMs:60_000} : {}),
+    ...(oldHomeDefault ? {homeMs:75_000} : {})};
+  return {...normalizeIdleCameraSettings(current),
     enabled:value?.enabled!==false};
 }
 
