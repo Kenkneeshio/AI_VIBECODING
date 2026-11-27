@@ -802,3 +802,11 @@ For each release, include the user-visible change, model migration if any, teste
 - Roll back by restoring the previous Roomcraft runtime and the private pre-install dashboard backup produced by the installer.
 
 The release gate passed for the deployed build. LAN and Nabu Casa matched all 14 assets for resource `ada8db235e0e6152`. Home, Studio and Controls retained the eight non-view configuration fields. The 1920 × 1080 wall tablet cold-launched Home, entered Free view, orbited on the first drag, returned to Default, and displayed live power traces. The pre-update rollback backup ends in `20261123-085326-579226.json` in the private management backup directory. The three-minute vacancy hold and individual animal interactions were not timed or observed on the tablet.
+
+## Optional streamed rendering preview
+
+- Home Dash offers **Menu → Display → Streamed rendering**. Local rendering starts on every load. Connect a compatible WHEP video endpoint and confirm the playing preview within ten seconds to keep it for the current session.
+- A stale or disconnected stream restores local rendering. Free view returns to local rendering so control positions match the scene. HA menus stay available. On-map controls require local rendering until the render host can synchronize camera and hit targets.
+- This release supplies the viewer and fallback. The Windows render host is a separate service and has not been provisioned.
+
+Verification: full release gate passed. A simulated peer test verified default off, playing preview, confirmation deadline, and stall recovery. LAN and remote readback matched 14 assets for resource 9bdcc53cc46062ed. The wall tablet loaded Home Dash and opened the stream controls with local rendering active. Live stream playback was not tested. Rollback uses the previous runtime and private installer receipt ending 20261126-212631-334644.json.
