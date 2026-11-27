@@ -70,3 +70,11 @@ The drawer preserves the six curated groups in the [Main Dashboard map](main-das
 
 The Studio edit link remains a separate entry on the plan. Search and availability come from Home Assistant's registry, so refresh or reimport after entity changes. The drawer has shipped; fit and touch behavior on the target tablet still need an on-device check. Keep the old Main Dashboard as a reference while validating the curated views.
 
+
+### Inovelli VZM32-SN radar-only reset
+
+Save the switch's current mmWave settings before resetting. In Home Assistant, open the Inovelli device and choose **Manage Zigbee device → Commands**. Select endpoint 1, input cluster **0xFC32**, then **mmwave_control_command** (server command 0). Set **control_id** to **Reset to factory** and issue it once. This clears radar tuning and zones. The equivalent admin action is zha.issue_zigbee_cluster_command with cluster_id 64562, command 0, command_type server and params.control_id set to Reset to factory.
+
+After the hold period, read endpoint 1 occupancy cluster **0x0406**, attribute **0**, with the area empty. Then check that it reports occupied when someone enters and clears again after they leave. Compare radar settings with the backup and restore any required tuning individually. A successful service call alone does not verify reset or occupancy.
+
+[Inovelli advanced mmWave commands](https://help.inovelli.com/en/articles/12773613-blue-series-mmwave-presence-dimmer-switch-advanced-mmwave-configuration)
