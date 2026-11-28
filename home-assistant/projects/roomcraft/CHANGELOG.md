@@ -868,3 +868,11 @@ Home Assistant assigns startup dashboards per profile. Shared browser and wall-t
 Camera save and reset actions no longer show a floating confirmation. Home Dash locks scrolling on its containing page while mounted and restores the prior overflow setting when closed. Menu and dialog scroll areas remain independent.
 
 Full release checks and authenticated dashboard readback passed. The wall tablet held its full-screen framing through a vertical swipe. Saving and resetting the overhead view showed no visual toast. Rollback backup ends in 20261127-212438-745568.json.
+
+## Two stage idle and quick object rotation
+
+After the idle delay, Home Dash spends 45 seconds on a slightly angled, slightly wider house view with the street and beach edge in the background. It then alternates 75-second home interludes with outings. When all categories are available, the deterministic 18-outing rotation covers beach nine times, traffic five, activities three and interactions once. Missing categories fall back in that priority order. Touch returns to the saved default view.
+
+Layout Studio's object Inspector adds 15° and 90° turns in either direction and a reset to 0°. It reuses the validated pose editor and Undo.
+
+Full release gate passed, including tests for the intro boundary and outing distribution. LAN and remote asset readback matched resource 95edb30d09ff901f. Tablet verified the house-first intro. Private rollback backup ends in 20261127-213611-643171.json.

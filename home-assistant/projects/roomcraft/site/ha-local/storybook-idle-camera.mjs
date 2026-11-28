@@ -47,13 +47,27 @@ function interestsFrom(value) {
   return candidates.filter((item, index) => !index || item.id !== candidates[index - 1].id);
 }
 
+// The home interlude owns most of each cycle. Allocate the remaining outings
+// in descending order, spreading the less frequent subjects across the loop.
+const OUTINGS = [
+  'beach','traffic','beach','activity','beach','traffic',
+  'beach','traffic','beach','activity','beach','traffic',
+  'beach','interaction','beach','activity','beach','traffic',
+];
+const subjectGroup = id => {
+  if (/^marine:|^scenery:(beach|coast)$/.test(id)) return 'beach';
+  if (id === 'scenery:road') return 'traffic';
+  if (id.startsWith('activity:')) return 'activity';
+  if (/^(holiday|landmark|habitat|near-home|wildlife):/.test(id)) return 'interaction';
+  return null;
+};
+
 function chooseInterest(interests, seed, excursion) {
   const candidates = interestsFrom(interests);
-  const local = candidates.filter(item => /^(marine|activity|habitat|near-home):|^scenery:(beach|coast)$/.test(item.id));
-  const categories = [...new Set(local.map(item => item.id.split(':')[0]))];
-  const category = categories[(excursion - Math.floor(excursion / 4)) % categories.length];
-  const pool = excursion % 4 !== 3 && category
-    ? local.filter(item => item.id.startsWith(category + ':')) : candidates;
+  const wanted = OUTINGS[(excursion + seed % OUTINGS.length) % OUTINGS.length];
+  const pool = [wanted,'beach','traffic','activity','interaction']
+    .map(group => candidates.filter(item => subjectGroup(item.id) === group))
+    .find(items => items.length) ?? candidates;
   let selected, best = Infinity;
   for (const item of pool) {
     const score = -Math.log(hash(`${seed}:${excursion}:${item.id}`)) / item.weight;
@@ -75,6 +89,7 @@ const atHome = (active, phase, nextWakeAt) => ({
 export function createIdleCameraDirector(options = {}) {
   const settings = normalizeIdleCameraSettings(options);
   const {idleAfterMs, travelMs, lingerMs, homeMs, seed} = settings;
+  const introMs = bounded(options.introMs, 0, 0, 180_000);
   const returningAt = travelMs + lingerMs;
   const homeAt = returningAt + travelMs;
   const cycleMs = homeAt + homeMs;
@@ -94,7 +109,7 @@ export function createIdleCameraDirector(options = {}) {
   function start(now) {
     const time = timeFrom(now);
     reset(time); startedAt = time; suspended = false;
-    return atHome(true, 'outbound', time + travelMs);
+    return atHome(true, introMs ? 'intro' : 'outbound', time + (introMs || travelMs));
   }
   function sample(now, options = {}) {
     const time = timeFrom(now);
@@ -112,10 +127,12 @@ export function createIdleCameraDirector(options = {}) {
       if (time < deadline) return atHome(false, 'waiting', deadline);
       startedAt = deadline;
     }
-    const elapsed = Math.max(0, time - startedAt);
+    const introEnds = startedAt + introMs;
+    if (time < introEnds) return atHome(true, 'intro', introEnds);
+    const elapsed = Math.max(0, time - introEnds);
     const nextCycle = Math.floor(elapsed / cycleMs);
     const local = elapsed % cycleMs;
-    const cycleStart = startedAt + nextCycle * cycleMs;
+    const cycleStart = introEnds + nextCycle * cycleMs;
     if (nextCycle !== cycle) {
       cycle = nextCycle;
       target = chooseInterest(interests, seed, cycle);

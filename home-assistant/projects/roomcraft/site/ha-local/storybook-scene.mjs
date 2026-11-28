@@ -1456,6 +1456,9 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase, houseFir
     cameraBounds.frames = {...coastalFrames, ...landmarkCameraFrames};
     const homeFrame = houseFirst && cameraView.preset === 'default' && !cameraView.wideFrame && !cameraFramePreset(cameraView);
     const frame = homeFrame ? {...plan.houseBounds, minX:plan.houseBounds.minX-112, maxZ:plan.houseBounds.maxZ+85, maxY:92} : cameraBounds;
+    if (homeFrame && cameraFraming?.coastReveal > 0) {
+      frame.minZ = THREE.MathUtils.lerp(frame.minZ, Math.min(frame.minZ,street.farZ+14),cameraFraming.coastReveal);
+    }
     cameraView = fitStorybookCamera(camera, cameraFraming?.bounds ?? frame, currentWidth, currentHeight, cameraView,
       homeFrame && !cameraFraming ? {bottomAlign:true,tight:cameraView.tilt===0&&!cameraView.azimuth} : cameraFraming);
     updateSceneryView();
@@ -1603,6 +1606,9 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase, houseFir
     });
     const beach = {id:'scenery:beach', focus:sceneryFocus.beach, weight:1, zoomFactor:1.35};
     if (!interests.some(item => item.id === beach.id)) interests.push(beach);
+    if (traffic?.root.visible && !interests.some(item => item.id === 'scenery:road')) {
+      interests.push({id:'scenery:road',focus:sceneryFocus.road,weight:1,zoomFactor:1.4});
+    }
     return interests.map(item => /^wildlife:wild-12[0-3]$/.test(item.id)
       ? {...item,id:item.id.replace('wildlife:', 'near-home:')} : item);
   }

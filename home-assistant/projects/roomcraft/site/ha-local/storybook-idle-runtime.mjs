@@ -4,6 +4,7 @@ import {resolveDefaultCameraView} from './storybook-camera.mjs';
 
 export const IDLE_CAMERA_SETTINGS_KEY='roomcraft.idle-camera.v1';
 const brightnessFormatters=new Map();
+const INTRO_MS = 45_000;
 export function idleBrightnessAt(date,zone='America/Los_Angeles') {
   let hour;
   try {
@@ -43,14 +44,14 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
   const held=new Set(), wakePointers=new Set();
   function freshDirector() {
     // A new session has a different, explicit seed; frame sampling stays repeatable.
-    director=createIdleCameraDirector({...settings,seed:(settings.seed+Math.floor(Date.now()/30000))%2147483647});
+    director=createIdleCameraDirector({...settings,introMs:INTRO_MS,seed:(settings.seed+Math.floor(Date.now()/30000))%2147483647});
     state=director.touch(now());
   }
   freshDirector();
   const dialog=doc.createElement('dialog');
   dialog.className='idle-camera-dialog display-settings-dialog';dialog.setAttribute('aria-label','Idle camera settings');
   dialog.innerHTML=`<form><header><h2>Idle camera</h2><button type="button" data-idle-close>Close</button></header>
-    <p class="display-settings-note">The home stays primary. Slow discoveries return home between visits. Touch once to return safely, then touch a control to use it. Saved in this browser.</p>
+    <p class="display-settings-note">Idle first holds a gently angled house view for 45 seconds, then visits nearby scenes and returns home between outings. Touch once to return safely, then touch a control to use it. Saved in this browser.</p>
     <label class="display-toggle-row"><input type="checkbox" data-idle-enabled>Automatic idle view</label>
     ${fields.map(([key,label,min,max,value])=>`<label class="display-setting-row">${label}<span><input data-idle-field="${key}" type="number" min="${min}" max="${max}" step="1" value="${value}" style="width:72px;min-height:40px;font:inherit"> s</span></label>`).join('')}
     <p class="display-settings-note">Reduced motion keeps the home still. Open menus, previews and the demo pause automatic idle.</p>
@@ -95,7 +96,7 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
     if(state.active) {
       const brightness=vacantSince !== undefined && at-vacantSince >= 180_000 ? idleBrightness() : 1;
       card.world.style.filter=brightness===1?'':`brightness(${brightness})`;
-      const view=resolveDefaultCameraView(card.savedStartupView);
+      const view=resolveDefaultCameraView(null);
       if(!previous.active) {
         idleStartedAt=at;
         card.cameraView=view;card.pendingCameraView=undefined;card.viewSelect.value='default';
@@ -104,13 +105,15 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
       lastAppliedFraming=state.focus?{focus:{...state.focus},demoZoom:Math.min(4.5,view.zoom*state.zoomFactor)}:undefined;
       const seconds=(at-idleStartedAt)/1000;
       const eased=Math.min(1,seconds/12);
+      const roam=Math.min(1,Math.max(0,(seconds-INTRO_MS/1000)/15));
       const drift={
         ...view,
-        azimuth:view.azimuth+eased*8*Math.sin(seconds/27),
-        tilt:Math.min(88,view.tilt+eased*(4+3*Math.sin(seconds/19))),
+        azimuth:view.azimuth+eased*(2+6*roam)*Math.sin(seconds/27),
+        tilt:Math.min(88,view.tilt+eased*(5+2*roam*Math.sin(seconds/19))),
       };
-      const zoom=(lastAppliedFraming?.demoZoom ?? view.zoom)*(1+.045*eased*Math.sin(seconds/21));
-      card.scene.setView(drift,{...lastAppliedFraming,demoZoom:zoom});
+      const zoom=(lastAppliedFraming?.demoZoom ?? view.zoom)*(1+eased*(-.055+.025*roam*Math.sin(seconds/21)));
+      card.scene.setView(drift,{...lastAppliedFraming,demoZoom:zoom,
+        coastReveal:eased*(1-(state.focus?.weight ?? 0))});
       card.world.setAttribute('data-idle-camera',state.phase);
       if(previous.phase!==state.phase||!previous.active)card.anchorDirty=true;
     } else if(previous.active)restore();

@@ -502,7 +502,11 @@
       + '<p class="field-hint">' + (zone
         ? 'This outline appears only while editing. Drag it over the artwork, then resize its corners to set the tappable area.'
         : 'Drag this object to move it; drag a corner handle to resize. Hold Shift or enable Keep width/depth ratio to keep proportions.') + '</p>'
-      + '<div class="inspector-actions">' + (road ? '' : '<button type="button" class="secondary-button" data-action="rotate">↻ Rotate 90°</button>')
+      + (road ? '' : '<div class="inspector-actions" role="group" aria-label="Rotate object">'
+        + [-90,-15,15,90].map(degrees => '<button type="button" class="secondary-button" data-action="rotate" data-degrees="'
+          + degrees + '">' + (degrees < 0 ? '↶ ' : '↻ ') + Math.abs(degrees) + '°</button>').join('')
+        + '<button type="button" class="secondary-button" data-action="rotate" data-degrees="reset">0°</button></div>')
+      + '<div class="inspector-actions">'
       + '<button type="button" class="secondary-button" data-action="duplicate">▣ Duplicate</button></div></div>';
     const sizing = '<div class="inspector-block"><p class="inspector-label">DIMENSIONS · PLAN PX</p>'
       + '<div class="field-grid">' + field('Width', 'w', item.w, 'number', road ? 'min="48" max="140" step="any"' : '')

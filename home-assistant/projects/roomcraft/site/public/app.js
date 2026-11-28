@@ -1642,11 +1642,12 @@
     copy.id=uid('i');copy.name=`${current.name} copy`;
     project.items.push(copy);select('item',copy.id);afterChange('Duplicated object');
   }
-  function rotateSelected(){
+  function rotateSelected(step){
     if(selected?.kind!=='item')return;
     const current=project.items.find(item=>item.id===selected.id);
     if(!current)return;
-    updateObjectPose(current,'rotation',current.rotation+90);
+    const angle=step==='reset' ? 0 : current.rotation+Number(step);
+    if(Number.isFinite(angle))updateObjectPose(current,'rotation',angle);
   }
   function addRoom(){snapshot();const r=room(uid('r'),'New room','terrazzo',[[570,420],[790,420],[790,580],[570,580]],[580,440]);project.rooms.push(r);setTool('room');select('room',r.id);setPanel('rooms');afterChange('Added editable room');showToast('Drag the corner handles to reshape your room');}
   function updateClearObjectsButton(){
@@ -1923,7 +1924,7 @@
       else if (hotspot) updateHotspotProperty(hotspot.dataset.hotspotProp, hotspot.value);
       if (activeField) document.getElementById(activeField)?.focus();
     });
-    document.getElementById('inspectorContent').addEventListener('click',e=>{const a=e.target.closest('[data-action]');if(a){if(a.dataset.action==='delete')deleteSelected();if(a.dataset.action==='duplicate')duplicateSelected();if(a.dataset.action==='rotate')rotateSelected();if(a.dataset.action==='reset-dimensions')resetObjectDimensions();if(a.dataset.action==='calibrate-presence')calibratePresence(true);if(a.dataset.action==='align-presence')calibratePresence(false);}if(e.target.id==='openHelpButton')document.getElementById('helpDialog').showModal();});
+    document.getElementById('inspectorContent').addEventListener('click',e=>{const a=e.target.closest('[data-action]');if(a){if(a.dataset.action==='delete')deleteSelected();if(a.dataset.action==='duplicate')duplicateSelected();if(a.dataset.action==='rotate')rotateSelected(a.dataset.degrees);if(a.dataset.action==='reset-dimensions')resetObjectDimensions();if(a.dataset.action==='calibrate-presence')calibratePresence(true);if(a.dataset.action==='align-presence')calibratePresence(false);}if(e.target.id==='openHelpButton')document.getElementById('helpDialog').showModal();});
     document.getElementById('newRoomButton').addEventListener('click',addRoom);
     document.getElementById('focusCanvasButton').addEventListener('click',()=>setFocusCanvas(!focusCanvas));
     document.getElementById('zoomInButton').addEventListener('click',()=>{const r=viewport.getBoundingClientRect();zoomAt(1.2,r.width/2,r.height/2);});

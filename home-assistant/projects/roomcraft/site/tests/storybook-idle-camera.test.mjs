@@ -94,12 +94,26 @@ test('invalid interests and settings remain finite and harmless, including backw
   const backwards=director.sample(500,{interests});assert.equal(backwards.active,false);assert.equal(backwards.nextWakeAt,60500);
 });
 
-test('three outings per cycle favor varied activity near home and the beach', () => {
+test('idle favors beach, then traffic, activities, and interactions over a full rotation', () => {
   const director = createIdleCameraDirector();
   director.start(0);
   const focus = {x:20,y:10,z:30};
-  const subjects = ['activity:kite','marine:whale','scenery:beach','landmark:office']
-    .map(id => ({id,focus,weight:id.startsWith('landmark:') ? 20 : 1}));
-  const local = [0,1,2].map(index => director.sample(index*cycleMs+1000,{interests:subjects}).targetId);
-  assert.deepEqual(local,['activity:kite','marine:whale','scenery:beach']);
+  const subjects = ['scenery:beach','scenery:road','activity:kite','landmark:office']
+    .map(id => ({id,focus,weight:1}));
+  const counts = {};
+  for (let index=0;index<18;index++) {
+    const id=director.sample(index*cycleMs+1000,{interests:subjects}).targetId;
+    counts[id]=(counts[id] ?? 0)+1;
+  }
+  assert.deepEqual(counts,{'scenery:beach':9,'scenery:road':5,'activity:kite':3,'landmark:office':1});
+  assert.ok(IDLE_CAMERA_DEFAULTS.homeMs > cycleMs/2);
+});
+
+test('two-stage idle holds the house before the first outing', () => {
+  const director = createIdleCameraDirector({introMs:45_000});
+  director.start(0);
+  assert.equal(director.sample(44_999,{interests}).phase,'intro');
+  assert.equal(director.sample(45_000,{interests}).focus.weight,0);
+  assert.equal(director.sample(69_000,{interests}).phase,'linger');
+  assert.equal(director.touch(70_000).phase,'waiting');
 });
