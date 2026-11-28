@@ -1,5 +1,7 @@
 # Roomcraft engineering handoff
 
+The shared camera card in `site/ha-local/roomcraft-card.js` owns thumbnail presentation for live and event images. Its render tests cover label visibility and empty-tile guidance. For rollback, redeploy the previously verified source revision or restore the installer backup using the deployment guide.
+
 **Dashboard naming release:** [Dashboard names and Android defaults](dashboard-names-and-android-defaults-2026-11-16.md) records Cell Dash cloning, Reference Dash/Home Dash title changes, unchanged routes and content, exact API readback, tablet cold-launch evidence, per-user Android default semantics, and private rollback. Future installers should retain the Home Dash title and stable `roomcraft-home` path.
 
 **Current release:** [Presence walking paths and collision rules](presence-path-collision-2026-11-15.md) adds a planned-route overlay, route appearance controls, direct-only/furniture-detour policy, object clearance and person spacing. Unsafe wall, floor and solid-object movement remains blocked. The release note owns exact verification, deployment evidence and rollback after publication.

@@ -295,6 +295,9 @@ test('camera element fetches latest event using HA auth and reports its timestam
   assert.equal(camera._still.hidden, false);
   assert.match(camera._still.src, /^blob:/);
   assert.match(camera._foot.textContent, /^LATEST EVENT · /);
+  assert.equal(camera._name.hidden, true);
+  assert.equal(camera._foot.hidden, true);
+  assert.equal(camera._message.hidden, true);
   assert.match(camera._foot.textContent, /Oct 31/);
   camera.disconnectedCallback();
 });
@@ -380,6 +383,8 @@ test('camera element uses HA native live view only for a reported active stream'
     camera.hass = hass;
     assert.equal(fetches, 0);
     assert.equal(camera._foot.textContent, 'LIVE');
+  assert.equal(camera._name.hidden, true);
+  assert.equal(camera._foot.hidden, true);
     assert.equal(camera._liveElement.config.camera_view, 'live');
     assert.equal(camera._liveElement.config.camera_image, 'camera.entry');
   } finally {
@@ -454,6 +459,7 @@ test('idle live mode requests camera turn-on only after a tap, then waits for pl
       callService: (...args) => { calls.push(args); return Promise.resolve(); } };
     assert.equal(camera._foot.textContent, 'READY');
     assert.equal(camera._message.textContent, 'Tap to start camera');
+    assert.equal(camera._message.hidden, false);
     assert.equal(nativeElements, 0);
     camera._frame.listeners.click();
     assert.equal(camera._foot.textContent, 'CONNECTING');

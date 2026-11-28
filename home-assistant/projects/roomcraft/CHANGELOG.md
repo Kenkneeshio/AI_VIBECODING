@@ -1,5 +1,9 @@
 # Changelog
 
+## Clear camera feeds — 27 November 2026
+
+- Hide camera title, status, and shading while a live feed or event image is visible. Empty tiles retain their status and tap instructions.
+
 ## Dashboard names and Android defaults — 16 November 2026
 
 - Copy the conventional Main Dashboard to independent **Cell Dash**, rename the original **Reference Dash**, and title the illustrated `roomcraft-home` dashboard **Home Dash** while preserving its route and layout.

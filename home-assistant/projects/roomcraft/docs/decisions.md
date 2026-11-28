@@ -1,5 +1,9 @@
 # Decision log
 
+## Camera tile text follows media visibility
+
+Household viewers need the entire image to check the entry and garage. The shared camera card hides visual labels whenever media is ready, retains an accessible button name, and shows instructions on empty tiles. Stream selection, camera events, and layout data are outside this change.
+
 ## Keep dashboard names distinct and use HA user profiles for Android defaults
 
 Clone the existing conventional dashboard once as an independent Cell Dash, retaining its original as Reference Dash. Rename the illustrated Roomcraft dashboard Home Dash without changing its URL or stored layout. Current HA defaults are per user profile, so device-specific Android defaults require separate device users; do not simulate a per-device HA preference in local storage or change the system default. Preserve the wall tablet's current owner-profile Home Dash default until a dedicated tablet login is set up. See [dashboard names and Android defaults](dashboard-names-and-android-defaults-2026-11-16.md).

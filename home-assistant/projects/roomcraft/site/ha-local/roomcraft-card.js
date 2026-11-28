@@ -2078,7 +2078,7 @@ class RoomcraftCameraThumbnail extends HTMLElement {
 
   _build() {
     const style = document.createElement('style');
-    style.textContent = ':host{display:block;box-sizing:border-box;min-width:40px;min-height:40px}.frame{box-sizing:border-box;display:block;position:relative;width:100%;height:100%;min-height:40px;overflow:hidden;padding:0;border:2px solid #e4ebdf;border-radius:9px;background:#182a2c;color:#fff;box-shadow:0 4px 15px #1118;cursor:pointer;font:inherit;text-align:left}.frame:active{filter:brightness(1.18);transform:scale(.985)}.media,.still,.live{position:absolute;inset:0;width:100%;height:100%}.still{object-fit:cover}.live{display:block;overflow:hidden;opacity:0;pointer-events:none}.veil{position:absolute;inset:0;background:linear-gradient(#0008,transparent 36%,transparent 62%,#000a);pointer-events:none}.head,.foot{position:absolute;left:7px;right:7px;z-index:2;font:600 10px/1.2 system-ui,sans-serif;text-shadow:0 1px 3px #000}.head{top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.foot{bottom:6px}.detail-entity{display:none;position:absolute;z-index:20;box-sizing:border-box;width:max-content;max-width:190px;overflow:hidden;padding:5px 7px;border:1px solid #dff9ef;border-radius:7px;background:#10272ef2;color:#c8e8df;box-shadow:0 3px 12px #07171db8;text-overflow:ellipsis;white-space:nowrap;pointer-events:none;font:500 8px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;text-shadow:0 1px 2px #000}:host([data-show-details="true"]) .detail-entity{display:block}:host([data-detail-side="right"]) .detail-entity{left:calc(100% + 7px);top:50%;transform:translateY(-50%)}:host([data-detail-side="left"]) .detail-entity{right:calc(100% + 7px);top:50%;transform:translateY(-50%)}:host([data-detail-side="top"]) .detail-entity{left:50%;bottom:calc(100% + 7px);transform:translateX(-50%)}:host([data-detail-side="bottom"]) .detail-entity{left:50%;top:calc(100% + 7px);transform:translateX(-50%)}.message{position:absolute;inset:25px 7px 20px;display:flex;align-items:center;justify-content:center;text-align:center;color:#e1e9e3;font:500 10px/1.2 system-ui,sans-serif}.still[hidden],.message[hidden]{display:none}';
+    style.textContent = ':host{display:block;box-sizing:border-box;min-width:40px;min-height:40px}.frame{box-sizing:border-box;display:block;position:relative;width:100%;height:100%;min-height:40px;overflow:hidden;padding:0;border:2px solid #e4ebdf;border-radius:9px;background:#182a2c;color:#fff;box-shadow:0 4px 15px #1118;cursor:pointer;font:inherit;text-align:left}.frame:active{filter:brightness(1.18);transform:scale(.985)}.media,.still,.live{position:absolute;inset:0;width:100%;height:100%}.still{object-fit:cover}.live{display:block;overflow:hidden;opacity:0;pointer-events:none}.head,.foot{position:absolute;left:7px;right:7px;z-index:2;font:600 10px/1.2 system-ui,sans-serif;text-shadow:0 1px 3px #000}.head{top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.foot{bottom:6px}.detail-entity{display:none;position:absolute;z-index:20;box-sizing:border-box;width:max-content;max-width:190px;overflow:hidden;padding:5px 7px;border:1px solid #dff9ef;border-radius:7px;background:#10272ef2;color:#c8e8df;box-shadow:0 3px 12px #07171db8;text-overflow:ellipsis;white-space:nowrap;pointer-events:none;font:500 8px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;text-shadow:0 1px 2px #000}:host([data-show-details="true"]) .detail-entity{display:block}:host([data-detail-side="right"]) .detail-entity{left:calc(100% + 7px);top:50%;transform:translateY(-50%)}:host([data-detail-side="left"]) .detail-entity{right:calc(100% + 7px);top:50%;transform:translateY(-50%)}:host([data-detail-side="top"]) .detail-entity{left:50%;bottom:calc(100% + 7px);transform:translateX(-50%)}:host([data-detail-side="bottom"]) .detail-entity{left:50%;top:calc(100% + 7px);transform:translateX(-50%)}.message{position:absolute;inset:25px 7px 20px;display:flex;align-items:center;justify-content:center;text-align:center;color:#e1e9e3;font:500 10px/1.2 system-ui,sans-serif}.still[hidden],.head[hidden],.foot[hidden],.message[hidden]{display:none}';
     style.textContent += STORYBOOK_DETAIL_POSITION;
     const frame = document.createElement('button');
     frame.type = 'button';
@@ -2123,8 +2123,6 @@ class RoomcraftCameraThumbnail extends HTMLElement {
     still.addEventListener('error', () => {
       if (this._objectUrl && still.src === this._objectUrl) this._stillFailed();
     });
-    const veil = document.createElement('div');
-    veil.className = 'veil';
     const name = document.createElement('div');
     name.className = 'head';
     const foot = document.createElement('div');
@@ -2135,7 +2133,7 @@ class RoomcraftCameraThumbnail extends HTMLElement {
     const message = document.createElement('div');
     message.className = 'message';
     media.append(still);
-    frame.append(media, veil, name, foot, message);
+    frame.append(media, name, foot, message);
     this.shadowRoot.append(style, frame, detailEntity);
     this._frame = frame;
     this._media = media;
@@ -2355,7 +2353,10 @@ class RoomcraftCameraThumbnail extends HTMLElement {
     this._frame.title = startable ? 'Tap to start stream · Hold for details' : 'Open camera details';
     if (this._liveElement) this._liveElement.style.opacity = live ? '1' : '0';
     this._still.hidden = !still || live;
-    this._message.hidden = !!(live || still);
+    const hasMedia = Boolean(live || still);
+    this._name.hidden = hasMedia;
+    this._foot.hidden = hasMedia;
+    this._message.hidden = hasMedia;
     if (live) {
       this._foot.textContent = 'LIVE';
     } else if (still) {
