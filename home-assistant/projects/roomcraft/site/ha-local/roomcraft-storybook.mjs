@@ -97,10 +97,6 @@ class RoomcraftStorybookCard extends HTMLElement {
         .view-controls{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px;padding:2px 4px}
         .view-controls select{min-height:44px;min-width:0;border:1px solid #cfbfa2;border-radius:9px;
           background:#fffdf6;color:inherit;padding:0 6px 0 9px;font:inherit}
-        .default-status{position:absolute;right:12px;top:calc(100% + 6px);z-index:1;max-width:calc(100% - 24px);
-          padding:6px 10px;border-radius:8px;background:var(--bar-surface);color:var(--bar-text);
-          border:1px solid var(--bar-line);font-size:12px}
-        .default-status:empty{display:none}
         .main-menu-wrap{position:relative}
         .menu-glyph{width:14px;height:2px;border-radius:2px;background:currentColor;box-shadow:0 5px 0 currentColor,0 -5px 0 currentColor}
         .main-menu{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(88vw,1400px);
@@ -304,7 +300,7 @@ class RoomcraftStorybookCard extends HTMLElement {
             <a class="dock-button" data-controls-link href="/roomcraft-home/controls">
               <span class="controls-glyph" aria-hidden="true"></span> Controls
             </a>
-            <span class="default-status" role="status" aria-live="polite"></span>
+            <span class="default-status view-status" role="status" aria-live="polite"></span>
             <div class="main-menu-wrap">
               <button type="button" class="dock-button main-menu-button" aria-label="Main menu" aria-expanded="false" aria-controls="storybook-main-menu"><span class="menu-glyph" aria-hidden="true"></span> Menu</button>
               <div class="main-menu" id="storybook-main-menu" role="region" aria-label="Dashboard menu" hidden>
@@ -1097,6 +1093,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       onChange: view => this.changeView(view, {announce: false}),
     });
     this.resizeObserver.observe(this.stage);
+    this.lockDashboardScroll();
     window.addEventListener('pointerdown', this.onMenuPointerDown);
     window.addEventListener('resize', this.onViewportResize);
     window.visualViewport?.addEventListener('resize', this.onViewportResize);
@@ -1107,6 +1104,8 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this.releaseDashboardScroll?.();
+    this.releaseDashboardScroll = undefined;
     this.idleCamera.disconnect();
     window.removeEventListener(CAMERA_PREFERENCE_EVENT,this.onCameraPreferenceChange);
     window.removeEventListener('storage',this.onCameraPreferenceChange);
@@ -1355,14 +1354,13 @@ class RoomcraftStorybookCard extends HTMLElement {
     if (!store?.writeStartupView || !this.scene || !this.session?.connected || this.startupViewRequest) return;
     const request = {};
     this.startupViewRequest = request;
-    this.defaultStatus.textContent = 'Saving view…';
     this.updateDefaultViewButtons();
     try {
       const saved = await store.writeStartupView(this.session, this.dashboard, view);
       if (this.startupViewRequest !== request) return;
       this.savedStartupView = readSavedFreeView(saved);
       if (!view) this.changeView('default');
-      this.defaultStatus.textContent = view ? 'Default saved for this device' : 'This device uses Top down';
+      this.defaultStatus.textContent = '';
     } catch {
       if (this.startupViewRequest === request) this.defaultStatus.textContent = 'Could not save on this device. Check browser storage.';
     } finally {
@@ -1398,6 +1396,28 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.updateDefaultViewButtons();
     this.anchorDirty = true;
     this.schedule();
+  }
+
+  lockDashboardScroll() {
+    if (this.releaseDashboardScroll) return;
+    const doc = this.ownerDocument;
+    const host = doc.defaultView;
+    let container = this.parentElement ?? this.getRootNode().host;
+    while (container && !/^(auto|scroll|overlay)$/.test(host.getComputedStyle(container).overflowY)) {
+      container = container.parentElement ?? container.getRootNode().host;
+    }
+    container ??= doc.scrollingElement;
+    if (!container) return;
+    const {style} = container;
+    const overflow = style.getPropertyValue('overflow-y');
+    const priority = style.getPropertyPriority('overflow-y');
+    style.setProperty('overflow-y','hidden');
+    container.scrollTop = 0;
+    this.releaseDashboardScroll = () => {
+      if (style.getPropertyValue('overflow-y') !== 'hidden') return;
+      if (overflow) style.setProperty('overflow-y',overflow,priority);
+      else style.removeProperty('overflow-y');
+    };
   }
 
   resize() {

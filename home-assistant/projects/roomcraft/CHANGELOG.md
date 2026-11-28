@@ -862,3 +862,9 @@ Full release checks passed. LAN and Nabu Casa matched all 14 built assets and re
 Pan is available in every live camera preset. It changes the screen offset while retaining the active preset. Saving a default retains the pan, angle, zoom and original framing basis. The wall tablet verified an overhead pan, saved it, switched views, and restored the same view. The tablet was then reset to its original overhead preference. Full release checks and HA readback passed. Rollback backup ends in 20261127-211442-401193.json.
 
 Home Assistant assigns startup dashboards per profile. Shared browser and wall-tablet profiles were preserved. For Companion-only Cell Dash startup, use a separate mobile profile or a pinned Companion dashboard shortcut to /cell-dash.
+
+## Quiet camera saves and stationary dashboard
+
+Camera save and reset actions no longer show a floating confirmation. Home Dash locks scrolling on its containing page while mounted and restores the prior overflow setting when closed. Menu and dialog scroll areas remain independent.
+
+Full release checks and authenticated dashboard readback passed. The wall tablet held its full-screen framing through a vertical swipe. Saving and resetting the overhead view showed no visual toast. Rollback backup ends in 20261127-212438-745568.json.
