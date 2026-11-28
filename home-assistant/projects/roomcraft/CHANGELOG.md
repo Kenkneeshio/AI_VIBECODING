@@ -844,3 +844,9 @@ Full release gate passed. Verified the top dock, Pan drag at a fixed angle, and 
 ## Shared weather and control bar
 
 Home Dash uses one top row. The live sky takes the space left by the weather and control buttons, including Pan in Free view. Idle still hides the row. The full release gate and HA readback passed. The wall tablet showed the shared row in Default and Free view, then returned to Default. The private rollback backup ends in 20261127-205710-245845.json.
+
+## Side road traffic and round turnarounds
+
+Every compiled side road has illustrated traffic. Vehicles follow an outbound lane, a semicircular turn at the paved end, then the opposite lane back toward the main street. Side traffic uses the existing vehicle and night-light batches. The model reserves space for the rounded sidewalk and excludes it from terrain placement. Side routes repeat separately from the through-road lanes.
+
+The full release gate and dashboard readback passed. A deterministic pose check verified the curved path and reversed heading. The wall tablet showed vehicles on both side roads and both round ends, then returned to Default. The private rollback backup ends in 20261127-210115-224732.json.

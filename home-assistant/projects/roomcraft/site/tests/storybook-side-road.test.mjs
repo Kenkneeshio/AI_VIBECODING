@@ -46,7 +46,7 @@ test('road geometry is finite, opaque and joins curved paving at exact curb-cut 
   const {count,meshes}=capture([road]);
   assert.equal(count,1);
   assert.ok(meshes.every(m=>m.positions.every(Number.isFinite)&&m.normals.every(Number.isFinite)));
-  assert.equal(meshes.filter(m=>m.color==='#73767c').length,1,'one asphalt surface, no overlapping shaded cover');
+  assert.equal(meshes.filter(m=>m.color==='#73767c').length,2,'straight body and adjoining turnaround cap');
   const paving=meshes.filter(m=>m.color==='#c0b6a7');
   for(const cutX of [road.cut.minX,road.cut.maxX]) {
     assert.ok(paving.some(mesh=>{
@@ -71,7 +71,7 @@ test('house frontage connects to its nearest clear side road and opens that side
   const midpoint={x:(connector.start.x+connector.end.x)/2,z:(connector.start.z+connector.end.z)/2};
   assert.ok(storybookSideRoadContains([road],midpoint.x,midpoint.z));
   const curb=capture([road]).meshes.filter(mesh=>mesh.color==='#d0c3b0');
-  assert.equal(curb.length,4,'opposite curb continuous, house-side curb split around both aprons');
+  assert.equal(curb.length,5,'side curbs retain both aprons and the cap adds its own curb');
   const away={...plan,placements:[placed,{...family,angle:-Math.PI/2}]};
   assert.equal(compileStorybookSideRoads(away,street)[0].connectors.length,0,'a rear wall is not guessed to be an entrance');
 });

@@ -1708,7 +1708,7 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase, houseFir
     environment={...environment,worldLife,worldSeconds};
     const showTraffic = transientTelemetry || sceneFeatureEnabled(sceneSettings, 'traffic');
     if (showTraffic && !traffic && environment.traffic) {
-      traffic = createStorybookTraffic(road);
+      traffic = createStorybookTraffic(road,{sideRoads,heightAt:meadow.heightAt});
       scene.add(traffic.root);
     }
     if (traffic) {

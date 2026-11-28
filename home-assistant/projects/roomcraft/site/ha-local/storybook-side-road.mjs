@@ -98,9 +98,14 @@ function makeRoad(placement,street) {
   const mouth=(width/2+CORNER)*tangent.x;
   const road={id:item.id,item,width,bodyLength,length,origin,forward,tangent,angle:0,street,
     cut:{minX:origin.x-mouth,maxX:origin.x+mouth},connectors:[]};
-  const left=sideRows(road,-1,0,length)(WALK),right=sideRows(road,1,0,length)(WALK);
+  const endSpine=length-width/2, edgeRadius=width/2+WALK;
+  const left=sideRows(road,-1,0,endSpine)(WALK),right=sideRows(road,1,0,endSpine)(WALK);
+  const cap=Array.from({length:23},(_,i)=>{
+    const angle=(i+1)*Math.PI/24;
+    return local(road,edgeRadius*Math.cos(angle),endSpine+edgeRadius*Math.sin(angle));
+  });
   const mouthPoints=Array.from({length:17},(_,i)=>sample(street,lerp(road.cut.minX,road.cut.maxX,i/16),street.nearZ-WALK));
-  road.footprint=[...mouthPoints,...right,...left.reverse()];
+  road.footprint=[...mouthPoints,...right,...cap,...left.reverse()];
   road.bounds=bounds(road.footprint);
   road.end=local(road,0,length);
   return road;
@@ -121,7 +126,7 @@ function connectBuildings(roads,plan,groundY) {
         const offset=delta(start,road.origin),along=dot(offset,road.forward),lateral=dot(offset,road.tangent);
         const side=Math.sign(lateral),gap=Math.abs(lateral)-road.width/2-WALK;
         return {road,along,side,gap};
-      }).filter(({road,along,side,gap})=>gap>=-3&&gap<=recipe.maxGap&&along>CORNER+width/2+10&&along<road.length-width/2-10&&
+      }).filter(({road,along,side,gap})=>gap>=-3&&gap<=recipe.maxGap&&along>CORNER+width/2+10&&along<road.length-road.width/2-width/2-10&&
         dot(forward,road.tangent)*side<-.8).sort((a,b)=>a.gap-b.gap||a.road.id.localeCompare(b.road.id));
       for(const {road,along,side} of choices) {
         const end=local(road,side*road.width/2,along),startAcross=dot(across,road.forward)<0?{x:-across.x,z:-across.z}:across;
@@ -179,8 +184,22 @@ function ribbon(batch,rows,color,height) {
   batch.add(geometry,color,0,0,0);
 }
 
+/** Sample the outbound lane, semicircular turnaround and inbound lane by distance. */
+export function sampleSideRoadTraffic(road, distance) {
+  const lane = road.width*.27;
+  const turnAt = road.length-road.width/2;
+  const arc = Math.PI*lane;
+  if (distance < 0 || distance > turnAt*2+arc) return null;
+  if (distance < turnAt) return {...local(road,-lane,distance),yaw:-Math.PI/2};
+  if (distance <= turnAt+arc) {
+    const angle = (distance-turnAt)/lane;
+    return {...local(road,-lane*Math.cos(angle),turnAt+lane*Math.sin(angle)),yaw:angle-Math.PI/2};
+  }
+  return {...local(road,lane,turnAt-(distance-turnAt-arc)),yaw:Math.PI/2};
+}
+
 function runs(road,side) {
-  let result=[[0,road.length]];
+  let result=[[0,road.length-road.width/2]];
   for(const c of road.connectors.filter(c=>c.side===side))result=result.flatMap(([a,b])=>{
     const from=c.along-c.width/2,to=c.along+c.width/2;
     return to<=a||from>=b?[[a,b]]:[[a,Math.max(a,from)],[Math.min(b,to),b]].filter(([x,y])=>y>x);
@@ -192,7 +211,20 @@ function runs(road,side) {
 export function buildStorybookSideRoads(batch,roads,heightAt,groundY=-111) {
   for(const road of roads) {
     const grade=p=>Math.max(groundY+1.2,heightAt(p.x,p.z)+.24);
-    const left=sideRows(road,-1,0,road.length)(0),right=sideRows(road,1,0,road.length)(0);
+    const end = road.length-road.width/2;
+    const left=sideRows(road,-1,0,end)(0),right=sideRows(road,1,0,end)(0);
+    const arc = (radius,theta) => local(road,Math.cos(theta)*radius,end+Math.sin(theta)*radius);
+    const radius = road.width/2;
+    const angles = Array.from({length:25},(_,i)=>i*Math.PI/24);
+    const capPoints = [arc(0,0),...angles.map(theta=>arc(radius,theta))];
+    const cap = new BufferGeometry();
+    cap.setAttribute('position',new Float32BufferAttribute(capPoints.flatMap(p=>[p.x,grade(p),p.z]),3));
+    cap.setIndex(angles.slice(1).flatMap((_,i)=>[0,i+2,i+1]));
+    cap.computeVertexNormals();
+    batch.add(cap,'#73767c',0,0,0);
+    for (const [inner,outer,color,height] of [[0,CURB,'#d0c3b0',5],[CURB,WALK,'#c0b6a7',3.8]]) {
+      ribbon(batch,angles.map(theta=>[arc(radius+inner,theta),arc(radius+outer,theta)]),color,p=>grade(p)+height);
+    }
     const cross=Math.ceil((road.width+CORNER*2)/12);
     ribbon(batch,left.map((p,i)=>Array.from({length:cross+1},(_,j)=>{
       const point=mix(p,right[i],j/cross);
@@ -211,7 +243,7 @@ export function buildStorybookSideRoads(batch,roads,heightAt,groundY=-111) {
         ribbon(batch,joint,'#a69c91',p=>grade(p)+3.92);
       }
     }
-    for(let along=CORNER+42;along+34<road.length-12;along+=72) {
+    for(let along=CORNER+42;along+34<end-12;along+=72) {
       const mark=[along,along+8.5,along+17,along+25.5,along+34].map(v=>[local(road,-1.4,v),local(road,1.4,v)]);
       ribbon(batch,mark,'#e9ce91',p=>grade(p)+.14);
     }

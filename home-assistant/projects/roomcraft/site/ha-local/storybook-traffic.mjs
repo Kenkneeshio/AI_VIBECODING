@@ -1,3 +1,4 @@
+import {sampleSideRoadTraffic} from './storybook-side-road.mjs';
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {STORYBOOK_VEHICLES, buildStorybookVehicle} from './storybook-vehicles.mjs';
@@ -229,12 +230,12 @@ export function createTrafficMotion({centerX, width, lanes}) {
 }
 
 /** Instance each miniature silhouette and reuse one shadow layer across the road. */
-export function createStorybookTraffic(road) {
+export function createStorybookTraffic(road, {sideRoads=[], heightAt} = {}) {
   const root = new THREE.Group();
   const motion = createTrafficMotion(road);
   let demoMotion;
   const models = new Map();
-  function meshFor(geometry, material, capacity = motion.capacity) {
+  function meshFor(geometry, material, capacity = motion.capacity + sideRoads.length) {
     const mesh = new THREE.InstancedMesh(geometry, material, capacity);
     mesh.count = 0;
     mesh.frustumCulled = false;
@@ -244,9 +245,9 @@ export function createStorybookTraffic(road) {
   const shadows = meshFor(new THREE.CircleGeometry(1, 18).rotateX(-Math.PI / 2).translate(0, .02, 0),
     new THREE.MeshBasicMaterial({color: '#35323c', opacity: .23, transparent: true, depthWrite: false}));
   const beams = meshFor(new THREE.PlaneGeometry(1, 2).rotateX(-Math.PI / 2).translate(.5, .16, 0),
-    nightLightMaterial(false), motion.capacity * 2);
+    nightLightMaterial(false), (motion.capacity + sideRoads.length) * 2);
   beams.name = 'road-headlight-beams';
-  const halos = meshFor(new THREE.PlaneGeometry(1, 1), nightLightMaterial(true), motion.capacity * 4);
+  const halos = meshFor(new THREE.PlaneGeometry(1, 1), nightLightMaterial(true), (motion.capacity + sideRoads.length) * 4);
   halos.name = 'road-lamp-halos';
   beams.visible = halos.visible = false;
   root.add(shadows, beams, halos);
@@ -287,10 +288,11 @@ export function createStorybookTraffic(road) {
     return model;
   }
 
+  let vehicleY = road.surfaceY;
   function placeLamp(x, z, lamp, offset, height) {
     transform.position.set(lamp.x + offset, height, lamp.z).applyQuaternion(transform.quaternion);
     transform.position.x += x;
-    transform.position.y += road.surfaceY;
+    transform.position.y += vehicleY;
     transform.position.z += z;
   }
 
@@ -307,7 +309,17 @@ export function createStorybookTraffic(road) {
     headlightBrightness = 1, inView,worldLife} = {}) {
     if (transientTelemetry) demoMotion ??= createTrafficMotion(road);
     const clock = transientTelemetry ? demoMotion : motion;
-    const slots = clock.update(time, profile, reduceMotion, transientTelemetry);
+    const mainSlots = clock.update(time, profile, reduceMotion, transientTelemetry);
+    const sideSlots = mainSlots.length ? sideRoads.flatMap((side,index) => {
+      const routeLength = 2*(side.length-side.width/2)+Math.PI*side.width*.27;
+      const speed = profile?.severity === 'heavy' ? 3 : 18;
+      const position = ((reduceMotion ? 0 : time*speed) + routeLength*(.28+.13*(index%4))) % (routeLength+200);
+      const pose = sampleSideRoadTraffic(side,position);
+      if (!pose) return [];
+      const y = heightAt?.(pose.x,pose.z);
+      return [{...pose, side:true, lane:0,index:3+index, surfaceY:Number.isFinite(y) ? Math.max(road.surfaceY,y+.24) : road.surfaceY}];
+    }) : [];
+    const slots = [...mainSlots,...sideSlots];
     root.visible = slots.length > 0;
     const heavy=profile?.severity==='heavy';
     const tailGlow=Number.isFinite(profile?.tailGlow)?THREE.MathUtils.clamp(profile.tailGlow,.5,4):2;
@@ -332,14 +344,15 @@ export function createStorybookTraffic(road) {
     let haloIndex = 0;
     let shadowCount = 0;
     for (const slot of slots) {
-      const {x, z, yaw = 0} = road.sample?.(slot.x, slot.z) ?? slot;
+      const {x, z, yaw = 0} = slot.side ? slot : (road.sample?.(slot.x, slot.z) ?? slot);
+      vehicleY = slot.surfaceY ?? road.surfaceY;
       // Keep a car's silhouette stable across wraps and changes in traffic mode.
       const appearance=storybookTrafficAppearance(slot,worldLife,selected),{vehicle}=appearance;
       // Include painted shadows, the headlight projection, and camera-facing lamp halos.
       const reach = vehicle.length * .6 + (night ? MAX_HEADLIGHT_LENGTH : 0);
-      if (inView && !inView(x, road.surfaceY, z, Math.hypot(reach, vehicle.width, 45))) continue;
+      if (inView && !inView(x, vehicleY, z, Math.hypot(reach, vehicle.width, 45))) continue;
       const model = modelFor(vehicle,appearance.paint);
-      transform.position.set(x, road.surfaceY, z);
+      transform.position.set(x, vehicleY, z);
       transform.rotation.y = yaw + (slot.lane ? Math.PI : 0);
       transform.scale.set(1, 1, 1);
       transform.updateMatrix();
@@ -348,7 +361,7 @@ export function createStorybookTraffic(road) {
       if(appearance.accessory){
         const mesh=cargo.get(appearance.accessory);
         transform.position.y+=CARGO_HEIGHT[vehicle.id]+2.1;transform.updateMatrix();
-        mesh.setMatrixAt(mesh.count++,transform.matrix);transform.position.y=road.surfaceY;
+        mesh.setMatrixAt(mesh.count++,transform.matrix);transform.position.y=vehicleY;
       }
       transform.scale.set(vehicle.length * .55, 1, vehicle.width * .62);
       transform.updateMatrix();
