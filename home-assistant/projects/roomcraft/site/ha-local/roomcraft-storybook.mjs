@@ -70,8 +70,12 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>
         :host{display:block;color:#3a3046;font:500 14px/1.4 system-ui,sans-serif}
-        .world{display:grid;grid-template-rows:auto auto minmax(0,1fr);min-height:218px;
+        .world{display:grid;grid-template-rows:auto minmax(0,1fr);min-height:218px;
           height:calc(100dvh - 72px);background:#e7eadb;border-radius:16px;overflow:hidden}
+        .weather-dock{display:flex;align-items:stretch;min-width:0;position:relative;z-index:5}
+        .weather-dock > .coastal-sky{flex:1 1 0;min-width:0;width:auto;height:auto;min-height:clamp(54px,7dvh,72px)}
+        .weather-dock > .bar{flex:0 1 auto;min-width:0;margin-inline-start:auto}
+        .world[data-dock=left] .weather-dock > .bar{order:-1;margin-inline-start:0;margin-inline-end:auto}
         .bar{position:relative;z-index:5;display:flex;justify-content:flex-end;align-items:center;
           gap:7px;padding:5px clamp(7px,1.4vw,23px) max(5px,env(safe-area-inset-bottom));
           color:var(--bar-text);border-top:1px solid var(--bar-line);
@@ -278,8 +282,9 @@ class RoomcraftStorybookCard extends HTMLElement {
         ${HEAT_MAP_STYLE}
       </style>
       <section class="world" aria-label="Roomcraft Storybook">
+        <header class="weather-dock">
         ${COASTAL_SKY_MARKUP}
-        <footer class="bar">
+        <div class="bar">
           <nav aria-label="Roomcraft controls">
             <button type="button" class="dock-button" data-utility="electrical" aria-haspopup="dialog" hidden>
               <span class="power-glyph" aria-hidden="true"></span> Power
@@ -359,7 +364,8 @@ class RoomcraftStorybookCard extends HTMLElement {
               </div>
             </div>
           </nav>
-        </footer>
+        </div>
+        </header>
         <div class="stage">
           <canvas role="img" aria-label="Three-dimensional cutaway of the second floor"></canvas>
           <output class="scene-fps" aria-label="Scene frame rate" aria-live="off" hidden>— FPS</output>

@@ -840,3 +840,7 @@ Idle hides all dashboard chrome and slowly varies tilt, angle and zoom. Touch re
 Moved the Home Dash dock below the sky at the top of the screen. Free view exposes an optional Pan mode. Drag or use the arrow keys to translate the view in screen space. Pinch and wheel still zoom. The pan offset is stored alongside the camera pose when the user explicitly saves a default. The night renderer also skips uninitialized traffic colors when no vehicles are in frame.
 
 Full release gate passed. Verified the top dock, Pan drag at a fixed angle, and exit on the wall tablet. The private pre-change dashboard backup ends in 20261127-203415-460275.json. Reinstall the prior runtime to roll back.
+
+## Shared weather and control bar
+
+Home Dash uses one top row. The live sky takes the space left by the weather and control buttons, including Pan in Free view. Idle still hides the row. The full release gate and HA readback passed. The wall tablet showed the shared row in Default and Free view, then returned to Default. The private rollback backup ends in 20261127-205710-245845.json.
