@@ -234,7 +234,7 @@ function objectVisualKind(item) {
 }
 
 function objectControlElements(items) {
-  return items.filter(item => isObject(item) && item.type !== 'cameraThumbnail' && item.entityId).map(item => {
+  return items.filter(item => isObject(item) && !['cameraThumbnail', 'climateDisplay'].includes(item.type) && item.entityId).map(item => {
     if (!validObjectControl(item)) throw new Error('The layout has an invalid object control.');
     const visualKind = objectVisualKind(item);
     return {

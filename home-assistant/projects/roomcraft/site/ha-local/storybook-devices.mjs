@@ -660,11 +660,47 @@ function miniChristmasTree(width, depth) {
   }};
 }
 
+function climateDisplay(w, d) {
+  const root = new THREE.Group();
+  softBox(root, w, 8, d, material(color.cream), 0, 4, 0, 2);
+  const canvas = globalThis.document?.createElement('canvas');
+  const ctx = canvas?.getContext('2d');
+  const face = new THREE.MeshBasicMaterial({color:ctx ? 0xffffff : color.teal, toneMapped:false});
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(w * .86, d * .77), face);
+  screen.rotation.x = -Math.PI / 2;
+  screen.position.y = 8.1;
+  root.add(screen);
+  if (!ctx) return {root, anchorY:8};
+  canvas.width = 256;
+  canvas.height = 96;
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  face.map = texture;
+  let displayed;
+  return {root, anchorY:8, animate(state) {
+    const unit = state?.attributes?.unit_of_measurement;
+    const value = typeof state?.state === 'string' && state.state.trim() ? Number(state.state) : NaN;
+    const reading = Number.isFinite(value) && ['°F', '°C', '%'].includes(unit)
+      ? Math.round(value) + unit : '—';
+    if (reading === displayed) return;
+    displayed = reading;
+    ctx.fillStyle = '#163637';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#d7f6dc';
+    ctx.font = 'bold 68px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(reading, 128, 50, 224);
+    texture.needsUpdate = true;
+  }};
+}
+
 export function makeStorybookDevice(item, context = {}) {
   const w = span(item.w, 42);
   const h = span(item.h, 42);
   const type = String(item.type ?? '');
   const kind = item.visualKind;
+  if (type === 'climateDisplay') return climateDisplay(w, h);
   if (type === 'cameraThumbnail' || type.startsWith('ui')) return null;
   if (type === 'presenceSwitch') return presenceSwitch(w, context);
   if (type === 'garageDoor') return garage(item, w, h);

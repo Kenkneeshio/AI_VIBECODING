@@ -19,6 +19,10 @@
     { type: 'bookcase', label: 'Bookcase', icon: '▤', w: 58, h: 156, group: 'bedroom' },
     { type: 'bedroomBench', label: 'Bedroom bench', icon: '▰', w: 52, h: 122, group: 'bedroom' },
     { type: 'storageCabinet', label: 'Storage cabinet', icon: '▥', w: 75, h: 92, group: 'bedroom' },
+    { type: 'refrigerator', label: 'French-door refrigerator', icon: '▤', w: 56, h: 55, group: 'utility' },
+    { type: 'stockpot', label: 'Lidded stockpot', icon: '◉', w: 25, h: 22, group: 'utility' },
+    { type: 'skillet', label: 'Skillet', icon: '◉', w: 26, h: 18, group: 'utility' },
+    { type: 'climateDisplay', label: 'Climate display', icon: '◈', w: 68, h: 32, group: 'utility' },
     { type: 'counter', label: 'Counter', icon: '▥', w: 62, h: 190, group: 'utility' },
     { type: 'stool', label: 'Bar stool', icon: '◉', w: 42, h: 42, group: 'utility' },
     { type: 'kitchenWorktop', label: 'Kitchen appliance worktop', icon: '▦', w: 106, h: 127, group: 'utility' },
@@ -268,9 +272,9 @@
   }
 
   const SUPPORT_TYPES = new Set(['table', 'desk', 'dresser', 'nightstand', 'storageCabinet', 'coffeeTable', 'sideTable', 'counter', 'kitchenWorktop']);
-  const TABLETOP_TYPES = new Set(['lamp', 'tableLamp', 'humidifier', 'plant']);
+  const TABLETOP_TYPES = new Set(['lamp', 'tableLamp', 'humidifier', 'plant', 'stockpot', 'skillet', 'climateDisplay']);
   const FLOOR_SOLIDS = new Set(['sofa', 'bed', 'armchair', 'bookcase', 'bedroomBench', 'counter', 'kitchenWorktop',
-    'bathFixtures', 'doubleVanity', 'tub', 'toilet', 'floorPlant']);
+    'bathFixtures', 'doubleVanity', 'tub', 'toilet', 'floorPlant', 'refrigerator']);
   const SURFACE_VARIANT = /^(?:living-(?:petal-dining|round-dining|rectangular-dining|lily-coffee-table|bubble-side-table)|bedroom-(?:sprout-desk|corner-desk|secretary-desk|star-nightstand|honey-dresser)|play-furniture-low-play-table)-/;
   const SOLID_VARIANT = /^(?:bedroom-|living-(?:cloud-sofa|tailored-sofa|tailored-loveseat|upholstered-chaise|acorn-armchair)-|play-furniture-bear-floor-chair-)/;
   const FOOT_SAMPLES = [[0,0],[1,0],[-1,0],[0,1],[0,-1],[.707,.707],[.707,-.707],[-.707,.707],[-.707,-.707]];
@@ -403,7 +407,11 @@
   const project = (x, y, axis) => x * axis[0] + y * axis[1];
   function onSurface(item, support) {
     const circular = support.type.startsWith('living-round-dining-');
-    const boxes = orientedBoxes(support, true);
+    const cookware = support.type === 'kitchenWorktop' && ['stockpot', 'skillet'].includes(item.type);
+    const opening = cookware && kitchenTopOpening(support);
+    const boxes = opening
+      ? orientedBoxes(support, true, [[0, 0, support.w * opening.widthRatio, support.h * opening.depthRatio, 0]])
+      : orientedBoxes(support, true);
     const radius = tabletopRadius(item) * .9;
     return FOOT_SAMPLES.every(([u, v]) => boxes.some(box => {
       const dx = item.x + u * radius - box.x;

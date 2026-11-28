@@ -67,7 +67,7 @@ function createSurface(placement, object) {
   probe.updateMatrixWorld(true);
   const bounds = new Box3().setFromObject(probe);
   if (bounds.isEmpty()) return null;
-  return {placement, probe, bounds, rootY: object.root.position.y,
+  return {placement, probe, bounds, cooktop:placement.item.type === 'kitchenWorktop', rootY: object.root.position.y,
     low: low * probe.scale.y, high: high * probe.scale.y};
 }
 
@@ -77,15 +77,17 @@ function xy(placement, drafts) {
     ? {x: point.x, z: point.y} : placement;
 }
 
-function firstSolidHit(ray, probe) {
-  return ray.intersectObject(probe, true).find(entry => isSolidMesh(entry.object));
+function firstSolidHit(ray, surface, cookware = false) {
+  return ray.intersectObject(surface.probe, true).find(entry => cookware
+    ? entry.object.name === 'Cooktop surface' : isSolidMesh(entry.object));
 }
 
-function onSupportTop(hit, {low, high}) {
+function onSupportTop(hit, surface, cookware = false) {
+  const {low, high} = cookware ? {low:39.4 * surface.probe.scale.y, high:39.6 * surface.probe.scale.y} : surface;
   return hit?.face?.normal.y >= .92 && hit.point.y >= low && hit.point.y <= high;
 }
 
-function contactHeight(surface, target, foot, origin, ray, point) {
+function contactHeight(surface, target, foot, origin, ray, point, cookware) {
   const x = target.x + foot.centerX - origin.x;
   const z = target.z + foot.centerZ - origin.z;
   const {bounds, probe, rootY} = surface;
@@ -95,8 +97,8 @@ function contactHeight(surface, target, foot, origin, ray, point) {
   for (const [u, v] of SAMPLE_DIRECTIONS) {
     point.set(x + u * foot.radiusX, bounds.max.y + 1, z + v * foot.radiusZ);
     ray.set(point, DOWN);
-    const hit = firstSolidHit(ray, probe);
-    if (!onSupportTop(hit, surface)) return null;
+    const hit = firstSolidHit(ray, surface, cookware);
+    if (!onSupportTop(hit, surface, cookware)) return null;
     top = Math.max(top, hit.point.y);
   }
   return rootY + top;
@@ -130,7 +132,8 @@ export function createStorybookPlacement(placements, roots) {
       for (const surface of surfaces) {
         if (surface.placement.baseY !== placement.baseY) continue;
         const origin = xy(surface.placement, drafts);
-        const candidate = contactHeight(surface, target, foot, origin, ray, point);
+        const cookware = surface.cooktop && ['stockpot', 'skillet'].includes(placement.item.type);
+        const candidate = contactHeight(surface, target, foot, origin, ray, point, cookware);
         if (candidate === null || candidate <= placement.baseY || candidate < top - HEIGHT_EPSILON) continue;
         const id = surface.placement.item.id;
         const offset = Math.hypot(target.x - origin.x, target.z - origin.z);
@@ -153,13 +156,14 @@ export function createStorybookPlacement(placements, roots) {
       const {x, z} = surface.placement;
       local.copy(source.ray.origin).sub(point.set(x, surface.rootY, z));
       ray.set(local, source.ray.direction);
-      const hit = firstSolidHit(ray, surface.probe);
+      const cookware = surface.cooktop && ['stockpot', 'skillet'].includes(type);
+      const hit = firstSolidHit(ray, surface, cookware);
       if (hit && (!nearest || hit.distance < nearest.hit.distance ||
           (hit.distance === nearest.hit.distance && surface.placement.item.id < nearest.surface.placement.item.id))) {
-        nearest = {hit, surface, x, z};
+        nearest = {hit, surface, x, z, cookware};
       }
     }
-    if (!nearest || !onSupportTop(nearest.hit, nearest.surface)) return null;
+    if (!nearest || !onSupportTop(nearest.hit, nearest.surface, nearest.cookware)) return null;
     return {x: nearest.x + nearest.hit.point.x, y: nearest.z + nearest.hit.point.z};
   }
   return {resolve, projectTabletop};

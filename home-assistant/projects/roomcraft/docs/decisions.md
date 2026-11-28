@@ -1,5 +1,9 @@
 # Decision log
 
+## Climate displays and furniture
+
+The household can read actual room conditions without opening a menu. Climate displays read their linked sensor without creating action buttons, and show a dash when unavailable. The reference dashboard determines room assignments. The scene recipe preserves the original layout around the furnishings and shortens the counter across from the sink to make room for the fridge.
+
 ## Allocate idle time by share
 
 The wall tablet should prioritize the house. Derive house time from the round-trip duration so changing pan or linger speed preserves the selected share. The opening minute is separate from the recurring split. Layout and Home Assistant device state are outside this presentation change.

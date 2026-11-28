@@ -291,3 +291,14 @@ test('holiday dates refresh at HA local midnight and match the Studio preview', 
   assert.equal(studio.environment.holidayTimeZone, timeZone);
   assert.equal(storybookFrame(model, {}, before, 'Unknown/Zone').environment.holidayDate, null);
 });
+
+test('climate displays watch their linked sensor in Home and Studio without a control projection', () => {
+  const climate = {id:'outdoors', type:'climateDisplay', entityId:'sensor.outside_temperature'};
+  const scene = {...config, roomcraft_layout:{...config.roomcraft_layout, items:[...items, climate]}};
+  const linked = readStorybookConfig(scene);
+  assert.ok(linked.watch.has(climate.entityId));
+  assert.equal(storybookFrame(linked).states.outdoors.state, 'unavailable');
+  const snapshot = {[climate.entityId]:{state:'55.04', attributes:{unit_of_measurement:'°F'}}};
+  assert.equal(storybookFrame(linked,snapshot).states.outdoors.state, '55.04');
+  assert.equal(storybookPreview(scene,snapshot).states.outdoors.attributes.unit_of_measurement, '°F');
+});

@@ -148,6 +148,7 @@ class Miniature {
     // item's geometry independent so remounting a scene can dispose it safely.
     const buckets = new Map();
     for (const mesh of [...this.root.children]) {
+      if (mesh.name === "Cooktop surface") continue;
       const source = mesh.geometry;
       const geometry = source.index ? source.toNonIndexed() : source;
       if (geometry !== source) source.dispose();
@@ -504,7 +505,7 @@ function counter(p, w, d, item) {
     p.box(x, height * .63, z, long ? 3.2 : w * .08, 2.6, long ? d * .05 : 3.2, color.honey, .7);
   }
   if (appliance) {
-    p.box(0, height + 2, d * opening.offsetRatio, w * opening.widthRatio, 2.5, d * opening.depthRatio, color.darkGlass, .8);
+    p.box(0, height + 2, d * opening.offsetRatio, w * opening.widthRatio, 2.5, d * opening.depthRatio, color.darkGlass, .8).name = "Cooktop surface";
     for (const x of [-.20, .20]) for (const z of [-.19, .19]) {
       const r = Math.min(w, d) * (x < 0 ? .12 : .092);
       p.ring(w * x, height + 4.8, d * z, r, r, 1, color.glass);
@@ -690,6 +691,29 @@ export function makeStorybookFurniture(item, context = {}) {
     top = bed(p, w, d, tint || color.lilac, type);
   } else if (type === 'rug') {
     top = rug(p, w, d, item.rugStyle);
+  } else if (type === 'refrigerator') {
+    p.box(0, 0, 0, w * .96, 80, d * .9, color.ink, 3);
+    for (const side of [-1, 1]) {
+      p.box(side * w * .24, 29, d * .45, w * .46, 50, d * .12, color.ceramic, 2);
+      p.box(side * w * .08, 35, d * .52, 2.1, 23, 2.4, color.brass, .8);
+    }
+    p.box(0, 4, d * .45, w * .94, 24, d * .12, color.ceramic, 2);
+    p.box(0, 22, d * .52, w * .56, 2, 2.4, color.brass, .8);
+    top = 80;
+  } else if (type === 'stockpot' || type === 'skillet') {
+    const pot = type === 'stockpot';
+    const radius = Math.min(w, d) * .37;
+    const height = pot ? 11 : 4;
+    p.disc(0, 0, 0, radius, height, radius, pot ? color.aqua : color.ink, .88);
+    if (pot) {
+      p.disc(0, height, 0, radius * 1.05, 1.4, radius * 1.05, color.glass);
+      p.disc(0, height + 1.4, 0, 2.4, 2, 2.4, color.brass);
+      for (const side of [-1, 1]) p.box(side * radius, 7, 0, radius * .55, 2, 3.2, color.ink, .7);
+    } else {
+      p.disc(0, height, 0, radius * .83, .4, radius * .83, color.darkGlass);
+      p.box(radius * 1.5, 2.4, 0, radius * 1.16, 2, 2.8, color.brass, .7);
+    }
+    top = height + 3;
   } else if (type === 'counter' || type === 'kitchenWorktop' || type === 'doubleVanity') {
     top = counter(p, w, d, item);
   } else if (type === 'tub' || type === 'toilet' || type === 'bathFixtures') {

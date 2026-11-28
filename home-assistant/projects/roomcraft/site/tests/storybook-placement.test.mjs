@@ -128,3 +128,16 @@ test('kitchen counters support additions and drags while sink wells and burners 
   assert.equal(blockingPlacement({...lamp, y: 222}, counters)?.id, 'i7');
   assert.equal(blockingPlacement({...lamp, x: 420, y: 230}, counters)?.id, 'stove');
 });
+
+test('separate cookware rests on the glass cooktop', () => {
+  const {supports} = mount([
+    {id:'stove', type:'kitchenWorktop', x:743, y:753, w:112, h:105},
+    {id:'pot', type:'stockpot', x:721, y:733, w:24, h:22},
+    {id:'pan', type:'skillet', x:765, y:773, w:25, h:20, angle:-Math.PI/7.2}
+  ]);
+  for (const id of ['pot', 'pan']) {
+    const contact = supports.resolve().get(id);
+    assert.equal(contact.supportId, 'stove');
+    near(contact.y, 39.5);
+  }
+});

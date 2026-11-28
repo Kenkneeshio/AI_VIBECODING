@@ -78,7 +78,12 @@ export function readStorybookConfig(config) {
   const weather = plan.elements.find(element => element.type === 'custom:roomcraft-weather-outdoor') ?? {};
   const watch = new Set([weather.weather_entity, weather.sun_entity, weather.moon_entity, 'sun.sun']);
   const televisions = new Map();
+  const climateDisplays = new Map();
   for (const item of layout.items) {
+    if (item.type === 'climateDisplay' && /^sensor\.[a-z0-9_]+$/.test(item.entityId ?? '')) {
+      climateDisplays.set(item.id, item.entityId);
+      watch.add(item.entityId);
+    }
     if (item.type === 'presenceSwitch' && item.presenceTrackEntityId) watch.add(item.presenceTrackEntityId);
     if (item.type === 'presenceSwitch' && item.presenceEntityId) watch.add(item.presenceEntityId);
     if (item.type === 'tv' && /^media_player\.[a-z0-9_]+$/.test(item.entityId || '')) {
@@ -94,7 +99,7 @@ export function readStorybookConfig(config) {
     for (const event of element.event_entities ?? []) watch.add(event);
   }
   watch.delete(undefined);
-  return { layout, items, controls, weather, watch, televisions };
+  return { layout, items, controls, weather, watch, televisions, climateDisplays };
 }
 
 function vacuumPosition(element, snapshot, state, active, now) {
@@ -175,6 +180,10 @@ export function storybookFrame(model, snapshot = {}, now = 0, timeZone, weatherE
     moving ||= presence === 'on' || ['opening', 'closing'].includes(state) ||
       active && (['fan', 'climate', 'device'].includes(kind) || kind === 'vacuum' && Boolean(position));
   }
+  for (const [id, entity] of model.climateDisplays ?? []) {
+    const sensor = snapshot[entity];
+    states[id] = {state:sensor?.state ?? 'unavailable', attributes:sensor?.attributes ?? {}};
+  }
   for (const [id, entity] of model.televisions ?? []) {
     const media = snapshot[entity];
     const state = media?.state ?? 'unavailable';
@@ -203,6 +212,9 @@ export function storybookPreview(config, snapshot, now = 0, timeZone) {
     const attributes = {};
     for (const key of ['brightness', 'percentage', 'current_position', 'current_tilt_position']) {
       if (Number.isFinite(state.attributes[key])) attributes[key] = state.attributes[key];
+    }
+    if (model.items.get(id).type === 'climateDisplay') {
+      attributes.unit_of_measurement = state.attributes.unit_of_measurement;
     }
     const rgb = state.attributes.rgb_color;
     if (Array.isArray(rgb) && rgb.length === 3 && rgb.every(Number.isFinite)) attributes.rgb_color = rgb;

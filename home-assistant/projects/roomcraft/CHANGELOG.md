@@ -1,5 +1,9 @@
 # Changelog
 
+## Climate displays and balcony and kitchen furnishing
+
+- Add sensor-powered climate displays and editable balcony tables, greenery, cookware, and a French-door fridge.
+
 ## Three-stage idle camera — 27 November 2026
 
 - Hold the opening overview for a minute, then dedicate 80% of each recurring cycle to the house and 20% to outings. The house share is editable in Display settings.
