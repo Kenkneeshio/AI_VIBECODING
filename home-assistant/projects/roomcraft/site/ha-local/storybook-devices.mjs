@@ -632,6 +632,28 @@ export function isStorybookBlind(item) {
     (!item.visualKind || item.visualKind === 'auto') && typeof item.entityId === 'string' && item.entityId.startsWith('cover.'));
 }
 
+function miniChristmasTree(width, depth) {
+  const root = new THREE.Group();
+  const size = Math.min(width, depth);
+  const pot = material(0xb44a38);
+  cylinder(root, size*.23, size*.18, size*.22, pot, 0, size*.11);
+  for (let tier = 0; tier < 4; tier++) {
+    const radius = size*(.46-tier*.085);
+    const y = size*(.39+tier*.19);
+    const needles = material(tier % 2 ? 0x286d50 : 0x1b533c);
+    cylinder(root, 0, radius, size*.49, needles, 0, y, 0, 10);
+    for (let index = 0; index < 8; index++) {
+      const angle = (index+tier*.37)*Math.PI/4;
+      const tint = [0xffc05f,0xf86e6e,0x9ce6d5][(index+tier)%3];
+      const bulb = material(tint,{emissive:tint,emissiveIntensity:.85});
+      bead(root, size*.033, bulb, Math.cos(angle)*radius*.78, y-size*.12, Math.sin(angle)*radius*.78);
+    }
+  }
+  const star = material(0xffcf62,{emissive:0xffbe49,emissiveIntensity:1.1});
+  mesh(root,new THREE.OctahedronGeometry(size*.105),star,0,size*1.27,0);
+  return {root, anchorY:size*.75};
+}
+
 export function makeStorybookDevice(item, context = {}) {
   const w = span(item.w, 42);
   const h = span(item.h, 42);
@@ -640,6 +662,7 @@ export function makeStorybookDevice(item, context = {}) {
   if (type === 'cameraThumbnail' || type.startsWith('ui')) return null;
   if (type === 'presenceSwitch') return presenceSwitch(w, context);
   if (type === 'garageDoor') return garage(item, w, h);
+  if (type === 'miniChristmasTree') return miniChristmasTree(w, h);
   if (type === 'garageCeilingLight') return garageCeilingLight(w, h);
   if (type === 'door' || kind === 'door') return hingedDoor(w);
   if (type === 'window') return aperture(w, true, Boolean(item.entityId));

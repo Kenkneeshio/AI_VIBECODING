@@ -28,6 +28,7 @@
     { type: 'tub', label: 'Bathtub', icon: '▢', w: 65, h: 128, group: 'utility' },
     { type: 'toilet', label: 'Toilet', icon: '◍', w: 46, h: 60, group: 'utility' },
     { type: 'lamp', label: 'Bedside lamp', icon: '☼', w: 40, h: 40, group: 'lighting' },
+    { type: 'miniChristmasTree', label: 'Lit mini Christmas tree', icon: '🎄', w: 36, h: 36, group: 'lighting' },
     { type: 'ceilingLight', label: 'Ceiling light', icon: '☀', w: 58, h: 58, group: 'lighting' },
     { type: 'pendantLight', label: 'Pendant light', icon: '✺', w: 70, h: 70, group: 'lighting' },
     { type: 'floorLamp', label: 'Floor lamp', icon: '◉', w: 54, h: 92, group: 'lighting' },

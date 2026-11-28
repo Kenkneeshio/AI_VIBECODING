@@ -822,3 +822,9 @@ The release gate passed, including the ordered idle-outing regression. LAN and r
 Removed the stream viewer from Home Dash. The Green had no Roomcraft render service installed and the viewer required an external broadcaster. The tablet renders the scene directly. A server option should be exposed only after an HA-hosted renderer can deliver live frames and preserve touch controls on the actual tablet.
 
 Full release checks passed. LAN and Nabu Casa readback matched all 14 assets for resource 307134117b47e932. The wall tablet cold-launched at 1920 × 1080, showed the Display section without the stream viewer, and returned to full-screen Home Dash. The private pre-install backup ends in 20261126-220226-156458.json.
+
+## House lighting and mini Christmas tree
+
+Home Dash uses one bound living-room ceiling light, three separate kitchen ceiling controls, and a hallway ceiling light. Bathroom fixtures were removed. The existing dining fan and its light retain separate entities and now have separate positions. The lit mini Christmas tree is an editable decoration near the living-room TV and window.
+
+Full release gate passed. Saved dashboard layout and all six edited bindings matched authenticated readback. The wall tablet loaded the live layout with the tree and fixtures visible. No device was actuated. Roll back the design through Layout snapshots or the private backup roomcraft-before-lighting-20261128T041530Z.json.
