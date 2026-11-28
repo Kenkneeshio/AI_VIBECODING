@@ -2,7 +2,7 @@
  * input; this module never reads a clock, operates a device or changes a layout.
  */
 export const IDLE_CAMERA_DEFAULTS = Object.freeze({
-  idleAfterMs: 60_000, travelMs: 24_000, lingerMs: 16_000, homeMs: 75_000, seed: 37,
+  idleAfterMs: 60_000, travelMs: 24_000, lingerMs: 16_000, homeShare: 80, seed: 37,
 });
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -15,7 +15,7 @@ export function normalizeIdleCameraSettings(value = {}) {
     idleAfterMs: bounded(input.idleAfterMs, IDLE_CAMERA_DEFAULTS.idleAfterMs, 5_000, 300_000),
     travelMs: bounded(input.travelMs, IDLE_CAMERA_DEFAULTS.travelMs, 12_000, 90_000),
     lingerMs: bounded(input.lingerMs, IDLE_CAMERA_DEFAULTS.lingerMs, 5_000, 60_000),
-    homeMs: bounded(input.homeMs, IDLE_CAMERA_DEFAULTS.homeMs, 30_000, 180_000),
+    homeShare: bounded(input.homeShare, IDLE_CAMERA_DEFAULTS.homeShare, 50, 95),
     seed: Math.trunc(bounded(input.seed, IDLE_CAMERA_DEFAULTS.seed, 0, 2_147_483_647)),
   };
 }
@@ -81,17 +81,18 @@ const atHome = (active, phase, nextWakeAt) => ({
 });
 
 /**
- * One slow excursion is followed by a long home interlude. Interests are
+ * Each cycle starts at home and ends with one slow excursion. Interests are
  * snapshotted once per excursion, preventing moving people/animals from pulling
  * the camera around. A disappearing interest completes its existing gentle
  * return. Skipped render frames never require replaying earlier excursions.
  */
 export function createIdleCameraDirector(options = {}) {
   const settings = normalizeIdleCameraSettings(options);
-  const {idleAfterMs, travelMs, lingerMs, homeMs, seed} = settings;
+  const {idleAfterMs, travelMs, lingerMs, homeShare, seed} = settings;
   const introMs = bounded(options.introMs, 0, 0, 180_000);
   const returningAt = travelMs + lingerMs;
   const homeAt = returningAt + travelMs;
+  const homeMs = homeAt * homeShare / (100 - homeShare);
   const cycleMs = homeAt + homeMs;
   let lastTime, lastTouch, startedAt, cycle = -1, target, suspended = false;
 
@@ -109,7 +110,7 @@ export function createIdleCameraDirector(options = {}) {
   function start(now) {
     const time = timeFrom(now);
     reset(time); startedAt = time; suspended = false;
-    return atHome(true, introMs ? 'intro' : 'outbound', time + (introMs || travelMs));
+    return atHome(true, introMs ? 'intro' : 'home', time + (introMs || homeMs));
   }
   function sample(now, options = {}) {
     const time = timeFrom(now);
@@ -131,13 +132,14 @@ export function createIdleCameraDirector(options = {}) {
     if (time < introEnds) return atHome(true, 'intro', introEnds);
     const elapsed = Math.max(0, time - introEnds);
     const nextCycle = Math.floor(elapsed / cycleMs);
-    const local = elapsed % cycleMs;
+    const local = elapsed % cycleMs - homeMs;
     const cycleStart = introEnds + nextCycle * cycleMs;
+    if (local < 0) return atHome(true, 'home', cycleStart + homeMs);
     if (nextCycle !== cycle) {
       cycle = nextCycle;
       target = chooseInterest(interests, seed, cycle);
     }
-    if (!target || local >= homeAt) return atHome(true, 'home', cycleStart + cycleMs);
+    if (!target) return atHome(true, 'home', cycleStart + cycleMs);
     const outbound = local < travelMs;
     const returning = local >= returningAt;
     const progress = outbound ? smooth(local / travelMs)
@@ -148,7 +150,7 @@ export function createIdleCameraDirector(options = {}) {
       focus: {...target.focus, weight: progress},
       zoomFactor: 1 + (target.zoomFactor - 1) * progress,
       phase: outbound ? 'outbound' : returning ? 'return' : 'linger',
-      nextWakeAt: cycleStart + (outbound ? travelMs : returning ? homeAt : returningAt),
+      nextWakeAt: cycleStart + homeMs + (outbound ? travelMs : returning ? homeAt : returningAt),
     };
   }
   return {touch, start, sample};

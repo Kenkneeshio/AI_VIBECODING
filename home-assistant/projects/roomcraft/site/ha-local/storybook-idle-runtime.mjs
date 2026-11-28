@@ -4,7 +4,7 @@ import {resolveDefaultCameraView} from './storybook-camera.mjs';
 
 export const IDLE_CAMERA_SETTINGS_KEY='roomcraft.idle-camera.v1';
 const brightnessFormatters=new Map();
-const INTRO_MS = 45_000;
+const INTRO_MS = 60_000;
 export function idleBrightnessAt(date,zone='America/Los_Angeles') {
   let hour;
   try {
@@ -17,14 +17,15 @@ const fields=[
   ['idleAfterMs','Start after no touch',15,300,60],
   ['travelMs','Slow pan duration',12,90,24],
   ['lingerMs','Pause at a discovery',5,60,16],
-  ['homeMs','Stay at home between visits',30,180,75],
+  ['homeShare','House view share',50,95,80,'%'],
 ];
 export function readIdlePreferences(value) {
   const legacyDefault=value?.idleAfterMs===30_000&&value?.travelMs===24_000&&
     value?.lingerMs===16_000&&value?.homeMs===45_000;
-  const oldHomeDefault = value?.homeMs === 45_000 && value?.travelMs === 24_000 && value?.lingerMs === 16_000;
-  const current = {...value, ...(legacyDefault ? {idleAfterMs:60_000} : {}),
-    ...(oldHomeDefault ? {homeMs:75_000} : {})};
+  const customHome = Number.isFinite(value?.homeMs) && ![45_000, 75_000].includes(value.homeMs);
+  const outingMs = 2 * (value?.travelMs ?? 24_000) + (value?.lingerMs ?? 16_000);
+  const homeShare = value?.homeShare ?? (customHome ? Math.round(100 * value.homeMs / (value.homeMs + outingMs)) : undefined);
+  const current = {...value, homeShare, ...(legacyDefault ? {idleAfterMs:60_000} : {})};
   return {...normalizeIdleCameraSettings(current),
     enabled:value?.enabled!==false};
 }
@@ -51,9 +52,9 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
   const dialog=doc.createElement('dialog');
   dialog.className='idle-camera-dialog display-settings-dialog';dialog.setAttribute('aria-label','Idle camera settings');
   dialog.innerHTML=`<form><header><h2>Idle camera</h2><button type="button" data-idle-close>Close</button></header>
-    <p class="display-settings-note">Idle first holds a gently angled house view for 45 seconds, then visits nearby scenes and returns home between outings. Touch once to return safely, then touch a control to use it. Saved in this browser.</p>
+    <p class="display-settings-note">Idle opens with a gently angled house view for one minute. Each cycle then starts at home and ends with a scenic outing. Touch once to return safely, then touch a control to use it. Saved in this browser.</p>
     <label class="display-toggle-row"><input type="checkbox" data-idle-enabled>Automatic idle view</label>
-    ${fields.map(([key,label,min,max,value])=>`<label class="display-setting-row">${label}<span><input data-idle-field="${key}" type="number" min="${min}" max="${max}" step="1" value="${value}" style="width:72px;min-height:40px;font:inherit"> s</span></label>`).join('')}
+    ${fields.map(([key,label,min,max,value,unit="s"])=>`<label class="display-setting-row">${label}<span><input data-idle-field="${key}" type="number" min="${min}" max="${max}" step="1" value="${value}" style="width:72px;min-height:40px;font:inherit"> ${unit}</span></label>`).join('')}
     <p class="display-settings-note">Reduced motion keeps the home still. Open menus, previews and the demo pause automatic idle.</p>
     <p data-idle-status role="status"></p><button type="submit">Save settings</button></form>`;
   root.append(dialog);
@@ -164,7 +165,7 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
   function openSettings() {
     touch();card.setMainMenu(false,true);
     dialog.querySelector('[data-idle-enabled]').checked=settings.enabled;
-    for(const [key] of fields)dialog.querySelector(`[data-idle-field="${key}"]`).value=settings[key]/1000;
+    for(const [key] of fields)dialog.querySelector(`[data-idle-field="${key}"]`).value=settings[key]/(key==="homeShare"?1:1000);
     dialog.querySelector('[data-idle-status]').textContent='';dialog.showModal();
   }
   startButton.addEventListener('click',start);settingsButton.addEventListener('click',openSettings);
@@ -173,7 +174,7 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
   dialog.querySelector('form').addEventListener('submit',event=>{
     event.preventDefault();
     const requested={...settings,enabled:dialog.querySelector('[data-idle-enabled]').checked};
-    for(const [key] of fields)requested[key]=dialog.querySelector(`[data-idle-field="${key}"]`).valueAsNumber*1000;
+    for(const [key] of fields)requested[key]=dialog.querySelector(`[data-idle-field="${key}"]`).valueAsNumber*(key==="homeShare"?1:1000);
     settings=readIdlePreferences(requested);
     let saved=true;try{host.localStorage.setItem(IDLE_CAMERA_SETTINGS_KEY,JSON.stringify(settings));}catch{saved=false;}
     const wasActive=state.active;freshDirector();if(wasActive)restore();

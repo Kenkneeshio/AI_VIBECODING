@@ -1,5 +1,9 @@
 # Changelog
 
+## Three-stage idle camera — 27 November 2026
+
+- Hold the opening overview for a minute, then dedicate 80% of each recurring cycle to the house and 20% to outings. The house share is editable in Display settings.
+
 ## Clear camera feeds — 27 November 2026
 
 - Hide camera title, status, and shading while a live feed or event image is visible. Empty tiles retain their status and tap instructions.

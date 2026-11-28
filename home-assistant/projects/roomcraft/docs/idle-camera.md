@@ -6,8 +6,8 @@ The wall-tablet user wants the home controls ready whenever someone approaches, 
 
 Acceptance criteria:
 
-- After 30 seconds without interaction, Home begins a gentle pan and zoom toward a valid scene interest. **Start idle view now** bypasses that wait.
-- Each default excursion travels outward for 24 seconds, lingers for 16 seconds, returns over 24 seconds, and stays at home for 45 seconds before another visit.
+- After 60 seconds without interaction, Home holds a gently angled overview for one minute, then enters its house-focused cycle. **Start idle view now** bypasses that wait.
+- Each default cycle starts with 256 seconds at home (80%). The third stage travels outward for 24 seconds, lingers for 16 seconds and returns over 24 seconds (20%). Without a valid subject it stays at home.
 - Touch immediately restores the saved default view. The complete first wake gesture is consumed so it cannot accidentally operate a device; the next normal touch works normally. Long presses, multiple fingers and assistive clicks require the same protection.
 - Active holiday displays and current wildlife/activity events have greater selection weight. Disabled, hidden, invalid or preview-only subjects are excluded.
 - Roomcraft menus and dialogs, previews, the demo, held gestures, hidden/inactive surfaces and reduced motion prevent automatic camera movement. Returning from a blocker starts a fresh inactivity interval.
@@ -25,10 +25,10 @@ Choose **Menu → Display → Idle view settings** to adjust this screen:
 | Setting | Default | Menu range |
 | --- | --- | --- |
 | Automatic idle view | On | On / Off |
-| Start after no touch | 30 seconds | 15–300 seconds |
+| Start after no touch | 60 seconds | 15–300 seconds |
 | Slow pan duration | 24 seconds each way | 12–90 seconds |
 | Pause at a discovery | 16 seconds | 5–60 seconds |
-| Stay at home between visits | 45 seconds | 30–180 seconds |
+| House view share | 80% | 50–95% |
 
 **Save settings** stores these preferences in the browser. If storage is unavailable, the dialog reports that changes apply only for this visit. Turning automatic idle off still allows an explicit **Start idle view now**; **Reduce motion** prevents both automatic and manual movement. Opening another Roomcraft menu or dialog pauses the tour. Its display-only settings are intentionally separate from Studio's shared layout settings.
 

@@ -1,5 +1,9 @@
 # Decision log
 
+## Allocate idle time by share
+
+The wall tablet should prioritize the house. Derive house time from the round-trip duration so changing pan or linger speed preserves the selected share. The opening minute is separate from the recurring split. Layout and Home Assistant device state are outside this presentation change.
+
 ## Camera tile text follows media visibility
 
 Household viewers need the entire image to check the entry and garage. The shared camera card hides visual labels whenever media is ready, retains an accessible button name, and shows instructions on empty tiles. Stream selection, camera events, and layout data are outside this change.
