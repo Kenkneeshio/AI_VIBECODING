@@ -1,5 +1,7 @@
 # Roomcraft engineering handoff
 
+Climate displays share the procedural tabletop thermometer model in `storybook-devices.mjs`. Home and Studio consume the same geometry. Use the previous Home Assistant resource backup to roll back art.
+
 The environment panel separates across-room comparison from room details. The asset-neutral menu pager provides page buttons for overflowing Home Dash dialogs and the main menu. Validate both navigation directions and close behavior at the target device viewport, then use the usual resource backup for rollback.
 
 The environment comparison extends `storybook-environment-panel.mjs`. The Power explorer uses `storybook-energy-flow.mjs` for its reconciled circuit ribbons and energy share. The prior data mappings and animated energy tree remain available. Use the standard Home Assistant resource backup for rollback.

@@ -662,40 +662,63 @@ function miniChristmasTree(width, depth) {
 
 function climateDisplay(w, d) {
   const root = new THREE.Group();
-  const gasket = material(0x4f574d);
-  const housing = material(0xd8c2a3);
-  softBox(root,w*.87,2.4,d*.72,gasket,0,1.2,0,1.1);
-  softBox(root,w,8,d,housing,0,5.5,0,3);
-  softBox(root,w*.91,1.8,d*.82,material(0x64695b),0,9.7,0,1);
-  for (const x of [-w*.37,w*.37]) box(root,w*.045,1,d*.2,gasket,x,1.15,d*.37);
+  root.name = 'Tilted tabletop thermometer';
+  const width = Math.min(w, d * 1.72);
+  const depth = Math.min(d, width * .62);
+  const shell = material(0xe5ddcd,{roughness:.64});
+  const seam = material(0xa49b8c);
+  const rubber = material(0x68685f);
+  const glassRim = material(0x48534b,{roughness:.46});
+  for (const x of [-width*.25,width*.25]) {
+    softBox(root,width*.22,1.8,depth*.72,rubber,x,.9,0,.65);
+  }
+  softBox(root,width*.70,4.2,depth*.57,shell,0,3,-depth*.04,1.9);
+  const stand = new THREE.Group();
+  stand.position.y = 8;
+  stand.rotation.x = .30;
+  root.add(stand);
+  softBox(stand,width,7.4,depth,shell,0,0,0,3.4);
+  softBox(stand,width*.91,1.35,depth*.90,seam,0,3.3,0,.65);
+  softBox(stand,width*.84,1.15,depth*.80,glassRim,0,4,0,.52);
   const canvas = globalThis.document?.createElement('canvas');
   const ctx = canvas?.getContext('2d');
   const face = new THREE.MeshBasicMaterial({color:ctx ? 0xffffff : color.teal, toneMapped:false});
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(w * .81, d * .67), face);
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(width * .76, depth * .70), face);
   screen.rotation.x = -Math.PI / 2;
-  screen.position.y = 10.7;
-  root.add(screen);
-  if (!ctx) return {root, anchorY:10.7};
+  screen.position.y = 4.60;
+  stand.add(screen);
+  const anchorY = 12;
+  if (!ctx) return {root, anchorY};
   canvas.width = 256;
   canvas.height = 96;
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   face.map = texture;
   let displayed;
-  return {root, anchorY:10.7, animate(state) {
+  return {root, anchorY, animate(state) {
     const unit = state?.attributes?.unit_of_measurement;
     const value = typeof state?.state === 'string' && state.state.trim() ? Number(state.state) : NaN;
-    const reading = Number.isFinite(value) && ['°F', '°C', '%', 'μg/m³', 'µg/m³'].includes(unit)
-      ? Math.round(value) + (unit.endsWith('g/m³') ? ' PM₂.₅' : unit) : '—';
-    if (reading === displayed) return;
-    displayed = reading;
-    ctx.fillStyle = '#d4dec7';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#24322c';
-    ctx.font = 'bold 75px sans-serif';
+    const known = Number.isFinite(value) && ['°F', '°C', '%', 'μg/m³', 'µg/m³'].includes(unit);
+    const digits = known ? String(Math.round(value)) : '—';
+    const suffix = known ? (unit.endsWith('g/m³') ? 'PM₂.₅' : unit) : '';
+    const key = digits + ' ' + suffix;
+    if (key === displayed) return;
+    displayed = key;
+    const shade = ctx.createLinearGradient(0,0,0,96);
+    shade.addColorStop(0,'#c5d0b6');
+    shade.addColorStop(.17,'#e0e9cf');
+    shade.addColorStop(1,'#d4ddc3');
+    ctx.fillStyle = shade;
+    ctx.fillRect(0,0,256,96);
+    ctx.fillStyle = '#23352c';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(reading, 128, 50, 224);
+    ctx.font = '700 77px monospace';
+    ctx.fillText(digits, suffix ? 104 : 128, 52, suffix ? 166 : 205);
+    if (suffix) {
+      ctx.font = '700 31px system-ui, sans-serif';
+      ctx.fillText(suffix,203,54,78);
+    }
     texture.needsUpdate = true;
   }};
 }

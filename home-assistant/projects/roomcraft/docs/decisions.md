@@ -1,5 +1,9 @@
 # Decision log
 
+## Thermometer silhouette
+
+The wall tablet needs a small recognizable object at the saved angled view. Use a raised desktop case, inset LCD, rounded housing and subdued materials. Keep the editable footprint and dashboard anchors compatible with existing placements.
+
 ## Temperature-first objects and paged menus
 
 Environment opens on temperature and compares like units only. Every supported metric has a shared time axis; a separate room-detail view retains raw readings and single-sensor graphs. Home Dash offers page buttons for menus wider or taller than their viewport so tablet operators can reach controls without a swipe. Native Home Assistant screens outside Roomcraft own their navigation.

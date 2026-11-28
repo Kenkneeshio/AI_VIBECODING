@@ -1,5 +1,9 @@
 # Changelog
 
+## Tabletop thermometer model
+
+- Replace the flat climate-display housing with a compact angled thermometer and a recessed LCD with larger digits.
+
 ## Compare any environment metric and page through menus
 
 - Add across-room comparisons for every measured climate and air-quality metric, a separate room-detail view, and natural-looking temperature displays. Overflowing Home Dash menus offer page buttons.
