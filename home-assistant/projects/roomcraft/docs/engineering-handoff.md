@@ -1,5 +1,7 @@
 # Roomcraft engineering handoff
 
+The shared environment panel consumes `roomcraft_environment` from Home Dash. The sanitized mapping is in `site/ha-local/environment-rooms.json`. Set each room marker to the entity bound to its editable climate display. History is requested in one batch on open and on range changes. Restore the private dashboard backup for mapping rollback and redeploy the previous source for renderer rollback.
+
 The Roomcraft release adds reusable climate displays, cookware and a French-door refrigerator. The placement recipe is in `site/ha-local/climate-furnishings.json`. Existing balcony models remain editable. The Home Assistant layout backup restores the prior placement; the normal deployment guide covers resource rollback.
 
 The three-stage idle release uses the deterministic camera director for the recurring house and outing schedule. See [Idle camera](idle-camera.md) for settings and timing. Redeploy the last verified revision or use the private installer backup for rollback.

@@ -1,3 +1,4 @@
+import {createEnvironmentPanel} from './storybook-environment-panel.mjs';
 import {createPersonPresence, personSource, readDetectionZones, trackingSnapshots, trackingStatus} from './storybook-tracking.mjs';
 import {createPresenceZoneMap,normalizePresenceZoneSettings,summarizePresenceAreas,
   PRESENCE_ZONE_KEY,PRESENCE_ZONE_SETTINGS_KEY,PRESENCE_ZONE_NAMES} from './storybook-presence-zones.mjs';
@@ -235,6 +236,10 @@ class RoomcraftStorybookCard extends HTMLElement {
         .free-view-hint{position:absolute;top:9px;left:50%;transform:translateX(-50%);box-sizing:border-box;
           width:max-content;max-width:calc(100% - 18px);padding:5px 10px;border-radius:8px;
           background:#443649;color:#fffaf0;text-align:center;font-size:12px;pointer-events:none}
+        .environment-marker{position:absolute;transform:translate(-50%,-50%);width:48px;height:37px;padding:0;
+          border:1px solid transparent;border-radius:7px;background:transparent;pointer-events:auto;cursor:pointer;z-index:1}
+        .environment-marker:is(:hover,:focus-visible){border-color:#a9f1cd}
+        .environment-marker:active{background:#9bf5c449}
         .overlay{position:absolute;inset:0;pointer-events:none}
         .world[data-demo-beat] :is(.overlay,.tethers,.zone-legend),.world[data-wildlife-preview] :is(.overlay,.tethers,.zone-legend),.world[data-idle-camera] :is(.overlay,.tethers,.zone-legend,.scene-fps,.free-view-hint){visibility:hidden}
         .world[data-idle-camera]{grid-template-rows:minmax(0,1fr)}
@@ -350,7 +355,7 @@ class RoomcraftStorybookCard extends HTMLElement {
                   <div class="utility-menu-grid">
                     <button type="button" data-open-models aria-haspopup="dialog">Object models</button>
                     <button type="button" data-open-devices aria-haspopup="dialog" hidden>Devices and sensors</button>
-                    <button type="button" data-utility="air" aria-haspopup="dialog" hidden>Indoor air</button>
+                    <button type="button" data-utility="air" aria-haspopup="dialog" hidden>Environment</button>
                     <button type="button" data-utility="health" aria-haspopup="dialog" hidden>System health</button>
                   </div>
                 </section>
@@ -475,6 +480,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.stage = this.shadowRoot.querySelector('.stage');
     this.canvas = this.shadowRoot.querySelector('canvas');
     this.overlay = this.shadowRoot.querySelector('.overlay');
+    this.environmentPanel = createEnvironmentPanel(this);
     this.lightPanel = bindStorybookLightPanel(this);
     this.vacuumMapOverlay = bindVacuumMapOverlay(this);
     this.lidarRuler = bindLidarRuler(this);
@@ -860,7 +866,7 @@ class RoomcraftStorybookCard extends HTMLElement {
 
   get studioPath() { return `/${this.dashboard || 'roomcraft-home'}/studio`; }
   get weatherEntityId() { return this.weatherPanel.effectiveEntityId ?? this.model?.weather.weather_entity; }
-  get largePanelOpen() { return this.weatherDialog.open || this.powerDialog.open || this.lidarRuler.open || this.holidayPanel?.isOpen || this.worldLifePanel?.isOpen || this.idleCamera?.dialog.open; }
+  get largePanelOpen() { return this.environmentPanel?.isOpen || this.weatherDialog.open || this.powerDialog.open || this.lidarRuler.open || this.holidayPanel?.isOpen || this.worldLifePanel?.isOpen || this.idleCamera?.dialog.open; }
 
   previewWorldLife(value) {
     this.idleCamera?.reset();
@@ -905,6 +911,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.commutes.sync();
     if (this.devicesDrawer) this.devicesDrawer.hass = value?.connected === false ? undefined : value;
     this.refreshUtility(previous);
+    this.environmentPanel.refresh();
     this.lightPanel.refresh();
     this.vacuumMapOverlay.sync();
     this.lidarRuler.sync();
@@ -1228,8 +1235,9 @@ class RoomcraftStorybookCard extends HTMLElement {
   prepareUtilities(config) {
     const {panels, devices} = readStorybookUtilities(config);
     this.utilityPanels = panels;
+    this.environmentPanel.configure(config?.roomcraft_environment, config?.roomcraft_layout?.items);
     this.power.setEnergyConfig(config?.roomcraft_energy);
-    for (const button of this.utilityButtons) button.hidden = !panels[button.dataset.utility];
+    for (const button of this.utilityButtons) button.hidden = !panels[button.dataset.utility] && !(button.dataset.utility === 'air' && this.environmentPanel.available);
     if (!devices || !customElements.get('roomcraft-entity-menu')?.prototype.open) return;
     this.devicesDrawer = document.createElement('roomcraft-entity-menu');
     this.devicesDrawer.hidden = true;
@@ -1240,6 +1248,10 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   openUtility(kind) {
+    if (kind === 'air' && this.environmentPanel.available) {
+      this.environmentPanel.open();
+      return;
+    }
     const panel = this.utilityPanels?.[kind];
     if (!panel || this.utilityDialog.open) return;
     this.setMainMenu(false, !this.mainMenu.hidden);
@@ -1679,6 +1691,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   positionControls() {
     const {width, height} = this;
     if (!width || !height) return;
+    this.environmentPanel.position(this.scene,width,height);
     const keepClear = this.scene.exteriorClearance();
     const targets = [];
     const passive = [];
@@ -1769,6 +1782,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     if (this.trackingDialog.open) this.trackingDialog.close();
     for (const dialog of this.linkDialogs) if (dialog.open) dialog.close();
     this.locationPanel.configure(null);
+    this.environmentPanel.configure(null);
     this.power.close();
     this.utilityRows = null;
     this.utilityPanels = null;

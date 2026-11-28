@@ -1,5 +1,9 @@
 # Decision log
 
+## Shared room environment dashboard
+
+All reachable climate markers open the same room-first dashboard. Keep readings in device units and use Recorder history with explicit missing states. The balcony currently has temperature and humidity entities. Roomcraft does not substitute indoor pollution readings for missing outdoor measurements.
+
 ## Climate displays and furniture
 
 The household can read actual room conditions without opening a menu. Climate displays read their linked sensor without creating action buttons, and show a dash when unavailable. The reference dashboard determines room assignments. The scene recipe preserves the original layout around the furnishings and shortens the counter across from the sink to make room for the fridge.

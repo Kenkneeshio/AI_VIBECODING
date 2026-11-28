@@ -1,0 +1,117 @@
+[
+  {
+    "id": "balcony",
+    "label": "Balcony",
+    "marker": "sensor.hub_temperature",
+    "metrics": [
+      {
+        "label": "Outdoor temperature",
+        "entity": "sensor.hub_temperature"
+      },
+      {
+        "label": "Outdoor humidity",
+        "entity": "sensor.hub_humidity"
+      }
+    ]
+  },
+  {
+    "id": "living",
+    "label": "Living room",
+    "marker": "sensor.air_filter_pm2_5",
+    "metrics": [
+      {
+        "label": "PM2.5",
+        "entity": "sensor.air_filter_pm2_5"
+      },
+      {
+        "label": "Temperature",
+        "entity": "sensor.air_filter_temperature"
+      },
+      {
+        "label": "Humidity",
+        "entity": "sensor.air_filter_humidity"
+      }
+    ]
+  },
+  {
+    "id": "office",
+    "label": "Office",
+    "marker": "sensor.air_quality_monitor_2_temperature",
+    "metrics": [
+      {
+        "label": "Temperature",
+        "entity": "sensor.air_quality_monitor_2_temperature"
+      },
+      {
+        "label": "Humidity",
+        "entity": "sensor.air_quality_monitor_2_humidity"
+      },
+      {
+        "label": "CO₂",
+        "entity": "sensor.air_quality_monitor_2_carbon_dioxide"
+      },
+      {
+        "label": "PM2.5",
+        "entity": "sensor.air_quality_monitor_2_pm2_5"
+      },
+      {
+        "label": "Formaldehyde",
+        "entity": "sensor.air_quality_monitor_2_formaldehyde"
+      },
+      {
+        "label": "VOCs",
+        "entity": "sensor.air_quality_monitor_2_volatile_organic_compounds"
+      }
+    ]
+  },
+  {
+    "id": "master",
+    "label": "Master bedroom",
+    "marker": "sensor.air_quality_monitor_temperature",
+    "metrics": [
+      {
+        "label": "Temperature",
+        "entity": "sensor.air_quality_monitor_temperature"
+      },
+      {
+        "label": "Humidity",
+        "entity": "sensor.air_quality_monitor_humidity"
+      },
+      {
+        "label": "CO₂",
+        "entity": "sensor.air_quality_monitor_carbon_dioxide"
+      },
+      {
+        "label": "PM2.5",
+        "entity": "sensor.air_quality_monitor_pm2_5"
+      },
+      {
+        "label": "Formaldehyde",
+        "entity": "sensor.air_quality_monitor_formaldehyde"
+      },
+      {
+        "label": "VOCs",
+        "entity": "sensor.air_quality_monitor_volatile_organic_compounds"
+      },
+      {
+        "label": "Master bath humidity",
+        "entity": "sensor.humidifier_humidity"
+      }
+    ]
+  },
+  {
+    "id": "hall",
+    "label": "Hallway",
+    "marker": "sensor.thermostat_temperature_2",
+    "metrics": [
+      {
+        "label": "Thermostat temperature",
+        "entity": "sensor.thermostat_temperature_2"
+      },
+      {
+        "label": "Thermostat humidity",
+        "entity": "sensor.thermostat_humidity_2"
+      }
+    ]
+  }
+]

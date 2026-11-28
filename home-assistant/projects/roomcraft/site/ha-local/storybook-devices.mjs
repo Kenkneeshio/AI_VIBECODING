@@ -680,8 +680,8 @@ function climateDisplay(w, d) {
   return {root, anchorY:8, animate(state) {
     const unit = state?.attributes?.unit_of_measurement;
     const value = typeof state?.state === 'string' && state.state.trim() ? Number(state.state) : NaN;
-    const reading = Number.isFinite(value) && ['°F', '°C', '%'].includes(unit)
-      ? Math.round(value) + unit : '—';
+    const reading = Number.isFinite(value) && ['°F', '°C', '%', 'μg/m³', 'µg/m³'].includes(unit)
+      ? Math.round(value) + (unit.endsWith('g/m³') ? ' PM₂.₅' : unit) : '—';
     if (reading === displayed) return;
     displayed = reading;
     ctx.fillStyle = '#163637';

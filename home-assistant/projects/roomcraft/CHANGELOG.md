@@ -1,5 +1,9 @@
 # Changelog
 
+## Shared environment dashboard
+
+- Tap an environmental display to open live room readings and 1-hour, 24-hour, and 7-day Home Assistant history on one page.
+
 ## Climate displays and balcony and kitchen furnishing
 
 - Add sensor-powered climate displays and editable balcony tables, greenery, cookware, and a French-door fridge.
