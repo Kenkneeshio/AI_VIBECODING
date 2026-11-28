@@ -1,3 +1,4 @@
+import {bindEnergyFlow, FLOW_MARKUP, FLOW_STYLE} from './storybook-energy-flow.mjs';
 import {ENERGY_PERIODS, roomcraftEnergyFrame} from './storybook-energy.mjs';
 import {energyPeriodRange, energyStatisticTotal, energyStatisticsRequests} from './storybook-energy-periods.mjs';
 import {bindEnergyTree, ENERGY_TREE_MARKUP, ENERGY_TREE_STYLE} from './storybook-energy-tree.mjs';
@@ -16,6 +17,7 @@ export const ENERGY_EXPLORER_MARKUP = `
     <nav class="energy-periods" aria-label="Energy period">
       ${periods.map(([id, label]) => `<button type="button" data-energy-period="${id}" aria-pressed="false">${label}</button>`).join('')}
     </nav>
+    ${FLOW_MARKUP}
     <div class="energy-explorer-grid">
       ${ENERGY_TREE_MARKUP}
       <section class="energy-inspector" aria-labelledby="energy-selection">
@@ -36,6 +38,7 @@ export const ENERGY_EXPLORER_MARKUP = `
 
 export const ENERGY_EXPLORER_STYLE = `
   ${ENERGY_TREE_STYLE}
+  ${FLOW_STYLE}
   .power-dialog:has(.energy-explorer:not([hidden])){width:min(980px,calc(100% - 24px))}
   .energy-explorer{margin-top:15px;padding-top:13px;border-top:1px solid #ccb597}
   .energy-heading{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;margin-bottom:8px}
@@ -86,6 +89,10 @@ export function bindEnergyExplorer(card, root, onDetails) {
   const tree = bindEnergyTree(section, id => {
     select(id);
     if (matchMedia('(max-width:660px)').matches) title.scrollIntoView({block: 'nearest'});
+  });
+  const flow = bindEnergyFlow(section, id => {
+    select(id);
+    title.scrollIntoView({block: 'nearest'});
   });
   const rows = new Map();
   let config;
@@ -162,6 +169,7 @@ export function bindEnergyExplorer(card, root, onDetails) {
     if (!active || !config) return;
     const states = card.session?.connected === false ? undefined : card.session?.states;
     frame = roomcraftEnergyFrame(config, states, states ? month?.totals : undefined, card.session?.config?.time_zone);
+    flow(frame,period);
     const view = item => ({id: item.id, label: item.label, kind: item.kind, shared: item.shared,
       ...item.metrics[period]});
     const groups = new Map(frame.groups.map(group => [group.id, group]));

@@ -1,5 +1,9 @@
 # Changelog
 
+## Room comparison and energy flow
+
+- Compare room temperatures on a shared time axis with live humidity summaries. Power adds a live ribbon flow and an energy share chart with drill-down.
+
 ## Shared environment dashboard
 
 - Tap an environmental display to open live room readings and 1-hour, 24-hour, and 7-day Home Assistant history on one page.

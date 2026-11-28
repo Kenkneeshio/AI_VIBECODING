@@ -1,5 +1,9 @@
 # Decision log
 
+## Compare climate and energy on common scales
+
+Household users need to compare rooms and identify electrical loads at a glance. The temperature overview shares a Fahrenheit time plot and leaves gaps where Recorder reports unavailable readings. The energy flow compares compatible circuit readings with the whole-home meter, labels the residual as unattributed, and keeps overlapping smart plugs independent. An inconsistent total shows independent circuit readings instead of a reconciled flow.
+
 ## Shared room environment dashboard
 
 All reachable climate markers open the same room-first dashboard. Keep readings in device units and use Recorder history with explicit missing states. The balcony currently has temperature and humidity entities. Roomcraft does not substitute indoor pollution readings for missing outdoor measurements.

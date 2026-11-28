@@ -1,5 +1,7 @@
 # Roomcraft engineering handoff
 
+The environment comparison extends `storybook-environment-panel.mjs`. The Power explorer uses `storybook-energy-flow.mjs` for its reconciled circuit ribbons and energy share. The prior data mappings and animated energy tree remain available. Use the standard Home Assistant resource backup for rollback.
+
 The shared environment panel consumes `roomcraft_environment` from Home Dash. The sanitized mapping is in `site/ha-local/environment-rooms.json`. Set each room marker to the entity bound to its editable climate display. History is requested in one batch on open and on range changes. Restore the private dashboard backup for mapping rollback and redeploy the previous source for renderer rollback.
 
 The Roomcraft release adds reusable climate displays, cookware and a French-door refrigerator. The placement recipe is in `site/ha-local/climate-furnishings.json`. Existing balcony models remain editable. The Home Assistant layout backup restores the prior placement; the normal deployment guide covers resource rollback.
