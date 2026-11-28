@@ -850,3 +850,9 @@ Home Dash uses one top row. The live sky takes the space left by the weather and
 Every compiled side road has illustrated traffic. Vehicles follow an outbound lane, a semicircular turn at the paved end, then the opposite lane back toward the main street. Side traffic uses the existing vehicle and night-light batches. The model reserves space for the rounded sidewalk and excludes it from terrain placement. Side routes repeat separately from the through-road lanes.
 
 The full release gate and dashboard readback passed. A deterministic pose check verified the curved path and reversed heading. The wall tablet showed vehicles on both side roads and both round ends, then returned to Default. The private rollback backup ends in 20261127-210115-224732.json.
+
+## Floating sky controls and shared overhead default
+
+Home Dash draws its controls above a continuous animated sky. The overhead default uses tight exterior bounds and bottom alignment while retaining the stairs and porch. The Home Dash camera preference version advances once so older saved angles give way to the same new baseline on every frontend. Later saves still apply to the frontend where they were made.
+
+Full release checks passed. LAN and Nabu Casa matched all 14 built assets and retained eight non-view dashboard fields (resource 80e3a9ef1b51d733). The 1920 × 1080 wall tablet cold-launched the new overhead view and showed sky behind the buttons. Reinstall the preceding runtime and restore the private pre-change dashboard backup ending 20261127-210339-341983.json for rollback.

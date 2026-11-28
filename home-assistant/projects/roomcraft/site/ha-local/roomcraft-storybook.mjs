@@ -72,10 +72,15 @@ class RoomcraftStorybookCard extends HTMLElement {
         :host{display:block;color:#3a3046;font:500 14px/1.4 system-ui,sans-serif}
         .world{display:grid;grid-template-rows:auto minmax(0,1fr);min-height:218px;
           height:calc(100dvh - 72px);background:#e7eadb;border-radius:16px;overflow:hidden}
-        .weather-dock{display:flex;align-items:stretch;min-width:0;position:relative;z-index:5}
-        .weather-dock > .coastal-sky{flex:1 1 0;min-width:0;width:auto;height:auto;min-height:clamp(54px,7dvh,72px)}
-        .weather-dock > .bar{flex:0 1 auto;min-width:0;margin-inline-start:auto}
-        .world[data-dock=left] .weather-dock > .bar{order:-1;margin-inline-start:0;margin-inline-end:auto}
+        .weather-dock{display:grid;grid-template-columns:minmax(0,1fr);min-width:0;position:relative;z-index:5}
+        .weather-dock > *{grid-area:1/1}
+        .weather-dock > .coastal-sky{height:auto;min-height:clamp(54px,7dvh,72px)}
+        .weather-dock > .bar{justify-self:end;align-self:center;min-width:0;max-width:100%;
+          border:0;box-shadow:none;padding-block:5px}
+        .weather-dock > .bar,.weather-dock > .bar[data-sky]{background:none}
+        .world[data-dock=left] .weather-dock > .bar{justify-self:start}
+        .world[data-dock=center] .weather-dock > .bar{justify-self:center}
+        .weather-dock:has(.coastal-sky[hidden]){background:#243349}
         .bar{position:relative;z-index:5;display:flex;justify-content:flex-end;align-items:center;
           gap:7px;padding:5px clamp(7px,1.4vw,23px) max(5px,env(safe-area-inset-bottom));
           color:var(--bar-text);border-top:1px solid var(--bar-line);

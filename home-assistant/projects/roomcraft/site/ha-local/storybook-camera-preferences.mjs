@@ -7,7 +7,9 @@ export const CAMERA_PREFERENCE_EVENT = 'roomcraft-camera-preference-change';
  * storage namespace. The old HA alias is intentionally only a migration key. */
 export function cameraPreferencesKey(dashboard = 'roomcraft-home') {
   if (typeof dashboard !== 'string' || !dashboard.trim()) throw new Error('A dashboard is required.');
-  return CAMERA_PREFERENCES_PREFIX + encodeURIComponent(dashboard.trim());
+  const name = dashboard.trim();
+  const prefix = name === 'roomcraft-home' ? 'roomcraft.default-camera.v3:' : CAMERA_PREFERENCES_PREFIX;
+  return prefix + encodeURIComponent(name);
 }
 
 export function legacyCameraPreferencesKey(dashboard = 'roomcraft-home') {

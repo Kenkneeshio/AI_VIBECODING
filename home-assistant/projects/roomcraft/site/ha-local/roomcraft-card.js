@@ -430,6 +430,7 @@ class RoomcraftEditorCard extends HTMLElement {
 
   static async readStartupView(hass, dashboard) {
     return createCameraPreferences({host:window, dashboard, readLegacy:async () => {
+      if (dashboard === 'roomcraft-home') return null;
       const {value} = await hass.callWS({
         type:'frontend/get_user_data', key:this.startupViewKey(dashboard),
       });

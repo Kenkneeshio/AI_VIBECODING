@@ -54,7 +54,7 @@ export function studioCameraPreferences(host) {
 }
 
 /** Fit one authored bounding box at an explicit viewport and orthographic pose. */
-export function fitStorybookCamera(camera, bounds, width, height, view = 'top', {focus, demoZoom, bottomAlign = false} = {}) {
+export function fitStorybookCamera(camera, bounds, width, height, view = 'top', {focus, demoZoom, bottomAlign = false, tight = false} = {}) {
   const normalized = normalizeCameraView(view);
   const framePreset = cameraFramePreset(normalized) ?? normalized.preset;
   const subjectFrame = bounds?.frames?.[framePreset] ?? bounds?.coastalFrames?.[framePreset] ??
@@ -89,9 +89,9 @@ export function fitStorybookCamera(camera, bounds, width, height, view = 'top', 
   const upperY = coastal ? bounds.maxY : Math.max(92, Number.isFinite(bounds.maxY) ? bounds.maxY : 92);
   const frame = new THREE.Box3();
   const corner = new THREE.Vector3();
-  const sideMargin = coastal ? 12 : 37;
+  const sideMargin = tight ? 3 : coastal ? 12 : 37;
   for (const x of [bounds.minX - sideMargin, bounds.maxX + sideMargin]) {
-    for (const z of [bounds.minZ - (coastal ? 6 : 53), bounds.maxZ + (coastal ? 5 : 36)]) {
+    for (const z of [bounds.minZ - (tight ? 3 : coastal ? 6 : 53), bounds.maxZ + (tight ? 3 : coastal ? 5 : 36)]) {
       for (const y of [lowerY, upperY]) {
         frame.expandByPoint(corner.set(x, y, z).applyMatrix4(camera.matrixWorldInverse));
       }

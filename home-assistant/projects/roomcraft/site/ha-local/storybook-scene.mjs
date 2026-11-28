@@ -1455,9 +1455,9 @@ function buildStorybookScene(canvas, layout, plan, renderer, assetBase, houseFir
     landmarkCameraFrames ??= storybookLandmarkCameraFrames(plan.placements, roots);
     cameraBounds.frames = {...coastalFrames, ...landmarkCameraFrames};
     const homeFrame = houseFirst && cameraView.preset === 'default' && !cameraFramePreset(cameraView);
-    const frame = homeFrame ? {...plan.houseBounds, minX:plan.houseBounds.minX-110, maxZ:plan.houseBounds.maxZ+85, maxY:92} : cameraBounds;
+    const frame = homeFrame ? {...plan.houseBounds, minX:plan.houseBounds.minX-112, maxZ:plan.houseBounds.maxZ+85, maxY:92} : cameraBounds;
     cameraView = fitStorybookCamera(camera, cameraFraming?.bounds ?? frame, currentWidth, currentHeight, cameraView,
-      homeFrame && !cameraFraming ? {demoZoom:Math.min(cameraView.zoom,1),bottomAlign:true} : cameraFraming);
+      homeFrame && !cameraFraming ? {demoZoom:Math.min(cameraView.zoom,1),bottomAlign:true,tight:cameraView.tilt===0&&!cameraView.azimuth} : cameraFraming);
     updateSceneryView();
     const haze = storybookHorizonFog(cameraView.tilt);
     scene.fog = haze ? horizonFog : null;
