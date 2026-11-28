@@ -9,7 +9,7 @@ export function bindFreeViewGestures(element, {getView, onChange, canStart = () 
   const pointers = new Map();
   const activeView = () => {
     const view = getView();
-    return view?.preset === 'free' ? view : null;
+    return view && (view.preset === 'free' || getMode() === 'pan') ? view : null;
   };
   const pinchDistance = () => {
     const [first, second] = pointers.values();

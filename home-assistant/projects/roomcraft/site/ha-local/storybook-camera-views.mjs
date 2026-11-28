@@ -45,11 +45,10 @@ export function normalizeCameraView(value = 'top') {
     tilt: Number.isFinite(input.tilt) ? clamp(input.tilt, 0, maxTilt) : base.tilt,
     zoom: Number.isFinite(input.zoom) ? clamp(input.zoom, 0.6, 2.5) : base.zoom,
   };
-  if (preset === 'free' || preset === 'default') {
-    for (const key of ['panX','panY']) {
-      if (Number.isFinite(input[key]) && input[key] !== 0) result[key] = clamp(input[key], -3, 3);
-    }
+  for (const key of ['panX','panY']) {
+    if (Number.isFinite(input[key]) && input[key] !== 0) result[key] = clamp(input[key], -3, 3);
   }
+  if (input.wideFrame === true) result.wideFrame = true;
   if (['default', 'free'].includes(preset) && isFrame(input.framePreset)) result.framePreset = input.framePreset;
   if (preset === 'default' && LANDMARK_CAMERA_PRESETS.includes(result.framePreset) && input.followFront === true) result.followFront = true;
   return result;

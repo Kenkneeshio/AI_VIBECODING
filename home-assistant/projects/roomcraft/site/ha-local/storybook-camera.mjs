@@ -112,7 +112,7 @@ export function fitStorybookCamera(camera, bounds, width, height, view = 'top', 
   const halfHeight = halfWidth / ratio;
   let centerX = (frame.min.x + frame.max.x) / 2;
   let centerY = (frame.min.y + frame.max.y) / 2;
-  if (bottomAlign && normalized.tilt === 0) centerY = frame.min.y + halfHeight;
+  if (bottomAlign && normalized.tilt === 0) centerY = frame.min.y + halfHeight / normalized.zoom;
   if ([focus?.x, focus?.y, focus?.z].every(Number.isFinite)) {
     const {x, y} = corner.set(focus.x, focus.y, focus.z).applyMatrix4(camera.matrixWorldInverse);
     const weight = Number.isFinite(focus.weight) ? THREE.MathUtils.clamp(focus.weight, 0, 1) : 1;

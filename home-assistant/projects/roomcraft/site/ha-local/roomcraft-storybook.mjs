@@ -299,7 +299,7 @@ class RoomcraftStorybookCard extends HTMLElement {
               <span class="planner-glyph" aria-hidden="true"></span>
               <span class="planner-long-label">Calendar &amp; to-dos</span><span class="planner-short-label">Calendar</span>
             </button>
-            <button type="button" class="dock-button free-pan" aria-pressed="false" hidden>Pan</button>
+            <button type="button" class="dock-button free-pan" aria-pressed="false" disabled>Pan</button>
             <button type="button" class="dock-button quick-free-view" aria-pressed="false">Free view</button>
             <a class="dock-button" data-controls-link href="/roomcraft-home/controls">
               <span class="controls-glyph" aria-hidden="true"></span> Controls
@@ -748,7 +748,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     });
     for (const button of this.shadowRoot.querySelectorAll('[data-camera]')) {
       button.addEventListener('click', () => {
-        const current = this.scene?.getView() ?? this.cameraView;
+        const current = this.pendingCameraView ?? this.scene?.getView() ?? this.cameraView;
         switch (button.dataset.camera) {
           case 'left': this.changeView({...enterFreeView(current), azimuth: current.azimuth - 15}); break;
           case 'right': this.changeView({...enterFreeView(current), azimuth: current.azimuth + 15}); break;
@@ -759,7 +759,7 @@ class RoomcraftStorybookCard extends HTMLElement {
             this.setMainMenu(false, true);
             break;
           case 'save-default':
-            this.saveStartupView(current);
+            this.saveStartupView(current.preset === 'default' ? current : {...current,wideFrame:true});
             this.setMainMenu(false, true);
             break;
           case 'clear-default':
@@ -1298,10 +1298,12 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   syncFreeViewMode() {
-    const active = Boolean(this.scene) && !this.demoRun && this.cameraView.preset === 'free';
-    this.quickFreeView?.setAttribute('aria-pressed', String(active));
-    if (!active) this.panMode = false;
-    this.freePan.hidden = !active;
+    const available = Boolean(this.scene) && !this.demoRun;
+    const free = available && this.cameraView.preset === 'free';
+    this.quickFreeView?.setAttribute('aria-pressed', String(free));
+    if (!available) this.panMode = false;
+    const active = free || (available && this.panMode);
+    this.freePan.disabled = !available;
     this.freePan.setAttribute('aria-pressed',String(Boolean(this.panMode)));
     this.freeViewHint.textContent = this.panMode
       ? 'Drag or use arrow keys to pan. Pinch, scroll, or use +/− to zoom.'
@@ -1377,6 +1379,7 @@ class RoomcraftStorybookCard extends HTMLElement {
       this.cameraChanged = view !== 'default';
       this.defaultStatus.textContent = '';
     }
+    if (view === 'default') this.panMode = false;
     this.cameraView = view === 'default'
       ? resolveDefaultCameraView(this.savedStartupView)
       : normalizeCameraView(view);

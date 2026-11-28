@@ -856,3 +856,9 @@ The full release gate and dashboard readback passed. A deterministic pose check 
 Home Dash draws its controls above a continuous animated sky. The overhead default uses tight exterior bounds and bottom alignment while retaining the stairs and porch. The Home Dash camera preference version advances once so older saved angles give way to the same new baseline on every frontend. Later saves still apply to the frontend where they were made.
 
 Full release checks passed. LAN and Nabu Casa matched all 14 built assets and retained eight non-view dashboard fields (resource 80e3a9ef1b51d733). The 1920 × 1080 wall tablet cold-launched the new overhead view and showed sky behind the buttons. Reinstall the preceding runtime and restore the private pre-change dashboard backup ending 20261127-210339-341983.json for rollback.
+
+## Pan in any live view and exact saved framing
+
+Pan is available in every live camera preset. It changes the screen offset while retaining the active preset. Saving a default retains the pan, angle, zoom and original framing basis. The wall tablet verified an overhead pan, saved it, switched views, and restored the same view. The tablet was then reset to its original overhead preference. Full release checks and HA readback passed. Rollback backup ends in 20261127-211442-401193.json.
+
+Home Assistant assigns startup dashboards per profile. Shared browser and wall-tablet profiles were preserved. For Companion-only Cell Dash startup, use a separate mobile profile or a pinned Companion dashboard shortcut to /cell-dash.

@@ -58,7 +58,7 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
   root.append(dialog);
   const startButton=root.querySelector('.idle-start'), settingsButton=root.querySelector('.idle-settings');
   const block=()=>!connected||!card.isConnected||!card.scene||!card.frame||doc.hidden
-    ||held.size>0||card.cameraView?.preset==='free'||Boolean(card.startupViewRequest)||Boolean(card.demoRun||card.holidayPreview||card.worldLifePreview)
+    ||held.size>0||card.panMode||card.cameraView?.preset==='free'||Boolean(card.startupViewRequest)||Boolean(card.demoRun||card.holidayPreview||card.worldLifePreview)
     ||!card.mainMenu.hidden||Boolean(root.querySelector('dialog[open]'))
     ||Boolean(card.devicesDrawer?.isOpen)
     ||card.stage.getBoundingClientRect().width<1;
@@ -101,7 +101,7 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
         card.cameraView=view;card.pendingCameraView=undefined;card.viewSelect.value='default';
         card.freeViewGestures?.cancel();card.syncFreeViewMode();
       }
-      lastAppliedFraming=state.focus?{focus:{...state.focus},demoZoom:Math.min(4.5,(view.framePreset ? view.zoom : Math.min(1,view.zoom))*state.zoomFactor)}:undefined;
+      lastAppliedFraming=state.focus?{focus:{...state.focus},demoZoom:Math.min(4.5,view.zoom*state.zoomFactor)}:undefined;
       const seconds=(at-idleStartedAt)/1000;
       const eased=Math.min(1,seconds/12);
       const drift={
@@ -109,7 +109,7 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
         azimuth:view.azimuth+eased*8*Math.sin(seconds/27),
         tilt:Math.min(88,view.tilt+eased*(4+3*Math.sin(seconds/19))),
       };
-      const zoom=(lastAppliedFraming?.demoZoom ?? Math.min(1,view.zoom))*(1+.045*eased*Math.sin(seconds/21));
+      const zoom=(lastAppliedFraming?.demoZoom ?? view.zoom)*(1+.045*eased*Math.sin(seconds/21));
       card.scene.setView(drift,{...lastAppliedFraming,demoZoom:zoom});
       card.world.setAttribute('data-idle-camera',state.phase);
       if(previous.phase!==state.phase||!previous.active)card.anchorDirty=true;
