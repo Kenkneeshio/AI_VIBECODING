@@ -1,5 +1,9 @@
 # Decision log
 
+## Temperature-first objects and paged menus
+
+Environment opens on temperature and compares like units only. Every supported metric has a shared time axis; a separate room-detail view retains raw readings and single-sensor graphs. Home Dash offers page buttons for menus wider or taller than their viewport so tablet operators can reach controls without a swipe. Native Home Assistant screens outside Roomcraft own their navigation.
+
 ## Compare climate and energy on common scales
 
 Household users need to compare rooms and identify electrical loads at a glance. The temperature overview shares a Fahrenheit time plot and leaves gaps where Recorder reports unavailable readings. The energy flow compares compatible circuit readings with the whole-home meter, labels the residual as unattributed, and keeps overlapping smart plugs independent. An inconsistent total shows independent circuit readings instead of a reconciled flow.

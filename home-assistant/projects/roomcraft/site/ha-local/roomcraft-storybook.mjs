@@ -1,3 +1,4 @@
+import {bindMenuPages} from './storybook-menu-pages.mjs';
 import {createEnvironmentPanel} from './storybook-environment-panel.mjs';
 import {createPersonPresence, personSource, readDetectionZones, trackingSnapshots, trackingStatus} from './storybook-tracking.mjs';
 import {createPresenceZoneMap,normalizePresenceZoneSettings,summarizePresenceAreas,
@@ -481,6 +482,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.canvas = this.shadowRoot.querySelector('canvas');
     this.overlay = this.shadowRoot.querySelector('.overlay');
     this.environmentPanel = createEnvironmentPanel(this);
+    this.menuPages = bindMenuPages(this.shadowRoot);
     this.lightPanel = bindStorybookLightPanel(this);
     this.vacuumMapOverlay = bindVacuumMapOverlay(this);
     this.lidarRuler = bindLidarRuler(this);
@@ -1081,6 +1083,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   connectedCallback() {
+    this.menuPages.connect();
     this.idleCamera.connect();
     window.addEventListener(CAMERA_PREFERENCE_EVENT,this.onCameraPreferenceChange);
     window.addEventListener('storage',this.onCameraPreferenceChange);
@@ -1111,6 +1114,7 @@ class RoomcraftStorybookCard extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this.menuPages.disconnect();
     this.releaseDashboardScroll?.();
     this.releaseDashboardScroll = undefined;
     this.idleCamera.disconnect();

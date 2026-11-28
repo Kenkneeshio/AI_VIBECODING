@@ -47,17 +47,42 @@ function chart(doc, rows, start, end, label, unit) {
   return {svg,low,high};
 }
 
-const roomColors = ['#b85c10','#0879a1','#c03951','#7a3e9b'];
+const roomColors = ['#ac5410','#0879a1','#bb3149','#793f98','#467746','#705845'];
+const measures = [
+  {id:'temperature', label:'Temperature', unit:'°F', match:/temperature$/i},
+  {id:'humidity', label:'Humidity', unit:'%', match:/humidity$/i},
+  {id:'co2', label:'CO₂', unit:'ppm', match:/^CO₂$/i},
+  {id:'pm25', label:'PM2.5', unit:'µg/m³', match:/^PM2\.5$/i},
+  {id:'formaldehyde', label:'Formaldehyde', unit:'mg/m³', match:/^formaldehyde$/i},
+  {id:'voc', label:'VOCs', unit:'mg/m³', match:/^VOCs$/i},
+];
+const axisNumber = new Intl.NumberFormat(undefined,{maximumSignificantDigits:4});
 
-function compareTemperature(doc, series, start, end) {
-  const ranges = series.flatMap(item => item.points.flatMap(point => point.value === null ? [] : [point.value]));
-  if (!ranges.length) return null;
-  const low = 5 * Math.floor(Math.min(...ranges) / 5);
-  const high = Math.max(low + 5, 5 * Math.ceil(Math.max(...ranges) / 5));
+export function comparisonScale(unit, measure) {
+  const native = typeof unit === 'string' ? unit.replace(/μ/g,'µ') : '';
+  if (native === measure.unit) return value => value;
+  if (measure.unit === '°F' && native === '°C') return value => value*9/5+32;
+  if (measure.unit === 'mg/m³' && native === 'µg/m³') return value => value/1000;
+  if (measure.unit === 'µg/m³' && native === 'mg/m³') return value => value*1000;
+  return null;
+}
+
+function compareMetric(doc, series, start, end, measure) {
+  let min = Infinity, max = -Infinity;
+  for (const {points} of series) for (const {value} of points) {
+    if (value === null) continue;
+    min = Math.min(min,value);
+    max = Math.max(max,value);
+  }
+  if (!Number.isFinite(min)) return null;
+  const span = max-min || Math.max(Math.abs(max)*.1,.001);
+  const step = 10 ** Math.floor(Math.log10(span/3));
+  const low = Math.floor(min/step)*step;
+  const high = Math.max(low+step,Math.ceil(max/step)*step);
   const svg = doc.createElementNS(svgNS,'svg');
   svg.setAttribute('viewBox','0 0 760 225');
   svg.setAttribute('role','img');
-  svg.setAttribute('aria-label','Room temperatures on a shared Fahrenheit scale');
+  svg.setAttribute('aria-label',measure.label+' across rooms, shared scale in '+measure.unit);
   function draw(name,attrs,text) {
     const element = doc.createElementNS(svgNS,name);
     for (const [key,value] of Object.entries(attrs)) element.setAttribute(key,value);
@@ -67,19 +92,19 @@ function compareTemperature(doc, series, start, end) {
   }
   for (let tick=0;tick<=4;tick++) {
     const y = 181-tick*41;
-    draw('path',{d:`M49 ${y} H745`,class:'climate-gridline'});
-    draw('text',{x:41,y:y+4,'text-anchor':'end'},Math.round(low+(high-low)*tick/4)+'°');
+    draw('path',{d:`M63 ${y} H745`,class:'climate-gridline'});
+    draw('text',{x:55,y:y+4,'text-anchor':'end'},axisNumber.format(low+(high-low)*tick/4));
   }
   const time = new Intl.DateTimeFormat(undefined,end-start > 2*24*HOUR
     ? {month:'short',day:'numeric'} : {hour:'numeric',minute:'2-digit'});
   for (let tick=0;tick<=4;tick++) {
-    draw('text',{x:49+174*tick,y:207,'text-anchor':tick===0?'start':tick===4?'end':'middle'},
+    draw('text',{x:63+170.5*tick,y:207,'text-anchor':tick===0?'start':tick===4?'end':'middle'},
       time.format(start+(end-start)*tick/4));
   }
-  for (const {points,color} of series) {
+  for (const {points,color,dashed} of series) {
     let path = '', active = false;
     for (const {value,time} of points) {
-      const x = 49+696*(time-start)/(end-start);
+      const x = 63+682*(time-start)/(end-start);
       if (value === null) {
         if (active) path += 'H'+x.toFixed(1);
         active = false;
@@ -91,7 +116,7 @@ function compareTemperature(doc, series, start, end) {
     }
     if (active) path += 'H745';
     draw('path',{d:path,fill:'none',stroke:color,'stroke-width':2.4,'stroke-linejoin':'round',
-      'vector-effect':'non-scaling-stroke'});
+      'vector-effect':'non-scaling-stroke',...(dashed ? {'stroke-dasharray':'6 4'} : {})});
   }
   return svg;
 }
@@ -102,48 +127,74 @@ export function createEnvironmentPanel(card) {
   dialog.className = 'environment-dialog';
   dialog.setAttribute('aria-label','Environment');
   dialog.innerHTML = `<style>
-    .environment-dialog{color:#233c39;background:#f6f7ed;border:1px solid #7aaf9a;border-radius:20px;box-sizing:border-box;
-      width:min(1130px,calc(100% - 22px));max-height:92dvh;padding:0;overflow:auto;box-shadow:0 24px 70px #12252366}
+    .environment-dialog{color:#233c39;background:#f6f7ed;border:1px solid #7aaf9a;border-radius:18px;box-sizing:border-box;
+      width:min(1130px,calc(100% - 16px));max-height:calc(100dvh - 12px);padding:0;overflow:hidden;box-shadow:0 24px 70px #12252366}
     .environment-dialog::backdrop{background:#112c2bbb}
-    .environment-dialog header{position:sticky;top:0;z-index:1;display:flex;flex-wrap:wrap;align-items:center;gap:8px;
-      padding:14px 18px;background:#e7f3e7;border-bottom:1px solid #c7ddce}
-    .environment-dialog h2{font-size:1.28rem;margin:0;margin-inline-end:auto}
-    .environment-dialog h3{margin:0 0 9px}
-    .environment-dialog button{font:inherit;background:#fffdf4;color:inherit;min-height:44px;padding:6px 11px;border:1px solid #8bb5a6;border-radius:10px;cursor:pointer}
+    .environment-dialog header,.environment-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 12px}
+    .environment-dialog header{background:#e7f3e7;border-bottom:1px solid #c7ddce}
+    .environment-dialog h2{font-size:1.15rem;margin:0;margin-inline-end:auto}
+    .environment-dialog h3{margin:0;font-size:1rem}
+    .environment-dialog button,.environment-dialog select{font:inherit;background:#fffdf4;color:inherit;min-height:40px;
+      padding:4px 8px;border:1px solid #8bb5a6;border-radius:8px;cursor:pointer}
     .environment-dialog button[aria-pressed=true]{background:#20614f;color:white}
-    .environment-dialog .room-grid{padding:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-    .environment-compare{margin:12px 14px 0;padding:14px;border:1px solid #b9d8c9;border-radius:14px;background:#fffef8}
-    .environment-compare svg text{font:13px system-ui;fill:#43625a}
-    .compare-rooms{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:8px 0}
-    .compare-room{color:var(--room-color);border-top:3px solid var(--room-color);border-radius:8px;background:#f1f6ee;padding:7px 8px}
+    .environment-toolbar label[hidden]{display:none}
+    .environment-toolbar label{display:flex;gap:5px;align-items:center}
+    .environment-pane{padding:0 12px 10px}
+    .environment-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+    .environment-pane svg{display:block;width:100%;height:min(30dvh,300px)}
+    .environment-pane svg text{font:14px system-ui;fill:#43625a}
+    .compare-rooms{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:5px;margin:6px 0}
+    .compare-room{color:var(--room-color);border-inline-start:3px solid var(--room-color);border-radius:6px;background:#edf4e9;padding:4px 7px}
     .compare-room strong,.compare-room small{display:block;overflow-wrap:anywhere}
-    .compare-room b{font-size:1.22em}
-    @media(max-width:630px){.compare-rooms{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    .environment-dialog section{border:1px solid #bfd7ca;border-radius:14px;padding:12px;min-width:0;background:#fffef7}
-    .environment-dialog section[data-selected=true]{border-color:#39896e;box-shadow:inset 0 0 0 1px #39896e}
-    .environment-dialog .metric-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-    .environment-dialog .climate-metric{min-width:0;padding:9px;background:#edf4e9;border-radius:10px}
-    .environment-dialog .climate-metric span,.environment-dialog .climate-metric small{display:block;overflow-wrap:anywhere}
-    .environment-dialog .climate-metric strong{font-size:1.12rem;font-variant-numeric:tabular-nums}
-    .environment-dialog svg{display:block;width:100%;height:auto}
+    .compare-room small{font-size:.78rem}
+    .compare-room b{font-size:1.10rem;font-variant-numeric:tabular-nums}
+    .environment-detail-card{margin:7px 0;padding:8px;background:#edf4e9;border-radius:8px}
+    .environment-detail-card strong{font-size:1.2rem}
     .climate-gridline,.climate-graph-line{fill:none;vector-effect:non-scaling-stroke}
-    .climate-gridline{stroke:#c8dbce}.climate-graph-line{stroke:#217665;stroke-width:1.7;stroke-linejoin:round}
-    .environment-dialog [role=status]{margin:10px 18px 0;font-size:.88rem;color:#365a54}
-    @media(max-width:630px){.environment-dialog .room-grid{grid-template-columns:1fr}}
+    .climate-gridline{stroke:#c8dbce}.climate-graph-line{stroke:#217665;stroke-width:1.7}
+    .environment-dialog [role=status]{margin:0 12px 8px;font-size:.78rem;color:#365a54}
+    @media(max-width:630px){.compare-rooms{grid-template-columns:repeat(2,minmax(0,1fr))}.environment-pane svg{height:min(25dvh,200px)}}
+    @media(max-height:550px){.environment-pane svg{height:min(24dvh,145px)}.compare-room strong,.compare-room small{font-size:.73rem}
+      .environment-dialog header,.environment-toolbar{padding-block:4px}.environment-dialog button,.environment-dialog select{min-height:34px}}
+    @media(max-height:450px) and (min-width:640px){.compare-rooms{grid-template-columns:repeat(5,minmax(0,1fr))}}
   </style><header><h2>Environment</h2>
     <button type="button" data-hours="1">1h</button><button type="button" data-hours="24">24h</button>
     <button type="button" data-hours="168">7d</button><button type="button" data-close>Close</button>
-  </header><p role="status"></p><div class="environment-compare">
-    <h3>Temperature across rooms</h3><div class="compare-rooms"></div><div class="compare-graph"></div>
-  </div><div class="room-grid"></div>`;
+  </header>
+  <div class="environment-toolbar">
+    <button type="button" data-page="compare">Across rooms</button><button type="button" data-page="details">Room details</button>
+    <label data-compare-filter>Metric <select aria-label="Compare metric"></select></label>
+    <label data-room-filter hidden>Room <select aria-label="Room"></select></label>
+    <label data-sensor-filter hidden>Sensor <select aria-label="Sensor"></select></label>
+  </div>
+  <div class="environment-pane environment-compare">
+    <div class="environment-heading"><h3></h3><small class="compare-unit"></small></div>
+    <div class="compare-rooms"></div><div class="compare-graph"></div>
+  </div>
+  <div class="environment-pane environment-details" hidden>
+    <h3></h3><div class="environment-detail-card"><strong></strong><div class="detail-graph"></div></div>
+  </div><p role="status"></p>`;
   card.shadowRoot.append(dialog);
-  const grid = dialog.querySelector('.room-grid');
+  const compare = dialog.querySelector('.environment-compare');
+  const details = dialog.querySelector('.environment-details');
   const compareRooms = dialog.querySelector('.compare-rooms');
   const compareGraph = dialog.querySelector('.compare-graph');
+  const detailGraph = dialog.querySelector('.detail-graph');
+  const measureSelect = dialog.querySelector('[data-compare-filter] select');
+  const roomSelect = dialog.querySelector('[data-room-filter] select');
+  const sensorSelect = dialog.querySelector('[data-sensor-filter] select');
   const status = dialog.querySelector('[role=status]');
   const buttons = [...dialog.querySelectorAll('[data-hours]')];
-  let rooms = [], markers = [], metrics = [], request = 0, hours = 24;
-  let comparison = [];
+  const pages = [...dialog.querySelectorAll('[data-page]')];
+  let rooms = [], markers = [], request = 0, hours = 24;
+  let history, page = 'compare';
+  let liveReadings = [];
+  function option(value,label) {
+    const element = doc.createElement('option');
+    element.value = value;
+    element.textContent = label;
+    return element;
+  }
   function reading(entry) {
     const state = card.session?.connected === false ? undefined : card.session?.states?.[entry?.entity];
     return state?.state && Number.isFinite(Number(state.state)) && state.state.trim()
@@ -152,47 +203,105 @@ export function createEnvironmentPanel(card) {
   }
   function refresh() {
     if (!dialog.open) return;
-    for (const {entry,value} of metrics) value.textContent = reading(entry);
-    for (const row of comparison) {
-      row.value.textContent = reading(row.temperature);
-      row.moisture.textContent = reading(row.humidity);
+    for (const {element,entry,prefix=''} of liveReadings) element.textContent = prefix + reading(entry);
+  }
+  function unitOf(entry) {
+    return card.session?.states?.[entry?.entity]?.attributes?.unit_of_measurement ?? '';
+  }
+  function render() {
+    const across = page === 'compare';
+    compare.hidden = !across;
+    details.hidden = across;
+    dialog.querySelector('[data-compare-filter]').hidden = !across;
+    dialog.querySelector('[data-room-filter]').hidden = across;
+    dialog.querySelector('[data-sensor-filter]').hidden = across;
+    for (const button of pages) button.setAttribute('aria-pressed',String(button.dataset.page === page));
+    liveReadings = [];
+    if (across) renderComparison();
+    else renderDetails();
+    refresh();
+  }
+  function renderComparison() {
+    const measure = measures.find(item => item.id === measureSelect.value) ?? measures[0];
+    compare.querySelector('h3').textContent = measure.label + ' across rooms';
+    compare.querySelector('.compare-unit').textContent = measure.unit;
+    compareRooms.replaceChildren();
+    compareGraph.replaceChildren();
+    const series = [];
+    for (const [index,room] of rooms.entries()) {
+      const entries = room.metrics.filter(entry => measure.match.test(entry.label));
+      if (!entries.length && index >= 4) continue;
+      const tile = doc.createElement('div');
+      tile.className = 'compare-room';
+      const color = roomColors[index % roomColors.length];
+      tile.style.setProperty('--room-color',color);
+      const title = doc.createElement('strong'), value = doc.createElement('b');
+      title.textContent = room.label;
+      tile.append(title,value);
+      compareRooms.append(tile);
+      if (!entries.length) {
+        value.textContent = 'No sensor';
+        continue;
+      }
+      liveReadings.push({element:value,entry:entries[0]});
+      const extra = measure.id === 'temperature' ? room.metrics.find(entry => /humidity$/i.test(entry.label)) : entries[1];
+      if (extra) {
+        const label = doc.createElement('small');
+        tile.append(label);
+        liveReadings.push({element:label,entry:extra,prefix:extra.label+(measure.id==='temperature' ? ' · ' : ' (dashed) · ')});
+      }
+      if (!history) continue;
+      for (const [sensorIndex,entry] of entries.entries()) {
+        const convert = comparisonScale(unitOf(entry),measure);
+        if (!convert) continue;
+        const points = environmentSeries(history.result?.[entry.entity],history.start,history.end)
+          .map(point => point.value === null ? point : {...point,value:convert(point.value)});
+        series.push({color,points,dashed:sensorIndex>0});
+      }
     }
+    if (!history) return;
+    const graph = compareMetric(doc,series,history.start,history.end,measure);
+    if (graph) compareGraph.append(graph);
+    else compareGraph.textContent = 'No comparable samples in this range.';
+  }
+  function renderDetails() {
+    const room = rooms.find(item => item.id === roomSelect.value);
+    const entry = room?.metrics.find(item => item.entity === sensorSelect.value);
+    if (!entry) return;
+    details.querySelector('h3').textContent = room.label + ' · ' + entry.label;
+    liveReadings.push({entry,element:details.querySelector('strong')});
+    detailGraph.replaceChildren();
+    if (!history) return;
+    const unit = unitOf(entry);
+    const trend = chart(doc,history.result?.[entry.entity],history.start,history.end,entry.label,unit);
+    if (!trend) {detailGraph.textContent = 'No recorded samples.'; return;}
+    const note = doc.createElement('small');
+    note.textContent = axisNumber.format(trend.low)+' – '+axisNumber.format(trend.high)+' '+unit;
+    detailGraph.append(trend.svg,note);
+  }
+  function selectRoom() {
+    const room = rooms.find(item => item.id === roomSelect.value);
+    sensorSelect.replaceChildren(...(room?.metrics ?? []).map(entry => option(entry.entity,entry.label)));
   }
   async function load() {
     const token = ++request;
     const end = Date.now(), start = end-hours*HOUR;
     for (const button of buttons) button.setAttribute('aria-pressed',String(Number(button.dataset.hours) === hours));
-    for (const metric of metrics) metric.history.replaceChildren();
-    compareGraph.replaceChildren();
+    history = undefined;
+    render();
     status.textContent = 'Loading Home Assistant history…';
     try {
       const result = await card.session.callWS({
-        type:'history/history_during_period', entity_ids:[...new Set(metrics.map(({entry}) => entry.entity))],
+        type:'history/history_during_period',
+        entity_ids:[...new Set(rooms.flatMap(room => room.metrics.map(entry => entry.entity)))],
         start_time:new Date(start).toISOString(),end_time:new Date(end).toISOString(),
         minimal_response:true,no_attributes:true,
       });
       if (token !== request || !dialog.open) return;
+      history = {result,start,end};
       const range = new Intl.DateTimeFormat(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
-      status.textContent = range.format(start) + ' – ' + range.format(end) + ' · Home Assistant history';
-      const series = comparison.flatMap(row => {
-        const id = row.temperature?.entity;
-        const unit = card.session?.states?.[id]?.attributes?.unit_of_measurement;
-        if (!['°F','°C'].includes(unit)) return [];
-        const points = environmentSeries(result?.[id],start,end).map(point => unit === '°C' && point.value !== null
-          ? {...point,value:point.value*9/5+32} : point);
-        return [{color:row.color,points}];
-      });
-      const combined = compareTemperature(doc,series,start,end);
-      if (combined) compareGraph.append(combined);
-      else compareGraph.textContent = 'No temperature history in this range.';
-      for (const {entry,history} of metrics) {
-        const unit = card.session?.states?.[entry.entity]?.attributes?.unit_of_measurement ?? '';
-        const trend = chart(doc,result?.[entry.entity],start,end,entry.label,unit);
-        const note = doc.createElement('small');
-        note.textContent = trend ? trend.low + (trend.low === trend.high ? '' : ' – ' + trend.high) + ' ' + unit : 'No recorded samples';
-        if (trend) history.append(trend.svg);
-        history.append(note);
-      }
+      status.textContent = range.format(start) + ' – ' + range.format(end);
+      render();
     } catch {
       if (token === request && dialog.open) status.textContent = 'Home Assistant history is unavailable.';
     }
@@ -200,47 +309,20 @@ export function createEnvironmentPanel(card) {
   function open(selected) {
     if (!rooms.length || dialog.open) return;
     card.setMainMenu(false,!card.mainMenu.hidden);
-    metrics = [];
-    comparison = [];
-    grid.replaceChildren();
-    compareRooms.replaceChildren();
-    for (const room of rooms.slice(0,4)) {
-      const tile = doc.createElement('div');
-      tile.className = 'compare-room';
-      const color = roomColors[comparison.length];
-      tile.style.setProperty('--room-color',color);
-      const title = doc.createElement('strong'), value = doc.createElement('b'), moisture = doc.createElement('small');
-      title.textContent = room.label;
-      const temperature = room.metrics.find(metric => /temperature$/i.test(metric.label));
-      const humidity = room.metrics.find(metric => /humidity$/i.test(metric.label));
-      tile.append(title,value,moisture);
-      compareRooms.append(tile);
-      comparison.push({temperature,humidity,value,moisture,color});
-    }
-    for (const room of rooms) {
-      const section = doc.createElement('section');
-      section.dataset.selected = String(room.id === selected);
-      const heading = doc.createElement('h3');
-      heading.textContent = room.label;
-      const readings = doc.createElement('div');
-      readings.className = 'metric-grid';
-      for (const entry of room.metrics) {
-        const tile = doc.createElement('div');
-        tile.className = 'climate-metric';
-        const label = doc.createElement('span'), value = doc.createElement('strong'), history = doc.createElement('div');
-        label.textContent = entry.label;
-        tile.append(label,value,history);
-        readings.append(tile);
-        metrics.push({entry,value,history});
-      }
-      section.append(heading,readings);
-      grid.append(section);
-    }
+    page = 'compare';
+    measureSelect.replaceChildren(...measures.filter(measure =>
+      rooms.some(room => room.metrics.some(entry => measure.match.test(entry.label))))
+      .map(measure => option(measure.id,measure.label)));
+    roomSelect.replaceChildren(...rooms.map(room => option(room.id,room.label)));
+    roomSelect.value = selected ?? rooms[0].id;
+    selectRoom();
     dialog.showModal();
-    if (selected) grid.querySelector('[data-selected=true]')?.scrollIntoView({block:'nearest'});
-    refresh();
     void load();
   }
+  for (const button of pages) button.addEventListener('click',() => {page = button.dataset.page; render();});
+  measureSelect.addEventListener('change',render);
+  roomSelect.addEventListener('change',() => {selectRoom(); render();});
+  sensorSelect.addEventListener('change',render);
   function configure(config, items = []) {
     if (dialog.open) dialog.close();
     markers.forEach(({button}) => button.remove());

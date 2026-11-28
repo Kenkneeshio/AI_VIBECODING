@@ -1,5 +1,9 @@
 # Changelog
 
+## Compare any environment metric and page through menus
+
+- Add across-room comparisons for every measured climate and air-quality metric, a separate room-detail view, and natural-looking temperature displays. Overflowing Home Dash menus offer page buttons.
+
 ## Room comparison and energy flow
 
 - Compare room temperatures on a shared time axis with live humidity summaries. Power adds a live ribbon flow and an energy share chart with drill-down.

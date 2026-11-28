@@ -1,5 +1,7 @@
 # Roomcraft engineering handoff
 
+The environment panel separates across-room comparison from room details. The asset-neutral menu pager provides page buttons for overflowing Home Dash dialogs and the main menu. Validate both navigation directions and close behavior at the target device viewport, then use the usual resource backup for rollback.
+
 The environment comparison extends `storybook-environment-panel.mjs`. The Power explorer uses `storybook-energy-flow.mjs` for its reconciled circuit ribbons and energy share. The prior data mappings and animated energy tree remain available. Use the standard Home Assistant resource backup for rollback.
 
 The shared environment panel consumes `roomcraft_environment` from Home Dash. The sanitized mapping is in `site/ha-local/environment-rooms.json`. Set each room marker to the entity bound to its editable climate display. History is requested in one batch on open and on range changes. Restore the private dashboard backup for mapping rollback and redeploy the previous source for renderer rollback.

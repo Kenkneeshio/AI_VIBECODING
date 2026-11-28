@@ -662,32 +662,37 @@ function miniChristmasTree(width, depth) {
 
 function climateDisplay(w, d) {
   const root = new THREE.Group();
-  softBox(root, w, 8, d, material(color.cream), 0, 4, 0, 2);
+  const gasket = material(0x4f574d);
+  const housing = material(0xd8c2a3);
+  softBox(root,w*.87,2.4,d*.72,gasket,0,1.2,0,1.1);
+  softBox(root,w,8,d,housing,0,5.5,0,3);
+  softBox(root,w*.91,1.8,d*.82,material(0x64695b),0,9.7,0,1);
+  for (const x of [-w*.37,w*.37]) box(root,w*.045,1,d*.2,gasket,x,1.15,d*.37);
   const canvas = globalThis.document?.createElement('canvas');
   const ctx = canvas?.getContext('2d');
   const face = new THREE.MeshBasicMaterial({color:ctx ? 0xffffff : color.teal, toneMapped:false});
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(w * .86, d * .77), face);
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(w * .81, d * .67), face);
   screen.rotation.x = -Math.PI / 2;
-  screen.position.y = 8.1;
+  screen.position.y = 10.7;
   root.add(screen);
-  if (!ctx) return {root, anchorY:8};
+  if (!ctx) return {root, anchorY:10.7};
   canvas.width = 256;
   canvas.height = 96;
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   face.map = texture;
   let displayed;
-  return {root, anchorY:8, animate(state) {
+  return {root, anchorY:10.7, animate(state) {
     const unit = state?.attributes?.unit_of_measurement;
     const value = typeof state?.state === 'string' && state.state.trim() ? Number(state.state) : NaN;
     const reading = Number.isFinite(value) && ['°F', '°C', '%', 'μg/m³', 'µg/m³'].includes(unit)
       ? Math.round(value) + (unit.endsWith('g/m³') ? ' PM₂.₅' : unit) : '—';
     if (reading === displayed) return;
     displayed = reading;
-    ctx.fillStyle = '#163637';
+    ctx.fillStyle = '#d4dec7';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#d7f6dc';
-    ctx.font = 'bold 68px sans-serif';
+    ctx.fillStyle = '#24322c';
+    ctx.font = 'bold 75px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(reading, 128, 50, 224);
