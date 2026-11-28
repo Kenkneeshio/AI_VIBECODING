@@ -70,7 +70,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>
         :host{display:block;color:#3a3046;font:500 14px/1.4 system-ui,sans-serif}
-        .world{display:grid;grid-template-rows:auto minmax(0,1fr) auto;min-height:218px;
+        .world{display:grid;grid-template-rows:auto auto minmax(0,1fr);min-height:218px;
           height:calc(100dvh - 72px);background:#e7eadb;border-radius:16px;overflow:hidden}
         .bar{position:relative;z-index:5;display:flex;justify-content:flex-end;align-items:center;
           gap:7px;padding:5px clamp(7px,1.4vw,23px) max(5px,env(safe-area-inset-bottom));
@@ -82,13 +82,13 @@ class RoomcraftStorybookCard extends HTMLElement {
         .bar nav{display:flex;align-items:center;gap:7px;min-width:0}
         .bar .dock-button{gap:7px;min-width:70px;white-space:nowrap;border:1px solid var(--bar-line);
           background:var(--bar-surface);border-radius:13px}
-        .bar .dock-button:hover:not(:disabled),.bar .dock-button[aria-expanded=true]{background:var(--bar-hover);text-decoration:none}
+        .bar .dock-button:hover:not(:disabled),.bar .dock-button[aria-expanded=true],.bar .free-pan[aria-pressed=true]{background:var(--bar-hover);text-decoration:none}
         .power-glyph{width:14px;height:17px;background:currentColor;
           clip-path:polygon(55% 0,100% 0,67% 40%,100% 40%,34% 100%,49% 55%,14% 55%)}
         .view-controls{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px;padding:2px 4px}
         .view-controls select{min-height:44px;min-width:0;border:1px solid #cfbfa2;border-radius:9px;
           background:#fffdf6;color:inherit;padding:0 6px 0 9px;font:inherit}
-        .default-status{position:absolute;right:12px;bottom:calc(100% + 6px);z-index:1;max-width:calc(100% - 24px);
+        .default-status{position:absolute;right:12px;top:calc(100% + 6px);z-index:1;max-width:calc(100% - 24px);
           padding:6px 10px;border-radius:8px;background:var(--bar-surface);color:var(--bar-text);
           border:1px solid var(--bar-line);font-size:12px}
         .default-status:empty{display:none}
@@ -279,39 +279,6 @@ class RoomcraftStorybookCard extends HTMLElement {
       </style>
       <section class="world" aria-label="Roomcraft Storybook">
         ${COASTAL_SKY_MARKUP}
-        <div class="stage">
-          <canvas role="img" aria-label="Three-dimensional cutaway of the second floor"></canvas>
-          <output class="scene-fps" aria-label="Scene frame rate" aria-live="off" hidden>— FPS</output>
-          <span id="free-view-hint" class="free-view-hint" hidden>Drag or use arrow keys to orbit. Pinch, scroll, or use +/− to zoom.</span>
-          <svg class="tethers" aria-hidden="true"></svg>
-          <div class="overlay"></div>
-          <ul class="zone-legend" id="detection-zone-legend" aria-label="Radar coverage legend" hidden>
-            <li data-zone-kind="configured"><i aria-hidden="true"></i>Configured detection zone</li>
-            <li data-zone-kind="nominal"><i aria-hidden="true"></i><span>Rated coverage (estimate)</span></li>
-            <li data-zone-kind="origin"><i aria-hidden="true"></i>Sensor position and aim</li>
-          </ul>
-          ${HEAT_MAP_LEGEND}
-          <div class="status"><div class="status-inner">
-            <div role="status">Opening Roomcraft…</div>
-            <div class="recovery" hidden>
-              <button type="button" class="retry">Try again</button>
-              <a href="/roomcraft-home/studio" data-studio-link>Layout Studio</a>
-            </div>
-          </div></div>
-          <div class="demo" aria-label="Dashboard demo" hidden>
-            <div role="status" aria-atomic="true">
-              <span class="demo-kicker">Demo</span><strong class="demo-title"></strong>
-              <span class="demo-caption"></span>
-            </div>
-            <div class="demo-actions">
-              <button type="button" class="demo-mute" aria-label="Unmute narration" aria-pressed="true">Unmute</button>
-              <button type="button" class="demo-stop" aria-label="Stop demo">Stop</button>
-            </div>
-            <span class="demo-weather-detail" hidden></span>
-            <div class="demo-progress" aria-hidden="true"><span></span></div>
-          </div>
-          <div class="menu-shade" aria-hidden="true" hidden></div>
-        </div>
         <footer class="bar">
           <nav aria-label="Roomcraft controls">
             <button type="button" class="dock-button" data-utility="electrical" aria-haspopup="dialog" hidden>
@@ -322,6 +289,7 @@ class RoomcraftStorybookCard extends HTMLElement {
               <span class="planner-glyph" aria-hidden="true"></span>
               <span class="planner-long-label">Calendar &amp; to-dos</span><span class="planner-short-label">Calendar</span>
             </button>
+            <button type="button" class="dock-button free-pan" aria-pressed="false" hidden>Pan</button>
             <button type="button" class="dock-button quick-free-view" aria-pressed="false">Free view</button>
             <a class="dock-button" data-controls-link href="/roomcraft-home/controls">
               <span class="controls-glyph" aria-hidden="true"></span> Controls
@@ -392,6 +360,40 @@ class RoomcraftStorybookCard extends HTMLElement {
             </div>
           </nav>
         </footer>
+        <div class="stage">
+          <canvas role="img" aria-label="Three-dimensional cutaway of the second floor"></canvas>
+          <output class="scene-fps" aria-label="Scene frame rate" aria-live="off" hidden>— FPS</output>
+          <span id="free-view-hint" class="free-view-hint" hidden>Drag or use arrow keys to orbit. Pinch, scroll, or use +/− to zoom.</span>
+          <svg class="tethers" aria-hidden="true"></svg>
+          <div class="overlay"></div>
+          <ul class="zone-legend" id="detection-zone-legend" aria-label="Radar coverage legend" hidden>
+            <li data-zone-kind="configured"><i aria-hidden="true"></i>Configured detection zone</li>
+            <li data-zone-kind="nominal"><i aria-hidden="true"></i><span>Rated coverage (estimate)</span></li>
+            <li data-zone-kind="origin"><i aria-hidden="true"></i>Sensor position and aim</li>
+          </ul>
+          ${HEAT_MAP_LEGEND}
+          <div class="status"><div class="status-inner">
+            <div role="status">Opening Roomcraft…</div>
+            <div class="recovery" hidden>
+              <button type="button" class="retry">Try again</button>
+              <a href="/roomcraft-home/studio" data-studio-link>Layout Studio</a>
+            </div>
+          </div></div>
+          <div class="demo" aria-label="Dashboard demo" hidden>
+            <div role="status" aria-atomic="true">
+              <span class="demo-kicker">Demo</span><strong class="demo-title"></strong>
+              <span class="demo-caption"></span>
+            </div>
+            <div class="demo-actions">
+              <button type="button" class="demo-mute" aria-label="Unmute narration" aria-pressed="true">Unmute</button>
+              <button type="button" class="demo-stop" aria-label="Stop demo">Stop</button>
+            </div>
+            <span class="demo-weather-detail" hidden></span>
+            <div class="demo-progress" aria-hidden="true"><span></span></div>
+          </div>
+          <div class="menu-shade" aria-hidden="true" hidden></div>
+        </div>
+
       </section>
       <dialog class="tracking-dialog" aria-label="Presence tracking">
         <header><h2>Presence tracking</h2><button type="button" class="close-tracking">Close</button></header>
@@ -713,6 +715,13 @@ class RoomcraftStorybookCard extends HTMLElement {
     });
     this.mainMenu.addEventListener('click', event => {
       if (event.target.closest('a')) this.setMainMenu(false);
+    });
+    this.freePan = this.shadowRoot.querySelector('.free-pan');
+    this.freePan.addEventListener('click', () => {
+      this.panMode = !this.panMode;
+      this.freeViewGestures?.cancel();
+      this.syncFreeViewMode();
+      this.canvas.focus({preventScroll:true});
     });
     this.quickFreeView = this.shadowRoot.querySelector('.quick-free-view');
     this.quickFreeView.addEventListener('click', () => {
@@ -1073,6 +1082,7 @@ class RoomcraftStorybookCard extends HTMLElement {
     this.syncObjectDetails();
     this.freeViewGestures = bindFreeViewGestures(this.canvas, {
       getView: () => this.scene && !this.demoRun ? this.cameraView : null,
+      getMode: () => this.panMode ? 'pan' : 'orbit',
       onChange: view => this.changeView(view, {announce: false}),
     });
     this.resizeObserver.observe(this.stage);
@@ -1279,6 +1289,12 @@ class RoomcraftStorybookCard extends HTMLElement {
   syncFreeViewMode() {
     const active = Boolean(this.scene) && !this.demoRun && this.cameraView.preset === 'free';
     this.quickFreeView?.setAttribute('aria-pressed', String(active));
+    if (!active) this.panMode = false;
+    this.freePan.hidden = !active;
+    this.freePan.setAttribute('aria-pressed',String(Boolean(this.panMode)));
+    this.freeViewHint.textContent = this.panMode
+      ? 'Drag or use arrow keys to pan. Pinch, scroll, or use +/− to zoom.'
+      : 'Drag or use arrow keys to orbit. Pinch, scroll, or use +/− to zoom.';
     this.canvas.toggleAttribute('data-free-view', active);
     this.freeViewHint.hidden = !active;
     if (active) {

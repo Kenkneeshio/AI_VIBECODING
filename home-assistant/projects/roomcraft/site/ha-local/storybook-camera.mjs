@@ -119,6 +119,8 @@ export function fitStorybookCamera(camera, bounds, width, height, view = 'top', 
     centerX = THREE.MathUtils.lerp(centerX, x, weight);
     centerY = THREE.MathUtils.lerp(centerY, y, weight);
   }
+  centerX -= (normalized.panX ?? 0) * 2 * halfWidth / normalized.zoom;
+  centerY += (normalized.panY ?? 0) * 2 * halfHeight / normalized.zoom;
   camera.left = centerX - halfWidth;
   camera.right = centerX + halfWidth;
   camera.bottom = centerY - halfHeight;

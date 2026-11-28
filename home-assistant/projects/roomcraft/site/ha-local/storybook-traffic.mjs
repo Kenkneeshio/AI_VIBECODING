@@ -370,7 +370,7 @@ export function createStorybookTraffic(road) {
       beams.count = beamIndex;
       halos.count = haloIndex;
       beams.instanceMatrix.needsUpdate = halos.instanceMatrix.needsUpdate = true;
-      halos.instanceColor.needsUpdate = true;
+      if (haloIndex > 0 && halos.instanceColor) halos.instanceColor.needsUpdate = true;
     }
     root.visible = shadowCount > 0;
     shadows.count = shadowCount;

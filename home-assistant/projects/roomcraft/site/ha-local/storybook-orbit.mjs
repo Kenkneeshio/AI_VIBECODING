@@ -5,7 +5,7 @@ const KEY_STEP = 7.5;
 const MIN_PINCH_DISTANCE = 8;
 
 /** Attach camera gestures to the rendered canvas so controls above it receive their own input. */
-export function bindFreeViewGestures(element, {getView, onChange, canStart = () => true}) {
+export function bindFreeViewGestures(element, {getView, onChange, canStart = () => true, getMode = () => 'orbit'}) {
   const pointers = new Map();
   const activeView = () => {
     const view = getView();
@@ -18,7 +18,7 @@ export function bindFreeViewGestures(element, {getView, onChange, canStart = () 
 
   function change(view, patch) {
     const next = normalizeCameraView({...view, ...patch});
-    if (next.azimuth !== view.azimuth || next.tilt !== view.tilt || next.zoom !== view.zoom) onChange(next);
+    if (next.azimuth !== view.azimuth || next.tilt !== view.tilt || next.zoom !== view.zoom || next.panX !== view.panX || next.panY !== view.panY) onChange(next);
   }
 
   function release(pointerId) {
@@ -66,9 +66,20 @@ export function bindFreeViewGestures(element, {getView, onChange, canStart = () 
       }
       return;
     }
+    if (getMode() === 'pan') {
+      pan(view,next.x-previous.x,next.y-previous.y);
+      return;
+    }
     change(view, {
       azimuth: view.azimuth - (next.x - previous.x) * ORBIT_DEGREES_PER_PIXEL,
       tilt: view.tilt + (next.y - previous.y) * ORBIT_DEGREES_PER_PIXEL,
+    });
+  }
+
+  function pan(view, dx, dy) {
+    change(view, {
+      panX:(view.panX ?? 0)+dx/Math.max(1,element.clientWidth),
+      panY:(view.panY ?? 0)+dy/Math.max(1,element.clientHeight),
     });
   }
 
@@ -89,6 +100,15 @@ export function bindFreeViewGestures(element, {getView, onChange, canStart = () 
   function onKeyDown(event) {
     const view = activeView();
     if (!view || event.altKey || event.ctrlKey || event.metaKey || event.defaultPrevented) return;
+    if (getMode() === 'pan' && event.key.startsWith('Arrow')) {
+      const directions = {ArrowLeft:[-28,0],ArrowRight:[28,0],ArrowUp:[0,-28],ArrowDown:[0,28]};
+      const delta = directions[event.key];
+      if (!delta) return;
+      event.preventDefault();
+      event.stopPropagation();
+      pan(view,...delta);
+      return;
+    }
     let patch;
     switch (event.key) {
       case 'ArrowLeft': patch = {azimuth: view.azimuth - KEY_STEP}; break;

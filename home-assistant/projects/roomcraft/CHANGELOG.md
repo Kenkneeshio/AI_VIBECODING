@@ -834,3 +834,9 @@ Full release gate passed. Saved dashboard layout and all six edited bindings mat
 The layout keeps fixtures backed by real devices. Removed three unbound bedroom, dressing nook and garage ceiling fixtures. The tree now follows its verified switch. Light hit areas stay centered on the rendered fixture. The wall tablet tree tap turned on the switch and its prior off state was restored.
 
 Idle hides all dashboard chrome and slowly varies tilt, angle and zoom. Touch returns to the default. The tablet's previous saved angle was reset to the overhead house framing, leaving room for the lower porch and stairs. Full release checks passed. Tablet screenshots confirmed the overhead view, chrome-free idle and touch return. The preceding runtime and dashboard backups are retained in the protected management folder; the layout backup is roomcraft-before-lighting-20261128T042604Z.json and the final pre-install runtime receipt ends in 20261127-202839-901030.json.
+
+## Top controls and Free view pan
+
+Moved the Home Dash dock below the sky at the top of the screen. Free view exposes an optional Pan mode. Drag or use the arrow keys to translate the view in screen space. Pinch and wheel still zoom. The pan offset is stored alongside the camera pose when the user explicitly saves a default. The night renderer also skips uninitialized traffic colors when no vehicles are in frame.
+
+Full release gate passed. Verified the top dock, Pan drag at a fixed angle, and exit on the wall tablet. The private pre-change dashboard backup ends in 20261127-203415-460275.json. Reinstall the prior runtime to roll back.
