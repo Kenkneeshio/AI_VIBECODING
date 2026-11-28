@@ -828,3 +828,9 @@ Full release checks passed. LAN and Nabu Casa readback matched all 14 assets for
 Home Dash uses one bound living-room ceiling light, three separate kitchen ceiling controls, and a hallway ceiling light. Bathroom fixtures were removed. The existing dining fan and its light retain separate entities and now have separate positions. The lit mini Christmas tree is an editable decoration near the living-room TV and window.
 
 Full release gate passed. Saved dashboard layout and all six edited bindings matched authenticated readback. The wall tablet loaded the live layout with the tree and fixtures visible. No device was actuated. Roll back the design through Layout snapshots or the private backup roomcraft-before-lighting-20261128T041530Z.json.
+
+## Verified light controls and full-screen idle
+
+The layout keeps fixtures backed by real devices. Removed three unbound bedroom, dressing nook and garage ceiling fixtures. The tree now follows its verified switch. Light hit areas stay centered on the rendered fixture. The wall tablet tree tap turned on the switch and its prior off state was restored.
+
+Idle hides all dashboard chrome and slowly varies tilt, angle and zoom. Touch returns to the default. The tablet's previous saved angle was reset to the overhead house framing, leaving room for the lower porch and stairs. Full release checks passed. Tablet screenshots confirmed the overhead view, chrome-free idle and touch return. The preceding runtime and dashboard backups are retained in the protected management folder; the layout backup is roomcraft-before-lighting-20261128T042604Z.json and the final pre-install runtime receipt ends in 20261127-202839-901030.json.

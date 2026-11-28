@@ -230,6 +230,10 @@ export function placeStorybookTargets(targets, width, height) {
   for (const target of ordered) {
     const w = Math.min(target.w, width);
     const h = Math.min(target.h, height);
+    if (target.pinned) {
+      placed.push({...target,w,h,x:clamp(target.x,w/2,width-w/2),y:clamp(target.y,h/2,height-h/2)});
+      continue;
+    }
     const keepClear = target.keepClear ?? [];
     const preferClear = keepClear.length > 0;
     const maxRing = preferClear ? 5 : 3;

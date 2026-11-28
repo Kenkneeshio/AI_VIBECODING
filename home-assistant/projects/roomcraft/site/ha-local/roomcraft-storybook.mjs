@@ -231,7 +231,9 @@ class RoomcraftStorybookCard extends HTMLElement {
           width:max-content;max-width:calc(100% - 18px);padding:5px 10px;border-radius:8px;
           background:#443649;color:#fffaf0;text-align:center;font-size:12px;pointer-events:none}
         .overlay{position:absolute;inset:0;pointer-events:none}
-        .world[data-demo-beat] :is(.overlay,.tethers,.zone-legend),.world[data-wildlife-preview] :is(.overlay,.tethers,.zone-legend),.world[data-idle-camera]:not([data-idle-camera="home"]) :is(.overlay,.tethers,.zone-legend){visibility:hidden}
+        .world[data-demo-beat] :is(.overlay,.tethers,.zone-legend),.world[data-wildlife-preview] :is(.overlay,.tethers,.zone-legend),.world[data-idle-camera] :is(.overlay,.tethers,.zone-legend,.scene-fps,.free-view-hint){visibility:hidden}
+        .world[data-idle-camera]{grid-template-rows:minmax(0,1fr)}
+        .world[data-idle-camera] > :not(.stage){display:none}
         .demo{position:absolute;left:clamp(8px,1.5vw,24px);bottom:clamp(8px,1.5vw,24px);z-index:4;
           display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:7px 12px;
           box-sizing:border-box;width:min(470px,calc(100% - 16px));padding:7px 9px 7px 12px;border:1px solid #ae9c83;
@@ -1639,11 +1641,11 @@ class RoomcraftStorybookCard extends HTMLElement {
         continue;
       }
       const item = this.model.items.get(config.roomcraft_item_id);
-      const {w, h} = camera ? storybookCameraTileSize(item, width) : {w: 44, h: 44};
+      const {w, h} = camera ? storybookCameraTileSize(item, width) : config.roomcraft_visual_kind === 'light' ? {w: 36, h: 36} : {w: 44, h: 44};
       const priority = config.roomcraft_visual_kind === 'light' || config.roomcraft_device_form === 'presence_switch'
         ? 0 : camera ? 2 : 1;
       const target = {...control, x: anchor.x * width, y: anchor.y * height, w, h, priority,
-        id: item.id, keepClear: camera ? keepClear : undefined};
+        id: item.id, pinned: config.roomcraft_visual_kind === 'light', keepClear: camera ? keepClear : undefined};
       if (!camera && config.roomcraft_tap_action === 'none' && config.roomcraft_hold_action === 'none') {
         passive.push(target);
       } else targets.push(target);

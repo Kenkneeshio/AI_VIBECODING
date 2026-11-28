@@ -38,7 +38,7 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
   const now=()=>host.performance.now();
   const idleBrightness=()=>idleBrightnessAt(new Date(),card.session?.config?.time_zone||'America/Los_Angeles');
   let director, state={active:false,phase:'waiting'}, connected=false, timer, interests=[], nextInterestAt=0;
-  let vacantSince;
+  let vacantSince, idleStartedAt;
   let suppressClickUntil=0, manual=false, lastAppliedFraming;
   const held=new Set(), wakePointers=new Set();
   function freshDirector() {
@@ -97,11 +97,20 @@ export function bindIdleCamera(card, host=card.ownerDocument.defaultView) {
       card.world.style.filter=brightness===1?'':`brightness(${brightness})`;
       const view=resolveDefaultCameraView(card.savedStartupView);
       if(!previous.active) {
+        idleStartedAt=at;
         card.cameraView=view;card.pendingCameraView=undefined;card.viewSelect.value='default';
         card.freeViewGestures?.cancel();card.syncFreeViewMode();
       }
       lastAppliedFraming=state.focus?{focus:{...state.focus},demoZoom:Math.min(4.5,(view.framePreset ? view.zoom : Math.min(1,view.zoom))*state.zoomFactor)}:undefined;
-      card.scene.setView(view,lastAppliedFraming);
+      const seconds=(at-idleStartedAt)/1000;
+      const eased=Math.min(1,seconds/12);
+      const drift={
+        ...view,
+        azimuth:view.azimuth+eased*8*Math.sin(seconds/27),
+        tilt:Math.min(88,view.tilt+eased*(4+3*Math.sin(seconds/19))),
+      };
+      const zoom=(lastAppliedFraming?.demoZoom ?? Math.min(1,view.zoom))*(1+.045*eased*Math.sin(seconds/21));
+      card.scene.setView(drift,{...lastAppliedFraming,demoZoom:zoom});
       card.world.setAttribute('data-idle-camera',state.phase);
       if(previous.phase!==state.phase||!previous.active)card.anchorDirty=true;
     } else if(previous.active)restore();

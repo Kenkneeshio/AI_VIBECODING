@@ -54,7 +54,7 @@ export function studioCameraPreferences(host) {
 }
 
 /** Fit one authored bounding box at an explicit viewport and orthographic pose. */
-export function fitStorybookCamera(camera, bounds, width, height, view = 'top', {focus, demoZoom} = {}) {
+export function fitStorybookCamera(camera, bounds, width, height, view = 'top', {focus, demoZoom, bottomAlign = false} = {}) {
   const normalized = normalizeCameraView(view);
   const framePreset = cameraFramePreset(normalized) ?? normalized.preset;
   const subjectFrame = bounds?.frames?.[framePreset] ?? bounds?.coastalFrames?.[framePreset] ??
@@ -112,6 +112,7 @@ export function fitStorybookCamera(camera, bounds, width, height, view = 'top', 
   const halfHeight = halfWidth / ratio;
   let centerX = (frame.min.x + frame.max.x) / 2;
   let centerY = (frame.min.y + frame.max.y) / 2;
+  if (bottomAlign && normalized.tilt === 0) centerY = frame.min.y + halfHeight;
   if ([focus?.x, focus?.y, focus?.z].every(Number.isFinite)) {
     const {x, y} = corner.set(focus.x, focus.y, focus.z).applyMatrix4(camera.matrixWorldInverse);
     const weight = Number.isFinite(focus.weight) ? THREE.MathUtils.clamp(focus.weight, 0, 1) : 1;

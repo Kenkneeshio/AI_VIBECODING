@@ -51,14 +51,14 @@ def update(config):
     return result
 
 
-def main():
+def main(transform=update):
     manager = Path(sys.argv[1])
     sys.path.insert(0, str(manager))
     import ha_manage
     ha_manage.API_URL = "ws://192.168.68.96:8123/api/websocket"
     with ha_manage.API() as api:
         original = api.call("lovelace/config", url_path=PATH)
-        updated = update(original)
+        updated = transform(original)
         if original == updated:
             print("Layout already matches")
             return
@@ -74,7 +74,7 @@ def main():
         api.call("lovelace/config/save", url_path=PATH, config=updated)
         if api.call("lovelace/config", url_path=PATH) != updated:
             raise RuntimeError("Dashboard readback differs")
-        print("Verified saved layout and control bindings:", len(LIGHTS))
+        print("Verified saved dashboard layout and control projection")
 
 
 if __name__ == "__main__":

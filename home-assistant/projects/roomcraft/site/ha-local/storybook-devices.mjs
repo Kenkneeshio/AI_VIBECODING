@@ -636,6 +636,7 @@ function miniChristmasTree(width, depth) {
   const root = new THREE.Group();
   const size = Math.min(width, depth);
   const pot = material(0xb44a38);
+  const bulbs = [];
   cylinder(root, size*.23, size*.18, size*.22, pot, 0, size*.11);
   for (let tier = 0; tier < 4; tier++) {
     const radius = size*(.46-tier*.085);
@@ -646,12 +647,17 @@ function miniChristmasTree(width, depth) {
       const angle = (index+tier*.37)*Math.PI/4;
       const tint = [0xffc05f,0xf86e6e,0x9ce6d5][(index+tier)%3];
       const bulb = material(tint,{emissive:tint,emissiveIntensity:.85});
+      bulbs.push(bulb);
       bead(root, size*.033, bulb, Math.cos(angle)*radius*.78, y-size*.12, Math.sin(angle)*radius*.78);
     }
   }
   const star = material(0xffcf62,{emissive:0xffbe49,emissiveIntensity:1.1});
   mesh(root,new THREE.OctahedronGeometry(size*.105),star,0,size*1.27,0);
-  return {root, anchorY:size*.75};
+  return {root, anchorY:size*.75, animate(state) {
+    const intensity = stateValue(state) === 'on' ? 1 : 0;
+    star.emissiveIntensity = intensity * 1.1;
+    for (const bulb of bulbs) bulb.emissiveIntensity = intensity * .85;
+  }};
 }
 
 export function makeStorybookDevice(item, context = {}) {
